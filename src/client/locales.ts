@@ -5,9 +5,9 @@ export const CHARTER_LOCALE_NS = 'dsh-charter'
 
 const en = {
   tab: 'Charter',
-  'header.eyebrow': 'Session charter',
+  'header.eyebrow': 'Session contract',
   'header.title': 'Charter',
-  'header.subtitle': 'Goals, constraints, and deliverables that survive compaction.',
+  'header.subtitle': 'Compaction rewrites history. Your commitments don\'t.',
   'stats.revision': 'rev {revision}',
   'stats.active': '{count} active',
   'stats.stored': '{count} stored',
@@ -169,30 +169,30 @@ const en = {
 export type CharterLocaleKey = keyof typeof en
 
 const zh: Record<CharterLocaleKey, string> = {
-  tab: '章程',
-  'header.eyebrow': '会话章程',
-  'header.title': '章程',
-  'header.subtitle': '跨压缩保留的目标、约束与交付物。',
+  tab: '任务契约',
+  'header.eyebrow': '会话契约',
+  'header.title': '任务契约',
+  'header.subtitle': '压缩会改写历史，但你的约定不会。',
   'stats.revision': '修订 {revision}',
   'stats.active': '{count} 生效',
   'stats.stored': '{count} 已存储',
   'stats.context': '{bytes} B 上下文',
   'stats.budget': '{used} / {limit} 上下文',
 
-  'status.loading': '正在加载章程...',
-  'status.unavailable': '章程暂不可用。',
-  'status.notReady': '章程尚未就绪。',
-  'status.initializing': '章程正在初始化...',
+  'status.loading': '正在加载任务契约...',
+  'status.unavailable': '任务契约暂不可用。',
+  'status.notReady': '任务契约尚未就绪。',
+  'status.initializing': '任务契约正在初始化...',
   'status.notLive': '该会话尚未在当前 Host 进程中运行。'
-    + '请在此 Web 界面打开或启动它，章程标签页会自动更新。',
+    + '请在此 Web 界面打开或启动它，任务契约标签页会自动更新。',
   'status.readOnly': '该会话尚未在当前 Host 进程中运行。'
-    + '当前显示已保存的只读章程；请在此 Web 界面打开或启动该会话后再编辑。',
-  'status.lifecycle': '已保存的章程属于另一个会话生命周期。',
-  'status.corrupt': '已保存的章程数据不一致。',
-  'status.storage': '章程存储暂不可用。',
+    + '当前显示已保存的只读任务契约；请在此 Web 界面打开或启动该会话后再编辑。',
+  'status.lifecycle': '已保存的任务契约属于另一个会话生命周期。',
+  'status.corrupt': '已保存的任务契约数据不一致。',
+  'status.storage': '任务契约存储暂不可用。',
 
   'empty.kicker': '开始',
-  'empty.title': '这个会话还没有章程。',
+  'empty.title': '这个会话还没有任务契约。',
   'empty.body': '先设置目标或添加约束；模型会在下一次请求中看到它。',
 
   'nav.label': '模块',
@@ -209,7 +209,7 @@ const zh: Record<CharterLocaleKey, string> = {
   'overview.objectiveHint': '原始目标不可改写；调整目标会保留原始版本供审阅。',
 
   'bootstrap.kicker': '历史草案',
-  'bootstrap.title': '从压缩历史生成章程草案',
+  'bootstrap.title': '从压缩历史生成任务契约草案',
   'bootstrap.body': '这是从最近一次压缩摘要中抽取的草案，尚未生效。请检查后应用。',
   'bootstrap.source': '来源：压缩摘要（约 {tokens} tokens 被压缩）',
   'bootstrap.sourcePlain': '来源：压缩摘要',
@@ -223,11 +223,11 @@ const zh: Record<CharterLocaleKey, string> = {
   'bootstrap.budget': '草案：{used} / {limit}',
   'bootstrap.overBudget': '草案超过 {limit} 上下文预算，请取消勾选或缩短条目。',
   'bootstrap.itemOver': '该候选超过 {limit} 条目上限。',
-  'bootstrap.overItems': '草案条目数超过章程上限。',
+  'bootstrap.overItems': '草案条目数超过任务契约上限。',
   'bootstrap.blocked': '请先应用或丢弃暂存的修改，再查看历史草案。',
   'bootstrap.error': '无法从历史中生成草案。',
 
-  'notice.conflict': '章程已从修订 {from} 更新到 {to}。'
+  'notice.conflict': '任务契约已从修订 {from} 更新到 {to}。'
     + '草稿已保留；请丢弃后基于最新修订重新编辑。',
 
   'objective.kicker': '目标',
@@ -273,7 +273,7 @@ const zh: Record<CharterLocaleKey, string> = {
   'item.confirmPurge': '确认清除',
   'item.keep': '保留',
 
-  'editor.charterTextAria': '章程文本',
+  'editor.charterTextAria': '任务契约文本',
   'editor.reasonPlaceholder': '为什么调整目标？（可选）',
   'editor.reasonAria': '调整原因',
   'editor.stage': '暂存',
@@ -285,8 +285,8 @@ const zh: Record<CharterLocaleKey, string> = {
 
   'composer.invariant': '硬约束',
   'composer.deliverable': '交付物',
-  'composer.groupAria': '新章程条目类型',
-  'composer.inputAria': '新章程条目',
+  'composer.groupAria': '新任务契约条目类型',
+  'composer.inputAria': '新任务契约条目',
   'composer.placeholderInvariant': '添加一条必须持续可见的约束...',
   'composer.placeholderDeliverable': '添加一项具体交付物...',
   'composer.addInvariant': '添加约束',
@@ -315,18 +315,18 @@ const zh: Record<CharterLocaleKey, string> = {
   'button.retry': '重试',
 
   'error.INVALID_ARGUMENT': '编辑请求无效。',
-  'error.FORBIDDEN': '无权编辑此章程。',
-  'error.NOT_FOUND': '未找到会话或章程条目。',
-  'error.LIFECYCLE_MISMATCH': '章程属于另一个会话生命周期。',
-  'error.REVISION_CONFLICT': '章程已被更新，草稿已保留。',
+  'error.FORBIDDEN': '无权编辑此任务契约。',
+  'error.NOT_FOUND': '未找到会话或任务契约条目。',
+  'error.LIFECYCLE_MISMATCH': '任务契约属于另一个会话生命周期。',
+  'error.REVISION_CONFLICT': '任务契约已被更新，草稿已保留。',
   'error.MUTATION_ID_REUSED': '该编辑标识已用于不同内容。',
   'error.INVALID_REFERENCE': '编辑引用了不存在的条目。',
   'error.INVALID_TRANSITION': '当前状态下不允许该修改。',
   'error.IMMUTABLE_FIELD': '该字段不可修改。',
-  'error.QUOTA_EXCEEDED': '超出章程限制，未保存任何修改。',
-  'error.CORRUPT_STATE': '已保存的章程数据不一致。',
-  'error.UNAVAILABLE': '章程暂不可用。',
-  'error.connection': '章程连接不可用。',
+  'error.QUOTA_EXCEEDED': '超出任务契约限制，未保存任何修改。',
+  'error.CORRUPT_STATE': '已保存的任务契约数据不一致。',
+  'error.UNAVAILABLE': '任务契约暂不可用。',
+  'error.connection': '任务契约连接不可用。',
   'error.unexpected': '编辑发生意外错误。',
 }
 

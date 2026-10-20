@@ -98,6 +98,26 @@ function itemState(item: CharterItem): 'done' | 'warning' | 'ongoing' | 'idle' {
   return 'idle'
 }
 
+function CharterMark() {
+  return (
+    <span className="charter-mark" aria-hidden="true">
+      <svg viewBox="0 0 48 48" focusable="false">
+        <defs>
+          <linearGradient id="charter-mark-gradient" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stopColor="#4b6bfb" />
+            <stop offset="1" stopColor="#2ec4b6" />
+          </linearGradient>
+        </defs>
+        <rect width="48" height="48" rx="13" fill="url(#charter-mark-gradient)" />
+        <path d="M15 10h12l7 7v18a3 3 0 0 1-3 3H15a3 3 0 0 1-3-3V13a3 3 0 0 1 3-3Z" fill="#fff" opacity=".96" />
+        <path d="M27 10v7h7" fill="none" stroke="#4b6bfb" strokeWidth="2" strokeLinejoin="round" />
+        <path d="M18 24h11M18 29h8" fill="none" stroke="#4b6bfb" strokeWidth="2" strokeLinecap="round" />
+        <path d="m18 35 2.6 2.6L28 30" fill="none" stroke="#2ec4b6" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </span>
+  )
+}
+
 function ActionButton({
   children,
   onClick,
@@ -693,9 +713,12 @@ export function CharterPane({ sessionId, source, t }: CharterPaneProps) {
       <div className="charter-shell">
         <header className="charter-pagehead">
           <div className="charter-heading">
-            <span className="charter-eyebrow">{t('header.eyebrow')}</span>
-            <h2>{t('header.title')}</h2>
-            <p className="charter-subtitle">{t('header.subtitle')}</p>
+            <CharterMark />
+            <div className="charter-heading__copy">
+              <span className="charter-eyebrow">{t('header.eyebrow')}</span>
+              <h2>{t('header.title')}</h2>
+              <p className="charter-subtitle">{t('header.subtitle')}</p>
+            </div>
           </div>
           <div className="charter-headside">
             <div className="charter-chips">
