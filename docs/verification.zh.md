@@ -120,8 +120,8 @@ ln -sfn ../node_modules ./proj/node_modules
 `tests/host/composition.spec.ts` 在真实 `SystemPrompt` assembly 中验证：
 
 - `assembly.contexts` 中存在 `charter:standing`；
-- `renderContextSnapshot(assembly)` 包含章程正文；
-- `renderPrompt(assembly)` 和 `assembly.sections` 不包含章程正文；
+- `renderContextSnapshot(assembly)` 包含任务契约正文；
+- `renderPrompt(assembly)` 和 `assembly.sections` 不包含任务契约正文；
 - 重新 assembly 得到相同字节；
 - 编辑后重新 assembly 读到新目标，不再包含旧目标。
 
@@ -205,7 +205,7 @@ ls lib/*.css
 - `apply` 注册 `conversation.view` 的 `charter` entry、正文组件和 Remote contribution；
 - 已有 tab 顺序为 chat 0 / trajectory 10 / context 20 时，`charter` 排在最后；
 - 模拟后续注册的 `fleet` tab 后，`charter` 自动重新注册并再次排在最后，且不重复；
-- 中文标签为「章程」，英文标签为「Charter」。
+- 中文标签为「任务契约」，英文标签为「Charter」。
 
 ## 6. 真实 profile smoke
 
@@ -361,12 +361,12 @@ DSH_HOME="$PWD/.tmp/webview/home" dsh --profile charterweb2 --no-open --port 193
 会话头部 tab bar 实际文本顺序：
 
 ```text
-对话    轨迹    章程
+对话    轨迹    任务契约
 ```
 
-- 「章程」位于「对话」「轨迹」之后；
-- 再安装 `dsh-context@0.73.3` 后，实际顺序变为 `对话 / 轨迹 / 上下文 / 编队 / 章程`，章程仍然最后；
-- 中文标签为「章程」，英文标签为「Charter」，由 `dsh-client-locale` 字典提供；
+- 「任务契约」位于「对话」「轨迹」之后；
+- 再安装 `dsh-context@0.73.3` 后，实际顺序变为 `对话 / 轨迹 / 上下文 / 编队 / 任务契约`，任务契约仍然最后；
+- 中文标签为「任务契约」，英文标签为「Charter」，由 `dsh-client-locale` 字典提供；
 - 另用 `client-smoke` 模拟一个后注册的 tab：本插件会 dispose 后重新注册，再次回到最后，且不会产生
   重复 entry；
 - 空白 Session 不显示 View tab bar；发送第一条消息后出现。
@@ -377,7 +377,7 @@ DSH_HOME="$PWD/.tmp/webview/home" dsh --profile charterweb2 --no-open --port 193
 
 > 7.2/7.3 的 191 B / 220 B 是重设计前的功能验证数据；7.6 的截图来自后来使用 47 B 目标、240 B context 的数据。
 
-在「章程」标签页中：
+在「任务契约」标签页中：
 
 1. 点击 **Set objective**，输入 `Ship the charter tab safely`，点击 **Stage**；
 2. 面板显示 `1 staged change`；
@@ -392,7 +392,7 @@ DSH_HOME="$PWD/.tmp/webview/home" dsh --profile charterweb2 --no-open --port 193
 2. 点击 **Apply**：revision 变为 `2`，显示 `1 active / 1 stored`、`220 B context`；
 3. 刷新整个页面并重新打开同一 Session：仍显示 `rev 2`、目标 `Ship the charter tab safely` 和
    约束 `Do not break the public API`；
-4. 标签顺序仍为「对话」「轨迹」「章程」。
+4. 标签顺序仍为「对话」「轨迹」「任务契约」。
 
 这说明浏览器 UI → Remote → Host service → storage domain → 重新 assembly/UI 的整条链路可用。
 
@@ -400,8 +400,8 @@ DSH_HOME="$PWD/.tmp/webview/home" dsh --profile charterweb2 --no-open --port 193
 
 在同一 Web profile 中把 DSH 语言从中文切到 English（Settings → Language → English），不做页面刷新：
 
-- 标签从「章程」变为 `Charter`；
-- 面板从「会话章程 / 目标 / 硬约束 / 1 条约束 / 预览上下文 / 应用」切换为
+- 标签从「任务契约」变为 `Charter`；
+- 面板从「会话任务契约 / 目标 / 硬约束 / 1 条约束 / 预览上下文 / 应用」切换为
   `SESSION CHARTER / OBJECTIVE / INVARIANTS / 1 constraint / Preview context / Apply`；
 - 统计、状态、按钮、占位符、错误码说明全部来自同一 `dsh-charter` locale namespace；
 - 刷新页面后语言偏好仍为 English，标签和面板保持英文。
@@ -413,7 +413,7 @@ DSH_HOME="$PWD/.tmp/webview/home" dsh --profile charterweb2 --no-open --port 193
 
 重设计后的面板在同一个 Web profile、1440×757 下验证了明暗主题和中英文：
 
-- 紧凑页头，包含修订/生效/存储 chip 和实时 `240 B / 8.0 KiB 上下文` 预算条；
+- 带品牌 mark 的页头（`任务契约`、slogan）包含修订/生效/存储 chip 和实时 `240 B / 8.0 KiB 上下文` 预算条；
 - 吸顶的预览/丢弃/应用工具栏在内容滚动时保持可见；
 - 左侧 section 导航：概览 / 目标 / 硬约束 / 交付物 / 上下文，有草案时增加「历史草案」；
 - 概览 dashboard 包含目标、约束/交付物卡片和预算明细，大块历史草案不再挤压工作模块；
@@ -430,7 +430,7 @@ prompt renderer 计算草案预览，并在条目/目标/所选草案/投影上�
 ### 7.5 说明
 
 - 测试使用了一个格式合法但没有真实额度的 API Key，所以 Chat 里显示模型请求失败；这是模型调用问题，
-  不影响章程标签页的目标/约束编辑和 Apply。
+  不影响任务契约标签页的目标/约束编辑和 Apply。
 - 尚未在浏览器中自动验证：两标签页并发冲突、两个 Session 隔离、0.1.7/0.2.1 的逐版交互。这些逻辑由
   Host/Remote 测试覆盖，仍建议在目标 profile 手工走一遍。
 
@@ -443,8 +443,8 @@ prompt renderer 计算草案预览，并在条目/目标/所选草案/投影上�
 3. 压缩后检查：
    - Charter 面板仍显示相同 revision/正文；
    - `charter_read` 返回 standing 内容；
-   - 系统 prompt 不包含章程正文；
-   - 下一个请求的 runtime context 包含完整章程；
+   - 系统 prompt 不包含任务契约正文；
+   - 下一个请求的 runtime context 包含完整任务契约；
 4. 重启 DSH，重新打开该 Session，再次检查 revision 和正文。
 
 平台契约依据：`@deepseek-ai/dsh-agent-loop@0.2.0-rc.2` 的 `RuntimeContextProjection` 在 retained
@@ -454,7 +454,7 @@ snapshot 被 replacement/compaction 遮蔽后清空 retained，下一次请求�
 ## 9. 未支持的验证项
 
 - 多进程共享 storage 的实时同步：`domain/changed` 只在单进程内可见，本插件按单 Host 进程部署设计。
-- 真实模型是否遵守章程：章程是声明，不承诺模型行为。
+- 真实模型是否遵守任务契约：任务契约是声明，不承诺模型行为。
 - 永久审计：history/mutation 回执有界，不构成审计。
 - 配额真实样本校准：默认值是产品初值。
 

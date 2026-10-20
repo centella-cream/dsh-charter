@@ -23,7 +23,7 @@ DSH `0.1.7` / `0.2.0` 只能校验 Session 是否 live、lifecycle identity 是�
 
 ## 威胁模型
 
-`dsh-charter` 把用户编辑的章程正文视为**不可信用户内容**：
+`dsh-charter` 把用户编辑的任务契约正文视为**不可信用户内容**：
 
 - 通过 `systemPrompt.context()` 以 user role 注入，绝不作为 system message；
 - 不得覆盖 Host policy、工具权限、sandbox 规则或执行守卫；
@@ -34,7 +34,7 @@ DSH `0.1.7` / `0.2.0` 只能校验 Session 是否 live、lifecycle identity 是�
 
 ## 不在范围内
 
-- 模型主动不遵守章程。章程是声明，不是强制机制。
-- 用户章程正文内的 prompt injection 被模型执行。硬限制请使用 Host policy、sandbox、approval 和工具守卫。
+- 模型主动不遵守任务契约。任务契约是声明，不是强制机制。
+- 用户任务契约正文内的 prompt injection 被模型执行。硬限制请使用 Host policy、sandbox、approval 和工具守卫。
 - 多进程 `domain/changed` 实时同步；插件按单 Host 进程设计。
 - 在插件之外删除 profile、domain 或 storage 目录造成的数据丢失。

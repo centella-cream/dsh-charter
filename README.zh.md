@@ -8,12 +8,15 @@
 
 [English](README.md) | 中文
 
-**给 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的持久、用户所有的会话章程。**
-目标、硬约束和交付物在上下文压缩后仍然可见，并且随时可编辑。
+> **压缩会改写历史，但你的约定不会。**
+
+`dsh-charter` 是给 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的持久、用户所有的
+任务契约。目标、硬约束和交付物在上下文压缩后仍然可见，并且随时可编辑。英文界面沿用 **Charter**，中文界面
+使用 **任务契约**。
 
 ![真实 Web profile 中的 dsh-charter 标签页](docs/assets/charter-pane.png)
 
-> 真实中文 Web profile，同时安装 `dsh-context`。标签顺序为「对话」「轨迹」「上下文」「编队」「章程」；
+> 真实中文 Web profile，同时安装 `dsh-context`。标签顺序为「对话」「轨迹」「上下文」「编队」「任务契约」；
 > 面板全部文案跟随 DSH 当前语言。
 
 ## 目录
@@ -23,7 +26,7 @@
 - [工作原理](#工作原理)
 - [安装](#安装)
 - [快速开始](#快速开始)
-- [章程标签页](#章程标签页)
+- [任务契约标签页](#任务契约标签页)
 - [配置](#配置)
 - [兼容性](#兼容性)
 - [安全与隐私](#安全与隐私)
@@ -49,7 +52,7 @@
 - **原子 Apply**：一次编辑要么全部提交，要么完全不提交；支持 revision 冲突与幂等重试。
 - **安全的上手**：已有压缩历史的 Session 会得到一份只读的「历史草案」；用户审阅并应用前不生效。
 
-章程是**声明**，不是执行策略。需要机器强制的限制请使用 Host 权限、sandbox、hook 或工具守卫。
+任务契约是**声明**，不是执行策略。需要机器强制的限制请使用 Host 权限、sandbox、hook 或工具守卫。
 
 ## 亮点
 
@@ -66,7 +69,7 @@
 
 ```mermaid
 flowchart LR
-  U[用户在章程面板编辑] --> A[charter.edit]
+  U[用户在任务契约面板编辑] --> A[charter.edit]
   A --> B[单记录原子更新]
   B --> D[(dsh_charter_v1 storage domain)]
   D --> R[确定性渲染器]
@@ -113,7 +116,7 @@ bundle 选择。
 ### Desktop — 从 Plugins 安装
 
 打开 **Desktop → Plugins**，搜索 **`dsh-charter`**，点击 **Install**；已安装时点击 **Update**。Desktop
-管理插件生命周期并热更新新的 bundle，不需要终端命令。更新后重新打开或刷新章程 tab。
+管理插件生命周期并热更新新的 bundle，不需要终端命令。更新后重新打开或刷新任务契约 tab。
 
 ### 本地预发布构建
 
@@ -140,20 +143,20 @@ Desktop 可在 Plugins 页面安装同一个 tarball。源码开发流程见 [CO
 ### 已有压缩历史的会话
 
 1. 打开一个**已经触发过压缩、且当前 Web 进程里是 live** 的旧会话。
-2. 打开「章程」。如果章程为空，插件会读取最近一次 `compaction/summary`，出现「历史草案」标签。
+2. 打开「任务契约」。如果任务契约为空，插件会读取最近一次 `compaction/summary`，出现「历史草案」标签。
 3. 检查/编辑候选内容，取消不合适的勾选，点击 **应用草案**。只有这时内容才生效并进入下一次模型请求。
 
 历史抽取是确定性启发式：选择高信号章节，并把长候选拆成多条而不是截断。人工审阅是强制的。
 
 ### 新会话
 
-1. 在已开始的会话中打开「章程」。
+1. 在已开始的会话中打开「任务契约」。
 2. 设置目标。
 3. 在对应 section 添加硬约束和交付物。
 4. 用 **预览上下文** 查看精确的 user-role 文本和字节数。
 5. 点击 **应用**。若 revision 冲突，草稿会保留并显示服务端最新 revision。
 
-## 章程标签页
+## 任务契约标签页
 
 标签页从会话头部打开，并动态排在所有插件标签之后。宽屏使用左侧 section 导航，窄屏使用横向 tab：
 
@@ -200,7 +203,7 @@ Apply 禁用。
 | `mutationLimit` | 128 | 近期 mutation 回执上限 |
 | `contextOrder` | 130 | runtime context 排序；默认在 sandbox/approval/subagent 之后 |
 
-优先级是 **prompt 字节 > 单条字节 > 条目数**。默认值刻意宽裕但有界；团队章程更长时可以调高，代价是每次
+优先级是 **prompt 字节 > 单条字节 > 条目数**。默认值刻意宽裕但有界；团队任务契约更长时可以调高，代价是每次
 请求增加 prompt 字节。
 
 ## 兼容性
@@ -219,10 +222,10 @@ Apply 禁用。
 ## 安全与隐私
 
 - 用户正文永远不进入 system-role 消息。
-- 模型没有章程写能力；`charter_read` 只读。
+- 模型没有任务契约写能力；`charter_read` 只读。
 - 记录绑定 `createdAt`、`cwd`、`parentSession`；同一 Session id 的不同 lifecycle 会被拒绝。
 - 普通日志只记录稳定 id、kind、revision 和错误码，不记录用户正文。
-- 章程不是权限系统；威胁模型和报告方式见 [SECURITY.zh.md](SECURITY.zh.md)。
+- 任务契约不是权限系统；威胁模型和报告方式见 [SECURITY.zh.md](SECURITY.zh.md)。
 
 ## 开发
 
