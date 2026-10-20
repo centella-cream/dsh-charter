@@ -321,7 +321,7 @@ ctx.slots.register({
   id: 'charter',
   order: nextViewOrder(ctx),
   locale: 'dsh-charter',
-  label: () => t('tab'), // 章程 / Charter
+  label: () => t('tab'), // 任务契约 / Charter
   inject: sessionId => ({ source: controller.source(sessionId) }),
 }, CharterPane)
 ```
@@ -331,7 +331,7 @@ ctx.slots.register({
   plugins.
 - The client subscribes to `conversation.view` and re-registers when its entry is not last. This appends the
   Charter tab after every existing and later-registered plugin tab without duplicating it.
-- Labels are supplied by `dsh-client-locale`: `章程` in Chinese, `Charter` in English. All pane strings use the
+- Labels are supplied by `dsh-client-locale`: `任务契约` in Chinese, `Charter` in English. All pane strings use the
   same namespace, so the whole panel follows the active DSH language.
 - A blank Session hides the View tab bar; the tab appears once the Session starts.
 - The pane scrolls in the main content area; its footer actions sit at the end of the content.
@@ -361,7 +361,8 @@ Layout and interaction principles:
 
 - A left section navigation (Overview / Objective / Invariants / Deliverables / Context, plus History when a
   draft exists) keeps each module focused. It becomes a horizontal tab strip on narrow containers.
-- A compact page header carries title, one-line purpose, revision/active/stored chips, and a context-budget meter.
+- A branded page header (mark, title, one-line slogan) carries revision/active/stored chips and a context-budget
+  meter: *Compaction rewrites history. Your commitments don't.*
 - A sticky action toolbar keeps Preview/Discard/Apply visible while the pane scrolls.
 - Overview is a dashboard: objective summary, invariant/deliverable cards, and budget breakdown. A large history
   draft gets its own tab, so it never pushes the working modules below the fold.

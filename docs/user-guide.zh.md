@@ -18,7 +18,7 @@ dsh --profile web --dump-config | grep -n "charter" || true
 - Host 服务 `charter`；
 - Remote 服务 `charterRemote`（namespace `charter`）；
 - 只读工具 `charter_read`；
-- 浏览器侧 `dsh-charter/client.js` 和会话头部的「章程」/「Charter」标签页。
+- 浏览器侧 `dsh-charter/client.js` 和会话头部的「任务契约」/「Charter」标签页。
 
 ## 2. 安装
 
@@ -53,7 +53,7 @@ peer 兼容检查结果为准。
 ### 2.2 Desktop — 从 Plugins 安装
 
 打开 **Desktop → Plugins**，搜索 **`dsh-charter`**，点击 **Install**。已安装时点击 **Update**；Desktop
-管理插件生命周期并热更新 bundle，不需要终端命令。更新后重新打开或刷新「章程」tab。
+管理插件生命周期并热更新 bundle，不需要终端命令。更新后重新打开或刷新「任务契约」tab。
 
 ### 2.3 本地预发布构建
 
@@ -82,16 +82,16 @@ npm run build
 
 ## 3. 首次使用
 
-新会话的章程**默认为空**。插件不会自动把目标或约束写入有效记录；在你设置目标或添加条目之前，模型看不到任何
-章程上下文。这是刻意设计：只有用户确认的内容才会生效。
+新会话的任务契约**默认为空**。插件不会自动把目标或约束写入有效记录；在你设置目标或添加条目之前，模型看不到任何
+任务契约上下文。这是刻意设计：只有用户确认的内容才会生效。
 
-如果已有 Session 触发过压缩、且章程为空，「章程」标签页会自动显示从最近一次压缩摘要抽取的**历史草案**。
+如果已有 Session 触发过压缩、且任务契约为空，「任务契约」标签页会自动显示从最近一次压缩摘要抽取的**历史草案**。
 检查/编辑草案后点击**应用草案**即可生效。草案本身不会进入 prompt，也不会调用模型。没有压缩摘要的 Session
 保持普通空状态。
 
-1. 打开任意已开始的会话，会话头部会依次出现「对话」「轨迹」「章程」。若没有「章程」，先确认 profile 的
+1. 打开任意已开始的会话，会话头部会依次出现「对话」「轨迹」「任务契约」。若没有「任务契约」，先确认 profile 的
    boot graph 包含 `dsh-charter/client.js`，并确认会话不是空白 Session（空白 Session 会隐藏 View 标签栏）。
-   「章程」标签会动态排在所有其他插件标签之后。
+   「任务契约」标签会动态排在所有其他插件标签之后。
 2. 使用左侧 section 导航：**概览 / 目标 / 硬约束 / 交付物 / 上下文**；有草案时出现**历史草案**。窄窗口下
    自动变成横向 tab。
 3. 在 **目标** 中设置目标。原始目标只写一次。
@@ -100,7 +100,7 @@ npm run build
    - `Run pnpm test before delivery`
    - `Keep the public API backward compatible`
 5. 在 **交付物** 中添加交付物，选择 `not-started` / `in-progress` / `blocked` / `done` / `cancelled`。
-   标签名和面板全部文案跟随 DSH 当前语言：中文显示「章程」，英文显示 `Charter`。
+   标签名和面板全部文案跟随 DSH 当前语言：中文显示「任务契约」，英文显示 `Charter`。
 6. 所有修改先进入草稿。**Preview context** 显示 Apply 后模型会看到的 user-role 文本、字节数和哈希。
 7. **Apply** 原子提交。成功后 revision 加一，下一个请求生效。
 8. 如果期间其他人或另一个标签页提交了修改，面板会显示冲突并保留草稿。丢弃草稿后基于最新 revision 重新编辑。
@@ -170,7 +170,7 @@ archived / rejected / superseded 条目仍计入“全部条目”配额。**Pur
 - 所选草案超过 `maxPromptBytes` 时，标签页报告超出量并让你取消勾选。不会自动丢弃或再次摘要。
 - 任一字段或总预算超限时，Apply 禁用。
 
-章程需要更多空间时，可在 profile 中调高预算。
+任务契约需要更多空间时，可在 profile 中调高预算。
 
 ## 5. 数据与隐私
 
@@ -191,17 +191,17 @@ archived / rejected / superseded 条目仍计入“全部条目”配额。**Pur
 | Apply 返回 `REVISION_CONFLICT` | 期间有别的提交 | 草稿保留，丢弃后基于最新 revision 重新编辑 |
 | Apply 返回 `QUOTA_EXCEEDED` | 超过 prompt/单条/条目上限 | 合并或永久清除条目，不要期待自动驱逐 |
 | `charter_read` 返回 `UNAVAILABLE` | 插件存储未就绪或记录不可用 | 会话仍可正常使用；修复后重试 |
-| 会话头部没有「章程」 | 客户端 bundle 未加载/未注入，或当前是空白 Session | 检查 `dsh --profile web --dump-config` 中是否有 `charter` 行；先发送一条消息开始会话；刷新页面 |
+| 会话头部没有「任务契约」 | 客户端 bundle 未加载/未注入，或当前是空白 Session | 检查 `dsh --profile web --dump-config` 中是否有 `charter` 行；先发送一条消息开始会话；刷新页面 |
 | 0.1.7-rc.2 / 0.2.0 上出现授权担忧 | Gateway 无 `@Remote.resources` | 升级到 0.2.1+，或在可信单操作者环境使用 |
 
-启动或写入失败不会回滚 Session 创建，也不会阻断普通对话。章程不可用时 Host 返回空 context，UI 显示明确状态。
+启动或写入失败不会回滚 Session 创建，也不会阻断普通对话。任务契约不可用时 Host 返回空 context，UI 显示明确状态。
 
 ## 7. 验证是否生效
 
-1. 在「章程」标签页设置目标并 Apply；
+1. 在「任务契约」标签页设置目标并 Apply；
 2. 让会话继续几轮，触发 compaction；
-3. 再次打开「章程」标签页，确认目标/约束仍在；
-4. 让模型调用 `charter_read`（或直接问它“当前章程是什么”），确认 standing 内容可见；
+3. 再次打开「任务契约」标签页，确认目标/约束仍在；
+4. 让模型调用 `charter_read`（或直接问它“当前任务契约是什么”），确认 standing 内容可见；
 5. 在 Host 日志中确认没有 `charter:` 错误；
 6. 重启 DSH 后重新打开同一 Session，确认 revision 和正文一致。
 

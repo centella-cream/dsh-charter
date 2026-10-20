@@ -211,7 +211,7 @@ Results:
 - `apply` registers the `conversation.view` `charter` entry, pane component, and Remote contribution;
 - with existing tabs chat 0 / trajectory 10 / context 20, `charter` is last;
 - after a simulated later `fleet` tab, `charter` re-registers last and does not duplicate;
-- Chinese label is `章程`; English label is `Charter`.
+- Chinese label is `任务契约`; English label is `Charter`.
 
 The pane's full dictionary is typed against `LocaleNamespaceMap`; TypeScript rejects a missing key in either
 language.
@@ -377,7 +377,7 @@ Chat    Trajectory    Charter
 - Charter follows Chat and Trajectory;
 - after installing `dsh-context@0.73.3`, the actual order becomes
   `Chat / Trajectory / Context / Fleet / Charter`, with Charter still last;
-- Chinese label is `章程`; English label is `Charter`; both come from `dsh-client-locale`;
+- Chinese label is `任务契约`; English label is `Charter`; both come from `dsh-client-locale`;
 - `client-smoke` also simulates a later tab: the plugin disposes and re-registers to become last again with no
   duplicate entry;
 - a blank Session hides the View tab bar; it appears after the first message.
@@ -412,8 +412,8 @@ This proves the browser UI → Remote → Host service → storage domain → re
 
 Switch DSH from Chinese to English in the same Web profile (Settings → Language → English) without reloading:
 
-- tab changes from `章程` to `Charter`;
-- pane changes from `会话章程 / 目标 / 硬约束 / 1 条约束 / 预览上下文 / 应用` to
+- tab changes from `任务契约` to `Charter`;
+- pane changes from `会话任务契约 / 目标 / 硬约束 / 1 条约束 / 预览上下文 / 应用` to
   `SESSION CHARTER / OBJECTIVE / INVARIANTS / 1 constraint / Preview context / Apply`;
 - stats, statuses, buttons, placeholders, and error-code messages all come from the same `dsh-charter` locale
   namespace;
@@ -428,7 +428,8 @@ translated.
 The redesigned pane was exercised in the same Web profile at 1440×757 in both light and dark appearance, and in
 Chinese and English:
 
-- compact page header with revision/active/stored chips and a live `240 B / 8.0 KiB context` meter;
+- branded page header (mark, `Charter`, slogan) with revision/active/stored chips and a live
+  `240 B / 8.0 KiB context` meter;
 - sticky Preview/Discard/Apply toolbar visible above the scrolling content;
 - left section navigation: Overview / Objective / Invariants / Deliverables / Context, plus History only when a
   draft exists;
