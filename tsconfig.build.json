@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "incremental": true,
+    "tsBuildInfoFile": ".build-ts/tsconfig.tsbuildinfo",
+    "rootDir": "src",
+    "outDir": ".build-ts"
+  },
+  "include": ["src"]
+}

@@ -1,0 +1,167 @@
+{
+  "name": "dsh-charter",
+  "version": "0.1.0",
+  "description": "A durable, user-owned session charter for DeepSeek Harness that survives context compaction.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./lib/index.js",
+  "types": "./lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./remote": {
+      "types": "./lib/remote.d.ts",
+      "default": "./lib/remote.js"
+    },
+    "./client": {
+      "types": "./lib/client.d.ts",
+      "default": "./lib/client.js"
+    },
+    "./core": {
+      "types": "./lib/core.d.ts",
+      "default": "./lib/core.js"
+    },
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "icon.svg",
+    "lib",
+    "cordis.patch.yml",
+    "README.md",
+    "README.zh.md",
+    "CHANGELOG.md",
+    "CHANGELOG.zh.md",
+    "LICENSE",
+    "docs/design",
+    "docs/research",
+    "docs/assets",
+    "docs/user-guide.md",
+    "docs/user-guide.zh.md",
+    "docs/verification.md",
+    "docs/verification.zh.md",
+    "CONTRIBUTING.md",
+    "CONTRIBUTING.zh.md",
+    "SECURITY.md",
+    "SECURITY.zh.md",
+    "CODE_OF_CONDUCT.md",
+    "CODE_OF_CONDUCT.zh.md",
+    "docs/releasing.md",
+    "docs/releasing.zh.md"
+  ],
+  "sideEffects": [
+    "./lib/index.js",
+    "./lib/remote.js",
+    "./lib/client.js"
+  ],
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0",
+    "dsh": ">=0.1.7-rc.2 <0.2.0-0 || >=0.2.0-rc.1 <0.3.0-0 || >=0.2.1-rc.1 <0.3.0-0"
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "session-charter",
+    "compaction",
+    "runtime-context"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && node scripts/build/copy-build-assets.mjs && tsdown && node scripts/build/inline-client-css.mjs && node scripts/build/copy-declarations.mjs && node scripts/verify/remote-smoke.mjs && node scripts/verify/client-smoke.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run build && vitest run",
+    "test:watch": "vitest",
+    "smoke:remote": "node scripts/verify/remote-smoke.mjs",
+    "smoke:client": "node scripts/verify/client-smoke.mjs",
+    "check": "npm run typecheck && npm test",
+    "prepack": "npm run build"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "external": [
+        "@deepseek-ai/dsh-api-gateway/client"
+      ],
+      "inject": [
+        "@deepseek-ai/dsh-api-gateway",
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-ui-session",
+        "@deepseek-ai/dsh-client-ui-slots"
+      ]
+    },
+    "compatibility": {
+      "dshReleases": {
+        "0.1.7-rc.2": "compatible",
+        "0.2.0-rc.1": "compatible",
+        "0.2.0-rc.2": "compatible",
+        "0.2.1-rc.1": "compatible",
+        "0.2.1-rc.2": "compatible"
+      }
+    }
+  },
+  "dependencies": {
+    "@deepseek-ai/schemastery": "~3.18.5",
+    "zod": "4.4.3"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.4",
+    "@deepseek-ai/dsh-agent": ">=0.1.7-rc.2 <0.2.0-0 || >=0.2.0-rc.1 <0.3.0-0 || >=0.2.1-rc.1 <0.3.0-0",
+    "@deepseek-ai/dsh-api-gateway": ">=0.1.7-rc.2 <0.2.0-0 || >=0.2.0-rc.1 <0.3.0-0 || >=0.2.1-rc.1 <0.3.0-0",
+    "@deepseek-ai/dsh-client-locale": ">=0.1.7-rc.2 <0.2.0-0 || >=0.2.0-rc.1 <0.3.0-0 || >=0.2.1-rc.1 <0.3.0-0",
+    "@deepseek-ai/dsh-client-ui-conversation": ">=0.1.7-rc.2 <0.2.0-0 || >=0.2.0-rc.1 <0.3.0-0 || >=0.2.1-rc.1 <0.3.0-0",
+    "@deepseek-ai/dsh-client-ui-renderer": ">=0.1.7-rc.2 <0.2.0-0 || >=0.2.0-rc.1 <0.3.0-0 || >=0.2.1-rc.1 <0.3.0-0",
+    "@deepseek-ai/dsh-client-ui-session": ">=0.1.7-rc.2 <0.2.0-0 || >=0.2.0-rc.1 <0.3.0-0 || >=0.2.1-rc.1 <0.3.0-0",
+    "@deepseek-ai/dsh-client-ui-slots": ">=0.1.7-rc.2 <0.2.0-0 || >=0.2.0-rc.1 <0.3.0-0 || >=0.2.1-rc.1 <0.3.0-0",
+    "@deepseek-ai/dsh-session": ">=0.1.7-rc.2 <0.2.0-0 || >=0.2.0-rc.1 <0.3.0-0 || >=0.2.1-rc.1 <0.3.0-0",
+    "@deepseek-ai/dsh-storage-domain": ">=0.1.7-rc.2 <0.2.0-0 || >=0.2.0-rc.1 <0.3.0-0 || >=0.2.1-rc.1 <0.3.0-0",
+    "@deepseek-ai/dsh-system-prompt": ">=0.1.7-rc.2 <0.2.0-0 || >=0.2.0-rc.1 <0.3.0-0 || >=0.2.1-rc.1 <0.3.0-0",
+    "@deepseek-ai/dsh-tools": ">=0.1.7-rc.2 <0.2.0-0 || >=0.2.0-rc.1 <0.3.0-0 || >=0.2.1-rc.1 <0.3.0-0",
+    "@deepseek-ai/dsh-typert-protocol": ">=0.1.7-rc.2 <0.2.0-0 || >=0.2.0-rc.1 <0.3.0-0 || >=0.2.1-rc.1 <0.3.0-0",
+    "@deepseek-ai/schemastery": "^3.18.2",
+    "react": "^18.2.0"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "~4.0.5",
+    "@deepseek-ai/dsh-agent": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-agent-loop": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-api-gateway": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-client-locale": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-client-ui-conversation": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-client-ui-renderer": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-client-ui-session": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-client-ui-slots": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-session": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-storage": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-storage-domain": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-storage-json": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-system-prompt": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-tools": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-typert-protocol": "0.2.1-rc.2",
+    "@deepseek-ai/schemastery": "~3.18.5",
+    "@tsdown/css": "^0.22.2",
+    "@types/node": "^22.20.0",
+    "@types/react": "^18.3.0",
+    "react": "^18.2.0",
+    "tsdown": "0.22.2",
+    "typescript": "~5.9.2",
+    "vitest": "4.1.12",
+    "zod": "4.4.3"
+  },
+  "icon": "icon.svg",
+  "author": "dsh-charter contributors",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zhangyuze/dsh-charter.git"
+  },
+  "homepage": "https://github.com/zhangyuze/dsh-charter#readme",
+  "bugs": {
+    "url": "https://github.com/zhangyuze/dsh-charter/issues"
+  }
+}
