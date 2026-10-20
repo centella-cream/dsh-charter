@@ -1,0 +1,237 @@
+# `dsh-charter` 使用与运维指南
+
+[English](user-guide.md) | 中文
+
+本文面向安装和使用插件的用户。设计约束见[设计规格](design/charter-design.zh.md)，版本差异见
+[兼容矩阵](design/compatibility.zh.md)。
+
+## 1. 安装前检查
+
+```bash
+dsh --version                  # 需要 >= 0.1.7-rc.2；推荐 0.2.0-rc.1+
+node --version                 # ^22.19.0 || >=24.0.0
+dsh --profile web --dump-config | grep -n "charter" || true
+```
+
+如果 profile 是 Web 或 Desktop，插件会注册：
+
+- Host 服务 `charter`；
+- Remote 服务 `charterRemote`（namespace `charter`）；
+- 只读工具 `charter_read`；
+- 浏览器侧 `dsh-charter/client.js` 和会话头部的「章程」/「Charter」标签页。
+
+## 2. 安装
+
+> **预发布说明。** npm 包和 Desktop 插件目录会随首次公开发布上线。在此之前请使用
+> [本地预发布构建](#23-本地预发布构建)。按版本安装的 Web 命令和 Desktop Plugins 流程是发布后的正式路径。
+
+### 2.1 Web profile — 按版本安装
+
+```bash
+dsh plugin --profile web add dsh-charter@0.1.0
+```
+
+固定明确版本可以让 profile 可复现。需要更新到最新发布：
+
+```bash
+dsh plugin --profile web add dsh-charter@latest
+```
+
+重启 `dsh web`，或让 HMR 重新组合 profile，然后刷新页面。profile 的 `package.json` 会增加依赖和 bundle
+选择：
+
+```json
+{
+  "dependencies": { "dsh-charter": "0.1.0" },
+  "dsh": { "profile": { "bundles": ["...", "dsh-charter"] } }
+}
+```
+
+安装时 pnpm 可能提示缺少 `@deepseek-ai/dsh-*` peer。这些包由 DSH 运行时提供，不需要装进 profile；以 DSH 的
+peer 兼容检查结果为准。
+
+### 2.2 Desktop — 从 Plugins 安装
+
+打开 **Desktop → Plugins**，搜索 **`dsh-charter`**，点击 **Install**。已安装时点击 **Update**；Desktop
+管理插件生命周期并热更新 bundle，不需要终端命令。更新后重新打开或刷新「章程」tab。
+
+### 2.3 本地预发布构建
+
+首次 registry 发布前，或测试工作树时使用：
+
+```bash
+npm install
+npm run build
+npm pack
+dsh plugin --profile web add ./dsh-charter-0.1.0.tgz
+```
+
+Desktop 可在 Plugins 页面安装同一个 tarball。发布前 profile 依赖是本地 `file:` 路径。
+
+### 2.4 源码开发
+
+源码改动可以链接 checkout 并重新构建：
+
+```bash
+dsh plugin --profile web add "$(pwd)"
+npm run build
+```
+
+浏览器入口是构建产物，不能直接运行 TypeScript 源码。开发流程见 [CONTRIBUTING.zh.md](../CONTRIBUTING.zh.md)。
+不要把源码链接当作普通用户的安装方式。
+
+## 3. 首次使用
+
+新会话的章程**默认为空**。插件不会自动把目标或约束写入有效记录；在你设置目标或添加条目之前，模型看不到任何
+章程上下文。这是刻意设计：只有用户确认的内容才会生效。
+
+如果已有 Session 触发过压缩、且章程为空，「章程」标签页会自动显示从最近一次压缩摘要抽取的**历史草案**。
+检查/编辑草案后点击**应用草案**即可生效。草案本身不会进入 prompt，也不会调用模型。没有压缩摘要的 Session
+保持普通空状态。
+
+1. 打开任意已开始的会话，会话头部会依次出现「对话」「轨迹」「章程」。若没有「章程」，先确认 profile 的
+   boot graph 包含 `dsh-charter/client.js`，并确认会话不是空白 Session（空白 Session 会隐藏 View 标签栏）。
+   「章程」标签会动态排在所有其他插件标签之后。
+2. 使用左侧 section 导航：**概览 / 目标 / 硬约束 / 交付物 / 上下文**；有草案时出现**历史草案**。窄窗口下
+   自动变成横向 tab。
+3. 在 **目标** 中设置目标。原始目标只写一次。
+4. 在 **硬约束** 中添加必须长期可见的约束，例如：
+   - `Do not modify migrations/`
+   - `Run pnpm test before delivery`
+   - `Keep the public API backward compatible`
+5. 在 **交付物** 中添加交付物，选择 `not-started` / `in-progress` / `blocked` / `done` / `cancelled`。
+   标签名和面板全部文案跟随 DSH 当前语言：中文显示「章程」，英文显示 `Charter`。
+6. 所有修改先进入草稿。**Preview context** 显示 Apply 后模型会看到的 user-role 文本、字节数和哈希。
+7. **Apply** 原子提交。成功后 revision 加一，下一个请求生效。
+8. 如果期间其他人或另一个标签页提交了修改，面板会显示冲突并保留草稿。丢弃草稿后基于最新 revision 重新编辑。
+
+### 3.1 状态维度
+
+| 维度 | 值 | 说明 |
+| --- | --- | --- |
+| `review` | `pending` / `accepted` / `rejected` | 用户新建即 accepted；模型提议只能 pending |
+| `lifecycle` | `current` / `superseded` / `archived` | archived 可恢复；superseded 不复活 |
+| `verification` | `unchecked` / `verified` / `failed` / `unavailable` | 与 lifecycle 独立 |
+| `progress` | 仅 deliverable | 与 verification 独立 |
+
+只有 `accepted + current` 进入 standing 工作集和模型可见 context。`done` 不自动 verified，
+`verification.failed` 也不自动归档。
+
+### 3.2 永久清除
+
+archived / rejected / superseded 条目仍计入“全部条目”配额。**Purge** 会二次确认，并在同一个原子记录更新中：
+
+- 删除该条目；
+- 解除可安全解除的替代链接；
+- 清洗近期 history 和 mutation 回执中可能包含的正文。
+
+若后续条目仍引用它，Purge 会被拒绝；先处理引用方。
+
+## 4. 配置
+
+默认值写在 `cordis.patch.yml`。在 profile 的 `cordis.patch.yml` 中覆盖同名项：
+
+```yaml
+- id: charter
+  config:
+    maxPromptBytes: 8192
+    maxObjectiveBytes: 4096
+    maxItemBytes: 1024
+    maxActiveInvariants: 24
+    maxActiveDeliverables: 16
+    contextOrder: 130
+```
+
+| 字段 | 默认 | 说明 |
+| --- | ---: | --- |
+| `maxPromptBytes` | 8192 | 最终模型可见 context 的 UTF-8 上限 |
+| `maxObjectiveBytes` | 4096 | 目标文本的 UTF-8 上限 |
+| `maxItemBytes` | 1024 | 单条条目文本上限 |
+| `maxItems` | 256 | 全部条目上限 |
+| `maxPendingItems` | 64 | pending 条目上限 |
+| `maxActiveInvariants` | 24 | active invariant 上限 |
+| `maxActiveDeliverables` | 16 | active deliverable 上限 |
+| `maxOps` | 64 | 单次 Apply 的 op 数 |
+| `maxRecordBytes` | 524288 | 单条 Session record 上限 |
+| `historyLimit` | 64 | 近期 history 条数 |
+| `maxHistoryBytes` | 131072 | 近期 history 字节上限 |
+| `mutationLimit` | 128 | 近期 mutation 回执上限 |
+| `contextOrder` | 130 | runtime context 排序；默认在 sandbox/approval/subagent 之后 |
+
+优先级：最终 prompt 字节 > 单条字节 > 条目数。超限整次 Apply 被拒绝，不自动删改现有条目。
+
+## 4.1 预算与溢出
+
+标签页显示实时上下文预算条和每个字段的字节计数。任何内容都不会被静默截断：
+
+- 历史草案中的长条目按句子/分句边界拆成多个候选，全部保留。仍然超过单条上限的候选会高亮，Apply
+  保持禁用，直到你缩短它。
+- 目标保持完整。若超过 `maxObjectiveBytes`，草案显示全文和超限提示；请缩短后再应用。
+- 所选草案超过 `maxPromptBytes` 时，标签页报告超出量并让你取消勾选。不会自动丢弃或再次摘要。
+- 任一字段或总预算超限时，Apply 禁用。
+
+章程需要更多空间时，可在 profile 中调高预算。
+
+## 5. 数据与隐私
+
+- 正本：`dsh_charter_v1` domain 的 `sessions` 表，每个 Session 一条记录。
+- 记录包含目标、条目、派生 `promptText`/digest、近期 history 和 mutation 回执。
+- 记录绑定 `createdAt`、`cwd`、`parentSession`，Session id 复用但 lifecycle 不同时会拒绝读取和覆盖。
+- 普通日志只记录稳定 id、kind、revision 和错误码，不记录用户正文。
+- 模型可见 context 不含 revision、时间、verification、origin、evidence 或计数。
+
+## 6. 降级与故障
+
+| 现象 | 原因 | 处理 |
+| --- | --- | --- |
+| 面板一直 `Loading charter...` | Session 尚未初始化或初始化被阻塞 | 查看 Host 日志中的 `charter:` 行；确认 Session 存活 |
+| `unavailable` + lifecycle mismatch | 同 id 的 Session 换了 lifecycle | 不读取旧记录；新 Session 使用新记录 |
+| 面板提示 Session 不在当前 Host / 只读 | 该 Session 属于另一个 DSH 进程（例如 Desktop），尚未在 Web 进程加载 | 在 Web 中新建会话或发送消息使其变为 live；标签页会自动升级为可编辑 |
+| `unavailable` + inconsistent record | 存储记录被外部篡改或派生 digest 不一致 | 停止编辑，检查 storage；修复前不注入 |
+| Apply 返回 `REVISION_CONFLICT` | 期间有别的提交 | 草稿保留，丢弃后基于最新 revision 重新编辑 |
+| Apply 返回 `QUOTA_EXCEEDED` | 超过 prompt/单条/条目上限 | 合并或永久清除条目，不要期待自动驱逐 |
+| `charter_read` 返回 `UNAVAILABLE` | 插件存储未就绪或记录不可用 | 会话仍可正常使用；修复后重试 |
+| 会话头部没有「章程」 | 客户端 bundle 未加载/未注入，或当前是空白 Session | 检查 `dsh --profile web --dump-config` 中是否有 `charter` 行；先发送一条消息开始会话；刷新页面 |
+| 0.1.7-rc.2 / 0.2.0 上出现授权担忧 | Gateway 无 `@Remote.resources` | 升级到 0.2.1+，或在可信单操作者环境使用 |
+
+启动或写入失败不会回滚 Session 创建，也不会阻断普通对话。章程不可用时 Host 返回空 context，UI 显示明确状态。
+
+## 7. 验证是否生效
+
+1. 在「章程」标签页设置目标并 Apply；
+2. 让会话继续几轮，触发 compaction；
+3. 再次打开「章程」标签页，确认目标/约束仍在；
+4. 让模型调用 `charter_read`（或直接问它“当前章程是什么”），确认 standing 内容可见；
+5. 在 Host 日志中确认没有 `charter:` 错误；
+6. 重启 DSH 后重新打开同一 Session，确认 revision 和正文一致。
+
+压缩后重新物化由 DSH 的 runtime-context projection 完成：本插件只保证每次 assembly 从 storage 正本读取，
+并在 UI 预览中展示同一渲染函数的结果。
+
+## 8. 卸载
+
+```bash
+dsh plugin --profile web remove dsh-charter
+```
+
+卸载后：
+
+- 持久记录保留在 storage 中，不会自动删除；
+- 已打开的 Session 可以正常恢复和继续对话；
+- 重新安装后同一 Session 会重新读取原记录。
+
+如需彻底删除数据，请在卸载前通过 UI Purge，或在确认路径后清理 `dsh_charter_v1` domain。
+
+## 9. 开发与贡献
+
+```bash
+npm run typecheck
+npm test
+npm run build
+```
+
+- 核心逻辑不得依赖 Cordis、Session、storage、React 或 LLM；
+- 时间、UUID、actor 和 Session 查询从边界注入；
+- 新增 UI 样式使用 `charter-` 前缀和 DSH 语义 token；
+- 不要把用户正文放进 system prompt；
+- 不要给模型增加写能力，除非重新设计审批和资源授权。

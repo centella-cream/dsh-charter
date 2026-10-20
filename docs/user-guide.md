@@ -1,0 +1,254 @@
+# `dsh-charter` User and Operations Guide
+
+English | [中文](user-guide.zh.md)
+
+This guide is for installing and using the plugin. For design constraints see the
+[design specification](design/charter-design.md); for version differences see the
+[compatibility matrix](design/compatibility.md).
+
+## 1. Before installing
+
+```bash
+dsh --version                  # >= 0.1.7-rc.2; 0.2.0-rc.1+ recommended
+node --version                 # ^22.19.0 || >=24.0.0
+dsh --profile web --dump-config | grep -n "charter" || true
+```
+
+For a Web or Desktop profile the plugin registers:
+
+- Host service `charter`;
+- Remote service `charterRemote` (namespace `charter`);
+- read-only tool `charter_read`;
+- browser entry `dsh-charter/client.js` and the **Charter / 章程** tab in the conversation header.
+
+## 2. Install
+
+> **Pre-release note.** The registry package and Desktop catalog entry go live with the first public release.
+> Until then use [the local pre-release build](#23-pre-release--local-builds). The versioned Web command and
+> Desktop Plugins flow are the supported production paths once published.
+
+### 2.1 Web profile — install by version
+
+```bash
+dsh plugin --profile web add dsh-charter@0.1.0
+```
+
+Pin a version for reproducible profiles. To update to the newest release:
+
+```bash
+dsh plugin --profile web add dsh-charter@latest
+```
+
+Restart `dsh web`, or let profile HMR recompose, then refresh the page. The profile's `package.json` gains the
+dependency and bundle selection:
+
+```json
+{
+  "dependencies": { "dsh-charter": "0.1.0" },
+  "dsh": { "profile": { "bundles": ["...", "dsh-charter"] } }
+}
+```
+
+pnpm may warn about missing `@deepseek-ai/dsh-*` peers. The DSH runtime supplies those packages; do not install
+them into the profile. Trust DSH's peer compatibility check.
+
+### 2.2 Desktop — install from Plugins
+
+Open **Desktop → Plugins**, search for **`dsh-charter`**, and click **Install**. When already installed, click
+**Update**; Desktop owns the plugin lifecycle and hot-applies the new bundle. No terminal command is required.
+Reopen or refresh the **Charter** tab after the update.
+
+### 2.3 Pre-release / local builds
+
+Use this path before the first registry release, or when testing a worktree:
+
+```bash
+npm install
+npm run build
+npm pack
+dsh plugin --profile web add ./dsh-charter-0.1.0.tgz
+```
+
+For Desktop, install the same tarball from the Plugins page. The profile dependency is a local `file:` path until
+the package is published.
+
+### 2.4 Source development
+
+For source changes, link the checkout and rebuild:
+
+```bash
+dsh plugin --profile web add "$(pwd)"
+npm run build
+```
+
+The browser entry is a build artifact; it cannot run TypeScript source directly. See
+[CONTRIBUTING.md](../CONTRIBUTING.md) for the development workflow. Do not use source linking as the normal
+installation path for users.
+
+## 3. First use
+
+A new Session starts with an **empty** charter. The plugin never writes goals or constraints into the effective
+record automatically; until you set an objective or add an item, the model sees no charter context. This is
+intentional: only user-confirmed content becomes effective.
+
+If an existing Session has a compaction summary and its charter is empty, the Charter tab automatically shows a
+**history draft** extracted from the latest summary. Review/edit the draft and click **Apply draft** to make it
+effective. The draft itself never enters the prompt, and no model call is made. Sessions without a compaction
+summary keep the normal empty state.
+
+1. Open a started Session. The header shows Chat, Trajectory, then Charter. If Charter is missing, confirm the
+   profile boot graph contains `dsh-charter/client.js` and that the Session is not blank (a blank Session hides
+   the View tab bar). The Charter tab is dynamically placed after every other plugin tab.
+2. Use the left section navigation: **Overview / Objective / Invariants / Deliverables / Context**, plus
+   **History draft** when one exists. Narrow windows turn this navigation into a horizontal tab strip.
+3. In **Objective**, set the objective. The original objective is written once and is immutable.
+4. In **Invariants**, add constraints that must remain visible, for example:
+   - `Do not modify migrations/`
+   - `Run pnpm test before delivery`
+   - `Keep the public API backward compatible`
+5. In **Deliverables**, add outcomes with `not-started` / `in-progress` / `blocked` / `done` / `cancelled`.
+   The tab label and every pane string follow the active DSH language: **Charter** in English, **章程** in Chinese.
+6. Every change first enters a draft. **Preview context** shows the exact user-role text, byte count, and hash
+   the model will see after Apply.
+7. **Apply** commits atomically. On success the revision increases and the next request sees it.
+8. If another tab or process commits first, the pane shows a conflict and preserves the draft. Discard it and
+   re-stage against the latest revision.
+
+### 3.1 State dimensions
+
+| Dimension | Values | Notes |
+| --- | --- | --- |
+| `review` | `pending` / `accepted` / `rejected` | user-created items are accepted; agent proposals are pending |
+| `lifecycle` | `current` / `superseded` / `archived` | archived can be restored; superseded is not revived |
+| `verification` | `unchecked` / `verified` / `failed` / `unavailable` | independent of lifecycle |
+| `progress` | deliverable only | independent of verification |
+
+Only `accepted + current` enters the standing working set and model-visible context. `done` does not imply
+verified, and `verification.failed` does not archive automatically.
+
+### 3.2 Permanent purge
+
+Archived, rejected, and superseded items still count toward the all-items quota. **Purge** asks for
+confirmation and, in one atomic record update:
+
+- removes the item;
+- clears replacement links that can be safely cleared;
+- scrubs body text from recent history and mutation receipts.
+
+If a later item still references it, Purge is rejected; handle the referrer first.
+
+## 4. Configuration
+
+Defaults live in `cordis.patch.yml`. Override the same keys in the profile's `cordis.patch.yml`:
+
+```yaml
+- id: charter
+  config:
+    maxPromptBytes: 8192
+    maxObjectiveBytes: 4096
+    maxItemBytes: 1024
+    maxActiveInvariants: 24
+    maxActiveDeliverables: 16
+    contextOrder: 130
+```
+
+| Field | Default | Meaning |
+| --- | ---: | --- |
+| `maxPromptBytes` | 8192 | UTF-8 budget for the final model-visible context |
+| `maxObjectiveBytes` | 4096 | UTF-8 budget for the objective |
+| `maxItemBytes` | 1024 | per-item text budget |
+| `maxItems` | 256 | all-items limit |
+| `maxPendingItems` | 64 | pending-items limit |
+| `maxActiveInvariants` | 24 | active invariants |
+| `maxActiveDeliverables` | 16 | active deliverables |
+| `maxOps` | 64 | operations per Apply |
+| `maxRecordBytes` | 524288 | one Session record |
+| `historyLimit` | 64 | recent history receipts |
+| `maxHistoryBytes` | 131072 | recent history bytes |
+| `mutationLimit` | 128 | recent mutation receipts |
+| `contextOrder` | 130 | runtime-context order; after sandbox/approval/subagent by default |
+
+Priority: final prompt bytes > per-item bytes > item counts. An over-limit Apply is rejected as a whole; no
+existing item is automatically edited or evicted.
+
+## 4.1 Budgets and overflow
+
+The tab shows a live context meter and per-field byte counters. Nothing is silently truncated:
+
+- Long history-draft items are split into multiple candidates at sentence/clause boundaries; every candidate is
+  preserved. An over-limit candidate is highlighted and Apply stays disabled until you shorten it.
+- The objective is kept whole. If it exceeds `maxObjectiveBytes`, the draft shows the full text and an over-limit
+  message; shorten it before applying.
+- If the selected draft exceeds `maxPromptBytes`, the tab reports the overage and lets you uncheck items. It never
+  drops or re-summarizes content for you.
+- Apply is disabled while any field or the total budget is over.
+
+Raise the budgets in the profile when your charter needs more room.
+
+## 5. Data and privacy
+
+- Authority: the `sessions` table in the `dsh_charter_v1` domain, one record per Session.
+- The record contains the objective, items, derived `promptText`/digest, recent history, and mutation receipts.
+- The record is bound to `createdAt`, `cwd`, and `parentSession`; reusing a Session id with a different
+  lifecycle rejects reads and overwrites.
+- Ordinary logs contain stable ids, kinds, revisions, and error codes only; never user body text.
+- Model-visible context excludes revision, time, verification, origin, evidence, and counts.
+
+## 6. Degradation and troubleshooting
+
+| Symptom | Cause | Action |
+| --- | --- | --- |
+| Pane stays at `Loading charter...` | Session not initialized or initialization blocked | Check `charter:` lines in Host logs; confirm the Session is alive |
+| `unavailable` + lifecycle mismatch | Same id, different Session lifecycle | Old record is not read; the new Session uses a new record |
+| Pane says the Session is not live / read-only | The Session belongs to another DSH process (for example Desktop) and is not loaded in this Web process | Create or start a Session in Web; the tab upgrades to editable automatically |
+| `unavailable` + inconsistent record | Record tampered with or derived digest mismatch | Stop editing, inspect storage; no injection until repaired |
+| Apply returns `REVISION_CONFLICT` | Another commit happened first | Draft is preserved; discard and re-stage against the latest revision |
+| Apply returns `QUOTA_EXCEEDED` | Prompt/per-item/item limit exceeded | Merge or purge items; do not expect automatic eviction |
+| `charter_read` returns `UNAVAILABLE` | Storage not ready or record unavailable | The Session remains usable; retry after repair |
+| No Charter tab | Client bundle not loaded/injected, or blank Session | Check `dsh --profile web --dump-config` for `charter`; send a message to start the Session; refresh |
+| Authorization concern on 0.1.7-rc.2 / 0.2.0 | Gateway has no `@Remote.resources` | Upgrade to 0.2.1+, or use a trusted single-operator environment |
+
+Startup or write failures never roll back Session creation and never block ordinary conversation. When Charter
+is unavailable the Host injects no context and the UI shows an explicit state.
+
+## 7. Verify it works
+
+1. Set an objective in the **Charter** tab and Apply.
+2. Continue the Session for several turns to trigger compaction.
+3. Reopen the Charter tab and confirm the objective/invariants are still present.
+4. Ask the model to call `charter_read` (or ask "what is the current charter?"); confirm standing content is
+   visible.
+5. Confirm Host logs contain no `charter:` errors.
+6. Restart DSH, reopen the same Session, and confirm the revision and body are unchanged.
+
+Re-materialization after compaction is performed by DSH's runtime-context projection. The plugin guarantees
+that every assembly reads the storage authority and that the UI preview uses the same renderer.
+
+## 8. Uninstall
+
+```bash
+dsh plugin --profile web remove dsh-charter
+```
+
+After uninstalling:
+
+- the durable record remains in storage and is not deleted;
+- open Sessions still resume and continue normally;
+- reinstalling reads the same record for the same Session.
+
+To delete data permanently, Purge through the UI before uninstalling, or remove the `dsh_charter_v1` domain
+after verifying the path.
+
+## 9. Development
+
+```bash
+npm run typecheck
+npm test
+npm run build
+```
+
+- Core logic must not depend on Cordis, Session, storage, React, or LLM;
+- inject time, UUID, actor, and Session lookup at the boundary;
+- new UI styles use the `charter-` prefix and DSH semantic tokens;
+- never put user body text into the system prompt;
+- do not add write capability for the model without redesigning approval and resource authorization.

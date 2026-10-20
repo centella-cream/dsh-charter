@@ -1,0 +1,294 @@
+# dsh-charter
+
+[![CI](https://github.com/zhangyuze/dsh-charter/actions/workflows/ci.yml/badge.svg)](https://github.com/zhangyuze/dsh-charter/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![DSH](https://img.shields.io/badge/DSH-0.1.7%20%E2%80%93%200.2.x-4b6bfb)](docs/design/compatibility.md)
+[![Node](https://img.shields.io/badge/node-%5E22.19%20%7C%7C%20%3E%3D24-339933)](package.json)
+[![Status: preview](https://img.shields.io/badge/status-preview-orange)](#status)
+
+English | [中文](README.zh.md)
+
+**A durable, user-owned session charter for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness).**
+Goals, hard constraints, and deliverables stay visible across context compaction — and stay editable at any
+time.
+
+![dsh-charter tab in a real Web profile](docs/assets/charter-pane.en.png)
+
+> A real English Web profile with `dsh-context` installed. The tab order is Chat, Trajectory, Context, Fleet,
+> then Charter; every pane string follows the active DSH language.
+
+## Contents
+
+- [Why](#why)
+- [Highlights](#highlights)
+- [How it works](#how-it-works)
+- [Install](#install)
+- [Quick start](#quick-start)
+- [The Charter tab](#the-charter-tab)
+- [Configuration](#configuration)
+- [Compatibility](#compatibility)
+- [Security and privacy](#security-and-privacy)
+- [Development](#development)
+- [Documentation](#documentation)
+- [Acknowledgements](#acknowledgements)
+- [Contributing](#contributing)
+- [License](#license)
+
+## Why
+
+Compaction replaces older history with a summary. A summary can keep the general task while quietly dropping
+standing constraints such as *“do not touch migrations/”*, *“run tests before delivery”*, or *“keep the API
+backward compatible”*. Promoting those constraints to the system prompt would instead cross the user-content
+permission boundary.
+
+`dsh-charter` solves a narrow problem well:
+
+- **Independent authority.** One `dsh-storage-domain` record per Session is the only authoritative source.
+  Compaction summaries and UI caches are never writers or recovery sources.
+- **User role by construction.** Editable user text enters `systemPrompt.context()`, never a system-role
+  message. The model can read the charter through `charter_read`; it cannot write it.
+- **Deterministic rebuild.** The same record revision and renderer version produce byte-identical context.
+  `{{...}}` runs are escaped so older DSH prompt interpolators cannot rewrite user text.
+- **Explicit budgets.** The tab shows a live context meter and per-field byte counters. Overflow is rejected
+  or surfaced for selection — never silently truncated.
+- **Atomic Apply.** One edit commits completely or not at all, with revision conflicts and idempotent retries.
+- **Safe onboarding.** An existing compacted Session gets a review-only history draft from its latest compaction
+  summary; nothing becomes effective until you review and apply it.
+
+A charter is a declaration, not an enforcement policy. Use Host permissions, sandbox policy, hooks, or
+execution guards for restrictions that must be machine-enforced.
+
+## Highlights
+
+- Separate original and current objective; ordinary edits never rewrite the original.
+- `invariant` and `deliverable` items with orthogonal review, lifecycle, verification, and progress state.
+- A localised conversation-view tab placed after Chat and Trajectory, and dynamically after later plugin tabs.
+- A compact, navigable pane: **Overview / Objective / Invariants / Deliverables / History / Context**.
+- Sticky Preview / Discard / Apply toolbar and an exact preview of the model-visible user-role context.
+- History draft extraction from `compaction/summary`; deterministic, no model call, no automatic write.
+- English/Chinese UI, light/dark themes, keyboard focus states, and container-query responsiveness.
+- Read-only `charter_read` tool; one-time fork copy; explicit degraded states across restart/compaction/unload.
+
+## How it works
+
+```mermaid
+flowchart LR
+  U[User edits the Charter tab] --> A[charter.edit]
+  A --> B[Atomic single-record update]
+  B --> D[(dsh_charter_v1 storage domain)]
+  D --> R[Deterministic renderer]
+  R --> C[user-role runtime context]
+  D --> T[charter_read]
+  P[Compaction] -. never writes .-> D
+  P --> S[compaction/summary]
+  S --> H[Review-only history draft]
+  H --> U
+  W[charter.watch] --> U
+  D --> W
+```
+
+The Host service initializes a record on `session/created` and before the first prompt on `agent/created`.
+The browser registers a `conversation.view` entry; the pane and `charter.watch` use the same revisioned view.
+`charter.bootstrap` reads the latest compaction summary and returns a draft only — it does not write storage.
+
+## Install
+
+> **Pre-release note.** The registry package and the Desktop catalog entry go live with the first public
+> release. Until then, use the [local pre-release build](#pre-release--local-builds); the versioned and Desktop
+> commands below are the supported production paths once the package is published.
+
+### Requirements
+
+- DSH **`0.1.7-rc.2`** or later; `0.2.0-rc.1+` recommended, `0.2.1+` recommended for per-Peer Remote resource
+  authorization.
+- Node.js **`^22.19.0 || >=24.0.0`**.
+- A Web or Desktop profile.
+
+### Web profile — install by version
+
+```bash
+dsh plugin --profile web add dsh-charter@0.1.0
+```
+
+Pin an explicit version for reproducible profiles. Use `@latest` when you intentionally want the newest
+release:
+
+```bash
+dsh plugin --profile web add dsh-charter@latest
+```
+
+Restart `dsh web` (or let profile HMR recompose), then refresh the page. The profile `package.json` gains the
+dependency and bundle entry.
+
+### Desktop — install from Plugins
+
+Open **Desktop → Plugins**, search for **`dsh-charter`**, and click **Install** (or **Update** when already
+installed). Desktop owns the plugin lifecycle and hot-applies the new bundle; no terminal command is required.
+Reopen or refresh the Charter tab after the update.
+
+### Pre-release / local builds
+
+Use this path before the first registry release, or when testing a worktree. From a checkout:
+
+```bash
+npm install
+npm run build
+npm pack                         # dsh-charter-0.1.0.tgz
+dsh plugin --profile web add ./dsh-charter-0.1.0.tgz
+```
+
+For Desktop, install the same tarball from the Plugins page. Source-level development is described in
+[CONTRIBUTING.md](CONTRIBUTING.md); do not use `git clone` as the primary installation method.
+
+### Update
+
+- **Web:** `dsh plugin --profile web add dsh-charter@latest`, then restart/refresh.
+- **Desktop:** Plugins → `dsh-charter` → **Update**; Desktop hot-applies it.
+- **Pinned version:** repeat the versioned Web command with the new version.
+
+## Quick start
+
+### Bring an existing compacted Session
+
+1. Open an old Session that has already been compacted **and is live in this Web process**.
+2. Open the **Charter** tab. If its charter is empty, the plugin reads the latest `compaction/summary` and shows a
+   **History draft** tab.
+3. Review or edit the candidates, uncheck anything stale, and click **Apply draft**. Only then does the content
+   become effective and enter the next model request.
+
+History extraction is deterministic and heuristic: it selects high-signal sections and splits long candidates
+instead of truncating them. The review step is intentionally mandatory.
+
+### Start a new charter
+
+1. Open **Charter** in a started Session.
+2. Set the objective.
+3. Add invariants and deliverables in their sections.
+4. Use **Preview context** to inspect the exact user-role text and byte count.
+5. Click **Apply**. A revision conflict preserves your draft and shows the server revision.
+
+## The Charter tab
+
+The tab is opened from the conversation header; it is dynamically placed after every other plugin tab. The pane
+has a left section navigation on wide screens and a horizontal tab strip on narrow screens:
+
+| Section | Purpose |
+| --- | --- |
+| **Overview** | Objective summary, invariant/deliverable cards, budget, history-draft callout |
+| **Objective** | Edit or redirect the objective; the original is immutable |
+| **Invariants** | Add, edit, replace, archive, purge, and verify hard constraints |
+| **Deliverables** | Same actions plus delivery progress |
+| **History** | Review a draft extracted from the latest compaction summary (only when available) |
+| **Context** | Exact user-role runtime context, bytes, and limits |
+
+Budgets are visible everywhere. Long draft items become multiple candidates; over-limit fields are highlighted;
+Apply is disabled while the objective, an item, the selection, or the projected context exceeds its budget.
+
+## Configuration
+
+Defaults live in `cordis.patch.yml`. Override them in the profile patch:
+
+```yaml
+- id: charter
+  config:
+    maxPromptBytes: 8192
+    maxObjectiveBytes: 4096
+    maxItemBytes: 1024
+    maxActiveInvariants: 24
+    maxActiveDeliverables: 16
+    contextOrder: 130
+```
+
+| Field | Default | Meaning |
+| --- | ---: | --- |
+| `maxPromptBytes` | 8192 | UTF-8 budget for the final model-visible context |
+| `maxObjectiveBytes` | 4096 | UTF-8 budget for the objective |
+| `maxItemBytes` | 1024 | per-item text budget |
+| `maxItems` | 256 | all-items limit |
+| `maxPendingItems` | 64 | pending-proposal limit |
+| `maxActiveInvariants` | 24 | active invariants |
+| `maxActiveDeliverables` | 16 | active deliverables |
+| `maxOps` | 64 | operations per Apply |
+| `maxRecordBytes` | 524288 | one Session record |
+| `historyLimit` | 64 | recent history receipts |
+| `maxHistoryBytes` | 131072 | recent history bytes |
+| `mutationLimit` | 128 | recent mutation receipts |
+| `contextOrder` | 130 | runtime-context order; after sandbox/approval/subagent by default |
+
+Priority is **prompt bytes > per-item bytes > item counts**. The defaults are deliberately generous but bounded;
+raise them when a team's charter needs more room, at the cost of extra prompt bytes per request.
+
+## Compatibility
+
+| DSH version | Status |
+| --- | --- |
+| `0.1.7-rc.2` | Supported (minimum) |
+| `0.2.0-rc.1` / `0.2.0-rc.2` | Supported |
+| `0.2.1-rc.1` / `0.2.1-rc.2` | Supported (primary baseline) |
+| `0.1.5-rc.1` and earlier | Not supported |
+| `0.2.2-rc.x`, `0.3.x` | Not declared until verified |
+
+The full matrix and degradation notes are in the [compatibility document](docs/design/compatibility.md).
+`0.1.7`/`0.2.0` have no per-Peer Remote resource authorization; use them only in a trusted single-operator
+environment.
+
+## Security and privacy
+
+- User-authored text never enters a system-role message.
+- The model has no charter write capability; `charter_read` is read-only.
+- Records are bound to `createdAt`, `cwd`, and `parentSession`; reusing a Session id across lifecycles is rejected.
+- Ordinary logs contain stable ids, kinds, revisions, and error codes — not user body text.
+- A charter is not a permission system. See [SECURITY.md](SECURITY.md) for the threat model and reporting path.
+
+## Development
+
+```bash
+npm run typecheck        # strict TS
+npm test                 # build + Vitest
+npm run build            # Host ESM + single-file browser bundle + smoke
+npm run check            # typecheck + test
+```
+
+The test suite covers the pure core, real Host composition, storage-domain behavior, Remote framing,
+history extraction, client state, and factory-bundle registration. Current matrix: **66 tests on 5 DSH
+versions**. See the [verification record](docs/verification.md) for commands and evidence.
+
+## Acknowledgements
+
+The design research for this project benefited from two independent community projects:
+
+- [dsh-context-enhancement](https://github.com/chuxindd/dsh-context-enhancement) — per-record storage,
+  Session lifecycle fencing, durable publish ordering, and revision conflict handling.
+- [dsh-ontology](https://www.npmjs.com/package/dsh-ontology) — a pure domain kernel, stable error codes, and
+  overlay validation before writes.
+
+Their ideas informed the design review; no source code is copied, and these projects do not endorse
+`dsh-charter`. See the [research notes](docs/research/charter-research.md) for the detailed comparison.
+
+## Documentation
+
+- [Design specification](docs/design/charter-design.md)
+- [Design review](docs/design/charter-design-review.md)
+- [Compatibility matrix](docs/design/compatibility.md)
+- [User and operator guide](docs/user-guide.md)
+- [Verification record](docs/verification.md)
+- [Research notes](docs/research/charter-research.md)
+- [Release checklist](docs/releasing.md)
+
+Every long-form document has an English and Chinese version, linked at the top of each page.
+
+## Contributing
+
+Issues and pull requests are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) and the
+[Code of Conduct](CODE_OF_CONDUCT.md) before changing the Host contract, prompt boundary, or client bundle. For
+security reports, follow [SECURITY.md](SECURITY.md).
+
+## Status
+
+Pre-1.0. The DSH plugin ABI is still moving; compatibility is tested against the versions above, and the design
+keeps the compatibility layer deliberately small. The full compaction end-to-end still requires a real-model
+Session; the parser/Host/Remote paths are covered by automated tests.
+
+## License
+
+[MIT](LICENSE) © 2026 dsh-charter contributors.
