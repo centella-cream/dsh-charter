@@ -152,7 +152,7 @@ if (typeof view.definition.order !== 'number' || view.definition.order <= 20) {
 if (view.definition.locale !== registrations.localeNamespace) {
   throw new Error('charter view locale namespace does not match its dictionary')
 }
-if (view.definition.label() !== '章程') {
+if (view.definition.label() !== '任务契约') {
   throw new Error(`unexpected Chinese tab label: ${view.definition.label()}`)
 }
 activeLocale = 'en'
@@ -177,5 +177,5 @@ if (registrations.contribution?.package !== 'dsh-charter') {
 }
 console.log(
   `client-smoke: ${registration.id} registers conversation view "${view.definition.id}" `
-  + `last at order ${String(view.definition.order)} as 章程/Charter, plus the Remote contribution`,
+  + `last at order ${String(view.definition.order)} as 任务契约/Charter, plus the Remote contribution`,
 )
