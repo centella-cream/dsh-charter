@@ -13,8 +13,8 @@ HTML live under `.tmp/` and are excluded from the published package.
 
 | Item | Result |
 | --- | --- |
-| Strict TypeScript check (4 DSH versions) | Pass |
-| Vitest (4 locally available versions × 71 tests) | Pass |
+| Strict TypeScript check (5 DSH versions) | Pass |
+| Vitest (5 locally available versions × 71 tests) | Pass |
 | Host ESM build + browser single-file bundle | Pass |
 | Remote decorator/resource smoke | Pass (0.1.7/0.2.0 have no resource declaration, as expected) |
 | Browser factory-bundle materialization and `apply` smoke | Pass |
@@ -68,6 +68,7 @@ Each version uses its own directory and `node_modules`:
 .tmp/compat/020rc1/proj
 .tmp/compat/020rc2/proj
 .tmp/compat/021rc1/proj
+.tmp/compat/021rc2/proj
 ```
 
 Copy source (excluding `node_modules`, `lib`, `.build-ts`, `.tmp`), link the version's `node_modules` into
@@ -87,9 +88,7 @@ Results:
 | `0.2.0-rc.1` | Pass | Pass | 71/71 | Pass (no-resources warning) | Pass |
 | `0.2.0-rc.2` | Pass | Pass | 71/71 | Pass (no-resources warning) | Pass |
 | `0.2.1-rc.1` | Pass | Pass | 71/71 | Pass | Pass |
-
-`0.2.1-rc.2` was verified on an earlier revision; rerun the same matrix after the next release candidate is
-available locally.
+| `0.2.1-rc.2` | Pass | Pass | 71/71 | Pass | Pass |
 
 `0.1.7-rc.2` and `0.2.0` remote smoke prints:
 
