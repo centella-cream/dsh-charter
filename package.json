@@ -75,6 +75,7 @@
     "test:watch": "vitest",
     "smoke:remote": "node scripts/verify/remote-smoke.mjs",
     "smoke:client": "node scripts/verify/client-smoke.mjs",
+    "verify:compaction": "node scripts/verify/compaction-e2e.mjs",
     "check": "npm run typecheck && npm test",
     "prepack": "npm run build"
   },
