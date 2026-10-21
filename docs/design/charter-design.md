@@ -364,6 +364,8 @@ Layout and interaction principles:
 - A branded page header (mark, title, one-line slogan) carries revision/active/stored chips and a context-budget
   meter: *Compaction rewrites history. Your commitments don't.*
 - A sticky action toolbar keeps Preview/Discard/Apply visible while the pane scrolls.
+- While the view is active it owns the reading surface: the composer seat is hidden via a plugin-scoped `:has()`
+  rule, while the draft remains mounted and reappears on Chat. Approval/question/plan-review seats stay visible.
 - Overview is a dashboard: objective summary, invariant/deliverable cards, and budget breakdown. A large history
   draft gets its own tab, so it never pushes the working modules below the fold.
 - Objective and item tabs are focused editors; add composers live inside their section instead of a generic type
