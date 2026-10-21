@@ -434,16 +434,16 @@ Default limits:
 | Final model-visible context | 8 KiB UTF-8 |
 | Objective | 4 KiB UTF-8 |
 | One model-visible item text | 1 KiB UTF-8 |
-| Active invariants | 24 |
-| Active deliverables | 16 |
-| All items | 256 |
-| Pending items | 64 |
-| Ops per edit | 64 |
-| One Session record | 512 KiB |
+| All items | 512 |
+| Pending items | 512 |
+| Ops per edit | 1024 |
+| One Session record | 1 MiB |
 | Recent history | 64 receipts or 128 KiB |
 | Recent mutation receipts | 128 |
 
-Priority: final prompt bytes > per-item bytes > item counts. An over-limit edit is rejected as a whole.
+The only model-visible capacity is the final prompt byte budget. Active item counts are not capped separately;
+`maxItems`, `maxPendingItems`, `maxOps`, and `maxRecordBytes` remain storage/batch bounds. An over-limit edit
+is rejected as a whole.
 
 **Overflow policy.** No path silently truncates user-visible content:
 
@@ -451,7 +451,11 @@ Priority: final prompt bytes > per-item bytes > item counts. An over-limit edit 
 - Manual edits are validated by the Host; an over-limit batch returns `QUOTA_EXCEEDED` and leaves the record unchanged.
 - History-draft items are split at sentence, clause, and finally code-point boundaries into multiple candidates, so text is preserved rather than cut with an ellipsis. Candidates that still exceed an item limit remain visible and marked; the user must shorten them before Apply.
 - The objective is kept whole. If it exceeds the objective budget, the draft shows the full text and an over-limit message; Apply is disabled until the user edits it. This is a deliberate user decision point, not a silent cut.
-- If the selected draft exceeds the total context budget, the UI reports the overage and lets the user uncheck candidates. Nothing is automatically dropped, reordered, or summarized away.
+- If a history draft does not fit the total context budget, the candidates that fit become active; every other
+  candidate is imported as a **pending proposal** in the same atomic edit. Nothing is automatically dropped,
+  reordered, or summarized away, and Apply is not blocked by an arbitrary per-kind count cap.
+- Only real limits — objective/item bytes, `maxPromptBytes`, `maxItems`, `maxPendingItems`, `maxOps`, and record
+  bytes — can block Apply; the UI identifies the exact limit and highlights the affected field.
 - The parser returns all candidates from the selected sections; it does not impose a hidden candidate cap.
 
 **Choosing defaults.** 8 KiB of model-visible context is roughly 2k tokens; the objective can be 4 KiB and an item 1 KiB. These are deliberately larger than the original MVP values while still bounded. They are defaults, not universal optima: profiles can raise them when a team's charter is longer, at the cost of extra prompt bytes per request.
@@ -500,9 +504,8 @@ uninstall smoke; fault injection and side-by-side domain migration remain open.
 
 Current evidence:
 
-- 66 tests across 12 core, host, and client test files;
-- Typecheck, build, and tests pass on DSH `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-rc.1`, and
-  `0.2.1-rc.2`;
+- 70 tests across 13 core, host, and client test files;
+- Typecheck, build, and tests pass on DSH `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`, and `0.2.1-rc.1`;
 - Real profile install/boot on `0.1.7-rc.2` and `0.2.0-rc.2`;
 - Real Web UI verified on `0.2.0-rc.2`: tab order, localization, objective/invariant editing, preview, Apply,
   reload persistence, and dynamic ordering with `dsh-context` installed.

@@ -183,8 +183,13 @@ has a left section navigation on wide screens and a horizontal tab strip on narr
 | **History** | Review a draft extracted from the latest compaction summary (only when available) |
 | **Context** | Exact user-role runtime context, bytes, and limits |
 
-Budgets are visible everywhere. Long draft items become multiple candidates; over-limit fields are highlighted;
-Apply is disabled while the objective, an item, the selection, or the projected context exceeds its budget.
+When a history draft has more candidates than the context budget can hold, the extra candidates are imported as
+**pending proposals** in the same atomic Apply. They remain visible and reviewable; nothing is rejected because
+of an arbitrary per-kind active-count cap.
+
+Budgets are visible everywhere. Long draft items become multiple candidates; over-limit fields are highlighted.
+The actual context budget is the gate: when a history draft does not fit, the remaining candidates become pending
+proposals instead of blocking the whole import. Apply is disabled only for real field, storage, or atomic limits.
 
 ## Configuration
 
@@ -196,8 +201,6 @@ Defaults live in `cordis.patch.yml`. Override them in the profile patch:
     maxPromptBytes: 8192
     maxObjectiveBytes: 4096
     maxItemBytes: 1024
-    maxActiveInvariants: 24
-    maxActiveDeliverables: 16
     contextOrder: 130
 ```
 
@@ -206,19 +209,19 @@ Defaults live in `cordis.patch.yml`. Override them in the profile patch:
 | `maxPromptBytes` | 8192 | UTF-8 budget for the final model-visible context |
 | `maxObjectiveBytes` | 4096 | UTF-8 budget for the objective |
 | `maxItemBytes` | 1024 | per-item text budget |
-| `maxItems` | 256 | all-items limit |
-| `maxPendingItems` | 64 | pending-proposal limit |
-| `maxActiveInvariants` | 24 | active invariants |
-| `maxActiveDeliverables` | 16 | active deliverables |
-| `maxOps` | 64 | operations per Apply |
-| `maxRecordBytes` | 524288 | one Session record |
+| `maxItems` | 512 | all-items storage limit |
+| `maxPendingItems` | 512 | pending-proposal limit |
+| `maxOps` | 1024 | operations per Apply |
+| `maxRecordBytes` | 1048576 | one Session record |
 | `historyLimit` | 64 | recent history receipts |
 | `maxHistoryBytes` | 131072 | recent history bytes |
 | `mutationLimit` | 128 | recent mutation receipts |
 | `contextOrder` | 130 | runtime-context order; after sandbox/approval/subagent by default |
 
-Priority is **prompt bytes > per-item bytes > item counts**. The defaults are deliberately generous but bounded;
-raise them when a team's charter needs more room, at the cost of extra prompt bytes per request.
+The only model-visible capacity is `maxPromptBytes`; active invariants and deliverables are not capped
+separately. `maxItems` and `maxPendingItems` bound storage. When a history draft does not fit the context
+budget, the candidates that fit are imported as active and the rest become pending proposals — not rejected,
+truncated, or silently dropped.
 
 ## Compatibility
 
@@ -252,7 +255,7 @@ npm run check            # typecheck + test
 ```
 
 The test suite covers the pure core, real Host composition, storage-domain behavior, Remote framing,
-history extraction, client state, and factory-bundle registration. Current matrix: **66 tests on 5 DSH
+history extraction, client state, and factory-bundle registration. Current matrix: **70 tests on the locally verified DSH
 versions**. See the [verification record](docs/verification.md) for commands and evidence.
 
 ## Acknowledgements

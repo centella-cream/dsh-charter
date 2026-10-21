@@ -137,8 +137,6 @@ archived / rejected / superseded 条目仍计入“全部条目”配额。**Pur
     maxPromptBytes: 8192
     maxObjectiveBytes: 4096
     maxItemBytes: 1024
-    maxActiveInvariants: 24
-    maxActiveDeliverables: 16
     contextOrder: 130
 ```
 
@@ -147,18 +145,16 @@ archived / rejected / superseded 条目仍计入“全部条目”配额。**Pur
 | `maxPromptBytes` | 8192 | 最终模型可见 context 的 UTF-8 上限 |
 | `maxObjectiveBytes` | 4096 | 目标文本的 UTF-8 上限 |
 | `maxItemBytes` | 1024 | 单条条目文本上限 |
-| `maxItems` | 256 | 全部条目上限 |
-| `maxPendingItems` | 64 | pending 条目上限 |
-| `maxActiveInvariants` | 24 | active invariant 上限 |
-| `maxActiveDeliverables` | 16 | active deliverable 上限 |
-| `maxOps` | 64 | 单次 Apply 的 op 数 |
-| `maxRecordBytes` | 524288 | 单条 Session record 上限 |
+| `maxItems` | 512 | 全部条目存储上限 |
+| `maxPendingItems` | 512 | pending 条目上限 |
+| `maxOps` | 1024 | 单次 Apply 的 op 数 |
+| `maxRecordBytes` | 1048576 | 单条 Session record 上限 |
 | `historyLimit` | 64 | 近期 history 条数 |
 | `maxHistoryBytes` | 131072 | 近期 history 字节上限 |
 | `mutationLimit` | 128 | 近期 mutation 回执上限 |
 | `contextOrder` | 130 | runtime context 排序；默认在 sandbox/approval/subagent 之后 |
 
-优先级：最终 prompt 字节 > 单条字节 > 条目数。超限整次 Apply 被拒绝，不自动删改现有条目。
+模型可见容量只有 `maxPromptBytes`；active 条目数不再单独设上限。存储由 `maxItems` 和 `maxPendingItems` 约束。
 
 ## 4.1 预算与溢出
 
@@ -167,8 +163,9 @@ archived / rejected / superseded 条目仍计入“全部条目”配额。**Pur
 - 历史草案中的长条目按句子/分句边界拆成多个候选，全部保留。仍然超过单条上限的候选会高亮，Apply
   保持禁用，直到你缩短它。
 - 目标保持完整。若超过 `maxObjectiveBytes`，草案显示全文和超限提示；请缩短后再应用。
-- 所选草案超过 `maxPromptBytes` 时，标签页报告超出量并让你取消勾选。不会自动丢弃或再次摘要。
-- 任一字段或总预算超限时，Apply 禁用。
+- 候选放不进上下文预算时，能放下的部分直接生效，其余保存为**待审提案**。Apply 仍然可用；不会拒绝、
+  截断、丢弃或再次摘要。等上下文有余量时再逐条接受提案。
+- 目标、单条字节、存储/单批容量仍是硬限制；UI 会显示具体问题，只有这些真实限制会让 Apply 禁用。
 
 会话契约需要更多空间时，可在 profile 中调高预算。
 
@@ -189,7 +186,7 @@ archived / rejected / superseded 条目仍计入“全部条目”配额。**Pur
 | 面板提示 Session 不在当前 Host / 只读 | 该 Session 属于另一个 DSH 进程（例如 Desktop），尚未在 Web 进程加载 | 在 Web 中新建会话或发送消息使其变为 live；标签页会自动升级为可编辑 |
 | `unavailable` + inconsistent record | 存储记录被外部篡改或派生 digest 不一致 | 停止编辑，检查 storage；修复前不注入 |
 | Apply 返回 `REVISION_CONFLICT` | 期间有别的提交 | 草稿保留，丢弃后基于最新 revision 重新编辑 |
-| Apply 返回 `QUOTA_EXCEEDED` | 超过 prompt/单条/条目上限 | 合并或永久清除条目，不要期待自动驱逐 |
+| Apply 返回 `QUOTA_EXCEEDED` | 超过 prompt、单条或存储/单批上限 | 检查高亮字段；减少候选或调高对应上限。active 条数没有单独上限 |
 | `charter_read` 返回 `UNAVAILABLE` | 插件存储未就绪或记录不可用 | 会话仍可正常使用；修复后重试 |
 | 会话头部没有「会话契约」 | 客户端 bundle 未加载/未注入，或当前是空白 Session | 检查 `dsh --profile web --dump-config` 中是否有 `charter` 行；先发送一条消息开始会话；刷新页面 |
 | 0.1.7-rc.2 / 0.2.0 上出现授权担忧 | Gateway 无 `@Remote.resources` | 升级到 0.2.1+，或在可信单操作者环境使用 |

@@ -13,8 +13,8 @@
 - [调研记录](../research/charter-research.zh.md)
 
 实现状态：MVP Host、纯内核、JSON storage 组合、Remote contract 和主对话页标签页 Client 已完成实现并通过版本矩阵
-验证。当前 `npm run typecheck`、`npm test`、`npm run build` 均通过（66 个测试）；同一源码在 DSH
-`0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-rc.1`、`0.2.1-rc.2` 上分别通过 typecheck、build 和 66 个测试。
+验证。当前 `npm run typecheck`、`npm test`、`npm run build` 均通过（70 个测试）；同一源码在 DSH
+`0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-rc.1` 上分别通过 typecheck、build 和 70 个测试。
 真实 profile 的 tarball 安装、配置组合、Web 启动、boot graph 和客户端 bundle HTTP 已通过；DSH `0.2.0-rc.2`
 Web profile 上已用真实 Chrome 验证「对话」「轨迹」「会话契约」标签顺序、目标编辑、预览、Apply 和刷新持久化。
 完整 compaction 端到端仍需在目标 profile 手工执行。兼容边界与降级见
@@ -722,17 +722,15 @@ Session dispose：
 | 最终模型可见 contribution | 8 KiB UTF-8 | 拒绝整次 Apply |
 | 目标 | 4 KiB UTF-8 | 拒绝该批次 |
 | 单条模型可见条目文本 | 1 KiB UTF-8 | 拒绝该批次 |
-| active invariant | 24 | 仍需同时满足总字节上限 |
-| active deliverable | 16 | 仍需同时满足总字节上限 |
-| 全部 item | 256 | 要求用户合并或永久清除；归档不释放持久条目配额 |
-| pending proposal | 64 | 拒绝新提议，不驱逐旧提议 |
-| 单次 ops | 64 | 拒绝批次 |
-| 单条 Session record | 512 KiB | 拒绝批次 |
+| 全部 item | 512 | 要求用户合并或永久清除；归档不释放持久条目配额 |
+| pending proposal | 512 | 拒绝新提议，不驱逐旧提议 |
+| 单次 ops | 1024 | 拒绝批次 |
+| 单条 Session record | 1 MiB | 拒绝批次 |
 | recent history | 64 revisions 或 128 KiB | 自动裁最旧回执，不影响 current |
 | recent mutation receipts | 128 | 自动裁最旧幂等回执 |
 
-优先级：最终 prompt 字节上限 > 单条字节上限 > item 数上限。条数上限是防滥用边界，不表示每个上限可以
-同时填满。
+模型可见容量只有最终 prompt 字节预算；active 条目不单独设上限。`maxItems`、`maxPendingItems`、
+`maxOps`、`maxRecordBytes` 仍是存储/单批边界。超限整批拒绝。
 
 **溢出策略。** 任何路径都不静默截断用户可见内容：
 
@@ -742,7 +740,10 @@ Session dispose：
   仍然超过单条上限的候选会完整显示并标记，用户必须缩短后才能应用。
 - 目标保持完整。若超过目标预算，草案显示全文和超限提示，Apply 禁用，直到用户主动编辑。这是明确的
   用户决策点，不是静默裁剪。
-- 所选草案超过总上下文预算时，UI 报告超出量，让用户取消勾选；不会自动丢弃、重排或再次摘要。
+- 历史草案放不进总上下文预算时，能放下的候选直接生效，其余候选在同一次原子 Apply 中保存为**待审提案**。
+  不会自动丢弃、重排或再次摘要，也不会被任意 per-kind 条数上限挡住。
+- 只有真实限制（目标/单条字节、`maxPromptBytes`、`maxItems`、`maxPendingItems`、`maxOps`、record bytes）
+  能阻止 Apply；UI 会指出具体限制并高亮对应字段。
 - 解析器返回所选章节的全部候选，不设置隐藏的候选数量上限。
 
 **默认值取舍。** 8 KiB 模型可见上下文约 2k tokens；目标可到 4 KiB，单条条目 1 KiB。这是比原 MVP
@@ -754,7 +755,7 @@ Session dispose：
 - 归档：退出 active 工作集，仍在 current record 中；
 - 永久清除：用户二次确认后删除，并清洗近期回执中的正文。
 
-归档只释放模型可见工作集和 active 条数，不释放“全部 item”或 record bytes 配额。界面必须分别显示两种
+归档只释放模型可见工作集，不释放“全部 item”或 record bytes 配额。界面必须分别显示两种
 用量，不能把归档描述成存储清理。
 
 ## 13. 模块结构

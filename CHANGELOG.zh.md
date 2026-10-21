@@ -21,7 +21,10 @@
 - 重新设计 Charter 面板：使用 DSH 语义 token，紧凑页头与预算条、吸顶预览/丢弃/应用工具栏、目标卡片、
   响应式硬约束/交付物双栏、hover/focus 条目操作、section 内联添加输入，并支持明暗主题。
 - 默认预算提升到 8 KiB context、4 KiB 目标、1 KiB 单条条目。任何路径都不静默截断：超长历史草案条目拆成
-  多个候选，超限字段高亮，所选内容超预算时 Apply 禁用。
+  多个候选，超限字段高亮。历史导入以真实上下文预算为准，不再用 per-kind active 条数拒绝整个草案：放不下的
+  候选会在同一次原子 Apply 中保存为待审提案（`item.propose`），不会丢弃或截断。
+- 移除 per-kind active 条数上限；存储限制提高到 `maxItems` 512、`maxPendingItems` 512、`maxOps` 1024、
+  `maxRecordBytes` 1 MiB。
 - 已有压缩历史且会话契约为空的 Session 会自动显示从最近一次压缩摘要确定性抽取的只读草案；不调用模型、不自动
   写入。用户编辑/取消勾选后点击应用才会生效。
 - 完整的 Charter 标签页与面板中英文界面，由 `dsh-client-locale` 和 DSH 当前语言驱动；计数、状态、按钮、
@@ -33,7 +36,7 @@
 - DSH 0.1.7-rc.2 / 0.2.0 兼容层（`@Remote` 资源回退、prompt-context 扩展字段、actor 回退），以及针对旧版
   prompt 变量插值器的转义。
 - 自包含 factory 形式的浏览器 bundle，内联 CSS、打包 zod，符合 DSH Web module loader 契约。
-- 66 个测试，覆盖内核、Host 组合、fork、幂等、配额、prompt 边界、Remote stream、历史抽取、客户端 tab
+- 70 个测试，覆盖内核、Host 组合、fork、幂等、配额、prompt 边界、Remote stream、历史抽取、客户端 tab
   排序和装饰器兼容。已在 DSH `0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-rc.1`、`0.2.1-rc.2` 上验证。
   真实 Web UI 在 `0.2.0-rc.2` 上验证了标签顺序、中英文切换、目标/约束编辑、预览、Apply 和刷新持久化。
 
