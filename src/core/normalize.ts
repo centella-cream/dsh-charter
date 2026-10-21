@@ -8,6 +8,23 @@ import {
 
 const UNSAFE_CONTROL = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/u
 
+export type UserTextIssue = 'empty' | 'control' | 'surrogate'
+
+export interface UserTextInspection {
+  /** NFC-normalized, CRLF-normalized, trimmed text. */
+  readonly value: string
+  readonly issue: UserTextIssue | undefined
+}
+
+/** Browser-safe validation shared by the Host normalizer and the client editor. */
+export function inspectUserText(input: string): UserTextInspection {
+  const value = input.replace(/\r\n?/gu, '\n').normalize('NFC').trim()
+  if (value.length === 0) return { value, issue: 'empty' }
+  if (UNSAFE_CONTROL.test(value)) return { value, issue: 'control' }
+  if (hasUnpairedSurrogate(value)) return { value, issue: 'surrogate' }
+  return { value, issue: undefined }
+}
+
 function hasUnpairedSurrogate(value: string): boolean {
   for (let index = 0; index < value.length; index += 1) {
     const code = value.charCodeAt(index)
@@ -23,14 +40,12 @@ function hasUnpairedSurrogate(value: string): boolean {
 }
 
 export function normalizeUserText(input: string, field: string): string {
-  const value = input.replace(/\r\n?/gu, '\n').normalize('NFC').trim()
-  if (value.length === 0) {
-    throw charterError('INVALID_ARGUMENT', `${field} must not be empty`)
-  }
-  if (UNSAFE_CONTROL.test(value)) {
+  const { value, issue } = inspectUserText(input)
+  if (issue === 'empty') throw charterError('INVALID_ARGUMENT', `${field} must not be empty`)
+  if (issue === 'control') {
     throw charterError('INVALID_ARGUMENT', `${field} contains unsupported control characters`)
   }
-  if (hasUnpairedSurrogate(value)) {
+  if (issue === 'surrogate') {
     throw charterError('INVALID_ARGUMENT', `${field} contains invalid Unicode`)
   }
   return value

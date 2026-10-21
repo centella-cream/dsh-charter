@@ -584,7 +584,86 @@ describe('dsh-charter host composition', () => {
     expect(standing.items.every(item => item.id === undefined)).toBe(true)
     expect(standing.items.every(item => item.review === undefined)).toBe(true)
     expect(Buffer.byteLength(JSON.stringify(standing), 'utf8')).toBeLessThan(16 * 1_024)
-    expect(all.items[0]?.id).toBeDefined()
+    expect(all.items[0]).toMatchObject({
+      origin: 'user',
+      order: expect.any(Number),
+      createdRevision: 1,
+    })
+    expect(Buffer.byteLength(JSON.stringify(all), 'utf8')).toBeLessThanOrEqual(32 * 1_024)
+  })
+
+  it('bounds the all view by the final tool envelope, not item JSON alone', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-read-envelope-'))
+    roots.push(root)
+    const ctx = await mount(root)
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('read-envelope'), {
+      meta: { cwd: root, createdAt: 1_700_000_000_810 },
+    })
+    await waitForReady(service, session)
+    let revision = 0
+    for (let index = 0; index < 30; index += 1) {
+      const added = await service.edit({
+        sessionId: session.id,
+        mutationId: `envelope-add-${index}`,
+        baseRevision: revision,
+        ops: [{
+          type: 'item.add',
+          item: {
+            clientRef: `envelope-${index}`,
+            kind: 'invariant',
+            text: `${index} ${'x'.repeat(900)}`,
+            order: index,
+          },
+        }],
+      })
+      if (!added.ok) throw new Error(`add failed: ${added.code}`)
+      revision += 1
+      const archived = await service.edit({
+        sessionId: session.id,
+        mutationId: `envelope-archive-${index}`,
+        baseRevision: revision,
+        ops: [{ type: 'item.archive', itemId: added.ids[`envelope-${index}`]! }],
+      })
+      if (!archived.ok) throw new Error(`archive failed: ${archived.code}`)
+      revision += 1
+    }
+    const all = service.readForModel(session, 'all')
+    expect(all.truncated).toBeGreaterThan(0)
+    expect(Buffer.byteLength(JSON.stringify(all), 'utf8')).toBeLessThanOrEqual(32 * 1_024)
+  })
+
+  it('marks records over the current count limits as over budget', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-count-budget-'))
+    roots.push(root)
+    const first = await mount(root)
+    const service = first.charter as CharterService
+    const sessionId = SessionId('count-budget')
+    const session = first.sessions.create(sessionId, {
+      meta: { cwd: root, createdAt: 1_700_000_000_820 },
+    })
+    await waitForReady(service, session)
+    for (let index = 0; index < 4; index += 1) {
+      const baseRevision = index * 2
+      const added = await service.edit(addInvariant(session.id, baseRevision, `count-${index}`, `Constraint ${index}`))
+      if (!added.ok) throw new Error('add failed')
+      const archived = await service.edit({
+        sessionId: session.id,
+        mutationId: `count-archive-${index}`,
+        baseRevision: baseRevision + 1,
+        ops: [{ type: 'item.archive', itemId: added.ids[`count-${index}`]! }],
+      })
+      if (!archived.ok) throw new Error('archive failed')
+    }
+    await first.fiber.dispose()
+    contexts.splice(contexts.indexOf(first), 1)
+    const second = await mount(root, { historyLimit: 1, mutationLimit: 1 })
+    const secondService = second.charter as CharterService
+    const again = second.sessions.create(sessionId, {
+      meta: { cwd: root, createdAt: 1_700_000_000_820 },
+    })
+    await waitForReady(secondService, again)
+    expect(secondService.view(again).overBudget).toBe(true)
   })
 
   it('serves a stored read-only view before a session becomes live in this process', async () => {
@@ -708,6 +787,40 @@ describe('dsh-charter host composition', () => {
     // The invalid document is preserved for diagnosis, not silently replaced.
     const preserved = JSON.parse(await readFile(file, 'utf8')) as { record: Record<string, unknown> }
     expect(preserved.record['unexpectedFutureField']).toBe(1)
+  })
+
+  it('rejects a record that becomes schema-invalid while the service is running', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-runtime-invalid-'))
+    roots.push(root)
+    const ctx = await mount(root)
+    const service = ctx.charter as CharterService
+    const bad = ctx.sessions.create(SessionId('runtime-invalid'), {
+      meta: { cwd: root, createdAt: 1_700_000_000_990 },
+    })
+    const good = ctx.sessions.create(SessionId('runtime-good'), {
+      meta: { cwd: root, createdAt: 1_700_000_000_991 },
+    })
+    await waitForReady(service, bad)
+    await waitForReady(service, good)
+    await service.edit(addInvariant(bad.id, 0, 'runtime-1', 'Will be invalidated'))
+    await service.edit(addInvariant(good.id, 0, 'runtime-2', 'Still works'))
+
+    const table = (service as unknown as {
+      sessionsTable: {
+        get: (id: string) => unknown
+        put: (id: string, value: unknown) => Promise<void>
+      }
+    }).sessionsTable
+    const stored = structuredClone(table.get(bad.id)) as { recordSchemaVersion: number }
+    stored.recordSchemaVersion = 2
+    await table.put(bad.id, stored)
+
+    await waitForStatus(service, bad, 'unavailable')
+    expect(service.promptText(bad)).toBe('')
+    expect(service.view(good).status).toBe('ready')
+    expect(service.view(good).promptText).toContain('Still works')
+    expect(await service.edit(addInvariant(bad.id, 1, 'runtime-3', 'Blocked')))
+      .toMatchObject({ ok: false, code: 'UNAVAILABLE' })
   })
 
   it('treats lowered budgets as over-budget state instead of corruption and lets edits shrink it', async () => {

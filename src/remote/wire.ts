@@ -52,6 +52,8 @@ export const charterViewSchema = z.object({
   }).strict(),
   /** The stored record is valid but exceeds the current budget configuration. */
   overBudget: z.boolean().default(false),
+  /** Optional Session lifecycle fingerprint for client draft binding. */
+  lifecycle: z.string().optional(),
   message: z.string().optional(),
 }).strict()
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { CharterError } from '../../src/core/errors.js'
 import { DEFAULT_CHARTER_LIMITS, utf8Bytes } from '../../src/core/limits.js'
-import { normalizeUserText } from '../../src/core/normalize.js'
+import { inspectUserText, normalizeUserText } from '../../src/core/normalize.js'
 import { buildSnapshot } from '../../src/core/render.js'
 
 describe('normalization and deterministic rendering', () => {
@@ -16,6 +16,14 @@ describe('normalization and deterministic rendering', () => {
     }
     expect(() => normalizeUserText('\uD800', 'text')).toThrow(CharterError)
     expect(normalizeUserText('ok 😀', 'text')).toBe('ok 😀')
+  })
+
+  it('shares the same invalid-text classification with browser clients', () => {
+    expect(inspectUserText('  ok  ')).toEqual({ value: 'ok', issue: undefined })
+    expect(inspectUserText('   ').issue).toBe('empty')
+    expect(inspectUserText('a\u0000b').issue).toBe('control')
+    expect(inspectUserText('\uD800').issue).toBe('surrogate')
+    expect(() => normalizeUserText('a\u0000b', 'text')).toThrow(CharterError)
   })
 
   it('escapes hostile-looking text in canonical JSON', () => {

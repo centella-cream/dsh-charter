@@ -124,6 +124,14 @@ describe('Remote decorator compatibility', () => {
     expect(calls).toEqual([{ mode: 'stream', resources: { session: expect.any(Function) } }])
   })
 
+  it('propagates unexpected modern decorator failures instead of downgrading', () => {
+    const caps = { resourceScopes: undefined as boolean | undefined }
+    const broken = (): (() => void) => { throw new TypeError('decorator setup bug') }
+    expect(() => createRemoteMethodFactory(broken, caps)({ resources: { session: () => 's' } }))
+      .toThrowError('decorator setup bug')
+    expect(caps.resourceScopes).toBeUndefined()
+  })
+
   it('records whether the runtime enforces resource scopes', () => {
     const modernCapabilities = { resourceScopes: undefined as boolean | undefined }
     const modern = (): (() => void) => () => undefined
@@ -131,7 +139,7 @@ describe('Remote decorator compatibility', () => {
     expect(modernCapabilities.resourceScopes).toBe(true)
 
     const legacyCapabilities = { resourceScopes: undefined as boolean | undefined }
-    const legacy = (): (() => void) => { throw new TypeError('legacy rejects resources') }
+    const legacy = (): (() => void) => { throw new TypeError('typert-protocol: Remote options must contain exactly mode: "stream"') }
     createRemoteMethodFactory(legacy, legacyCapabilities)({ resources: { session: () => 's' } })
     expect(legacyCapabilities.resourceScopes).toBe(false)
   })
@@ -146,7 +154,7 @@ describe('Remote decorator compatibility', () => {
       const keys = Reflect.ownKeys(methodOrOptions as object)
       const mode = (methodOrOptions as { mode?: string }).mode
       if (keys.length !== 1 || keys[0] !== 'mode' || mode !== 'stream') {
-        throw new TypeError('legacy Remote options must be exactly mode: "stream"')
+        throw new TypeError('typert-protocol: Remote options must contain exactly mode: "stream"')
       }
       calls.push({ kind: 'stream' })
       return () => undefined

@@ -29,6 +29,8 @@ export interface CharterView {
   readonly limits: CharterViewLimits
   /** The durable record is valid but exceeds the current budget configuration. */
   readonly overBudget: boolean
+  /** Session lifecycle fingerprint; client drafts are bound to it. */
+  readonly lifecycle?: string | undefined
   readonly message?: string | undefined
 }
 
@@ -63,7 +65,21 @@ export interface CharterToolItem {
   /** Present only in the bounded `all` debugging view. */
   readonly lifecycle?: CharterItem['lifecycle']
   readonly verification: CharterItem['verification']['state']
+  /** Present only in the bounded `all` debugging view. */
+  readonly verificationBy?: 'user' | 'validator'
+  /** Present only in the bounded `all` debugging view. */
+  readonly verificationReason?: string
   readonly progress: string | null
+  /** Present only in the bounded `all` debugging view. */
+  readonly origin?: CharterItem['origin']
+  /** Present only in the bounded `all` debugging view. */
+  readonly order?: number
+  /** Present only in the bounded `all` debugging view. */
+  readonly createdRevision?: number
+  /** Present only in the bounded `all` debugging view. */
+  readonly supersedes?: string
+  /** Present only in the bounded `all` debugging view. */
+  readonly supersededBy?: string
 }
 
 export interface CharterToolView {
