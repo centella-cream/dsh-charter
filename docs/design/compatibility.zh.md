@@ -14,10 +14,10 @@
 
 | DSH 版本 | 状态 | 验证内容 |
 | --- | --- | --- |
-| `0.1.7-rc.2` | 支持（最低版本） | typecheck、build、78 tests、remote/client smoke、真实 profile 安装与启动 |
-| `0.2.0-rc.1` | 支持 | typecheck、build、78 tests、remote/client smoke |
+| `0.1.7-rc.2` | 支持（最低版本） | typecheck、build、90 tests、remote/client smoke、真实 profile 安装与启动 |
+| `0.2.0-rc.1` | 支持 | typecheck、build、90 tests、remote/client smoke |
 | `0.2.0-rc.2` | 支持 | 同上 + 真实 profile 安装与启动、boot graph、bundle HTTP |
-| `0.2.1-rc.1` | 支持 | typecheck、build、78 tests、remote/client smoke |
+| `0.2.1-rc.1` | 支持 | typecheck、build、90 tests、remote/client smoke |
 | `0.2.1-rc.2` | 支持（主开发基线） | 同上 |
 | `0.1.5-rc.1` / `0.1.5-rc.2` / `0.1.5-rc.3` | 不支持 | 契约差异过大，见第 4 节 |
 | `0.1.6-alpha.x` | 不支持 | 与 0.1.5 同代，未逐一验证 |
@@ -67,9 +67,9 @@ prerelease 后再追加一段。`0.1.7-rc.1` 不在范围内；最低支持版�
 | 资源声明测试 | `scripts/verify/remote-smoke.mjs` |
 | PromptContext 扩展字段 | `src/host/service.ts` |
 | `{{` 转义 | `src/core/prompt.ts` |
-| actor 回退 | `src/host/service.ts` 的 `resolveActor()` |
+| actor 解析 | `src/host/service.ts` 的 `resolveActor()`，版本策略在 `src/remote/actor.ts`；0.2.1+ 的 Remote 调用缺少 Peer principal 时 fail closed |
 | 版本化类型验证 | `docs/verification.zh.md` 描述的独立 `node_modules` 副本 |
-| 已弃用的历史事件读取 | 隔离在 `src/host/session-events.ts`；DSH 0.2.1-rc.2 尚无公开的非弃用替代 |
+| 已弃用的历史事件读取 | 隔离在 `src/host/session-events.ts`；**已知技术债**，不是已完成的替换——DSH 0.2.1-rc.2 尚无公开的非弃用读取接口 |
 
 兼容层刻意保持很小：只有装饰器形态、两个可选 context 字段、actor 读取和隔离的历史事件读取。没有为旧版本维护第二套
 Remote 编解码、第二套 session 事件协议或第二套侧栏注册 API。0.1.7 与 0.2.0 共享同一套降级逻辑。
@@ -107,7 +107,7 @@ boot graph 与客户端 bundle HTTP。结果和复现命令见[验证记录](../
 
 ## 6. 升级策略
 
-- 新的 `0.2.x` stable 版本：peer range 已覆盖，建议跑一次 78 tests + profile smoke。
+- 新的 `0.2.x` stable 版本：peer range 已覆盖，建议跑一次 90 tests + profile smoke。
 - 新的 `0.2.x` prerelease：先补 peer range，再跑版本矩阵；不要未经验证就宣称兼容。
 - `0.2.1` 引入了资源授权，是安全边界上的最小推荐版本。
 - `0.3.0` 及以上：重新核验 Remote、storage domain、prompt context、conversation view slot 和 client module loader 五组契约。

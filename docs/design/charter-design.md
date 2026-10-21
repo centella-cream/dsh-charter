@@ -51,7 +51,7 @@ permissions, hooks, sandbox policy, or tool-execution guards.
 - `deliverable`: deliverable and progress;
 - Persistence per session;
 - A conversation-view tab in the main conversation header;
-- A review-only bootstrap draft from an existing Session's latest compaction summary;
+- A review-only bootstrap draft from an existing Session's latest usable compaction summary (with fallback to older usable summaries);
 - One atomic write Remote;
 - One per-Session snapshot stream;
 - One read-only `charter_read` tool;
@@ -232,9 +232,9 @@ automatically verify; a failed verification does not automatically archive.
    it never leaves two initialization promises waiting on each other.
 6. If a child Session appears before its parent record is durable, the child waits for `domain/changed` and
    retries.
-6. `session/disposed` aborts in-flight initialization and removes UI listeners. The durable record is not
+7. `session/disposed` aborts in-flight initialization and removes UI listeners. The durable record is not
    deleted.
-7. On plugin unload, new edits are blocked, in-flight writes are awaited, listeners and domain are released.
+8. On plugin unload, new edits are blocked, in-flight writes are awaited, listeners and domain are released.
 
 A non-live Session (for example one persisted by the Desktop process and viewed in a separate Web process)
 does not fail the stream. It returns a read-only stored view with an explanation and upgrades in place when the
@@ -247,6 +247,8 @@ Session becomes live in the current Host.
 - `objective.initialize`
 - `objective.redirect`
 - `item.add`
+- `item.propose` (host-internal history import: always creates a pending proposal; same `clientRef`/id
+  minting as `item.add`, never enters the model context until accepted)
 - `item.edit`
 - `item.accept` / `item.reject`
 - `item.supersede`
@@ -256,7 +258,9 @@ Session becomes live in the current Host.
 - `deliverable.progress`
 
 A batch contains 1..`maxOps` operations. Every operation is validated against a draft copy; the entire batch is
-rejected on any failure.
+rejected on any failure. `item.propose` is produced only by the history-draft overflow path and travels in the same
+`charter.edit` request so the import is atomic. It is not exposed as a model tool. The Host mints its item id
+from `clientRef` exactly like `item.add`, and the same actor policy applies.
 
 ### 7.2 Actor policy
 
@@ -417,9 +421,10 @@ into multiple items instead of truncating them, keeps the objective whole, and s
 summaries. It imposes no hidden candidate cap. It makes no model call and writes no storage record.
 
 The result is a **review-only proposal** with the summary sequence, timestamp, and shadowed-token count. The UI
-shows it in a draft panel; the user edits text, unchecks items, and clicks Apply. Apply maps the reviewed fields
-to normal atomic `objective.initialize` / `item.add` operations with user origin, so nothing enters the prompt
-until the user confirms. A new Session without a compaction summary still gets the normal empty state; a
+shows it in a draft panel; the user edits text, unchecks items, and clicks Apply. Apply maps the reviewed fields to one atomic edit: candidates that fit the context budget become
+`item.add` (user origin, accepted) and candidates that do not fit become `item.propose` (always pending,
+agent origin). The Host mints ids for both kinds, no candidate is dropped, and pending proposals never enter
+the prompt until accepted. A new Session without a compaction summary still gets the normal empty state; a
 non-live Session has no bootstrap.
 
 The deterministic parser is intentionally conservative about cost and privacy, not about perfect semantics. It
@@ -519,7 +524,7 @@ uninstall smoke; fault injection and side-by-side domain migration remain open.
 
 Current evidence:
 
-- 78 tests across 13 core, host, and client test files;
+- 90 tests across 13 core, host, and client test files;
 - Typecheck, build, and tests pass on DSH `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-rc.1`, and
   `0.2.1-rc.2`;
 - Real profile install/boot on `0.1.7-rc.2` and `0.2.0-rc.2`;
@@ -566,9 +571,10 @@ Current evidence:
 3. A write racing with baseline read does not lose the latest revision; repeats dedupe.
 4. Conflict preserves the draft and shows the server revision.
 5. A tab crash or mount failure leaves Host service, Session, and settings usable.
-6. A view binding releases its client source on unmount; an older detach cannot overwrite a newer attach.
-6. 360px container and mobile full-screen can add/edit/apply.
-7. Keyboard reachable, focus restoration, and non-color-only state.
+6. A view binding holds an instance-bound source lease; several bindings share one source and only the last
+   lease disposes it. An older detach cannot overwrite a newer attach.
+7. 360px container and mobile full-screen can add/edit/apply.
+8. Keyboard reachable, focus restoration, and non-color-only state.
 
 ### 14.5 Lifecycle and compatibility
 

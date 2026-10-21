@@ -85,7 +85,7 @@ flowchart LR
 
 Host 在 `session/created` 时初始化记录，并在首次 prompt 前的 `agent/created` 等待初始化完成。浏览器注册
 `conversation.view` 标签页；面板和 `charter.watch` 使用同一份 revisioned view。`charter.bootstrap` 只读取
-最近一次压缩摘要并返回草案，不写入 storage。
+最近一次可用压缩摘要（若最新摘要无法产出候选，则回退到更早的可用摘要）并返回草案，不写入 storage。
 
 ## 安装
 
@@ -170,7 +170,7 @@ bundle。否则使用上面的本地 tarball 路径。
 | **目标** | 编辑或调整目标；原始目标不可改写 |
 | **硬约束** | 添加、编辑、替换、归档、清除、验证 |
 | **交付物** | 同样的操作，外加交付进度 |
-| **历史草案** | 审阅从最近压缩摘要抽取的草案（仅在有草案时出现） |
+| **历史草案** | 审阅从最近一次可用压缩摘要抽取的草案（仅在有草案时出现） |
 | **上下文** | 精确的 user-role runtime context、字节数和限额 |
 
 「会话契约」激活时独占整个阅读区域：对话框会被隐藏，切回「对话」时草稿原样恢复。审批/提问/计划审阅
@@ -224,7 +224,7 @@ bundle。否则使用上面的本地 tarball 路径。
 | `0.2.2-rc.x`、`0.3.x` | 验证前不声明 |
 
 “支持”表示该版本通过 typecheck、build、测试以及 Remote/client smoke。真实交互式 Web UI 在 `0.2.0-rc.2`
-上验证；其他版本是 API/build 级验证。真实模型 compaction 端到端仍未完成。完整矩阵和降级说明见
+上验证；其他版本是 API/build 级验证。真实模型 compaction 端到端需要用 `npm run verify:compaction` 手工验证（见验证记录第 8 节），当前尚未完成。完整矩阵和降级说明见
 [兼容文档](docs/design/compatibility.zh.md)。`0.1.7`/`0.2.0` 没有 per-Peer Remote 资源授权，只能在可信
 单操作者环境使用。
 
@@ -245,10 +245,11 @@ npm run typecheck        # 严格 TypeScript
 npm test                 # build + Vitest
 npm run build            # Host ESM + 单文件浏览器 bundle + smoke
 npm run check            # typecheck + test
+npm run verify:compaction # 手工真实模型 compaction 校验（不在 check 中）
 ```
 
 测试覆盖纯内核、真实 Host 组合、storage domain、Remote framing、历史抽取、客户端状态和 factory bundle
-注册。当前矩阵：**DSH `0.1.7-rc.2`、`0.2.0-rc.1`/`rc.2`、`0.2.1-rc.1`/`rc.2` × 78 个测试全部通过**。命令与证据见[验证记录](docs/verification.zh.md)。
+注册。当前矩阵：**DSH `0.1.7-rc.2`、`0.2.0-rc.1`/`rc.2`、`0.2.1-rc.1`/`rc.2` × 90 个测试全部通过**。命令与证据见[验证记录](docs/verification.zh.md)。
 
 ## 致谢
 
@@ -282,7 +283,7 @@ npm run check            # typecheck + test
 ## 状态
 
 Pre-1.0。DSH 插件 ABI 仍在演进；项目对上述版本做兼容验证，并刻意保持兼容层很小。完整 compaction 端到端
-仍需要真实模型会话；解析器、Host 和 Remote 链路有自动化测试覆盖。
+需要真实模型会话，使用 `npm run verify:compaction` 手工验收；解析器、Host 和 Remote 链路有自动化测试覆盖。
 
 ## 许可证
 

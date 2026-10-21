@@ -39,12 +39,14 @@
 - 新浏览器 client 可以兼容仍在运行旧 Host 的 view snapshot（旧 Host 仍带 active 条数字段），避免 host/client
   revision 不一致时「会话契约」白屏；新的 pending 导入语义仍需要完整重启 Host 才生效。
 - 已针对 DSH `0.2.1-rc.2` 验证，无需代码改动；现有 peer range 和兼容层已覆盖该 release candidate。
-- 78 个测试，覆盖内核、Host 组合、fork、幂等、配额、prompt 边界、Remote stream、历史抽取、客户端 tab
+- 90 个测试，覆盖内核、Host 组合、fork、幂等、配额、prompt 边界、Remote stream、历史抽取、客户端 tab
   排序和装饰器兼容。已在 DSH `0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-rc.1`、`0.2.1-rc.2` 上验证。
   真实 Web UI 在 `0.2.0-rc.2` 上验证了标签顺序、中英文切换、目标/约束编辑、预览、Apply 和刷新持久化。
 
 ### 安全
 
+- 感知 Peer principal 的 Remote actor 解析：DSH 0.2.1+ 要求 `PeerScope.principal`。principal 缺失时返回
+  `FORBIDDEN`，不再提升为 `owner`；只有确认运行时是 DSH 0.1.7/0.2.0（协议无 principal 字段）才使用 owner 回退。
 - 用户正文永远不进入 system-role 消息。
 - 模型没有会话契约写能力。
 - DSH 0.1.7-rc.2 和 0.2.0 无法执行 per-Peer Remote 资源授权；插件降级为 live-Session 和 lifecycle 校验，
@@ -66,4 +68,14 @@
 - 最新合法摘要无法生成候选时回退到更旧的可用摘要。
 - 增加 bootstrap 失败重试/过期请求处理；view 卸载时释放每 Session source；修复 detach generation 竞态。
 - `charter_read` 的 `all` 视图限制为 64 条 / 32 KiB，并报告省略数量。
-- 将已弃用的 `snapshotEvents()` 读取隔离在一个兼容适配器中。
+- 将已弃用的 `snapshotEvents()` 读取隔离在一个兼容适配器中。这是已知技术债，不是已完成的迁移：
+  DSH 0.2.1-rc.2 尚未提供公开的非弃用历史事件读取接口。
+- 为 `item.propose` 的 clientRef 铸造 Host id，使同时包含 active 条目与溢出提案的历史 Apply 能原子提交，
+  而不再以 `INVALID_REFERENCE` 失败。
+- 客户端 source 释放改为实例绑定的 lease + 引用计数：多个 view binding 共享同一 stream，只有最后一个 lease
+  释放时才 dispose；旧 lease 不能再释放新 binding 的 source。
+- `bootstrap` 的 `not-live` / `no-summary` / `unavailable` 原因会显示并提供 Retry；允许后续 view/lifecycle
+  变化后重新请求；请求返回时用户已开始编辑则静默丢弃，不显示 stale 错误。
+- stream snapshot/update 也校验 `view.sessionId`，不再只校验 edit 响应。
+- 加固 `npm run verify:compaction`：校验 storage record 结构、支持 `--store`、比较完整的 `charter_read`
+  standing 投影、检查多个 system-prompt 泄漏信号；并在文档中明确它是手工检查（自动门禁不运行模型）。

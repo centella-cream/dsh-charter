@@ -2,7 +2,7 @@
 
 [English](verification.md) | 中文
 
-验证日期：2026-10-20。
+验证日期：2026-10-20；第二轮发布就绪评审后复跑：2026-10-21。
 环境：macOS，Node `v22.23.1`，npm `12.0.2`，pnpm `12.3.4`；当前 Desktop 运行时 DSH `0.2.0-rc.2`。
 本地开发依赖基线：DSH `0.2.1-rc.2`。
 
@@ -13,7 +13,7 @@
 | 验证项 | 结果 |
 | --- | --- |
 | TypeScript 严格类型检查（5 个 DSH 版本） | 通过 |
-| Vitest（5 个本地可用版本 × 78 tests） | 通过 |
+| Vitest（5 个本地可用版本 × 90 tests） | 通过 |
 | Host ESM 构建 + 浏览器单文件 bundle | 通过 |
 | Remote 装饰器/资源 smoke | 通过（0.1.7/0.2.0 按预期无资源声明） |
 | 浏览器 factory bundle 物化与 `apply` smoke | 通过 |
@@ -22,7 +22,7 @@
 | 真实浏览器 UI 交互（0.2.0-rc.2 Web profile） | 通过：标签顺序、中英文切换、目标/约束编辑、预览、Apply、刷新持久化；见第 7 节 |
 | 非 live Session 的只读 stored view | 通过：composition 测试覆盖 stored view 与 live 后自动升级 |
 | 从压缩摘要生成历史草案 | 通过：core 解析器 + composition 真实 Session 事件；见 4.4 |
-| 真实模型 + compaction 端到端 | **未完成**，需要可用的模型会话；见第 8 节 |
+| 真实模型 + compaction 端到端 | **校验命令已就绪，实测待执行**（`npm run verify:compaction`，见第 8 节） |
 
 ## 2. 本地基线
 
@@ -35,7 +35,7 @@ npm test
 
 - typecheck 通过；
 - build 通过；
-- `13` 个测试文件、`70` 个测试全部通过；
+- `13` 个测试文件、`90` 个测试全部通过；
 - `remote-smoke` 断言 `watch,bootstrap,edit`、stream mode 和 Session resource；
 - `client-smoke` 断言单文件 factory bundle、外部依赖白名单、不引用 Node-only `Buffer`、`apply` 注册
   tab/pane/Remote contribution。
@@ -44,19 +44,19 @@ npm test
 
 | 文件 | 覆盖 |
 | --- | --- |
-| `tests/core/commands.spec.ts` | 目标、条目、替代、状态转换、purge 生命周期保护、整批回滚 |
+| `tests/core/commands.spec.ts` | 目标、条目、替代、状态转换、purge 生命周期保护、`item.propose` clientRef 铸造、整批回滚 |
 | `tests/core/record.spec.ts` | 原子提交、幂等、revision、history 裁剪、篡改检测 |
 | `tests/core/prompt.spec.ts` | 确定性渲染、`{{` 转义、UI 预览与 Host 渲染一致 |
 | `tests/core/normalize-render.spec.ts` | NFC、控制字符、字节上限、100 次稳定性 |
 | `tests/core/state.spec.ts` | 替代链必须指向 current successor |
 | `tests/core/fork.spec.ts` | fork 重铸 id、替代链重映射 |
 | `tests/core/bootstrap.spec.ts` | 压缩摘要分节抽取、latest objective、UTF-8 拆分/不截断、最新/损坏 summary、回退到较旧可用 summary |
-| `tests/host/composition.spec.ts` | 真实 Cordis/Storage/SystemPrompt/Tools 组合、user-role 边界、actor 策略、fork、幂等、配额、父环拒绝、lifecycle、非 live Session 的只读 stored view 与 live 升级、从真实 `compaction/summary` 事件生成草案、有上限的 `charter_read` |
-| `tests/host/watch.spec.ts` | opening snapshot、竞态、去重、abort、装饰器兼容 |
-| `tests/host/actor.spec.ts` | 0.1.7/0.2.0 无 principal 回退、非 owner 记录 |
+| `tests/host/composition.spec.ts` | 真实 Cordis/Storage/SystemPrompt/Tools 组合、user-role 边界、actor 策略、`item.add` + `item.propose` 混合原子 Apply、fork、幂等、配额、父环拒绝、lifecycle、非 live Session 的只读 stored view 与 live 升级、从真实 `compaction/summary` 事件生成草案、有上限的 `charter_read` |
+| `tests/host/watch.spec.ts` | opening snapshot、竞态、去重、abort、装饰器兼容、resource-scope 能力检测 |
+| `tests/host/actor.spec.ts` | principal 感知策略：现代运行时缺失 principal 拒绝、仅旧版 owner 回退、非 owner 记录、按版本选择的 `resolveRemoteActor` |
 | `tests/host/remote.spec.ts` | Remote 描述符、wire schema 和旧 Host view snapshot |
-| `tests/client/store.spec.ts` | 提交后立即接受 view、忽略陈旧/重复 revision、释放 Session source |
-| `tests/client/bootstrap-plan.spec.ts` | 溢出候选仍在一个 plan 中；active 前缀符合字节预算 |
+| `tests/client/store.spec.ts` | 提交后立即接受 view、忽略陈旧/重复 revision、共享 source lease/引用计数、旧 lease no-op、忽略其他 Session 的 stream 帧 |
+| `tests/client/bootstrap-plan.spec.ts` | 溢出候选仍在一个 plan 中；active 前缀符合字节预算；bootstrap 结果分类（draft/discard/stale/unavailable） |
 
 ## 3. 跨版本矩阵
 
@@ -82,11 +82,11 @@ npm run build
 
 | 版本 | typecheck | build | Vitest | remote smoke | client smoke |
 | --- | --- | --- | --- | --- | --- |
-| `0.1.7-rc.2` | 通过 | 通过 | 78/78 | 通过（无 resources 警告） | 通过 |
-| `0.2.0-rc.1` | 通过 | 通过 | 78/78 | 通过（无 resources 警告） | 通过 |
-| `0.2.0-rc.2` | 通过 | 通过 | 78/78 | 通过（无 resources 警告） | 通过 |
-| `0.2.1-rc.1` | 通过 | 通过 | 78/78 | 通过 | 通过 |
-| `0.2.1-rc.2` | 通过 | 通过 | 78/78 | 通过 | 通过 |
+| `0.1.7-rc.2` | 通过 | 通过 | 90/90 | 通过（无 resources 警告） | 通过 |
+| `0.2.0-rc.1` | 通过 | 通过 | 90/90 | 通过（无 resources 警告） | 通过 |
+| `0.2.0-rc.2` | 通过 | 通过 | 90/90 | 通过（无 resources 警告） | 通过 |
+| `0.2.1-rc.1` | 通过 | 通过 | 90/90 | 通过 | 通过 |
+| `0.2.1-rc.2` | 通过 | 通过 | 90/90 | 通过 | 通过 |
 
 `0.1.7-rc.2` 和 `0.2.0` 的 remote smoke 输出：
 
@@ -437,22 +437,58 @@ prompt renderer 计算草案预览，并在条目/目标/所选草案/投影上�
 - 尚未在浏览器中自动验证：两标签页并发冲突、两个 Session 隔离、0.1.7/0.2.1 的逐版交互。这些逻辑由
   Host/Remote 测试覆盖，仍建议在目标 profile 手工走一遍。
 
-## 8. 未完成的压缩端到端
+## 8. 真实 compaction 端到端
 
-完整 compaction 需要一个可用的模型 provider 和足够长的会话。当前验证没有发起模型请求。建议：
+状态：校验命令已就绪，真实 DSH Session 上的注入链路已确认；跨 compaction 的实测是剩余的手工步骤。
+`npm run check` 不调用模型，因此不会执行这项检查。
 
-1. 在一个测试 Session 中设置目标和 2-3 条约束；
-2. 继续对话并执行 `/compact`（或让自动压缩触发）；
-3. 压缩后检查：
-   - Charter 面板仍显示相同 revision/正文；
-   - `charter_read` 返回 standing 内容；
-   - 系统 prompt 不包含会话契约正文；
-   - 下一个请求的 runtime context 包含完整会话契约；
-4. 重启 DSH，重新打开该 Session，再次检查 revision 和正文。
+### 8.1 已经证明的部分
 
-平台契约依据：`@deepseek-ai/dsh-agent-loop@0.2.0-rc.2` 的 `RuntimeContextProjection` 在 retained
-snapshot 被 replacement/compaction 遮蔽后清空 retained，下一次请求重新生成；本插件每次 provider 调用都
-从 storage 正本读取。
+- DSH 会把每个装配后的 runtime context 持久化为 `user/message` 事件（`source.kind === "runtime-context"`，
+  带 `sections` 数组）。在一个真实 Web profile Session（`session-aa06df32…`，revision 6，245 B 会话契约）
+  中，有 7 个快照包含 `charter:standing` section，其字节与 storage 记录的 `promptText` 完全一致，SHA-256
+  也等于 `promptDigest`。这验证了真实 DSH 运行时上的 user-role 注入链路（包含 UI 驱动的编辑）。
+- composition 测试证明 provider 每次请求都从 storage 正本重新装配；平台的 `RuntimeContextProjection` 在
+  replacement/compaction 遮蔽 retained snapshot 后会清空并在下一次请求重新生成。
+
+### 8.2 手工验收命令
+
+`npm run verify:compaction` 是开发工具：不在 `npm run check` 中，不进入 npm 包（`scripts/` 不在 `files`
+白名单内），读取本地 DSH transcript，并且需要 `zstd` 可执行文件。它支持 JSON storage backend 布局
+`$DSH_HOME/storages/<domain>/sessions/<sessionId>.json`；其他布局用 `--store <file>` 指定。
+
+```bash
+npm run verify:compaction                          # 当前 Session：DSH_SESSION_ID + DSH_HOME
+npm run verify:compaction -- --session <id> --json # 其他 Session / 机器可读
+```
+
+命令读取 Session transcript 和会话契约 storage 记录，并要求全部满足：
+
+1. 当前 revision 的提交时间早于最近一次 `compaction/end`（压缩后才创建的契约不能证明“存活”）；
+2. 最新 runtime-context 快照位于该 compaction 之后；
+3. 该快照包含 `charter:standing`，文本与 `promptText` 字节一致，SHA-256 等于 `promptDigest`；
+4. 没有任何 system-prompt 快照包含会话契约前缀、正文、目标或较长的条目文本；
+5. transcript 中的 `charter_read` standing 结果等于当前 revision 的完整 standing 投影（不只是
+   revision/objective）；
+6. 压缩之后的压缩摘要没有夹带渲染正文（这是 warning：它会削弱证明，而不是静默通过）。
+
+真实 profile 中的操作步骤：
+
+1. 在目标 Session 打开「会话契约」标签页，审阅历史草案并点击 Apply（或手动设置目标），然后发送一条消息，
+   让 runtime context 落进 transcript；
+2. 运行 `npm run verify:compaction`：预期 `charter established`、注入、digest、system-prompt 和
+   `charter_read` 检查通过，compaction 步骤为 `WAIT`；
+3. 在同一 Session 执行 `/compact`，然后发送一条消息；
+4. 再次运行命令：预期 `PASS`，并输出 compaction seq、压缩后快照 seq 和 digest。
+
+检查器只会 fail closed 为 `BLOCKED`（还没有契约）或 `WAIT`（压缩后还没有新请求）；它绝不把 checkpoint
+摘要当作“存活”证据。
+
+### 8.3 平台依据
+
+`@deepseek-ai/dsh-agent-loop@0.2.1-rc.2` 的 `RuntimeContextProjection` 在 retained snapshot 被
+replacement/compaction 遮蔽后清空 retained，下一次请求重新生成；本插件的 context provider 调用
+`charter.promptText(session)`，同步读取 storage 正本并校验派生 digest。
 
 ## 9. 未支持的验证项
 

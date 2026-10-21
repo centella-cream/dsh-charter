@@ -34,6 +34,10 @@ DSH_HOME=/tmp/dsh-charter-release-home \
 
 打开打印的 URL，新建 Session，检查会话契约 tab 和中英文切换。
 
+真实模型 compaction 验收是手工步骤：应用会话契约、执行 `/compact`、发送一条消息，然后运行
+`npm run verify:compaction -- --session <id> --home <DSH_HOME>`，并把 `PASS` 证据记录到验证记录第 8 节。
+这项检查需要模型，永远不属于 `npm run check`。
+
 ## 3. 发布
 
 1. 提交并打 tag `vX.Y.Z`；

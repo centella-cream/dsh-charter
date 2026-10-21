@@ -13,8 +13,8 @@
 - [调研记录](../research/charter-research.zh.md)
 
 实现状态：MVP Host、纯内核、JSON storage 组合、Remote contract 和主对话页标签页 Client 已完成实现并通过版本矩阵
-验证。当前 `npm run typecheck`、`npm test`、`npm run build` 均通过（78 个测试）；同一源码在 DSH
-`0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-rc.1`、`0.2.1-rc.2` 上分别通过 typecheck、build 和 78 个测试。
+验证。当前 `npm run typecheck`、`npm test`、`npm run build` 均通过（90 个测试）；同一源码在 DSH
+`0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-rc.1`、`0.2.1-rc.2` 上分别通过 typecheck、build 和 90 个测试。
 真实 profile 的 tarball 安装、配置组合、Web 启动、boot graph 和客户端 bundle HTTP 已通过；DSH `0.2.0-rc.2`
 Web profile 上已用真实 Chrome 验证「对话」「轨迹」「会话契约」标签顺序、目标编辑、预览、Apply 和刷新持久化。
 完整 compaction 端到端仍需在目标 profile 手工执行。兼容边界与降级见
@@ -58,7 +58,7 @@ MVP 只包含：
 - 主对话页顶部「会话契约」标签页编辑面；
 - 一个原子写 Remote；
 - 一个按 Session 授权的 snapshot stream；
-- 从已有 Session 最近一次压缩摘要生成只读草案的 bootstrap 流程；
+- 从已有 Session 最近一次可用压缩摘要（必要时回退到更旧的可用摘要）生成只读草案的 bootstrap 流程；
 - 一个只读 `charter_read` 工具；
 - user-role runtime context 注入；
 - revision 冲突、幂等重试、配额和生命周期隔离。
@@ -376,6 +376,12 @@ interface CharterEditRequest {
 客户端新增条目使用临时 `clientRef`；Host 铸造正式 item id，并在成功结果中返回映射。actor、revision、
 时间和 origin 都由 Host 填充，不能相信客户端字段。
 
+操作集合：`objective.initialize`、`objective.redirect`、`item.add`、`item.propose`、`item.edit`、
+`item.accept` / `item.reject`、`item.supersede`、`item.archive` / `item.restore`、`item.purge`
+（owner-only）、`item.verification.set`、`deliverable.progress`。其中 `item.propose` 只由历史草案溢出路径产生，并通过同一个 `charter.edit` 请求提交，保证导入的原子性；
+它不是模型可见的写工具。Host 与 `item.add` 一样从 `clientRef` 铸造 id，条目始终为 pending、origin 为
+agent，进入 prompt 前必须显式 accept。
+
 ### 7.2 Actor 策略
 
 - `owner`：所有操作，包括不可逆的 `item.purge`；
@@ -634,8 +640,9 @@ Remote 只做身份、授权和协议适配，全部领域校验走同一 core c
 跳过损坏或空摘要，不设置隐藏的候选数量上限。它不调用模型，也不写入 storage。
 
 结果是**仅供审阅的草案**，带摘要 seq、时间和 shadowed token 数。UI 在草稿面板中展示；用户可以编辑文本、
-取消勾选，再点击应用。应用会把审阅后的字段映射为普通的原子 `objective.initialize` / `item.add` 操作，
-origin 为 user，因此在用户确认前不会进入 prompt。没有压缩摘要的新 Session 仍显示普通空状态；非 live
+取消勾选，再点击应用。应用会把审阅后的字段合并为一次原子编辑：装得进上下文预算的候选成为 `item.add`（origin 为 user、
+accepted），装不下的候选成为 `item.propose`（始终 pending、origin 为 agent）。两类候选都由 Host 铸造
+id，不会被丢弃；pending 提案只有在 accept 后才进入 prompt。没有压缩摘要的新 Session 仍显示普通空状态；非 live
 Session 不提供 bootstrap。
 
 该确定性解析器优先考虑成本与隐私，不承诺语义完美。摘要中的陈旧或噪声条目可能进入草案，因此必须人工审阅。
@@ -929,9 +936,10 @@ scripts/
 3. baseline 读取窗口内发生写入时，不丢最新 revision；重复 revision 可去重。
 4. conflict 后草稿不丢，UI 展示服务端最新 revision。
 5. 标签页组件抛错或挂载失败时，Host service、Session 和设置仍可用。
-6. view binding 卸载时释放对应 client source；旧的 detach 不能覆盖新的 attach 状态。
-6. 360px 容器与移动全屏可完成新增、编辑和 Apply。
-7. 键盘可达、焦点恢复、状态不只靠颜色表达。
+6. view binding 持有实例绑定的 source lease；多个 binding 共享同一 source，只有最后一个 lease 释放时才
+   dispose；旧的 detach 不能覆盖新的 attach 状态。
+7. 360px 容器与移动全屏可完成新增、编辑和 Apply。
+8. 键盘可达、焦点恢复、状态不只靠颜色表达。
 
 ### 15.5 生命周期与兼容
 

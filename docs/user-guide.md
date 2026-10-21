@@ -252,7 +252,10 @@ is unavailable the Host injects no context and the UI shows an explicit state.
 4. Ask the model to call `charter_read` (or ask "what is the current charter?"); confirm standing content is
    visible.
 5. Confirm Host logs contain no `charter:` errors.
-6. Restart DSH, reopen the same Session, and confirm the revision and body are unchanged.
+6. For transcript-level evidence, run `npm run verify:compaction` after the first post-compaction message. It
+   compares the persisted runtime-context snapshot with the storage authority (see the verification record,
+   section 8).
+7. Restart DSH, reopen the same Session, and confirm the revision and body are unchanged.
 
 Re-materialization after compaction is performed by DSH's runtime-context projection. The plugin guarantees
 that every assembly reads the storage authority and that the UI preview uses the same renderer.

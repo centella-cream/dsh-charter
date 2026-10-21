@@ -243,7 +243,7 @@ truncated, or silently dropped.
 | `0.2.2-rc.x`, `0.3.x` | Not declared until verified |
 
 "Supported" means typecheck, build, tests, and Remote/client smoke for that version. Interactive Web UI was
-exercised on `0.2.0-rc.2`; other versions are API/build verified. Real-model compaction end-to-end is still open.
+exercised on `0.2.0-rc.2`; other versions are API/build verified. Real-model compaction end-to-end is a documented manual check (`npm run verify:compaction`, section 8 of the verification record); its live run is still pending.
 The full matrix and degradation notes are in the [compatibility document](docs/design/compatibility.md).
 `0.1.7`/`0.2.0` have no per-Peer Remote resource authorization; use them only in a trusted single-operator
 environment.
@@ -266,10 +266,11 @@ npm run typecheck        # strict TS
 npm test                 # build + Vitest
 npm run build            # Host ESM + single-file browser bundle + smoke
 npm run check            # typecheck + test
+npm run verify:compaction # manual real-model compaction check (not part of check)
 ```
 
 The test suite covers the pure core, real Host composition, storage-domain behavior, Remote framing,
-history extraction, client state, and factory-bundle registration. Current matrix: **78 tests on DSH `0.1.7-rc.2`, `0.2.0-rc.1`/`rc.2`, and `0.2.1-rc.1`/`rc.2`**. See the [verification record](docs/verification.md) for commands and evidence.
+history extraction, client state, and factory-bundle registration. Current matrix: **90 tests on DSH `0.1.7-rc.2`, `0.2.0-rc.1`/`rc.2`, and `0.2.1-rc.1`/`rc.2`**. See the [verification record](docs/verification.md) for commands and evidence.
 
 ## Acknowledgements
 
@@ -305,7 +306,8 @@ security reports, follow [SECURITY.md](SECURITY.md).
 
 Pre-1.0. The DSH plugin ABI is still moving; compatibility is tested against the versions above, and the design
 keeps the compatibility layer deliberately small. The full compaction end-to-end still requires a real-model
-Session; the parser/Host/Remote paths are covered by automated tests.
+Session; `npm run verify:compaction` is the manual acceptance check, and the parser/Host/Remote paths are
+covered by automated tests.
 
 ## License
 
