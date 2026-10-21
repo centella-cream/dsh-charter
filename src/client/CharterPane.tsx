@@ -25,6 +25,8 @@ type CharterText = TranslateNS<typeof CHARTER_LOCALE_NS>
 
 export interface CharterPaneInjected {
   readonly source: CharterSource
+  /** Release the per-Session source when this view binding unmounts. */
+  readonly release: () => void
 }
 
 type CharterPaneProps = PropsRuntime<'conversation.view'>
@@ -262,6 +264,8 @@ function ItemRow({
             {item.lifecycle === 'archived' && <StatusTag>{t('tag.archived')}</StatusTag>}
             {item.lifecycle === 'superseded' && <StatusTag>{t('tag.superseded')}</StatusTag>}
             {item.verification.state === 'verified' && <StatusTag tone="success">{t('tag.verified')}</StatusTag>}
+            {item.verification.state === 'failed' && <StatusTag tone="danger">{t('tag.verificationFailed')}</StatusTag>}
+            {item.verification.state === 'unavailable' && <StatusTag tone="warning">{t('tag.verificationUnavailable')}</StatusTag>}
             <span className="charter-item__bytes">{formatBytes(utf8Bytes(item.text))}</span>
           </div>
         </div>
@@ -345,7 +349,7 @@ function ItemRow({
   )
 }
 
-export function CharterPane({ sessionId, source, t }: CharterPaneProps) {
+export function CharterPane({ sessionId, source, release, t }: CharterPaneProps) {
   const state = useSyncExternalStore(source.subscribe, source.getSnapshot, source.getSnapshot)
   const view = state.view
   const [ops, setOps] = useState<CharterOp[]>([])
@@ -360,14 +364,19 @@ export function CharterPane({ sessionId, source, t }: CharterPaneProps) {
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [bootstrap, setBootstrap] = useState<CharterBootstrapProposal | null>(null)
-  const [bootstrapState, setBootstrapState] = useState<'idle' | 'loading' | 'ready' | 'dismissed'>('idle')
+  const [bootstrapState, setBootstrapState] = useState<'idle' | 'loading' | 'ready' | 'dismissed' | 'error'>('idle')
+  const [bootstrapAttempt, setBootstrapAttempt] = useState(0)
   const [bootstrapObjective, setBootstrapObjective] = useState('')
   const [bootstrapItems, setBootstrapItems] = useState<BootstrapDraftItem[]>([])
   const [bootstrapError, setBootstrapError] = useState<string | null>(null)
   const [bootstrapSaving, setBootstrapSaving] = useState(false)
   const bootstrapRequested = useRef(false)
+  const bootstrapGeneration = useRef(0)
+  const releases = useRef(new Map<string, () => void>())
+  releases.current.set(sessionId, release)
 
   useEffect(() => {
+    bootstrapGeneration.current += 1
     bootstrapRequested.current = false
     setBootstrap(null)
     setBootstrapState('idle')
@@ -375,6 +384,15 @@ export function CharterPane({ sessionId, source, t }: CharterPaneProps) {
     setBootstrapItems([])
     setBootstrapError(null)
     setSection('overview')
+  }, [sessionId])
+
+  useEffect(() => {
+    const releasedSession = sessionId
+    return () => {
+      bootstrapGeneration.current += 1
+      releases.current.get(releasedSession)?.()
+      releases.current.delete(releasedSession)
+    }
   }, [sessionId])
 
   useEffect(() => {
@@ -390,7 +408,7 @@ export function CharterPane({ sessionId, source, t }: CharterPaneProps) {
   }, [bootstrap])
 
   useEffect(() => {
-    if (section === 'history' && bootstrap === null && bootstrapState !== 'loading') {
+    if (section === 'history' && bootstrap === null && bootstrapState !== 'loading' && bootstrapState !== 'error') {
       setSection('overview')
     }
   }, [section, bootstrap, bootstrapState])
@@ -399,12 +417,30 @@ export function CharterPane({ sessionId, source, t }: CharterPaneProps) {
     if (bootstrapRequested.current) return
     if (state.status !== 'ready' || view === null || view.status !== 'ready') return
     if (view.objective !== null || view.items.length > 0 || ops.length > 0) return
+    const generation = bootstrapGeneration.current
+    const requestedSession = sessionId
+    const requestedRevision = view.revision
     bootstrapRequested.current = true
     setBootstrapState('loading')
+    setBootstrapError(null)
     void source.bootstrap()
       .then(result => {
+        if (generation !== bootstrapGeneration.current || requestedSession !== sessionId) return
         if (!result.available) {
           setBootstrapState('idle')
+          return
+        }
+        const current = source.getSnapshot()
+        const changed = current.status !== 'ready'
+          || current.view === null
+          || current.view.status !== 'ready'
+          || current.view.revision !== requestedRevision
+          || current.view.objective !== null
+          || current.view.items.length > 0
+        if (changed) {
+          bootstrapRequested.current = false
+          setBootstrapState('error')
+          setBootstrapError(t('bootstrap.stale'))
           return
         }
         setBootstrap(result.proposal)
@@ -426,10 +462,21 @@ export function CharterPane({ sessionId, source, t }: CharterPaneProps) {
         setBootstrapState('ready')
       })
       .catch(error => {
+        if (generation !== bootstrapGeneration.current || requestedSession !== sessionId) return
         console.error('charter: bootstrap request failed', error)
-        setBootstrapState('idle')
+        bootstrapRequested.current = false
+        setBootstrapState('error')
+        setBootstrapError(t('bootstrap.error'))
       })
-  }, [state.status, view, ops.length, source])
+  }, [state.status, view, ops.length, source, sessionId, bootstrapAttempt, t])
+
+  const retryBootstrap = (): void => {
+    if (bootstrapState === 'loading') return
+    bootstrapRequested.current = false
+    setBootstrapError(null)
+    setBootstrapState('idle')
+    setBootstrapAttempt(current => current + 1)
+  }
 
   const queue = (op: CharterOp): void => {
     if (view === null || view.status !== 'ready' || saving) return
@@ -672,7 +719,7 @@ export function CharterPane({ sessionId, source, t }: CharterPaneProps) {
     { id: 'objective', label: t('nav.objective'), dot: view.objective !== null },
     { id: 'invariants', label: t('nav.invariants'), badge: invariants.length },
     { id: 'deliverables', label: t('nav.deliverables'), badge: deliverables.length },
-    ...(bootstrap !== null || bootstrapState === 'loading'
+    ...(bootstrap !== null || bootstrapState === 'loading' || bootstrapState === 'error'
       ? [{
           id: 'history' as const,
           label: t('nav.history'),
@@ -790,7 +837,7 @@ export function CharterPane({ sessionId, source, t }: CharterPaneProps) {
                 )}
 
                 {view.objective === null && view.items.length === 0
-                  && bootstrap === null && bootstrapState !== 'loading' && (
+                  && bootstrap === null && bootstrapState !== 'loading' && bootstrapState !== 'error' && (
                   <section className="charter-empty-state" role="note">
                     <span className="charter-kicker">{t('empty.kicker')}</span>
                     <h3>{t('empty.title')}</h3>
@@ -1046,6 +1093,12 @@ export function CharterPane({ sessionId, source, t }: CharterPaneProps) {
               <>
                 {bootstrapState === 'loading' && (
                   <div className="charter-notice" role="status">{t('bootstrap.loading')}</div>
+                )}
+                {bootstrapState === 'error' && bootstrap === null && (
+                  <div className="charter-notice charter-notice--danger" role="alert">
+                    <span>{bootstrapError ?? t('bootstrap.error')}</span>
+                    <ActionButton onClick={retryBootstrap}>{t('button.retry')}</ActionButton>
+                  </div>
                 )}
                 {bootstrap !== null && (ops.length > 0 || editor !== null) && (
                   <div className="charter-notice charter-notice--warning" role="status">

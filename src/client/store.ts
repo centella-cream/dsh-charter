@@ -123,9 +123,11 @@ export class CharterSessionSource implements CharterSource {
 
   detach(remote: CharterRemote): void {
     if (this.remote !== remote) return
-    this.attachGeneration += 1
+    const generation = ++this.attachGeneration
     this.remote = undefined
     void this.stop().finally(() => {
+      // A later attach owns the state after this detach.
+      if (generation !== this.attachGeneration) return
       this.publish({ ...this.state, status: 'error', error: 'Charter connection is unavailable.' })
     })
   }
@@ -177,6 +179,14 @@ export class CharterClientController {
       if (this.remote !== undefined) source.attach(this.remote)
     }
     return source
+  }
+
+  /** Release a Session source when its view binding unmounts. */
+  release(sessionId: SessionId): void {
+    const source = this.sources.get(sessionId)
+    if (source === undefined) return
+    this.sources.delete(sessionId)
+    void source.dispose()
   }
 
   attach(remote: CharterRemote): void {

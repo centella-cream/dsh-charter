@@ -85,6 +85,25 @@ describe('bootstrapFromEvents', () => {
     expect(extraction?.source).toEqual({ summarySeq: 8, at: 200 })
   })
 
+  it('falls back to an older summary when the newest one yields no usable candidates', () => {
+    const extraction = bootstrapFromEvents([
+      {
+        type: 'compaction/summary',
+        seq: 1,
+        time: 1,
+        data: { summary: [{ type: 'text', text: '## Primary Request and Intent\n- Original: "Older usable objective."\n' }] },
+      },
+      {
+        type: 'compaction/summary',
+        seq: 2,
+        time: 2,
+        data: { summary: [{ type: 'text', text: '## Other\n' }] },
+      },
+    ], limits)
+    expect(extraction?.draft.objective).toBe('Older usable objective.')
+    expect(extraction?.source.summarySeq).toBe(1)
+  })
+
   it('skips malformed and empty summaries', () => {
     const extraction = bootstrapFromEvents([
       { type: 'compaction/summary', seq: 1, time: 1, data: { summary: [] } },

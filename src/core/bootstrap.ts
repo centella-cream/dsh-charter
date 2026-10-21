@@ -257,7 +257,7 @@ export function bootstrapFromEvents(
     const text = parsed.data.summary.map(part => part.text).join('\n').trim()
     if (text.length === 0) continue
     const draft = bootstrapFromSummary(text, limits)
-    if (draft.objective === null && draft.invariants.length === 0 && draft.deliverables.length === 0) return undefined
+    if (draft.objective === null && draft.invariants.length === 0 && draft.deliverables.length === 0) continue
     return {
       draft,
       source: {
