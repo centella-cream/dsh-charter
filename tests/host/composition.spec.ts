@@ -167,6 +167,64 @@ describe('dsh-charter host composition', () => {
     expect(service.view(session).items).toHaveLength(0)
   })
 
+  it('commits active items and history proposals in one atomic edit', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-proposals-'))
+    roots.push(root)
+    const ctx = await mount(root)
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('proposals'), {
+      meta: { cwd: root, createdAt: 1_700_000_000_900 },
+    })
+    await waitForReady(service, session)
+
+    const result = await service.edit({
+      sessionId: session.id,
+      mutationId: 'mixed-propose',
+      baseRevision: 0,
+      ops: [
+        { type: 'item.add', item: { clientRef: 'active', kind: 'invariant', text: 'Active constraint', order: 1 } },
+        {
+          type: 'item.add',
+          item: {
+            clientRef: 'deliverable',
+            kind: 'deliverable',
+            text: 'Active deliverable',
+            order: 2,
+            progress: 'not-started',
+          },
+        },
+        {
+          type: 'item.propose',
+          item: { clientRef: 'pending', kind: 'invariant', text: 'Deferred proposal', order: 3 },
+        },
+      ],
+    })
+    expect(result).toMatchObject({ ok: true, committedRevision: 1 })
+    if (!result.ok) throw new Error('expected the mixed batch to commit')
+    expect(result.ids['active']).toBeDefined()
+    expect(result.ids['deliverable']).toBeDefined()
+    expect(result.ids['pending']).toBeDefined()
+    expect(new Set(Object.values(result.ids)).size).toBe(3)
+
+    const view = service.view(session)
+    expect(view.revision).toBe(1)
+    expect(view.items).toHaveLength(3)
+    expect(view.items.find(item => item.text === 'Active constraint')).toMatchObject({
+      review: 'accepted',
+      origin: 'user',
+    })
+    expect(view.items.find(item => item.text === 'Deferred proposal')).toMatchObject({
+      review: 'pending',
+      lifecycle: 'current',
+      origin: 'agent',
+    })
+    expect(view.promptText).toContain('Active constraint')
+    expect(view.promptText).toContain('Active deliverable')
+    expect(view.promptText).not.toContain('Deferred proposal')
+    expect(view.promptDigest).toMatch(/^sha256:/u)
+    await new Promise(resolve => setTimeout(resolve, 10))
+  })
+
   it('reopens the same durable record only for the matching Session lifecycle', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-charter-reopen-'))
     roots.push(root)

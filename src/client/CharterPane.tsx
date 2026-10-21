@@ -18,7 +18,7 @@ import type { CharterBootstrapProposal, CharterView } from '../host/types.js'
 import type { CharterSource } from './store.js'
 import { CHARTER_LOCALE_NS, type CharterLocaleKey } from './locales.js'
 import { displayItems, previewPrompt } from './preview.js'
-import { buildBootstrapPlan, type BootstrapDraftItem } from './bootstrap-plan.js'
+import { buildBootstrapPlan, classifyBootstrapOutcome, type BootstrapDraftItem } from './bootstrap-plan.js'
 import './charter.css'
 
 type CharterText = TranslateNS<typeof CHARTER_LOCALE_NS>
@@ -57,6 +57,17 @@ function utf8Bytes(value: string): number {
 
 function formatBytes(bytes: number): string {
   return bytes < 1_024 ? `${bytes} B` : `${(bytes / 1_024).toFixed(bytes < 10_240 ? 1 : 0)} KiB`
+}
+
+function unavailableBootstrapMessage(
+  reason: 'not-live' | 'no-summary' | 'unavailable',
+  message: string | undefined,
+  t: CharterText,
+): string {
+  if (reason === 'not-live') return t('bootstrap.notLive')
+  if (reason === 'no-summary') return t('bootstrap.noSummary')
+  const detail = message?.trim() ?? ''
+  return detail.length > 0 ? detail : t('bootstrap.unavailable')
 }
 
 function progressLabel(progress: DeliverableProgress, t: CharterText): string {
@@ -364,7 +375,9 @@ export function CharterPane({ sessionId, source, release, t }: CharterPaneProps)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [bootstrap, setBootstrap] = useState<CharterBootstrapProposal | null>(null)
-  const [bootstrapState, setBootstrapState] = useState<'idle' | 'loading' | 'ready' | 'dismissed' | 'error'>('idle')
+  const [bootstrapState, setBootstrapState] = useState<
+    'idle' | 'loading' | 'ready' | 'dismissed' | 'error' | 'empty'
+  >('idle')
   const [bootstrapAttempt, setBootstrapAttempt] = useState(0)
   const [bootstrapObjective, setBootstrapObjective] = useState('')
   const [bootstrapItems, setBootstrapItems] = useState<BootstrapDraftItem[]>([])
@@ -372,8 +385,11 @@ export function CharterPane({ sessionId, source, release, t }: CharterPaneProps)
   const [bootstrapSaving, setBootstrapSaving] = useState(false)
   const bootstrapRequested = useRef(false)
   const bootstrapGeneration = useRef(0)
-  const releases = useRef(new Map<string, () => void>())
-  releases.current.set(sessionId, release)
+  const stagedOps = useRef(0)
+
+  useEffect(() => {
+    stagedOps.current = ops.length
+  }, [ops.length])
 
   useEffect(() => {
     bootstrapGeneration.current += 1
@@ -386,14 +402,11 @@ export function CharterPane({ sessionId, source, release, t }: CharterPaneProps)
     setSection('overview')
   }, [sessionId])
 
-  useEffect(() => {
-    const releasedSession = sessionId
-    return () => {
-      bootstrapGeneration.current += 1
-      releases.current.get(releasedSession)?.()
-      releases.current.delete(releasedSession)
-    }
-  }, [sessionId])
+  useEffect(() => () => {
+    // The lease is instance-bound: releasing it is idempotent and a shared
+    // Session is only disposed after the last view binding is gone.
+    release()
+  }, [release])
 
   useEffect(() => {
     if (view === null) return
@@ -408,7 +421,11 @@ export function CharterPane({ sessionId, source, release, t }: CharterPaneProps)
   }, [bootstrap])
 
   useEffect(() => {
-    if (section === 'history' && bootstrap === null && bootstrapState !== 'loading' && bootstrapState !== 'error') {
+    if (section === 'history'
+      && bootstrap === null
+      && bootstrapState !== 'loading'
+      && bootstrapState !== 'error'
+      && bootstrapState !== 'empty') {
       setSection('overview')
     }
   }, [section, bootstrap, bootstrapState])
@@ -426,33 +443,50 @@ export function CharterPane({ sessionId, source, release, t }: CharterPaneProps)
     void source.bootstrap()
       .then(result => {
         if (generation !== bootstrapGeneration.current || requestedSession !== sessionId) return
-        if (!result.available) {
-          setBootstrapState('idle')
+        const outcome = classifyBootstrapOutcome(
+          result,
+          source.getSnapshot(),
+          requestedRevision,
+          stagedOps.current,
+        )
+        if (outcome.kind === 'discard') {
+          // The user committed a charter or started editing while the draft was
+          // in flight: drop it instead of surfacing a stale error.
+          bootstrapRequested.current = false
+          setBootstrapState('dismissed')
           return
         }
-        const current = source.getSnapshot()
-        const changed = current.status !== 'ready'
-          || current.view === null
-          || current.view.status !== 'ready'
-          || current.view.revision !== requestedRevision
-          || current.view.objective !== null
-          || current.view.items.length > 0
-        if (changed) {
+        if (outcome.kind === 'stale') {
           bootstrapRequested.current = false
           setBootstrapState('error')
           setBootstrapError(t('bootstrap.stale'))
           return
         }
-        setBootstrap(result.proposal)
-        setBootstrapObjective(result.proposal.objective ?? '')
+        if (outcome.kind === 'unavailable') {
+          // A later view/lifecycle change may ask again in every case. Storage
+          // failure is actionable and gets a visible Retry; "not live yet" and
+          // "no summary yet" are expected states and stay quiet.
+          bootstrapRequested.current = false
+          if (outcome.reason === 'unavailable') {
+            setBootstrapState('empty')
+            setBootstrapError(unavailableBootstrapMessage(outcome.reason, outcome.message, t))
+          } else {
+            setBootstrapState('idle')
+            setBootstrapError(null)
+          }
+          return
+        }
+        const proposal = outcome.proposal
+        setBootstrap(proposal)
+        setBootstrapObjective(proposal.objective ?? '')
         setBootstrapItems([
-          ...result.proposal.invariants.map((text, index) => ({
+          ...proposal.invariants.map((text, index) => ({
             id: `inv-${index}`,
             kind: 'invariant' as const,
             text,
             selected: true,
           })),
-          ...result.proposal.deliverables.map((text, index) => ({
+          ...proposal.deliverables.map((text, index) => ({
             id: `del-${index}`,
             kind: 'deliverable' as const,
             text,
@@ -720,6 +754,7 @@ export function CharterPane({ sessionId, source, release, t }: CharterPaneProps)
     { id: 'invariants', label: t('nav.invariants'), badge: invariants.length },
     { id: 'deliverables', label: t('nav.deliverables'), badge: deliverables.length },
     ...(bootstrap !== null || bootstrapState === 'loading' || bootstrapState === 'error'
+      || bootstrapState === 'empty'
       ? [{
           id: 'history' as const,
           label: t('nav.history'),
@@ -1097,6 +1132,12 @@ export function CharterPane({ sessionId, source, release, t }: CharterPaneProps)
                 {bootstrapState === 'error' && bootstrap === null && (
                   <div className="charter-notice charter-notice--danger" role="alert">
                     <span>{bootstrapError ?? t('bootstrap.error')}</span>
+                    <ActionButton onClick={retryBootstrap}>{t('button.retry')}</ActionButton>
+                  </div>
+                )}
+                {bootstrapState === 'empty' && bootstrap === null && (
+                  <div className="charter-notice" role="status">
+                    <span>{bootstrapError ?? t('bootstrap.noSummary')}</span>
                     <ActionButton onClick={retryBootstrap}>{t('button.retry')}</ActionButton>
                   </div>
                 )}

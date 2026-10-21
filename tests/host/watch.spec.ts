@@ -122,6 +122,18 @@ describe('Remote decorator compatibility', () => {
     expect(calls).toEqual([{ mode: 'stream', resources: { session: expect.any(Function) } }])
   })
 
+  it('records whether the runtime enforces resource scopes', () => {
+    const modernCapabilities = { resourceScopes: undefined as boolean | undefined }
+    const modern = (): (() => void) => () => undefined
+    createRemoteMethodFactory(modern, modernCapabilities)({ resources: { session: () => 's' } })
+    expect(modernCapabilities.resourceScopes).toBe(true)
+
+    const legacyCapabilities = { resourceScopes: undefined as boolean | undefined }
+    const legacy = (): (() => void) => { throw new TypeError('legacy rejects resources') }
+    createRemoteMethodFactory(legacy, legacyCapabilities)({ resources: { session: () => 's' } })
+    expect(legacyCapabilities.resourceScopes).toBe(false)
+  })
+
   it('falls back to the 0.2.0 stream and direct forms', () => {
     const calls: unknown[] = []
     const legacy = (methodOrOptions: unknown, context?: unknown): undefined | (() => void) => {
