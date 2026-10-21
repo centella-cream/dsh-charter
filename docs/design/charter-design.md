@@ -247,8 +247,9 @@ Session becomes live in the current Host.
 - `objective.initialize`
 - `objective.redirect`
 - `item.add`
-- `item.propose` (host-internal history import: always creates a pending proposal; same `clientRef`/id
-  minting as `item.add`, never enters the model context until accepted)
+- `item.propose` (client history-import operation within `charter.edit`: always creates a pending proposal;
+  same `clientRef`/id minting as `item.add`; never enters the model context until accepted; counts toward
+  `maxPendingItems`)
 - `item.edit`
 - `item.accept` / `item.reject`
 - `item.supersede`
@@ -258,9 +259,10 @@ Session becomes live in the current Host.
 - `deliverable.progress`
 
 A batch contains 1..`maxOps` operations. Every operation is validated against a draft copy; the entire batch is
-rejected on any failure. `item.propose` is produced only by the history-draft overflow path and travels in the same
-`charter.edit` request so the import is atomic. It is not exposed as a model tool. The Host mints its item id
-from `clientRef` exactly like `item.add`, and the same actor policy applies.
+rejected on any failure. `item.propose` is emitted by the reviewed history-draft import and travels in the same `charter.edit` request
+so the import is atomic. Any authorized client may send it in an ordinary edit; the same actor policy applies
+and pending proposals count against `maxPendingItems`. It is not exposed as a model-facing write tool, and it is
+not a privilege escalation: pending items never enter the prompt until accepted.
 
 ### 7.2 Actor policy
 
@@ -461,6 +463,10 @@ Default limits:
 | Recent history | 64 receipts or 128 KiB |
 | Recent mutation receipts | 128 |
 
+`charter_read` returns the complete standing working set (objective plus every accepted/current item; bounded by
+the record quotas). Its `all` debugging view is paged to at most 64 items / 32 KiB and reports the omitted count
+in `truncated`.
+
 The only model-visible capacity is the final prompt byte budget. Active item counts are not capped separately;
 `maxItems`, `maxPendingItems`, `maxOps`, and `maxRecordBytes` remain storage/batch bounds. An over-limit edit
 is rejected as a whole.
@@ -524,7 +530,7 @@ uninstall smoke; fault injection and side-by-side domain migration remain open.
 
 Current evidence:
 
-- 90 tests across 13 core, host, and client test files;
+- 95 tests across 14 core, host, and client test files;
 - Typecheck, build, and tests pass on DSH `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-rc.1`, and
   `0.2.1-rc.2`;
 - Real profile install/boot on `0.1.7-rc.2` and `0.2.0-rc.2`;

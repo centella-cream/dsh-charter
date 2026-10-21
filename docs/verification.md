@@ -2,7 +2,7 @@
 
 English | [中文](verification.zh.md)
 
-Verification date: 2026-10-20; re-run after the second readiness review: 2026-10-21.
+Verification date: 2026-10-20; re-run after the second and third readiness reviews: 2026-10-21.
 Environment: macOS, Node `v22.23.1`, npm `12.0.2`, pnpm `12.3.4`; current Desktop runtime DSH `0.2.0-rc.2`.
 Local development dependency baseline: DSH `0.2.1-rc.2`.
 
@@ -14,7 +14,7 @@ HTML live under `.tmp/` and are excluded from the published package.
 | Item | Result |
 | --- | --- |
 | Strict TypeScript check (5 DSH versions) | Pass |
-| Vitest (5 locally available versions × 90 tests) | Pass |
+| Vitest (5 locally available versions × 95 tests) | Pass |
 | Host ESM build + browser single-file bundle | Pass |
 | Remote decorator/resource smoke | Pass (0.1.7/0.2.0 have no resource declaration, as expected) |
 | Browser factory-bundle materialization and `apply` smoke | Pass |
@@ -36,7 +36,7 @@ Results:
 
 - typecheck passes;
 - build passes;
-- 13 test files, 90 tests pass;
+- 14 test files, 95 tests pass;
 - `remote-smoke` asserts `watch,bootstrap,edit`, stream mode, and Session resource;
 - `client-smoke` asserts the single-file factory bundle, external-dependency allowlist, no Node-only `Buffer`
   reference, and `apply` registering the tab/pane/Remote contribution.
@@ -52,12 +52,13 @@ Key test files:
 | `tests/core/state.spec.ts` | supersede chain must point at a current successor |
 | `tests/core/fork.spec.ts` | fork id re-minting and supersede remapping |
 | `tests/core/bootstrap.spec.ts` | section extraction, latest objective, UTF-8 split/no truncation, latest/broken summary, fallback to an older usable summary |
-| `tests/host/composition.spec.ts` | real Cordis/Storage/SystemPrompt/Tools composition, user-role boundary, actor policy, mixed `item.add` + `item.propose` atomic Apply, fork, idempotency, quota, parent-cycle rejection, lifecycle, non-live stored view + live upgrade, draft from a real `compaction/summary` event, bounded `charter_read` |
+| `tests/host/composition.spec.ts` | real Cordis/Storage/SystemPrompt/Tools composition, user-role boundary, actor policy, mixed `item.add` + `item.propose` atomic Apply, user-actor proposals, complete standing view vs bounded `all`, fork, idempotency, quota, parent-cycle rejection, lifecycle, non-live stored view + live upgrade, draft from a real `compaction/summary` event |
 | `tests/host/watch.spec.ts` | opening snapshot, race, dedupe, abort, decorator compatibility, resource-scope capability detection |
 | `tests/host/actor.spec.ts` | principal-aware policy: modern missing-principal denial, legacy-only owner fallback, non-owner recording, generation-aware `resolveRemoteActor` |
-| `tests/host/remote.spec.ts` | Remote descriptor, wire schema, and a legacy Host view snapshot |
-| `tests/client/store.spec.ts` | accept committed view immediately, ignore stale/duplicate revisions, shared source lease/ref count, stale-lease no-op, foreign-Session stream frames ignored |
+| `tests/host/remote.spec.ts` | Remote descriptor, wire schema, legacy Host view snapshot, zero pending limit |
+| `tests/client/store.spec.ts` | accept committed view immediately, ignore stale/duplicate revisions, monotonic opening snapshot, shared source lease/ref count, stale-lease no-op, foreign-Session stream frames ignored |
 | `tests/client/bootstrap-plan.spec.ts` | overflow candidates stay in one plan; active prefix fits the byte budget; bootstrap outcome classifier (draft/discard/stale/unavailable) |
+| `tests/client/draft.spec.ts` | a staged draft is bound to its Session; Session A ops never build a request for Session B |
 
 ## 3. Cross-version matrix
 
@@ -84,11 +85,11 @@ Results:
 
 | Version | typecheck | build | Vitest | remote smoke | client smoke |
 | --- | --- | --- | --- | --- | --- |
-| `0.1.7-rc.2` | Pass | Pass | 90/90 | Pass (no-resources warning) | Pass |
-| `0.2.0-rc.1` | Pass | Pass | 90/90 | Pass (no-resources warning) | Pass |
-| `0.2.0-rc.2` | Pass | Pass | 90/90 | Pass (no-resources warning) | Pass |
-| `0.2.1-rc.1` | Pass | Pass | 90/90 | Pass | Pass |
-| `0.2.1-rc.2` | Pass | Pass | 90/90 | Pass | Pass |
+| `0.1.7-rc.2` | Pass | Pass | 95/95 | Pass (no-resources warning) | Pass |
+| `0.2.0-rc.1` | Pass | Pass | 95/95 | Pass (no-resources warning) | Pass |
+| `0.2.0-rc.2` | Pass | Pass | 95/95 | Pass (no-resources warning) | Pass |
+| `0.2.1-rc.1` | Pass | Pass | 95/95 | Pass | Pass |
+| `0.2.1-rc.2` | Pass | Pass | 95/95 | Pass | Pass |
 
 `0.1.7-rc.2` and `0.2.0` remote smoke prints:
 
@@ -475,7 +476,9 @@ runs this check.
 
 ### 8.2 Manual acceptance check
 
-`npm run verify:compaction` is a developer tool: it is not part of `npm run check`, it is not included in the npm
+`npm run verify:compaction` is a transcript-evidence checker, not an automated end-to-end test: the runtime
+context assertion is exact byte/digest equality, while the system-prompt leak check is signal-based (prefix,
+rendered body, objective, long item text). It is not part of `npm run check`, it is not included in the npm
 package (`scripts/` is outside the `files` allowlist), it reads the local DSH transcript, and it needs the `zstd`
 binary. It supports the JSON storage backend layout
 `$DSH_HOME/storages/<domain>/sessions/<sessionId>.json`; pass `--store <file>` for another layout.

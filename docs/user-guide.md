@@ -124,7 +124,7 @@ summary keep the normal empty state.
 
 | Dimension | Values | Notes |
 | --- | --- | --- |
-| `review` | `pending` / `accepted` / `rejected` | user-created items are accepted; history-overflow imports are pending; model proposal entry is reserved and not exposed yet |
+| `review` | `pending` / `accepted` / `rejected` | user-created items are accepted; history-overflow imports and explicit client `item.propose` operations are pending; the model has no write tool |
 | `lifecycle` | `current` / `superseded` / `archived` | archived can be restored; superseded is not revived |
 | `verification` | `unchecked` / `verified` / `failed` / `unavailable` | independent of lifecycle |
 | `progress` | deliverable only | independent of verification |
@@ -148,8 +148,9 @@ can be purged. If a later item still references it, Purge is rejected; handle th
 
 ### 3.3 Read-only tool views
 
-`charter_read` defaults to `standing`. The `all` view is a **bounded debugging view**, not the current working
-set: it includes rejected, archived, and superseded items, returns at most 64 items / 32 KiB, and reports the
+`charter_read` defaults to `standing`, which returns the complete current working set (the objective plus every
+accepted/current item, bounded by the record quotas). The `all` view is a **bounded debugging view**, not the
+current working set: it includes rejected, archived, and superseded items, returns at most 64 items / 32 KiB, and reports the
 omitted count as `truncated`. It is not a substitute for the standing charter and should not be used
 routinely.
 
@@ -186,7 +187,7 @@ Defaults live in `cordis.patch.yml`. Override the same keys in the profile's `co
 | `maxObjectiveBytes` | 4096 | UTF-8 budget for the objective |
 | `maxItemBytes` | 1024 | per-item text budget |
 | `maxItems` | 512 | all-items storage limit |
-| `maxPendingItems` | 512 | pending-items limit |
+| `maxPendingItems` | 512 | pending-items limit; `0` disables new proposals |
 | `maxOps` | 1024 | operations per Apply |
 | `maxRecordBytes` | 1048576 | one Session record |
 | `historyLimit` | 64 | recent history receipts |
