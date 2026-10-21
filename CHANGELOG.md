@@ -43,8 +43,11 @@ Initial MVP.
   candidates are applied in one atomic edit as pending proposals (`item.propose`) instead of blocking the draft.
   No candidate is dropped or truncated. The per-kind active caps were removed; storage limits were raised to
   `maxItems` 512, `maxPendingItems` 512, `maxOps` 1024, and `maxRecordBytes` 1 MiB.
-- 70 tests across core, host composition, fork, idempotency, quota, prompt boundary, Remote stream, history
-  extraction, client reordering, and decorator compatibility. Verified on DSH `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`,
+- A newly built browser client now tolerates a view snapshot from an older Host that still exposes the legacy
+  active-count limit fields, preventing a blank Charter pane during a host/client revision skew; a full Host
+  restart is still required for the new pending-import semantics.
+- 71 tests across core, host composition, fork, idempotency, quota, prompt boundary, Remote stream, history
+  extraction, client reordering, compatibility, and decorator compatibility. Verified on DSH `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`,
   `0.2.1-rc.1`, and `0.2.1-rc.2`. The actual Web UI was exercised on `0.2.0-rc.2`: tab order, Chinese/English
   switching, objective and invariant editing, preview, Apply, and reload persistence.
 

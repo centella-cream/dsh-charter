@@ -14,7 +14,7 @@ HTML live under `.tmp/` and are excluded from the published package.
 | Item | Result |
 | --- | --- |
 | Strict TypeScript check (4 DSH versions) | Pass |
-| Vitest (4 locally available versions × 70 tests) | Pass |
+| Vitest (4 locally available versions × 71 tests) | Pass |
 | Host ESM build + browser single-file bundle | Pass |
 | Remote decorator/resource smoke | Pass (0.1.7/0.2.0 have no resource declaration, as expected) |
 | Browser factory-bundle materialization and `apply` smoke | Pass |
@@ -36,10 +36,10 @@ Results:
 
 - typecheck passes;
 - build passes;
-- 13 test files, 70 tests pass;
+- 13 test files, 71 tests pass;
 - `remote-smoke` asserts `watch,bootstrap,edit`, stream mode, and Session resource;
-- `client-smoke` asserts the single-file factory bundle, external-dependency allowlist, and `apply` registering
-  the tab/pane/Remote contribution.
+- `client-smoke` asserts the single-file factory bundle, external-dependency allowlist, no Node-only `Buffer`
+  reference, and `apply` registering the tab/pane/Remote contribution.
 
 Key test files:
 
@@ -55,7 +55,7 @@ Key test files:
 | `tests/host/composition.spec.ts` | real Cordis/Storage/SystemPrompt/Tools composition, user-role boundary, fork, idempotency, quota, lifecycle, non-live stored view + live upgrade, draft from a real `compaction/summary` event, `charter_read` |
 | `tests/host/watch.spec.ts` | opening snapshot, race, dedupe, abort, decorator compatibility |
 | `tests/host/actor.spec.ts` | 0.1.7/0.2.0 no-principal fallback, non-owner recording |
-| `tests/host/remote.spec.ts` | Remote descriptor and wire schema |
+| `tests/host/remote.spec.ts` | Remote descriptor, wire schema, and a legacy Host view snapshot |
 | `tests/client/store.spec.ts` | accept committed view immediately, ignore stale/duplicate revisions |
 | `tests/client/bootstrap-plan.spec.ts` | overflow candidates stay in one plan; active prefix fits the byte budget |
 
@@ -83,10 +83,10 @@ Results:
 
 | Version | typecheck | build | Vitest | remote smoke | client smoke |
 | --- | --- | --- | --- | --- | --- |
-| `0.1.7-rc.2` | Pass | Pass | 70/70 | Pass (no-resources warning) | Pass |
-| `0.2.0-rc.1` | Pass | Pass | 70/70 | Pass (no-resources warning) | Pass |
-| `0.2.0-rc.2` | Pass | Pass | 70/70 | Pass (no-resources warning) | Pass |
-| `0.2.1-rc.1` | Pass | Pass | 70/70 | Pass | Pass |
+| `0.1.7-rc.2` | Pass | Pass | 71/71 | Pass (no-resources warning) | Pass |
+| `0.2.0-rc.1` | Pass | Pass | 71/71 | Pass (no-resources warning) | Pass |
+| `0.2.0-rc.2` | Pass | Pass | 71/71 | Pass (no-resources warning) | Pass |
+| `0.2.1-rc.1` | Pass | Pass | 71/71 | Pass | Pass |
 
 `0.2.1-rc.2` was verified on an earlier revision; rerun the same matrix after the next release candidate is
 available locally.

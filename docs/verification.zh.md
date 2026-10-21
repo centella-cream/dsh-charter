@@ -13,7 +13,7 @@
 | 验证项 | 结果 |
 | --- | --- |
 | TypeScript 严格类型检查（4 个 DSH 版本） | 通过 |
-| Vitest（4 个本地可用版本 × 70 tests） | 通过 |
+| Vitest（4 个本地可用版本 × 71 tests） | 通过 |
 | Host ESM 构建 + 浏览器单文件 bundle | 通过 |
 | Remote 装饰器/资源 smoke | 通过（0.1.7/0.2.0 按预期无资源声明） |
 | 浏览器 factory bundle 物化与 `apply` smoke | 通过 |
@@ -37,7 +37,8 @@ npm test
 - build 通过；
 - `13` 个测试文件、`70` 个测试全部通过；
 - `remote-smoke` 断言 `watch,bootstrap,edit`、stream mode 和 Session resource；
-- `client-smoke` 断言单文件 factory bundle、外部依赖白名单、`apply` 注册 tab/pane/Remote contribution。
+- `client-smoke` 断言单文件 factory bundle、外部依赖白名单、不引用 Node-only `Buffer`、`apply` 注册
+  tab/pane/Remote contribution。
 
 关键测试文件：
 
@@ -53,7 +54,7 @@ npm test
 | `tests/host/composition.spec.ts` | 真实 Cordis/Storage/SystemPrompt/Tools 组合、user-role 边界、fork、幂等、配额、lifecycle、非 live Session 的只读 stored view 与 live 升级、从真实 `compaction/summary` 事件生成草案、`charter_read` |
 | `tests/host/watch.spec.ts` | opening snapshot、竞态、去重、abort、装饰器兼容 |
 | `tests/host/actor.spec.ts` | 0.1.7/0.2.0 无 principal 回退、非 owner 记录 |
-| `tests/host/remote.spec.ts` | Remote 描述符和 wire schema |
+| `tests/host/remote.spec.ts` | Remote 描述符、wire schema 和旧 Host view snapshot |
 | `tests/client/store.spec.ts` | 提交后立即接受 view、忽略陈旧/重复 revision |
 | `tests/client/bootstrap-plan.spec.ts` | 溢出候选仍在一个 plan 中；active 前缀符合字节预算 |
 
@@ -80,10 +81,10 @@ npm run build
 
 | 版本 | typecheck | build | Vitest | remote smoke | client smoke |
 | --- | --- | --- | --- | --- | --- |
-| `0.1.7-rc.2` | 通过 | 通过 | 70/70 | 通过（无 resources 警告） | 通过 |
-| `0.2.0-rc.1` | 通过 | 通过 | 70/70 | 通过（无 resources 警告） | 通过 |
-| `0.2.0-rc.2` | 通过 | 通过 | 70/70 | 通过（无 resources 警告） | 通过 |
-| `0.2.1-rc.1` | 通过 | 通过 | 70/70 | 通过 | 通过 |
+| `0.1.7-rc.2` | 通过 | 通过 | 71/71 | 通过（无 resources 警告） | 通过 |
+| `0.2.0-rc.1` | 通过 | 通过 | 71/71 | 通过（无 resources 警告） | 通过 |
+| `0.2.0-rc.2` | 通过 | 通过 | 71/71 | 通过（无 resources 警告） | 通过 |
+| `0.2.1-rc.1` | 通过 | 通过 | 71/71 | 通过 | 通过 |
 
 `0.2.1-rc.2` 在较早 revision 上验证过；本地可用后，下个 release candidate 再跑同一矩阵。
 

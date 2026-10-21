@@ -258,7 +258,7 @@ npm run check            # typecheck + test
 ```
 
 The test suite covers the pure core, real Host composition, storage-domain behavior, Remote framing,
-history extraction, client state, and factory-bundle registration. Current matrix: **70 tests on the locally verified DSH
+history extraction, client state, and factory-bundle registration. Current matrix: **71 tests on the locally verified DSH
 versions**. See the [verification record](docs/verification.md) for commands and evidence.
 
 ## Acknowledgements

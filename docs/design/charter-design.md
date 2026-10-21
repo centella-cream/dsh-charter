@@ -506,7 +506,7 @@ uninstall smoke; fault injection and side-by-side domain migration remain open.
 
 Current evidence:
 
-- 70 tests across 13 core, host, and client test files;
+- 71 tests across 13 core, host, and client test files;
 - Typecheck, build, and tests pass on DSH `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`, and `0.2.1-rc.1`;
 - Real profile install/boot on `0.1.7-rc.2` and `0.2.0-rc.2`;
 - Real Web UI verified on `0.2.0-rc.2`: tab order, localization, objective/invariant editing, preview, Apply,
