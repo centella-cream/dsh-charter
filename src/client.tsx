@@ -52,10 +52,10 @@ export function apply(ctx: ClientContext): void {
         order: nextViewOrder(ctx),
         locale: CHARTER_LOCALE_NS,
         label: () => t('tab'),
-        inject: sessionId => ({
-          source: controller.source(sessionId),
-          release: () => controller.release(sessionId),
-        }),
+        inject: sessionId => {
+          const lease = controller.acquire(sessionId)
+          return { source: lease.source, release: lease.release }
+        },
       }, CharterPane))
     }
 

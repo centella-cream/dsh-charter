@@ -1,5 +1,5 @@
 import type { CharterOp } from '../core/schemas.js'
-import type { CharterView } from '../host/types.js'
+import type { CharterBootstrapProposal, CharterBootstrapResult, CharterView } from '../host/types.js'
 import { previewPrompt } from './preview.js'
 
 /** Browser-safe byte count; the core helper is Node-only. */
@@ -83,4 +83,43 @@ export function buildBootstrapPlan(
   }
 
   return { ops, active, pending, pendingInvariants, pendingDeliverables }
+}
+
+/** What the pane should do with a bootstrap response. */
+export type BootstrapOutcome =
+  | { readonly kind: 'draft'; readonly proposal: CharterBootstrapProposal }
+  | {
+      readonly kind: 'unavailable'
+      readonly reason: 'not-live' | 'no-summary' | 'unavailable'
+      readonly message: string | undefined
+    }
+  | { readonly kind: 'stale' }
+  | { readonly kind: 'discard' }
+
+/**
+ * Decide whether a bootstrap response is still relevant.
+ *
+ * The response is discarded silently when the user already committed a charter
+ * or staged edits while it was in flight: showing "stale" there would punish a
+ * user who simply started working. A response that is still empty but whose
+ * revision moved is genuinely stale and may be retried.
+ */
+export function classifyBootstrapOutcome(
+  result: CharterBootstrapResult,
+  current: { readonly status: 'connecting' | 'ready' | 'error'; readonly view: CharterView | null },
+  requestedRevision: number,
+  stagedOps: number,
+): BootstrapOutcome {
+  if (!result.available) {
+    return { kind: 'unavailable', reason: result.reason, message: result.message }
+  }
+  const view = current.view
+  if (current.status !== 'ready' || view === null || view.status !== 'ready') {
+    return { kind: 'discard' }
+  }
+  if (view.objective !== null || view.items.length > 0 || stagedOps > 0) {
+    return { kind: 'discard' }
+  }
+  if (view.revision !== requestedRevision) return { kind: 'stale' }
+  return { kind: 'draft', proposal: result.proposal }
 }

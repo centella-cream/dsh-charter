@@ -34,6 +34,18 @@ type ModernRemoteFactory = (options: CompatRemoteOptions) => CompatMethodDecorat
 type LegacyStreamFactory = (options: { readonly mode: 'stream' }) => CompatMethodDecorator
 
 /**
+ * What the loaded DSH generation can enforce through the Remote layer.
+ *
+ * `resourceScopes` is the runtime signal for "DSH 0.2.1 or later": that is the
+ * generation that both accepts `@Remote` resource declarations and carries a
+ * required `PeerScope.principal`. It stays `undefined` until a Remote service
+ * class is decorated, so an unknown capability must fail closed.
+ */
+export interface RemoteCapabilities {
+  resourceScopes: boolean | undefined
+}
+
+/**
  * Build the decorator factory around any `Remote` implementation.
  *
  * Exported for tests: a fake implementation can stand in for either DSH API
@@ -41,6 +53,7 @@ type LegacyStreamFactory = (options: { readonly mode: 'stream' }) => CompatMetho
  */
 export function createRemoteMethodFactory(
   remote: unknown,
+  capabilities: RemoteCapabilities = { resourceScopes: undefined },
 ): (options: CompatRemoteOptions) => CompatMethodDecorator {
   const modern = remote as ModernRemoteFactory
   const legacyStream = remote as LegacyStreamFactory
@@ -49,9 +62,12 @@ export function createRemoteMethodFactory(
   return options => {
     if (options.mode !== undefined || options.resources !== undefined) {
       try {
-        return modern(options)
+        const decorator = modern(options)
+        if (options.resources !== undefined) capabilities.resourceScopes = true
+        return decorator
       } catch {
         // DSH 0.1.7/0.2.0 reject unknown decorator options. Fall through.
+        if (options.resources !== undefined) capabilities.resourceScopes = false
       }
     }
     if (options.mode === 'stream') return legacyStream({ mode: 'stream' })
@@ -59,4 +75,17 @@ export function createRemoteMethodFactory(
   }
 }
 
-export const remoteMethod = createRemoteMethodFactory(Remote as unknown)
+const capabilities: RemoteCapabilities = { resourceScopes: undefined }
+
+export const remoteMethod = createRemoteMethodFactory(Remote as unknown, capabilities)
+
+/**
+ * Whether a Remote call must carry a `PeerScope.principal`.
+ *
+ * A confirmed legacy runtime (0.1.7/0.2.0) has no principal field and treats
+ * the local operator as the owner. Every other state fails closed, including
+ * the window before any Remote service has been decorated.
+ */
+export function peerPrincipalRequired(): boolean {
+  return capabilities.resourceScopes !== false
+}

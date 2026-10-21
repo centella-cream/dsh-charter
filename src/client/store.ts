@@ -108,7 +108,7 @@ export class CharterSessionSource implements CharterSource {
       const snapshots = new RemoteSnapshotStream<CharterSnapshotFrame, CharterChangedFrame>(stream, {
         name: `dsh-charter:${this.sessionId}`,
         isSnapshot: (frame): frame is CharterSnapshotFrame => frame.type === 'snapshot',
-        replace: frame => this.publish({ status: 'ready', view: frame.value, error: null }),
+        replace: frame => this.publishSnapshot(frame.value),
         update: frame => this.publishIfNewer(frame.value),
         failed: error => this.publish({ ...this.state, status: 'error', error: messageOf(error) }),
       })
@@ -139,7 +139,13 @@ export class CharterSessionSource implements CharterSource {
     this.listeners.clear()
   }
 
+  private publishSnapshot(view: CharterView): void {
+    if (view.sessionId !== this.sessionId) return
+    this.publish({ status: 'ready', view, error: null })
+  }
+
   private publishIfNewer(view: CharterView): void {
+    if (view.sessionId !== this.sessionId) return
     const current = this.state.view
     if (current !== null && view.revision < current.revision) return
     if (current !== null
@@ -165,44 +171,72 @@ export class CharterSessionSource implements CharterSource {
   }
 }
 
+/** One view binding's claim on a shared per-Session source. */
+export interface CharterSourceLease {
+  readonly source: CharterSessionSource
+  /** Idempotent: only this lease counts, and only the last lease disposes the source. */
+  readonly release: () => void
+}
+
+interface SourceEntry {
+  readonly source: CharterSessionSource
+  refs: number
+}
+
 export class CharterClientController {
   private remote: CharterRemote | undefined
-  private readonly sources = new Map<SessionId, CharterSessionSource>()
+  private readonly sources = new Map<SessionId, SourceEntry>()
 
   constructor(private readonly ctx: ClientContext) {}
 
-  source(sessionId: SessionId): CharterSessionSource {
-    let source = this.sources.get(sessionId)
-    if (source === undefined) {
-      source = new CharterSessionSource(this.ctx, sessionId)
-      this.sources.set(sessionId, source)
-      if (this.remote !== undefined) source.attach(this.remote)
+  /**
+   * Acquire the source for one view binding.
+   *
+   * Several bindings (two panes, a re-created slot, a session switch) may
+   * share one Session. A bare session id is not a safe release credential:
+   * only the owning lease may release, and disposal happens when the last lease
+   * is gone.
+   */
+  acquire(sessionId: SessionId): CharterSourceLease {
+    let entry = this.sources.get(sessionId)
+    if (entry === undefined) {
+      entry = { source: new CharterSessionSource(this.ctx, sessionId), refs: 0 }
+      this.sources.set(sessionId, entry)
+      if (this.remote !== undefined) entry.source.attach(this.remote)
     }
-    return source
-  }
-
-  /** Release a Session source when its view binding unmounts. */
-  release(sessionId: SessionId): void {
-    const source = this.sources.get(sessionId)
-    if (source === undefined) return
-    this.sources.delete(sessionId)
-    void source.dispose()
+    entry.refs += 1
+    const held = entry
+    let released = false
+    return {
+      source: held.source,
+      release: () => {
+        if (released) return
+        released = true
+        const current = this.sources.get(sessionId)
+        // A later acquire cycle owns a different entry; this lease is no-op.
+        if (current !== held) return
+        current.refs -= 1
+        if (current.refs > 0) return
+        this.sources.delete(sessionId)
+        void current.source.dispose()
+      },
+    }
   }
 
   attach(remote: CharterRemote): void {
     this.remote = remote
-    for (const source of this.sources.values()) source.attach(remote)
+    for (const entry of this.sources.values()) entry.source.attach(remote)
   }
 
   detach(remote: CharterRemote): void {
     if (this.remote !== remote) return
     this.remote = undefined
-    for (const source of this.sources.values()) source.detach(remote)
+    for (const entry of this.sources.values()) entry.source.detach(remote)
   }
 
   async dispose(): Promise<void> {
     this.remote = undefined
-    await Promise.all([...this.sources.values()].map(source => source.dispose()))
+    await Promise.all([...this.sources.values()].map(entry => entry.source.dispose()))
     this.sources.clear()
   }
 }

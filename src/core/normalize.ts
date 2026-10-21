@@ -111,6 +111,10 @@ export function clientRefsOf(ops: readonly CharterOp[]): readonly string[] {
   const refs: string[] = []
   for (const op of ops) {
     if (op.type === 'item.add') refs.push(op.item.clientRef)
+    // A history-import overflow candidate keeps its own clientRef: the Host
+    // must mint an id for it exactly like for an active item, otherwise the
+    // atomic batch fails with INVALID_REFERENCE.
+    if (op.type === 'item.propose') refs.push(op.item.clientRef)
     if (op.type === 'item.supersede') refs.push(op.replacement.clientRef)
   }
   const unique = new Set(refs)

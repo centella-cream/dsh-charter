@@ -63,6 +63,9 @@ const en = {
   'bootstrap.blocked': 'Apply or discard the staged changes before reviewing the history draft.',
   'bootstrap.error': 'Could not extract a draft from history.',
   'bootstrap.stale': 'The Session changed while the history draft was being read. The draft was discarded; retry to read the latest history.',
+  'bootstrap.notLive': 'This Session is not live in this Host process. Open it here to read its compaction history.',
+  'bootstrap.noSummary': 'No usable compaction summary exists for this Session yet. A draft appears after a compaction.',
+  'bootstrap.unavailable': 'Charter storage is unavailable, so the history draft cannot be read.',
 
   'notice.conflict': 'The charter advanced from revision {from} to {to}. '
     + 'Your draft is preserved; discard it or re-stage it against the new revision.',
@@ -231,6 +234,9 @@ const zh: Record<CharterLocaleKey, string> = {
   'bootstrap.blocked': '请先应用或丢弃暂存的修改，再查看历史草案。',
   'bootstrap.error': '无法从历史中生成草案。',
   'bootstrap.stale': '读取历史草案期间 Session 已更新，草案已丢弃；请重试以读取最新历史。',
+  'bootstrap.notLive': '该 Session 当前不在这个 Host 进程中运行。在此打开它后才能读取压缩历史。',
+  'bootstrap.noSummary': '该 Session 还没有可用的压缩摘要；完成一次压缩后才会出现草案。',
+  'bootstrap.unavailable': '会话契约存储不可用，暂时无法读取历史草案。',
 
   'notice.conflict': '会话契约已从修订 {from} 更新到 {to}。'
     + '草稿已保留；请丢弃后基于最新修订重新编辑。',

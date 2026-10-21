@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { CharterError } from '../../src/core/errors.js'
 import { applyOps } from '../../src/core/commands.js'
-import { normalizeEditRequest } from '../../src/core/normalize.js'
+import { clientRefsOf, normalizeEditRequest } from '../../src/core/normalize.js'
 import { renderPrompt } from '../../src/core/render.js'
 import { apply, initialSnapshot, limits, request } from './helpers.js'
 
@@ -293,6 +293,23 @@ describe('charter commands', () => {
       limits,
     }), 'NOT_FOUND')
     expect(before).toEqual(initialSnapshot())
+  })
+
+  it('mints clientRefs for active items and pending proposals alike', () => {
+    const edit = normalizeEditRequest({
+      sessionId: 'session-1',
+      mutationId: 'mutation-mixed',
+      baseRevision: 0,
+      ops: [
+        { type: 'item.add', item: { clientRef: 'active', kind: 'invariant', text: 'Run tests', order: 1 } },
+        { type: 'item.propose', item: { clientRef: 'pending', kind: 'invariant', text: 'Review later', order: 2 } },
+      ],
+    })
+    expect(clientRefsOf(edit.ops)).toEqual(['active', 'pending'])
+    expectCode(() => clientRefsOf([
+      { type: 'item.add', item: { clientRef: 'same', kind: 'invariant', text: 'A', order: 1 } },
+      { type: 'item.propose', item: { clientRef: 'same', kind: 'invariant', text: 'B', order: 2 } },
+    ]), 'INVALID_ARGUMENT')
   })
 
   it('rejects spoofed host-owned fields and duplicate client references', () => {

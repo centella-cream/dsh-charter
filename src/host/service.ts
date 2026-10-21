@@ -759,16 +759,36 @@ declare module '@deepseek-ai/cordis' {
   }
 }
 
-export function resolveActor(ctx: Context): CharterActor {
-  // DSH 0.2.1 added PeerScope.principal. On 0.1.7/0.2.0 every Gateway peer is
-  // the in-process operator, so an absent principal records the owner identity.
+export interface ResolveActorOptions {
+  /**
+   * Whether a Remote call must carry a `PeerScope.principal`.
+   *
+   * DSH 0.2.1 and later make the field required. A confirmed legacy runtime
+   * (0.1.7/0.2.0) has no such field, so only that generation may fall back to
+   * the in-process owner. The default is the fail-closed policy: an absent
+   * principal on a principal-aware runtime is denied instead of elevated.
+   */
+  readonly requirePrincipal?: boolean
+}
+
+export function resolveActor(ctx: Context, options: ResolveActorOptions = {}): CharterActor {
   const invocation = (ctx as Context & {
-    invocation?: { readonly peer?: { readonly principal?: { readonly kind?: string } } }
+    invocation?: {
+      readonly peer?: { readonly principal?: { readonly kind?: string } }
+    }
   }).invocation
-  const principal = invocation?.peer?.principal
-  return principal === undefined || principal.kind === 'owner'
-    ? { kind: 'owner' }
-    : { kind: 'user' }
+  // No invocation means in-process Host code, not a Remote call.
+  if (invocation === undefined) return { kind: 'owner' }
+  const principal = invocation.peer?.principal
+  if (principal !== undefined) {
+    return principal.kind === 'owner' ? { kind: 'owner' } : { kind: 'user' }
+  }
+  if (options.requirePrincipal === false) {
+    // DSH 0.1.7/0.2.0: every Gateway peer is the in-process operator and the
+    // protocol carries no principal field.
+    return { kind: 'owner' }
+  }
+  throw charterError('FORBIDDEN', 'The Remote caller has no Peer principal; editing is denied')
 }
 
 export default CharterService
