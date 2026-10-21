@@ -14,7 +14,7 @@ HTML live under `.tmp/` and are excluded from the published package.
 | Item | Result |
 | --- | --- |
 | Strict TypeScript check (5 DSH versions) | Pass |
-| Vitest (5 locally available versions × 112 tests) | Pass |
+| Vitest (5 locally available versions × 121 tests) | Pass |
 | Host ESM build + browser single-file bundle | Pass |
 | Remote decorator/resource smoke | Pass (0.1.7/0.2.0 have no resource declaration, as expected) |
 | Browser factory-bundle materialization and `apply` smoke | Pass |
@@ -26,6 +26,8 @@ HTML live under `.tmp/` and are excluded from the published package.
 | Per-record storage isolation | Pass: one schema-invalid record disables only its own Session and is preserved; section 4.5 |
 | Budget degradation and convergence | Pass: lowered budgets become `overBudget`, injection stops, shrinking edits converge; non-viable config is clamped; section 4.5 |
 | Session-owned client drafts | Pass: unit tests cover draft survival across bindings, retry mutation-id reuse, conflict rebase, and bootstrap section ownership; section 4.5 |
+| Runtime schema revalidation | Pass: a record mutated to an invalid schema after mount isolates only its Session and is preserved; section 4.6 |
+| Packed artifact installability | Pass: CI runs `smoke:package` (tarball contents, exports, packed Host import, client bundle); section 2 |
 | Real model + compaction end-to-end | **Procedure + checker ready; live run pending** (`npm run verify:compaction`, section 8) |
 
 ## 2. Local baseline
@@ -39,10 +41,16 @@ Results:
 
 - typecheck passes;
 - build passes;
-- 16 test files, 112 tests pass;
+- 16 test files, 121 tests pass;
 - `remote-smoke` asserts `watch,bootstrap,edit`, stream mode, and Session resource;
 - `client-smoke` asserts the single-file factory bundle, external-dependency allowlist, no Node-only `Buffer`
-  reference, and `apply` registering the tab/pane/Remote contribution.
+  reference, and `apply` registering the tab/pane/Remote contribution;
+- `smoke:package` builds, packs the tarball, verifies required files and every `exports` target, rejects leaked
+  workspace files, imports the packed Host entry against the real dependency tree, and loads the packed client
+  bundle.
+
+CI runs `npm run check` and `npm run smoke:package` on every push/PR, so a green build now also means the
+installable artifact was checked.
 
 Key test files:
 
@@ -90,11 +98,11 @@ Results:
 
 | Version | typecheck | build | Vitest | remote smoke | client smoke |
 | --- | --- | --- | --- | --- | --- |
-| `0.1.7-rc.2` | Pass | Pass | 112/112 | Pass (no-resources warning) | Pass |
-| `0.2.0-rc.1` | Pass | Pass | 112/112 | Pass (no-resources warning) | Pass |
-| `0.2.0-rc.2` | Pass | Pass | 112/112 | Pass (no-resources warning) | Pass |
-| `0.2.1-rc.1` | Pass | Pass | 112/112 | Pass | Pass |
-| `0.2.1-rc.2` | Pass | Pass | 112/112 | Pass | Pass |
+| `0.1.7-rc.2` | Pass | Pass | 121/121 | Pass (no-resources warning) | Pass |
+| `0.2.0-rc.1` | Pass | Pass | 121/121 | Pass (no-resources warning) | Pass |
+| `0.2.0-rc.2` | Pass | Pass | 121/121 | Pass (no-resources warning) | Pass |
+| `0.2.1-rc.1` | Pass | Pass | 121/121 | Pass | Pass |
+| `0.2.1-rc.2` | Pass | Pass | 121/121 | Pass | Pass |
 
 `0.1.7-rc.2` and `0.2.0` remote smoke prints:
 
@@ -206,6 +214,31 @@ only static review:
   is open; projected items render the staged state before Apply.
 - **Planning scale.** The one-pass bootstrap planner is tested with 2,000 candidates and reports per-candidate
   active/pending outcomes; a final exact render verifies the budget.
+
+### 4.6 Runtime integrity, permission fail-closed, and client state boundaries
+
+The fourth readiness review targeted failure paths that only appear after startup or under a broken runtime:
+
+- **Runtime schema revalidation.** After the service mounts normally, a test writes a record with
+  `recordSchemaVersion: 2` directly into the table. `recordFor()` and the edit transform re-parse every
+  stored document; only that Session becomes `unavailable`, its prompt is empty, an edit returns
+  `UNAVAILABLE`, and an unrelated Session still reads and writes.
+- **Remote decorator fail-closed.** The compatibility layer only falls back when the modern factory throws
+  the documented unsupported-options error; an arbitrary modern-factory exception now propagates and leaves
+  `resourceScopes` unset, so missing principals cannot be downgraded to the owner fallback.
+- **Draft lifecycle and memory bound.** Drafts carry the Host-provided Session lifecycle fingerprint and reset
+  staged work/editors/history when it changes; released drafts are evicted by a bounded LRU so long browsing
+  cannot grow the map without limit.
+- **Shared text validation.** `inspectUserText()` is used by both Host normalization and the client editor
+  (` ` / unpaired surrogate are rejected at stage time with localized feedback) and by reviewed history
+  candidates before Apply.
+- **Pending vs active.** Active UI counts and Overview cards only include `accepted + current`; pending
+  proposals remain visible as their own rows, and the reconnect banner explains the temporary read-only state.
+- **Debug projection and envelope.** `charter_read all` now carries origin/order/createdRevision/supersede
+  chain/verification provenance, and its 32 KiB cap is measured against the final tool envelope (tested with
+  30 large archived items). `overBudget` also reflects lowered history/mutation count limits.
+- **Packaged artifact gate.** CI packs the tarball and verifies required files, every `exports` target, no
+  workspace leakage, the packed Host import, and the packed client bundle via `npm run smoke:package`.
 
 ## 5. Browser bundle verification
 
@@ -466,8 +499,8 @@ Chinese and English:
 - branded page header (mark, `Charter`, slogan) with revision/active/stored chips and a live
   `240 B / 8.0 KiB context` meter;
 - sticky Preview/Discard/Apply toolbar visible above the scrolling content;
-- left section navigation: Overview / Objective / Invariants / Deliverables / Context, plus History only when a
-  draft exists;
+- left section navigation: Overview / Objective / Invariants / Deliverables / History / Context (History is
+  always present; a draft is shown only when the bootstrap phase is `draft`);
 - an Overview dashboard with objective, invariant/deliverable cards, and a budget breakdown, so a large history
   draft no longer pushes the working sections down;
 - focused Objective and item tabs with inline add composers and `0 B / 1.0 KiB` counters;
@@ -475,7 +508,8 @@ Chinese and English:
 - while Charter is active the chat composer is hidden, and an unsent draft survives switching back to Chat;
 - light/dark themes driven entirely by DSH semantic tokens.
 
-Screenshots: [Chinese light](assets/charter-pane.png), [English light](assets/charter-pane.en.png).
+Screenshots: [Chinese light](assets/charter-pane.png), [English light](assets/charter-pane.en.png),
+[dark](assets/charter-pane.dark.png), [narrow](assets/charter-pane.narrow.png).
 
 Budget behavior beyond the parser split is enforced in the client: over-limit fields are marked, the draft
 preview is rendered through the same prompt renderer, and Apply is disabled while an item, the objective, the

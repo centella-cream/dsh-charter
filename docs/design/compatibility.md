@@ -14,10 +14,10 @@ This document answers three questions:
 
 | DSH version | Status | Verification |
 | --- | --- | --- |
-| `0.1.7-rc.2` | Supported (minimum) | typecheck, build, 112 tests, remote/client smoke, real profile install and startup |
-| `0.2.0-rc.1` | Supported | typecheck, build, 112 tests, remote/client smoke |
+| `0.1.7-rc.2` | Supported (minimum) | typecheck, build, 121 tests, remote/client smoke, real profile install and startup |
+| `0.2.0-rc.1` | Supported | typecheck, build, 121 tests, remote/client smoke |
 | `0.2.0-rc.2` | Supported | same + real profile install/startup, boot graph, bundle HTTP |
-| `0.2.1-rc.1` | Supported | typecheck, build, 112 tests, remote/client smoke |
+| `0.2.1-rc.1` | Supported | typecheck, build, 121 tests, remote/client smoke |
 | `0.2.1-rc.2` | Supported (primary development baseline) | same |
 | `0.1.5-rc.1` / `0.1.5-rc.2` / `0.1.5-rc.3` | Not supported | contract differences too large; see section 4 |
 | `0.1.6-alpha.x` | Not supported | same generation as 0.1.5; not individually verified |
@@ -114,7 +114,7 @@ the [verification record](../verification.md).
 
 ## 6. Upgrade policy
 
-- New `0.2.x` stable: peer range already covers it; run 112 tests + profile smoke once.
+- New `0.2.x` stable: peer range already covers it; run 121 tests + profile smoke once.
 - New `0.2.x` prerelease: extend the peer range, then run the version matrix; do not claim compatibility
   without verification.
 - `0.2.1` introduces resource authorization and is the minimum security recommendation.

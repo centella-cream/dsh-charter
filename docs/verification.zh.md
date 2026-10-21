@@ -13,7 +13,7 @@
 | 验证项 | 结果 |
 | --- | --- |
 | TypeScript 严格类型检查（5 个 DSH 版本） | 通过 |
-| Vitest（5 个本地可用版本 × 112 tests） | 通过 |
+| Vitest（5 个本地可用版本 × 121 tests） | 通过 |
 | Host ESM 构建 + 浏览器单文件 bundle | 通过 |
 | Remote 装饰器/资源 smoke | 通过（0.1.7/0.2.0 按预期无资源声明） |
 | 浏览器 factory bundle 物化与 `apply` smoke | 通过 |
@@ -25,6 +25,8 @@
 | 单记录损坏隔离 | 通过：单条 schema 不合法记录只禁用其 Session 并保留原文；见 4.5 |
 | 预算收紧与收敛 | 通过：调低预算后显示 `overBudget`、停止注入、缩小编辑可收敛；不可用配置被 clamp；见 4.5 |
 | Session 级客户端草稿 | 通过：单测覆盖 binding 卸载/重挂载后草稿存活、重试复用 mutation id、冲突 rebase、bootstrap 不抢占 section；见 4.5 |
+| 运行期 schema 重新校验 | 通过：mount 后把记录改成非法 schema，只有该 Session 不可用且原始记录保留；见 4.6 |
+| 打包产物可安装性 | 通过：CI 运行 `smoke:package`（tarball 内容、exports、packed Host import、client bundle）；见第 2 节 |
 | 真实模型 + compaction 端到端 | **校验命令已就绪，实测待执行**（`npm run verify:compaction`，见第 8 节） |
 
 ## 2. 本地基线
@@ -38,10 +40,14 @@ npm test
 
 - typecheck 通过；
 - build 通过；
-- `14` 个测试文件、`95` 个测试全部通过；
+- 16 个测试文件、121 个测试全部通过；
 - `remote-smoke` 断言 `watch,bootstrap,edit`、stream mode 和 Session resource；
 - `client-smoke` 断言单文件 factory bundle、外部依赖白名单、不引用 Node-only `Buffer`、`apply` 注册
   tab/pane/Remote contribution。
+- `smoke:package` 构建并打包 tarball、校验必需文件和所有 `exports` 目标、拒绝泄漏的工作区文件、用真实依赖树
+  导入 packed Host 入口，并检查 packed client bundle。
+
+CI 在每次 push/PR 上运行 `npm run check` 和 `npm run smoke:package`，绿色构建现在同时代表可安装产物已验证。
 
 关键测试文件：
 
@@ -88,11 +94,11 @@ npm run build
 
 | 版本 | typecheck | build | Vitest | remote smoke | client smoke |
 | --- | --- | --- | --- | --- | --- |
-| `0.1.7-rc.2` | 通过 | 通过 | 112/112 | 通过（无 resources 警告） | 通过 |
-| `0.2.0-rc.1` | 通过 | 通过 | 112/112 | 通过（无 resources 警告） | 通过 |
-| `0.2.0-rc.2` | 通过 | 通过 | 112/112 | 通过（无 resources 警告） | 通过 |
-| `0.2.1-rc.1` | 通过 | 通过 | 112/112 | 通过 | 通过 |
-| `0.2.1-rc.2` | 通过 | 通过 | 112/112 | 通过 | 通过 |
+| `0.1.7-rc.2` | 通过 | 通过 | 121/121 | 通过（无 resources 警告） | 通过 |
+| `0.2.0-rc.1` | 通过 | 通过 | 121/121 | 通过（无 resources 警告） | 通过 |
+| `0.2.0-rc.2` | 通过 | 通过 | 121/121 | 通过（无 resources 警告） | 通过 |
+| `0.2.1-rc.1` | 通过 | 通过 | 121/121 | 通过 | 通过 |
+| `0.2.1-rc.2` | 通过 | 通过 | 121/121 | 通过 | 通过 |
 
 `0.1.7-rc.2` 和 `0.2.0` 的 remote smoke 输出：
 
@@ -196,6 +202,26 @@ profile 手工确认。
   bootstrap 在编辑器打开时不抢占 section、投影条目在 Apply 前即显示暂存状态。
 - **规划规模**：单遍 bootstrap planner 用 2,000 个候选测试，并返回逐候选 active/pending 结果；最终用精确渲染
   校验预算。
+
+### 4.6 运行期完整性、权限 fail-closed 与客户端状态边界
+
+第四轮发布就绪评审针对启动后或运行时损坏才出现的失败路径补充了回归：
+
+- **运行期 schema 重新校验**：service 正常 mount 后，测试直接向 table 写入 `recordSchemaVersion: 2` 的记录。
+  `recordFor()` 和 edit transform 每次重新解析存储文档；只有该 Session 变为 `unavailable`，prompt 为空，
+  edit 返回 `UNAVAILABLE`，无关 Session 仍可读写。
+- **Remote 装饰 fail-closed**：兼容层只对文档化的“不支持该选项”错误回退；现代 factory 的任意其他异常直接抛出，
+  `resourceScopes` 保持未设置，缺 principal 的调用不会被降级到 owner fallback。
+- **草稿 lifecycle 与内存边界**：草稿携带 Host 提供的 Session lifecycle 指纹；lifecycle 变化时清空暂存、
+  编辑器和历史草案；已释放草稿按有界 LRU 回收，长时间浏览不会无界增长。
+- **共享文本校验**：Host 归一化和客户端编辑器都使用 `inspectUserText()`（` ` / 孤立 surrogate 在暂存阶段
+  就被拒绝并给出本地化反馈），历史候选在 Apply 前使用同一校验。
+- **pending 与 active 分离**：active UI 计数和 Overview 卡片只包含 `accepted + current`；pending proposal
+  仍以独立行可见；重连时显示非阻塞提示，说明暂时只读并展示最近一次确认状态。
+- **调试投影与 envelope**：`charter_read all` 返回 origin/order/createdRevision/替代链/验证来源，32 KiB
+  上限按最终 tool envelope 测量（用 30 条大归档条目测试）；`overBudget` 也反映调低的 history/mutation 数量上限。
+- **打包产物门禁**：CI 打包 tarball 并校验必需文件、所有 `exports` 目标、无工作区泄漏、packed Host import 和
+  packed client bundle（`npm run smoke:package`）。
 
 ## 5. 浏览器 bundle 验证
 
@@ -444,14 +470,16 @@ DSH_HOME="$PWD/.tmp/webview/home" dsh --profile charterweb2 --no-open --port 193
 
 - 带品牌 mark 的页头（`会话契约`、slogan）包含修订/生效/存储 chip 和实时 `240 B / 8.0 KiB 上下文` 预算条；
 - 吸顶的预览/丢弃/应用工具栏在内容滚动时保持可见；
-- 左侧 section 导航：概览 / 目标 / 硬约束 / 交付物 / 上下文，有草案时增加「历史草案」；
+- 左侧 section 导航：概览 / 目标 / 硬约束 / 交付物 / 历史草案 / 上下文（历史草案始终存在；只有 bootstrap 阶段为
+  `draft` 时才包含可应用草案）；
 - 概览 dashboard 包含目标、约束/交付物卡片和预算明细，大块历史草案不再挤压工作模块；
 - 独立的目标/条目 tab，section 内联添加输入和 `0 B / 1.0 KiB` 计数；
 - hover/focus 出现的条目操作（编辑/替换/归档/标记验证）；
 - 会话契约激活时隐藏对话框；切回对话后未发送草稿仍然保留；
 - 明暗主题完全由 DSH 语义 token 驱动。
 
-截图：[中文浅色](assets/charter-pane.png)、[英文浅色](assets/charter-pane.en.png)。
+截图：[中文浅色](assets/charter-pane.png)、[英文浅色](assets/charter-pane.en.png)、
+[暗色](assets/charter-pane.dark.png)、[窄屏](assets/charter-pane.narrow.png)。
 
 解析器拆分/目标保持完整的自动化测试在 `tests/core/bootstrap.spec.ts`；客户端会标记超限字段、用同一
 prompt renderer 计算草案预览，并在条目/目标/所选草案/投影上下文超预算时禁用 Apply。本轮没有在浏览器里

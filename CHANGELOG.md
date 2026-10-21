@@ -48,7 +48,7 @@ Initial MVP.
   restart is still required for the new pending-import semantics.
 - Verified against DSH `0.2.1-rc.2` with no code changes required; the existing peer range and compatibility layer
   cover the release candidate.
-- 112 tests across core, host composition, fork, idempotency, quota, prompt boundary, Remote stream, history
+- 121 tests across core, host composition, fork, idempotency, quota, prompt boundary, Remote stream, history
   extraction, client reordering, compatibility, and decorator compatibility. Verified on DSH `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`,
   `0.2.1-rc.1`, and `0.2.1-rc.2`. The actual Web UI was exercised on `0.2.0-rc.2`: tab order, Chinese/English
   switching, objective and invariant editing, preview, Apply, and reload persistence.
@@ -108,6 +108,24 @@ Initial MVP.
 - Accept `maxPendingItems: 0` in the Remote wire schema, matching the Host configuration that disables proposals.
 - Document `item.propose` as a normal client edit operation (never model-facing) instead of a host-internal
   operation.
+- Re-validate every stored record against the strict schema on every runtime read and write path
+  (`recordFor`, read-only views, parent/fork reads, and the `table.update` transform), not only at startup; a
+  record that becomes invalid at runtime disables only its Session and is never overwritten.
+- Fail closed when decorating Remote methods: only the documented "unsupported decorator options" rejection may
+  select the legacy no-resources path; arbitrary modern-factory errors propagate, so a broken modern runtime can
+  no longer be misclassified as legacy and re-open the owner fallback for missing principals.
+- Bind client drafts to the Session lifecycle fingerprint and keep the per-Session draft map bounded with an LRU
+  of released entries, so a reused Session id cannot inherit staged work and long browsing does not grow memory
+  without limit.
+- Share the Host's text normalization rules with the client: control characters and unpaired surrogates are
+  rejected in the editor and in reviewed history candidates, with localized feedback before Apply.
+- Exclude pending proposals from active UI counts and lists while keeping them visible in their own section; add a
+  non-blocking reconnecting banner that explains the temporary read-only state.
+- Return a complete bounded debug projection from `charter_read all` (origin/order/createdRevision/supersede
+  chain/verification provenance) and cap the final tool envelope at 32 KiB; include history/mutation count limits
+  in the over-budget state.
+- Add a packed-artifact smoke to CI (installable tarball, exports resolve, client bundle loads), remove the
+  redundant `@deepseek-ai/schemastery` peer declaration, and make the pre-release/compaction wording explicit.
 - Isolate stored-record validation per Session: the domain boundary keeps raw documents and the service parses
   each one, so one corrupt or forward-skewed record marks only that Session unavailable while every other
   Session still reads and edits. The raw document is preserved for diagnosis.

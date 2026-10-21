@@ -13,8 +13,8 @@
 - [调研记录](../research/charter-research.zh.md)
 
 实现状态：MVP Host、纯内核、JSON storage 组合、Remote contract 和主对话页标签页 Client 已完成实现并通过版本矩阵
-验证。当前 `npm run typecheck`、`npm test`、`npm run build` 均通过（112 个测试）；同一源码在 DSH
-`0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-rc.1`、`0.2.1-rc.2` 上分别通过 typecheck、build 和 112 个测试。
+验证。当前 `npm run typecheck`、`npm test`、`npm run build` 均通过（121 个测试）；同一源码在 DSH
+`0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-rc.1`、`0.2.1-rc.2` 上分别通过 typecheck、build 和 121 个测试。
 真实 profile 的 tarball 安装、配置组合、Web 启动、boot graph 和客户端 bundle HTTP 已通过；DSH `0.2.0-rc.2`
 Web profile 上已用真实 Chrome 验证「对话」「轨迹」「会话契约」标签顺序、目标编辑、预览、Apply 和刷新持久化。
 完整 compaction 端到端仍需在目标 profile 手工执行。兼容边界与降级见
@@ -259,9 +259,10 @@ interface EvidenceBinding {
 
 ### 6.1 一 Session 一记录
 
-记录校验在 service 边界逐条进行：domain 保留原始 per-record 文档，单条损坏或前向不兼容的记录只让该
-Session 不可用，不会阻止整个 domain 打开，也不会被重写覆盖；初始化失败会先清除瞬时不可用状态再发布最终
-ready view，并支持后续重试。
+记录校验在 service 边界逐条进行，并且每次运行期读取/写入路径都重新做严格 schema 解析（`recordFor`、只读
+view、parent/fork 读取、`table.update` transform）：domain 保留原始 per-record 文档，单条损坏或前向不兼容的
+记录只让该 Session 不可用，不会阻止整个 domain 打开，也不会被重写覆盖；初始化失败会先清除瞬时不可用状态再
+发布最终 ready view，并支持后续重试。
 
 Domain：
 
@@ -380,7 +381,8 @@ interface CharterEditRequest {
 
 客户端新增条目使用临时 `clientRef`；Host 铸造正式 item id，并在成功结果中返回映射。actor、revision、
 时间和 origin 都由 Host 填充，不能相信客户端字段。`objective.redirect` 的 reason 可选：缺省时 UI 显示
-本地化默认文案，而不是把某一种 UI 语言的文案写进记录。
+本地化默认文案，而不是把某一种 UI 语言的文案写进记录。客户端与 Host 共用同一个文本检查函数，控制字符和
+孤立 surrogate 在编辑器阶段就会被拒绝，而不是等 Apply 才返回通用错误。
 
 操作集合：`objective.initialize`、`objective.redirect`、`item.add`、`item.propose`、`item.edit`、
 `item.accept` / `item.reject`、`item.supersede`、`item.archive` / `item.restore`、`item.purge`
@@ -542,7 +544,10 @@ ctx.slots.register({
   order: nextViewOrder(ctx),
   locale: 'dsh-charter',
   label: () => t('tab'), // zh: 会话契约；en: Charter
-  inject: sessionId => ({ source: controller.source(sessionId) }),
+  inject: sessionId => {
+    const lease = controller.acquire(sessionId)
+    return { source: lease.source, draft: lease.draft, release: lease.release }
+  },
 }, CharterPane)
 ```
 
@@ -556,8 +561,9 @@ ctx.slots.register({
 - 若 Session 由另一个 DSH 进程持有、尚未在当前 Web 进程加载，`watch` 返回 stored record 的只读 view 与说明，
   并在 Session 变为 live 后通过 `publish()` 自动升级为可编辑；不把原始 "not live" 错误直接抛给 UI；
 - 标签页正文使用主内容区滚动，底部操作栏不再固定在视口底部，而是位于内容末尾；
-- 动态重注册会重建正文组件。正常启动时发生在用户交互前；若在 HMR 或新装插件时已有草稿，建议先 Apply
-  或丢弃草稿，避免草稿随组件重建丢失。
+- 动态重注册会重建正文组件；草稿按 Session 所有权保存在 store 中，切换 Chat/Charter 或重挂载不会丢失，只有
+  lifecycle 变化才会重置。已释放草稿按有界 LRU 回收；客户端与 Host 共用文本检查函数，控制字符和孤立 surrogate
+  在 Apply 前即被拒绝。
 
 ### 9.2 MVP 页面
 
@@ -574,13 +580,13 @@ ctx.slots.register({
 硬约束  1               不要破坏公共 API   暂无交付物
 交付物  0             预算    240 B / 8.0 KiB；1 / 24；0 / 16
 上下文
-历史草案（仅有草案时）
+历史草案（始终可用；仅 draft 阶段可应用）
 ```
 
 布局与交互原则：
 
-- 左侧 section 导航（概览 / 目标 / 硬约束 / 交付物 / 上下文，有草案时增加历史草案）让每个模块保持聚焦；
-  窄容器下变成横向 tab。
+- 左侧 section 导航（概览 / 目标 / 硬约束 / 交付物 / 历史草案 / 上下文）让每个模块保持聚焦；历史草案始终存在，
+  仅 draft 阶段包含可应用草案；窄容器下变成横向 tab。
 - 带品牌 mark 的页头包含标题、一句 slogan、修订/生效/存储 chip 和上下文预算条：
   “压缩会改写历史，但你的约定不会。”
 - 吸顶操作栏在滚动时保持预览/丢弃/应用可见。
@@ -670,7 +676,8 @@ interface CharterReadInput {
 - archived/rejected/superseded 只在 `all` 调试视图中返回，且每条结果带状态；
 - standing 以紧凑形式返回完整的当前工作集（目标 + 全部 accepted/current 条目），受 record 配额约束，不截断；
   调试用 id/review/lifecycle 不进入 standing，避免元数据撑大工具结果；
-- `all` 最多返回 64 条 / 32 KiB，并报告 `truncated` 数量；
+- `all` 返回完整调试字段（id/origin/order/createdRevision/review/lifecycle/替代链/验证来源），最多 64 条，并按
+  最终 tool envelope 限制 32 KiB，同时报告 `truncated` 数量；
 - 默认只返回 standing；
 - 返回 canonical JSON，模型文本单独渲染；
 - 不读取其他 Session；
@@ -757,7 +764,8 @@ Session dispose：
 | recent mutation receipts | 128 | 自动裁最旧幂等回执 |
 
 模型可见容量只有最终 prompt 字节预算；active 条目不单独设上限。`maxItems`、`maxPendingItems`、
-`maxOps`、`maxRecordBytes` 仍是存储/单批边界。超限增长整批拒绝。
+`maxOps`、`maxRecordBytes` 仍是存储/单批边界。超限增长整批拒绝；`overBudget` 同时覆盖字节预算、条目数以及
+history/mutation 数量上限。
 
 **预算收紧与降级。** 结构校验与准入策略彼此独立：记录已存在后调低上限，view 标记 `overBudget` 而不是
 损坏，停止注入，UI 解释状态，并允许归档、清除、缩短等缩小的编辑逐步收敛；不可用的配置值会被抬到

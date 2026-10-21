@@ -16,6 +16,8 @@ time. The English UI keeps the product name **Charter**; the Chinese UI calls it
 
 ![dsh-charter tab in a real Web profile](docs/assets/charter-pane.en.png)
 
+Dark theme and narrow-layout evidence: [dark](docs/assets/charter-pane.dark.png), [narrow](docs/assets/charter-pane.narrow.png).
+
 > A real English Web profile with `dsh-context` installed. The tab order is Chat, Trajectory, Context, Fleet,
 > then Charter; every pane string follows the active DSH language.
 
@@ -194,7 +196,7 @@ has a left section navigation on wide screens and a horizontal tab strip on narr
 | **Objective** | Edit or redirect the objective; the original is immutable |
 | **Invariants** | Add, edit, replace, archive, purge, and verify hard constraints |
 | **Deliverables** | Same actions plus delivery progress |
-| **History** | Review a draft extracted from the latest usable compaction summary (only when available) |
+| **History** | Always available: apply a draft extracted from the latest usable compaction summary, or inspect the current bootstrap phase and re-check |
 | **Context** | Exact user-role runtime context, bytes, and limits |
 
 While the Charter view is active it owns the whole reading surface: the chat composer is hidden, and its
@@ -275,12 +277,13 @@ environment.
 npm run typecheck        # strict TS
 npm test                 # build + Vitest
 npm run build            # Host ESM + single-file browser bundle + smoke
-npm run check            # typecheck + test
+npm run check            # typecheck + build + tests
+npm run smoke:package    # packed tarball installability
 npm run verify:compaction # manual real-model compaction check (not part of check)
 ```
 
 The test suite covers the pure core, real Host composition, storage-domain behavior, Remote framing,
-history extraction, client state, and factory-bundle registration. Current matrix: **112 tests on DSH `0.1.7-rc.2`, `0.2.0-rc.1`/`rc.2`, and `0.2.1-rc.1`/`rc.2`**. See the [verification record](docs/verification.md) for commands and evidence.
+history extraction, client state, and factory-bundle registration. Current matrix: **121 tests on DSH `0.1.7-rc.2`, `0.2.0-rc.1`/`rc.2`, and `0.2.1-rc.1`/`rc.2`**. See the [verification record](docs/verification.md) for commands and evidence.
 
 ## Acknowledgements
 
@@ -315,9 +318,11 @@ security reports, follow [SECURITY.md](SECURITY.md).
 ## Status
 
 Pre-1.0. The DSH plugin ABI is still moving; compatibility is tested against the versions above, and the design
-keeps the compatibility layer deliberately small. The full compaction end-to-end still requires a real-model
-Session; `npm run verify:compaction` is the manual acceptance check, and the parser/Host/Remote paths are
-covered by automated tests.
+keeps the compatibility layer deliberately small. This is a **pre-release candidate, not a release candidate**
+for the compaction-resilience claim: the real-model compaction acceptance still requires a live Session, and
+`npm run verify:compaction` is the manual acceptance check whose `PASS` evidence must be recorded before the
+claim is release-validated. The parser/Host/Remote/client mechanism is covered by automated tests, and CI now
+packs and smoke-tests the installable artifact.
 
 ## License
 
