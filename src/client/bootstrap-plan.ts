@@ -1,7 +1,11 @@
-import { utf8Bytes } from '../core/limits.js'
 import type { CharterOp } from '../core/schemas.js'
 import type { CharterView } from '../host/types.js'
 import { previewPrompt } from './preview.js'
+
+/** Browser-safe byte count; the core helper is Node-only. */
+function utf8Bytes(value: string): number {
+  return new TextEncoder().encode(value).byteLength
+}
 
 /** One editable candidate extracted from a compaction summary. */
 export interface BootstrapDraftItem {

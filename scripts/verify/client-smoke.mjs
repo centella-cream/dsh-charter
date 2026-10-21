@@ -1,3 +1,10 @@
+import { readFileSync } from 'node:fs'
+
+const bundleSource = readFileSync(new URL('../../lib/client.js', import.meta.url), 'utf8')
+if (/\bBuffer\b/u.test(bundleSource)) {
+  throw new Error('client bundle references Node-only Buffer')
+}
+
 /**
  * Verify the browser entry is a self-contained factory-form bundle:
  * it registers exactly one module with the Web module loader, synchronously
