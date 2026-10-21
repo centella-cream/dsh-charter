@@ -228,15 +228,29 @@ export class CharterClientController {
   private remote: CharterRemote | undefined
   private readonly sources = new Map<SessionId, SourceEntry>()
   private readonly drafts = new Map<SessionId, CharterDraft>()
+  private static readonly MAX_DRAFTS = 16
 
   constructor(private readonly ctx: ClientContext) {}
 
-  /** The per-Session draft survives Pane unmounts; clear it when the view switches. */
+  /**
+   * The per-Session draft survives Pane unmounts, but the map stays bounded:
+   * the least recently used draft with no active view lease is disposed when
+   * more Sessions are visited.
+   */
   draftFor(sessionId: SessionId): CharterDraft {
-    let draft = this.drafts.get(sessionId)
-    if (draft === undefined) {
-      draft = new CharterDraft(sessionId, () => this.sources.get(sessionId)?.source)
-      this.drafts.set(sessionId, draft)
+    const existing = this.drafts.get(sessionId)
+    if (existing !== undefined) {
+      this.drafts.delete(sessionId)
+      this.drafts.set(sessionId, existing)
+      return existing
+    }
+    const draft = new CharterDraft(sessionId, () => this.sources.get(sessionId)?.source)
+    this.drafts.set(sessionId, draft)
+    while (this.drafts.size > CharterClientController.MAX_DRAFTS) {
+      const victim = [...this.drafts.entries()].find(([id]) => (this.sources.get(id)?.refs ?? 0) === 0)
+      if (victim === undefined) break
+      this.drafts.delete(victim[0])
+      victim[1].dispose()
     }
     return draft
   }

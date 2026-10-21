@@ -1,4 +1,5 @@
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import { inspectUserText, type UserTextIssue } from '../core/normalize.js'
 import type { CharterErrorCode } from '../core/errors.js'
 import type { CharterOp, NewItemInput } from '../core/schemas.js'
 import type {
@@ -41,6 +42,7 @@ export type DraftFeedback =
   | { readonly kind: 'scope' }
   | { readonly kind: 'editorBudget'; readonly limit: number }
   | { readonly kind: 'editorUnchanged'; readonly target: 'objective' | 'item' }
+  | { readonly kind: 'editorInvalid'; readonly issue: UserTextIssue }
   | { readonly kind: 'itemBudget'; readonly limit: number }
   | { readonly kind: 'discarded' }
 
@@ -67,6 +69,8 @@ interface DraftAttempt {
 
 export interface CharterDraftState {
   readonly sessionId: SessionId
+  /** Session lifecycle fingerprint; a different lifecycle resets the draft. */
+  readonly lifecycle: string | null
   readonly section: CharterSection
   readonly ops: readonly CharterOp[]
   readonly baseRevision: number | null
@@ -101,6 +105,31 @@ function sameOp(left: CharterOp, right: CharterOp): boolean {
   return JSON.stringify(left) === JSON.stringify(right)
 }
 
+function initialState(sessionId: SessionId): CharterDraftState {
+  return {
+    sessionId,
+    lifecycle: null,
+    section: 'overview',
+    ops: [],
+    baseRevision: null,
+    editor: null,
+    editorText: '',
+    editorReason: '',
+    editorNeedsReason: false,
+    newInvariant: '',
+    newDeliverable: '',
+    feedback: null,
+    saving: false,
+    bootstrapSaving: false,
+    bootstrapPhase: 'idle',
+    bootstrap: null,
+    bootstrapObjective: '',
+    bootstrapItems: [],
+    bootstrapProblem: null,
+    attempt: null,
+  }
+}
+
 /**
  * Per-Session draft ownership.
  *
@@ -116,30 +145,27 @@ export class CharterDraft {
   private bootstrapGeneration = 0
 
   constructor(
-    sessionId: SessionId,
+    private readonly sessionId: SessionId,
     private readonly resolveSource: ResolveSource,
   ) {
-    this.state = {
-      sessionId,
-      section: 'overview',
-      ops: [],
-      baseRevision: null,
-      editor: null,
-      editorText: '',
-      editorReason: '',
-      editorNeedsReason: false,
-      newInvariant: '',
-      newDeliverable: '',
-      feedback: null,
-      saving: false,
-      bootstrapSaving: false,
-      bootstrapPhase: 'idle',
-      bootstrap: null,
-      bootstrapObjective: '',
-      bootstrapItems: [],
-      bootstrapProblem: null,
-      attempt: null,
+    this.state = initialState(sessionId)
+  }
+
+  /**
+   * Bind the draft to the Session lifecycle reported by the authority.
+   *
+   * A reused Session id with a different lifecycle must not inherit staged
+   * operations, editors or reviewed history from the previous life.
+   */
+  bindLifecycle(lifecycle: string | undefined): void {
+    if (lifecycle === undefined || this.state.lifecycle === lifecycle) return
+    if (this.state.lifecycle === null) {
+      this.update({ lifecycle })
+      return
     }
+    this.bootstrapGeneration += 1
+    this.state = { ...initialState(this.sessionId), lifecycle, section: this.state.section }
+    for (const listener of [...this.listeners]) listener()
   }
 
   readonly getSnapshot = (): CharterDraftState => this.state
@@ -243,6 +269,16 @@ export class CharterDraft {
     const editor = this.state.editor
     if (editor === null || this.state.editorText.trim().length === 0) return
     const text = this.state.editorText
+    const inspection = inspectUserText(text)
+    if (inspection.issue !== undefined) {
+      this.update({ feedback: { kind: 'editorInvalid', issue: inspection.issue } })
+      return
+    }
+    const reasonInspection = inspectUserText(this.state.editorReason)
+    if (this.state.editorReason.trim().length > 0 && reasonInspection.issue !== undefined) {
+      this.update({ feedback: { kind: 'editorInvalid', issue: reasonInspection.issue } })
+      return
+    }
     const bytes = new TextEncoder().encode(text).byteLength
     const maxBytes = editor.kind === 'objective' ? view.limits.maxObjectiveBytes : view.limits.maxItemBytes
     if (bytes > maxBytes) {
@@ -282,7 +318,11 @@ export class CharterDraft {
   }
 
   addItem(view: CharterView, kind: 'invariant' | 'deliverable', text: string, clear: () => void): void {
-    if (text.trim().length === 0) return
+    const inspection = inspectUserText(text)
+    if (inspection.issue !== undefined) {
+      this.update({ feedback: { kind: 'editorInvalid', issue: inspection.issue } })
+      return
+    }
     const bytes = new TextEncoder().encode(text).byteLength
     if (bytes > view.limits.maxItemBytes) {
       this.update({ feedback: { kind: 'itemBudget', limit: view.limits.maxItemBytes } })

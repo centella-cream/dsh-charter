@@ -221,6 +221,16 @@ export function displayItems<T extends { readonly id: string; readonly order: nu
     || (left.id < right.id ? -1 : left.id > right.id ? 1 : 0))
 }
 
+/** Rows that are accepted and current: the model-visible working set. */
+export function activeItems(items: readonly ProjectedItem[]): ProjectedItem[] {
+  return items.filter(item => item.lifecycle === 'current' && item.review === 'accepted')
+}
+
+/** Pending proposals stay visible but are not part of the active working set. */
+export function pendingItems(items: readonly ProjectedItem[]): ProjectedItem[] {
+  return items.filter(item => item.lifecycle === 'current' && item.review === 'pending')
+}
+
 /** Counts used by the navigation badges and section headings. */
 export function itemCounts(items: readonly ProjectedItem[]): {
   readonly active: number

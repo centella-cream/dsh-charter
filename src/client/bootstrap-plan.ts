@@ -1,4 +1,5 @@
 import type { CharterOp } from '../core/schemas.js'
+import { inspectUserText, type UserTextIssue } from '../core/normalize.js'
 import { renderCharterPrompt } from '../core/prompt.js'
 import type { CharterBootstrapProposal, CharterBootstrapResult, CharterView } from '../host/types.js'
 import { previewPrompt, projectView, type ProjectedItem } from './preview.js'
@@ -165,6 +166,29 @@ function exactBootstrapPlan(
     order += 1
   }
   return { ops, active, pending, pendingInvariants, pendingDeliverables, outcomes }
+}
+
+export interface DraftTextIssue {
+  readonly issue: UserTextIssue
+  readonly where: 'objective' | 'candidate'
+  readonly index?: number
+}
+
+/** First invalid reviewed value in the draft, validated like the Host does. */
+export function firstDraftTextIssue(
+  objective: string,
+  items: readonly BootstrapDraftItem[],
+): DraftTextIssue | undefined {
+  if (objective.trim().length > 0) {
+    const issue = inspectUserText(objective).issue
+    if (issue !== undefined) return { issue, where: 'objective' }
+  }
+  for (const [index, item] of items.entries()) {
+    if (!item.selected) continue
+    const issue = inspectUserText(item.text).issue
+    if (issue !== undefined) return { issue, where: 'candidate', index }
+  }
+  return undefined
 }
 
 /** What the pane should do with a bootstrap response. */

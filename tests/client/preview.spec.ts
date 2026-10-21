@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type { CharterView } from '../../src/host/types.js'
-import { itemCounts, previewPrompt, projectView } from '../../src/client/preview.js'
+import { activeItems, itemCounts, pendingItems, previewPrompt, projectView } from '../../src/client/preview.js'
 
 const sessionId = SessionId('preview-session')
 
@@ -39,6 +39,8 @@ describe('projected draft view', () => {
     expect(projected.items.map(item => item.text)).toEqual(['Keep the API', 'Lint later'])
     expect(projected.items.every(item => item.staged)).toBe(true)
     expect(itemCounts(projected.items)).toEqual({ active: 1, pending: 0, history: 1 })
+    expect(activeItems(projected.items).map(item => item.text)).toEqual(['Keep the API'])
+    expect(pendingItems(projected.items)).toEqual([])
   })
 
   it('projects edits, progress, archive, supersede and purge onto the rows', () => {

@@ -114,6 +114,48 @@ describe('per-Session draft ownership', () => {
     expect(mutationIds[1]).not.toBe(mutationIds[0])
   })
 
+  it('rejects control characters and lone surrogates before Apply', () => {
+    const draft = new CharterDraft(sessionId, () => undefined)
+    draft.openEditor({ kind: 'objective' }, view(0))
+    draft.setEditorText('bad\u0000text')
+    draft.saveEditor(view(0))
+    expect(draft.getSnapshot().feedback).toEqual({ kind: 'editorInvalid', issue: 'control' })
+    expect(draft.getSnapshot().ops).toHaveLength(0)
+
+    draft.setEditorText('bad\uD800text')
+    draft.saveEditor(view(0))
+    expect(draft.getSnapshot().feedback).toEqual({ kind: 'editorInvalid', issue: 'surrogate' })
+  })
+
+  it('resets staged work when the Session lifecycle changes', () => {
+    const draft = new CharterDraft(sessionId, () => undefined)
+    draft.bindLifecycle('lifecycle-1')
+    draft.stage(view(2), {
+      type: 'item.add',
+      item: { clientRef: 'life-1', kind: 'invariant', text: 'Old life draft', order: 0 },
+    })
+    draft.openEditor({ kind: 'objective' }, view(2))
+    draft.setEditorText('typing')
+    expect(draft.getSnapshot().ops).toHaveLength(1)
+    expect(draft.getSnapshot().editor).not.toBeNull()
+
+    draft.bindLifecycle('lifecycle-2')
+    expect(draft.getSnapshot()).toMatchObject({
+      lifecycle: 'lifecycle-2',
+      ops: [],
+      baseRevision: null,
+      editor: null,
+      feedback: null,
+    })
+    // Undefined (an older Host view) must not reset a bound draft.
+    draft.stage(view(2), {
+      type: 'item.add',
+      item: { clientRef: 'life-2', kind: 'invariant', text: 'New draft', order: 0 },
+    })
+    draft.bindLifecycle(undefined)
+    expect(draft.getSnapshot().ops).toHaveLength(1)
+  })
+
   it('does not steal the current section when a draft arrives while editing', async () => {
     const fake = new CharterDraft(sessionId, () => source({
       edit: async () => ({ ok: false, code: 'UNAVAILABLE', message: 'unused' }),
