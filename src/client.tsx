@@ -54,7 +54,7 @@ export function apply(ctx: ClientContext): void {
         label: () => t('tab'),
         inject: sessionId => {
           const lease = controller.acquire(sessionId)
-          return { source: lease.source, release: lease.release }
+          return { source: lease.source, draft: lease.draft, release: lease.release }
         },
       }, CharterPane))
     }

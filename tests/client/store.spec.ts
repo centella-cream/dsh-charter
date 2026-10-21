@@ -38,6 +38,7 @@ function view(revision: number, promptText = '', sessionId = 'session-1'): Chart
     objective: null,
     items: [],
     promptText,
+    overBudget: false,
     promptDigest: promptText === ''
       ? ''
       : `sha256:${createHash('sha256').update(promptText).digest('hex')}`,
@@ -48,6 +49,7 @@ function view(revision: number, promptText = '', sessionId = 'session-1'): Chart
       maxItems: 512,
       maxPendingItems: 512,
       maxOps: 1024,
+      maxRecordBytes: 1_048_576,
     },
   }
 }
@@ -174,6 +176,54 @@ describe('client charter source', () => {
     stream.options.replace({ value: view(3, 'next generation') })
     expect(lease.source.getSnapshot().view).toMatchObject({ revision: 3 })
 
+    stream.resolveDispose()
+    lease.release()
+    await controller.dispose()
+  })
+
+  it('retries an attach that failed before the stream existed', async () => {
+    let attempts = 0
+    const ctx = {
+      remote: {
+        $stream: () => {
+          attempts += 1
+          if (attempts === 1) throw new Error('mount failed')
+          return { dispose: async () => {} }
+        },
+      },
+    } as never
+    const controller = new CharterClientController(ctx)
+    const lease = controller.acquire(SessionId('session-retry'))
+    lease.source.attach({} as never)
+    await tick()
+    expect(lease.source.getSnapshot().status).toBe('error')
+    lease.source.retry()
+    await tick()
+    expect(attempts).toBeGreaterThan(1)
+    mockClass.instances.at(-1)?.resolveDispose()
+    lease.release()
+    await controller.dispose()
+  })
+
+  it('accepts an authoritative availability demotion after a ready revision', async () => {
+    const controller = new CharterClientController(streamContext())
+    const lease = controller.acquire(SessionId('session-1'))
+    lease.source.accept(view(2, 'ready'))
+    lease.source.attach({} as never)
+    await tick()
+    const stream = mockClass.instances.at(-1)
+    if (stream === undefined) throw new Error('no stream was created')
+    stream.options.replace({
+      value: {
+        ...view(0, ''),
+        status: 'unavailable',
+        message: 'Stored charter cannot be read by this version',
+      },
+    })
+    expect(lease.source.getSnapshot().view).toMatchObject({
+      status: 'unavailable',
+      revision: 0,
+    })
     stream.resolveDispose()
     lease.release()
     await controller.dispose()

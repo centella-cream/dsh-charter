@@ -1,6 +1,7 @@
 import type { CharterOp } from '../core/schemas.js'
+import { renderCharterPrompt } from '../core/prompt.js'
 import type { CharterBootstrapProposal, CharterBootstrapResult, CharterView } from '../host/types.js'
-import { previewPrompt } from './preview.js'
+import { previewPrompt, projectView, type ProjectedItem } from './preview.js'
 
 /** Browser-safe byte count; the core helper is Node-only. */
 function utf8Bytes(value: string): number {
@@ -22,6 +23,8 @@ export interface BootstrapPlan {
   readonly pending: number
   readonly pendingInvariants: number
   readonly pendingDeliverables: number
+  /** Per-candidate outcome for the review UI. */
+  readonly outcomes: Readonly<Record<string, 'active' | 'pending'>>
 }
 
 /**
@@ -38,43 +41,77 @@ export function buildBootstrapPlan(
   objective: string,
   items: readonly BootstrapDraftItem[],
 ): BootstrapPlan {
+  // One-pass planning: the projected base prompt is rendered from the
+  // committed standing set, then each selected candidate is measured by
+  // appending it to the running active set. Pending candidates never enter the
+  // prompt, so they do not need a re-render at all.
+  const objectiveOp: CharterOp | null = view.objective === null && objective.trim().length > 0
+    ? { type: 'objective.initialize', text: objective.trim() }
+    : null
+  const base = projectView(view, objectiveOp === null ? [] : [objectiveOp])
+  const standing = base.items.filter(item => item.review === 'accepted' && item.lifecycle === 'current')
+  const activeItems: ProjectedItem[] = []
   const ops: CharterOp[] = []
-  if (view.objective === null && objective.trim().length > 0) {
-    ops.push({ type: 'objective.initialize', text: objective.trim() })
-  }
+  const outcomes: Record<string, 'active' | 'pending'> = {}
+  if (objectiveOp !== null) ops.push(objectiveOp)
 
   let order = view.items.reduce((maximum, item) => Math.max(maximum, item.order), -1) + 1
   let active = 0
   let pending = 0
   let pendingInvariants = 0
   let pendingDeliverables = 0
+  const encoder = new TextEncoder()
+  const bytesOf = (value: string): number => encoder.encode(value).byteLength
 
   for (const item of items) {
     if (!item.selected || item.text.trim().length === 0) continue
+    const text = item.text.trim()
     const activeOp: CharterOp = item.kind === 'invariant'
-      ? {
-          type: 'item.add',
-          item: { clientRef: `bootstrap-${item.id}`, kind: 'invariant', text: item.text.trim(), order },
-        }
+      ? { type: 'item.add', item: { clientRef: `bootstrap-${item.id}`, kind: 'invariant', text, order } }
       : {
           type: 'item.add',
-          item: {
-            clientRef: `bootstrap-${item.id}`,
-            kind: 'deliverable',
-            text: item.text.trim(),
-            order,
-            progress: 'not-started',
-          },
+          item: { clientRef: `bootstrap-${item.id}`, kind: 'deliverable', text, order, progress: 'not-started' },
+        }
+    const candidate: ProjectedItem = item.kind === 'invariant'
+      ? {
+          id: `bootstrap-${item.id}`,
+          kind: 'invariant',
+          text,
+          order,
+          review: 'accepted',
+          lifecycle: 'current',
+          verification: { state: 'unchecked' },
+          staged: true,
+          synthetic: true,
+        }
+      : {
+          id: `bootstrap-${item.id}`,
+          kind: 'deliverable',
+          text,
+          order,
+          review: 'accepted',
+          lifecycle: 'current',
+          verification: { state: 'unchecked' },
+          progress: 'not-started',
+          staged: true,
+          synthetic: true,
         }
 
     // The actual model-visible budget is the gate. Candidates that would
     // exceed it are preserved as review-only proposals instead of being
     // rejected or silently dropped.
-    if (utf8Bytes(previewPrompt(view, [...ops, activeOp])) <= view.limits.maxPromptBytes) {
+    const projectedBytes = bytesOf(renderCharterPrompt(
+      base.objective ?? undefined,
+      [...standing, ...activeItems, candidate],
+    ))
+    if (projectedBytes <= view.limits.maxPromptBytes) {
       ops.push(activeOp)
+      activeItems.push(candidate)
+      outcomes[item.id] = 'active'
       active += 1
     } else {
       ops.push({ type: 'item.propose', item: activeOp.item })
+      outcomes[item.id] = 'pending'
       pending += 1
       if (item.kind === 'invariant') pendingInvariants += 1
       else pendingDeliverables += 1
@@ -82,7 +119,52 @@ export function buildBootstrapPlan(
     order += 1
   }
 
-  return { ops, active, pending, pendingInvariants, pendingDeliverables }
+  // The incremental estimate must never admit a draft the exact renderer would
+  // reject. Fall back to the exact per-candidate algorithm if the final render
+  // disagrees (only possible with unusual ordering or normalization).
+  if (bytesOf(previewPrompt(view, ops)) > view.limits.maxPromptBytes) {
+    return exactBootstrapPlan(view, items, objectiveOp)
+  }
+
+  return { ops, active, pending, pendingInvariants, pendingDeliverables, outcomes }
+}
+
+/** Exact quadratic fallback used only when the one-pass estimate disagrees. */
+function exactBootstrapPlan(
+  view: CharterView,
+  items: readonly BootstrapDraftItem[],
+  objectiveOp: CharterOp | null,
+): BootstrapPlan {
+  const ops: CharterOp[] = objectiveOp === null ? [] : [objectiveOp]
+  const outcomes: Record<string, 'active' | 'pending'> = {}
+  let order = view.items.reduce((maximum, item) => Math.max(maximum, item.order), -1) + 1
+  let active = 0
+  let pending = 0
+  let pendingInvariants = 0
+  let pendingDeliverables = 0
+  for (const item of items) {
+    if (!item.selected || item.text.trim().length === 0) continue
+    const text = item.text.trim()
+    const activeOp: CharterOp = item.kind === 'invariant'
+      ? { type: 'item.add', item: { clientRef: `bootstrap-${item.id}`, kind: 'invariant', text, order } }
+      : {
+          type: 'item.add',
+          item: { clientRef: `bootstrap-${item.id}`, kind: 'deliverable', text, order, progress: 'not-started' },
+        }
+    if (utf8Bytes(previewPrompt(view, [...ops, activeOp])) <= view.limits.maxPromptBytes) {
+      ops.push(activeOp)
+      outcomes[item.id] = 'active'
+      active += 1
+    } else {
+      ops.push({ type: 'item.propose', item: activeOp.item })
+      outcomes[item.id] = 'pending'
+      pending += 1
+      if (item.kind === 'invariant') pendingInvariants += 1
+      else pendingDeliverables += 1
+    }
+    order += 1
+  }
+  return { ops, active, pending, pendingInvariants, pendingDeliverables, outcomes }
 }
 
 /** What the pane should do with a bootstrap response. */

@@ -17,6 +17,7 @@ function emptyView(maxPromptBytes: number): CharterView {
     items: [],
     promptText: '',
     promptDigest: 'sha256:test',
+    overBudget: false,
     limits: {
       maxPromptBytes,
       maxObjectiveBytes: 4_096,
@@ -24,6 +25,7 @@ function emptyView(maxPromptBytes: number): CharterView {
       maxItems: 512,
       maxPendingItems: 512,
       maxOps: 1_024,
+      maxRecordBytes: 1_048_576,
     },
   }
 }
@@ -58,6 +60,31 @@ describe('bootstrap plan', () => {
     expect(plan.ops).toHaveLength(2)
     expect(plan.active).toBe(2)
     expect(plan.pending).toBe(0)
+  })
+})
+
+describe('bootstrap plan outcomes', () => {
+  it('labels each candidate active or pending and keeps the exact render in budget', () => {
+    const view = emptyView(700)
+    const items = candidates(30)
+    const plan = buildBootstrapPlan(view, '', items)
+    expect(plan.active + plan.pending).toBe(30)
+    expect(Object.keys(plan.outcomes)).toHaveLength(30)
+    expect(Object.values(plan.outcomes).filter(value => value === 'active')).toHaveLength(plan.active)
+    expect(utf8Bytes(previewPrompt(view, plan.ops))).toBeLessThanOrEqual(view.limits.maxPromptBytes)
+  })
+
+  it('plans thousands of candidates in one pass without dropping any', () => {
+    const view = emptyView(1_200)
+    const items = Array.from({ length: 2_000 }, (_, index) => ({
+      id: `c-${index}`,
+      kind: 'invariant' as const,
+      text: `Constraint ${String(index)} ${'x'.repeat(20)}`,
+      selected: true,
+    }))
+    const plan = buildBootstrapPlan(view, '', items)
+    expect(plan.ops).toHaveLength(2_000)
+    expect(plan.active + plan.pending).toBe(2_000)
   })
 })
 
