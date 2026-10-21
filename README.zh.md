@@ -89,8 +89,8 @@ Host 在 `session/created` 时初始化记录，并在首次 prompt 前的 `agen
 
 ## 安装
 
-> **预发布说明。** npm 包和 Desktop 插件目录会随首次公开发布上线。在此之前请使用
-> [本地预发布构建](#本地预发布构建)；下面按版本安装和 Desktop 搜索安装是发布后的正式路径。
+> **当前状态：预发布。** `dsh-charter` 尚未发布到 npm registry，也未进入 Desktop 插件目录。当前唯一可执行
+> 的路径是本地 tarball 构建；按版本安装和 Desktop Plugins 安装会在首次公开发布后生效。
 
 ### 环境要求
 
@@ -98,7 +98,24 @@ Host 在 `session/created` 时初始化记录，并在首次 prompt 前的 `agen
 - Node.js **`^22.19.0 || >=24.0.0`**。
 - Web 或 Desktop profile。
 
-### Web profile — 按版本安装
+### 当前预发布 — 本地 tarball
+
+在 checkout 中：
+
+```bash
+npm install
+npm run build
+npm pack                         # dsh-charter-0.1.0.tgz
+dsh plugin --profile web add ./dsh-charter-0.1.0.tgz
+```
+
+Desktop 若支持本地插件导入，可在 Plugins 页面安装同一个 tarball；否则通过 Desktop profile 自己的包管理器
+安装。`dsh plugin --profile desktop` 会被拥有该 profile 的 Electron app 拒绝。源码开发流程见
+[CONTRIBUTING.zh.md](CONTRIBUTING.zh.md)；不要把 `git clone` 当作普通用户的安装方式。
+
+### 首次公开发布之后
+
+#### Web profile — 按版本安装
 
 ```bash
 dsh plugin --profile web add dsh-charter@0.1.0
@@ -113,30 +130,17 @@ dsh plugin --profile web add dsh-charter@latest
 重启 `dsh web`（或等待 profile HMR 重新组合），然后刷新页面。profile 的 `package.json` 会增加依赖和
 bundle 选择。
 
-### Desktop — 从 Plugins 安装
+#### Desktop — 从 Plugins 安装
 
-打开 **Desktop → Plugins**，搜索 **`dsh-charter`**，点击 **Install**；已安装时点击 **Update**。Desktop
-管理插件生命周期并热更新新的 bundle，不需要终端命令。更新后重新打开或刷新会话契约 tab。
-
-### 本地预发布构建
-
-首次 registry 发布前，或测试工作树时使用。在 checkout 中：
-
-```bash
-npm install
-npm run build
-npm pack                         # dsh-charter-0.1.0.tgz
-dsh plugin --profile web add ./dsh-charter-0.1.0.tgz
-```
-
-Desktop 可在 Plugins 页面安装同一个 tarball。源码开发流程见 [CONTRIBUTING.zh.md](CONTRIBUTING.zh.md)；
-不要把 `git clone` 当作主要安装方式。
+如果你的 Desktop 版本已接入公开插件目录，且 `dsh-charter` 已发布到该目录，打开 **Desktop → Plugins**，
+搜索 **`dsh-charter`**，点击 **Install**；已安装时点击 **Update**。Desktop 管理插件生命周期并热更新新的
+bundle。否则使用上面的本地 tarball 路径。
 
 ### 更新
 
-- **Web**：`dsh plugin --profile web add dsh-charter@latest`，然后重启/刷新；
-- **Desktop**：Plugins → `dsh-charter` → **Update**，Desktop 会热更新；
-- **固定版本**：用新版本号重复 Web 的按版本安装命令。
+- **本地 tarball**：重新构建并重复本地安装命令；
+- **发布后的 Web**：`dsh plugin --profile web add dsh-charter@latest`，然后重启/刷新；
+- **发布后的 Desktop**：Plugins → `dsh-charter` → **Update**，Desktop 会热更新。
 
 ## 快速开始
 
@@ -175,7 +179,7 @@ Desktop 可在 Plugins 页面安装同一个 tarball。源码开发流程见 [CO
 历史草案候选多于上下文预算时，多出的候选会在同一次原子 Apply 中保存为**待审提案**，仍然可见、可审阅；
 不会因为任意 per-kind active 条数上限而拒绝整个草案。
 
-预算在界面各处可见。超长草案条目会拆成多个候选，超限字段高亮。真正的上下文预算是门槛：历史草案放不下时，
+预算在界面各处可见。超长草案条目会拆成多个候选，超限字段高亮。契约上下文预算是门槛：历史草案放不下时，
 剩余候选保存为待审提案，而不是阻塞整个导入。只有真实的字段、存储或单批限制才会禁用 Apply。
 
 ## 配置
@@ -193,7 +197,7 @@ Desktop 可在 Plugins 页面安装同一个 tarball。源码开发流程见 [CO
 
 | 字段 | 默认 | 说明 |
 | --- | ---: | --- |
-| `maxPromptBytes` | 8192 | 最终模型可见 context 的 UTF-8 上限 |
+| `maxPromptBytes` | 8192 | 仅会话契约 contribution 的 UTF-8 预算（不含历史消息、system、tools 和其他 context） |
 | `maxObjectiveBytes` | 4096 | 目标文本的 UTF-8 上限 |
 | `maxItemBytes` | 1024 | 单条条目文本上限 |
 | `maxItems` | 512 | 全部条目存储上限 |
@@ -219,14 +223,18 @@ Desktop 可在 Plugins 页面安装同一个 tarball。源码开发流程见 [CO
 | `0.1.5-rc.1` 及更早 | 不支持 |
 | `0.2.2-rc.x`、`0.3.x` | 验证前不声明 |
 
-完整矩阵和降级说明见[兼容文档](docs/design/compatibility.zh.md)。`0.1.7`/`0.2.0` 没有 per-Peer Remote
-资源授权，只能在可信单操作者环境使用。
+“支持”表示该版本通过 typecheck、build、测试以及 Remote/client smoke。真实交互式 Web UI 在 `0.2.0-rc.2`
+上验证；其他版本是 API/build 级验证。真实模型 compaction 端到端仍未完成。完整矩阵和降级说明见
+[兼容文档](docs/design/compatibility.zh.md)。`0.1.7`/`0.2.0` 没有 per-Peer Remote 资源授权，只能在可信
+单操作者环境使用。
 
 ## 安全与隐私
 
 - 用户正文永远不进入 system-role 消息。
-- 模型没有会话契约写能力；`charter_read` 只读。
-- 记录绑定 `createdAt`、`cwd`、`parentSession`；同一 Session id 的不同 lifecycle 会被拒绝。
+- 模型没有会话契约写能力；`charter_read` 只读。`all` 是有上限的调试页（最多 64 条 / 32 KiB），不是
+  standing 工作集。
+- Actor 策略：`owner` 可执行所有编辑（含永久清除）；`user` 可做普通编辑但不能 purge；`host` 在 Remote
+  edit 路径上被拒绝。记录绑定 `createdAt`、`cwd`、`parentSession`；同一 Session id 的不同 lifecycle 会被拒绝。
 - 普通日志只记录稳定 id、kind、revision 和错误码，不记录用户正文。
 - 会话契约不是权限系统；威胁模型和报告方式见 [SECURITY.zh.md](SECURITY.zh.md)。
 
@@ -240,7 +248,7 @@ npm run check            # typecheck + test
 ```
 
 测试覆盖纯内核、真实 Host 组合、storage domain、Remote framing、历史抽取、客户端状态和 factory bundle
-注册。当前矩阵：**DSH `0.1.7-rc.2`、`0.2.0-rc.1`/`rc.2`、`0.2.1-rc.1`/`rc.2` × 71 个测试全部通过**。命令与证据见[验证记录](docs/verification.zh.md)。
+注册。当前矩阵：**DSH `0.1.7-rc.2`、`0.2.0-rc.1`/`rc.2`、`0.2.1-rc.1`/`rc.2` × 78 个测试全部通过**。命令与证据见[验证记录](docs/verification.zh.md)。
 
 ## 致谢
 

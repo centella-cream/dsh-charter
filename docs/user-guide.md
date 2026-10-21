@@ -23,11 +23,31 @@ For a Web or Desktop profile the plugin registers:
 
 ## 2. Install
 
-> **Pre-release note.** The registry package and Desktop catalog entry go live with the first public release.
-> Until then use [the local pre-release build](#23-pre-release--local-builds). The versioned Web command and
-> Desktop Plugins flow are the supported production paths once published.
+> **Current status: pre-release.** The registry package and Desktop catalog entry do not exist yet. Use the
+> local tarball path now; the versioned and Desktop Plugins paths become available after the first public
+> release.
 
-### 2.1 Web profile — install by version
+### 2.1 Requirements
+
+- DSH **`0.1.7-rc.2`** or later; `0.2.0-rc.1+` recommended, `0.2.1+` recommended for per-Peer Remote resource
+  authorization.
+- Node.js **`^22.19.0 || >=24.0.0`**.
+- A Web or Desktop profile.
+
+### 2.2 Current pre-release — local tarball
+
+```bash
+npm install
+npm run build
+npm pack
+dsh plugin --profile web add ./dsh-charter-0.1.0.tgz
+```
+
+For Desktop, use the Plugins page if local import is available; otherwise install the tarball through the Desktop
+profile's own package manager (`dsh plugin --profile desktop` is refused by the Electron app). The profile dependency
+is a local `file:` path until the package is published.
+
+### 2.3 After release — Web profile by version
 
 ```bash
 dsh plugin --profile web add dsh-charter@0.1.0
@@ -52,27 +72,13 @@ dependency and bundle selection:
 pnpm may warn about missing `@deepseek-ai/dsh-*` peers. The DSH runtime supplies those packages; do not install
 them into the profile. Trust DSH's peer compatibility check.
 
-### 2.2 Desktop — install from Plugins
+### 2.4 After release — Desktop Plugins
 
-Open **Desktop → Plugins**, search for **`dsh-charter`**, and click **Install**. When already installed, click
-**Update**; Desktop owns the plugin lifecycle and hot-applies the new bundle. No terminal command is required.
-Reopen or refresh the **Charter** tab after the update.
+If your Desktop build exposes the public catalog and the package is published there, open **Desktop → Plugins**,
+search for **`dsh-charter`**, and click **Install**. When already installed, click **Update**; Desktop owns the
+plugin lifecycle and hot-applies the new bundle. Otherwise use the tarball path.
 
-### 2.3 Pre-release / local builds
-
-Use this path before the first registry release, or when testing a worktree:
-
-```bash
-npm install
-npm run build
-npm pack
-dsh plugin --profile web add ./dsh-charter-0.1.0.tgz
-```
-
-For Desktop, install the same tarball from the Plugins page. The profile dependency is a local `file:` path until
-the package is published.
-
-### 2.4 Source development
+### 2.5 Source development
 
 For source changes, link the checkout and rebuild:
 
@@ -118,24 +124,48 @@ summary keep the normal empty state.
 
 | Dimension | Values | Notes |
 | --- | --- | --- |
-| `review` | `pending` / `accepted` / `rejected` | user-created items are accepted; agent proposals are pending |
+| `review` | `pending` / `accepted` / `rejected` | user-created items are accepted; history-overflow imports are pending; model proposal entry is reserved and not exposed yet |
 | `lifecycle` | `current` / `superseded` / `archived` | archived can be restored; superseded is not revived |
 | `verification` | `unchecked` / `verified` / `failed` / `unavailable` | independent of lifecycle |
 | `progress` | deliverable only | independent of verification |
 
 Only `accepted + current` enters the standing working set and model-visible context. `done` does not imply
-verified, and `verification.failed` does not archive automatically.
+verified, and `verification.failed` does not archive automatically. The MVP UI only toggles
+`unchecked`/`verified`; `failed`/`unavailable` are accepted read-only record states reserved for a future
+validator integration, not states you can create from this UI.
 
 ### 3.2 Permanent purge
 
-Archived, rejected, and superseded items still count toward the all-items quota. **Purge** asks for
-confirmation and, in one atomic record update:
+Archived, rejected, and superseded items still count toward the all-items quota. **Purge** is owner-only, asks
+for confirmation, and in one atomic record update:
 
 - removes the item;
 - clears replacement links that can be safely cleared;
 - scrubs body text from recent history and mutation receipts.
 
-If a later item still references it, Purge is rejected; handle the referrer first.
+Active accepted/pending items are rejected by the core; only archived, rejected, or superseded chain entries
+can be purged. If a later item still references it, Purge is rejected; handle the referrer first.
+
+### 3.3 Read-only tool views
+
+`charter_read` defaults to `standing`. The `all` view is a **bounded debugging view**, not the current working
+set: it includes rejected, archived, and superseded items, returns at most 64 items / 32 KiB, and reports the
+omitted count as `truncated`. It is not a substitute for the standing charter and should not be used
+routinely.
+
+### 3.4 Actor policy
+
+- `owner`: all charter edits, including irreversible purge.
+- `user`: ordinary objective/item/progress/verification edits, but **not** `item.purge`.
+- `host`: never accepted through the Remote edit path; internal initialization/fork uses dedicated code.
+- agent/model: no write tool or edit API is exposed.
+
+### 3.5 Non-live Sessions
+
+A Web process can show the stored charter of a Session that is live in another process as a read-only view.
+Editing and history-draft extraction require the Session to be live in the current process; reconnecting the
+Session upgrades the tab to editable. `charter.bootstrap` therefore returns `not-live` rather than reading
+another process's event log.
 
 ## 4. Configuration
 
@@ -152,7 +182,7 @@ Defaults live in `cordis.patch.yml`. Override the same keys in the profile's `co
 
 | Field | Default | Meaning |
 | --- | ---: | --- |
-| `maxPromptBytes` | 8192 | UTF-8 budget for the final model-visible context |
+| `maxPromptBytes` | 8192 | UTF-8 budget for the charter contribution only (excludes history, system, tools, and other contexts) |
 | `maxObjectiveBytes` | 4096 | UTF-8 budget for the objective |
 | `maxItemBytes` | 1024 | per-item text budget |
 | `maxItems` | 512 | all-items storage limit |

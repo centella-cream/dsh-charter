@@ -14,7 +14,7 @@ HTML live under `.tmp/` and are excluded from the published package.
 | Item | Result |
 | --- | --- |
 | Strict TypeScript check (5 DSH versions) | Pass |
-| Vitest (5 locally available versions × 71 tests) | Pass |
+| Vitest (5 locally available versions × 78 tests) | Pass |
 | Host ESM build + browser single-file bundle | Pass |
 | Remote decorator/resource smoke | Pass (0.1.7/0.2.0 have no resource declaration, as expected) |
 | Browser factory-bundle materialization and `apply` smoke | Pass |
@@ -36,7 +36,7 @@ Results:
 
 - typecheck passes;
 - build passes;
-- 13 test files, 71 tests pass;
+- 13 test files, 78 tests pass;
 - `remote-smoke` asserts `watch,bootstrap,edit`, stream mode, and Session resource;
 - `client-smoke` asserts the single-file factory bundle, external-dependency allowlist, no Node-only `Buffer`
   reference, and `apply` registering the tab/pane/Remote contribution.
@@ -45,18 +45,18 @@ Key test files:
 
 | File | Coverage |
 | --- | --- |
-| `tests/core/commands.spec.ts` | objective, items, supersede, transitions, whole-batch rollback |
+| `tests/core/commands.spec.ts` | objective, items, supersede, transitions, purge lifecycle guard, whole-batch rollback |
 | `tests/core/record.spec.ts` | atomic commit, idempotency, revision, history pruning, tamper detection |
 | `tests/core/prompt.spec.ts` | deterministic rendering, `{{` escaping, UI preview/Host render parity |
 | `tests/core/normalize-render.spec.ts` | NFC, control characters, byte limits, 100-render stability |
 | `tests/core/state.spec.ts` | supersede chain must point at a current successor |
 | `tests/core/fork.spec.ts` | fork id re-minting and supersede remapping |
-| `tests/core/bootstrap.spec.ts` | section extraction, latest objective, UTF-8 split/no truncation, latest/broken summary |
-| `tests/host/composition.spec.ts` | real Cordis/Storage/SystemPrompt/Tools composition, user-role boundary, fork, idempotency, quota, lifecycle, non-live stored view + live upgrade, draft from a real `compaction/summary` event, `charter_read` |
+| `tests/core/bootstrap.spec.ts` | section extraction, latest objective, UTF-8 split/no truncation, latest/broken summary, fallback to an older usable summary |
+| `tests/host/composition.spec.ts` | real Cordis/Storage/SystemPrompt/Tools composition, user-role boundary, actor policy, fork, idempotency, quota, parent-cycle rejection, lifecycle, non-live stored view + live upgrade, draft from a real `compaction/summary` event, bounded `charter_read` |
 | `tests/host/watch.spec.ts` | opening snapshot, race, dedupe, abort, decorator compatibility |
 | `tests/host/actor.spec.ts` | 0.1.7/0.2.0 no-principal fallback, non-owner recording |
 | `tests/host/remote.spec.ts` | Remote descriptor, wire schema, and a legacy Host view snapshot |
-| `tests/client/store.spec.ts` | accept committed view immediately, ignore stale/duplicate revisions |
+| `tests/client/store.spec.ts` | accept committed view immediately, ignore stale/duplicate revisions, release a Session source |
 | `tests/client/bootstrap-plan.spec.ts` | overflow candidates stay in one plan; active prefix fits the byte budget |
 
 ## 3. Cross-version matrix
@@ -84,11 +84,11 @@ Results:
 
 | Version | typecheck | build | Vitest | remote smoke | client smoke |
 | --- | --- | --- | --- | --- | --- |
-| `0.1.7-rc.2` | Pass | Pass | 71/71 | Pass (no-resources warning) | Pass |
-| `0.2.0-rc.1` | Pass | Pass | 71/71 | Pass (no-resources warning) | Pass |
-| `0.2.0-rc.2` | Pass | Pass | 71/71 | Pass (no-resources warning) | Pass |
-| `0.2.1-rc.1` | Pass | Pass | 71/71 | Pass | Pass |
-| `0.2.1-rc.2` | Pass | Pass | 71/71 | Pass | Pass |
+| `0.1.7-rc.2` | Pass | Pass | 78/78 | Pass (no-resources warning) | Pass |
+| `0.2.0-rc.1` | Pass | Pass | 78/78 | Pass (no-resources warning) | Pass |
+| `0.2.0-rc.2` | Pass | Pass | 78/78 | Pass (no-resources warning) | Pass |
+| `0.2.1-rc.1` | Pass | Pass | 78/78 | Pass | Pass |
+| `0.2.1-rc.2` | Pass | Pass | 78/78 | Pass | Pass |
 
 `0.1.7-rc.2` and `0.2.0` remote smoke prints:
 

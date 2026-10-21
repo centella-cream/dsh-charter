@@ -50,4 +50,5 @@ Do not publish API keys, profile data, or local screenshots containing private c
 
 - Verify the README install command against the published artifact.
 - Update the compatibility matrix if a new DSH release was tested.
-- Leave `docs/archive/` untracked; it contains local historical design material only.
+- Leave `docs/archive/` untracked; it contains local historical design material only and is outside the npm
+  `files` whitelist, so GitHub and npm stay consistent.

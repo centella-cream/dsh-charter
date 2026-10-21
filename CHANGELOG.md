@@ -5,7 +5,7 @@ English | [中文](CHANGELOG.zh.md)
 All notable changes to `dsh-charter` are recorded here. The project follows a pre-1.0 version line while the
 DSH plugin ABI is still moving.
 
-## 0.1.0 — 2026-10-20
+## 0.1.0 — Unreleased
 
 Initial MVP.
 
@@ -32,7 +32,7 @@ Initial MVP.
 - Complete English/Chinese localization for the Charter tab and pane, driven by `dsh-client-locale` and the
   active DSH language, including counts, statuses, buttons, placeholders, and error-code messages.
 - Conversation-view Charter tab (中文「会话契约」/ English 「Charter」) with draft staging, conflict preservation,
-  preview, archive/restore, supersede, pending accept/reject, purge confirmation, progress, and verification
+  preview, archive/restore, supersede, pending review (history overflow; model proposal entry reserved), purge confirmation, progress, and verification
   controls. The tab follows Chat and Trajectory and dynamically moves after any later-registered plugin tab.
 - Session-scoped Remote stream and edit endpoints.
 - Compatibility layer for DSH 0.1.7-rc.2 / 0.2.0 (`@Remote` resource fallback, prompt-context extra fields,
@@ -48,7 +48,7 @@ Initial MVP.
   restart is still required for the new pending-import semantics.
 - Verified against DSH `0.2.1-rc.2` with no code changes required; the existing peer range and compatibility layer
   cover the release candidate.
-- 71 tests across core, host composition, fork, idempotency, quota, prompt boundary, Remote stream, history
+- 78 tests across core, host composition, fork, idempotency, quota, prompt boundary, Remote stream, history
   extraction, client reordering, compatibility, and decorator compatibility. Verified on DSH `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`,
   `0.2.1-rc.1`, and `0.2.1-rc.2`. The actual Web UI was exercised on `0.2.0-rc.2`: tab order, Chinese/English
   switching, objective and invariant editing, preview, Apply, and reload persistence.
@@ -69,3 +69,18 @@ Initial MVP.
 - Default quotas are not calibrated against production samples.
 - History extraction is deterministic and heuristic; stale or noisy items can appear in the draft and require
   review.
+
+### Fixed
+
+- Enforce actor policy at the service and `commitRecord()` boundaries: `host` edits are rejected, `user` may make
+  ordinary edits but not `item.purge`, and `owner` may purge; forbidden calls do not change storage, revision, or
+  published views.
+- Reject purging an active accepted or pending item at the core operation layer; only archived, rejected, or
+  superseded chain entries are purgeable.
+- Detect self/multi-node `parentSession` cycles and depth overflow instead of leaving initialization promises
+  waiting forever.
+- Fall back to older compaction summaries when the newest valid summary yields no candidates.
+- Add bootstrap retry/stale-request handling and release per-Session client sources on view unmount; guard the
+  detach generation race.
+- Bound the `charter_read` all view to 64 items / 32 KiB and report the omitted count.
+- Isolate the deprecated `snapshotEvents()` read behind one compatibility adapter.

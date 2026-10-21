@@ -4,7 +4,7 @@
 
 记录 `dsh-charter` 的重要变更。DSH 插件 ABI 仍在演进，项目保持 pre-1.0 版本线。
 
-## 0.1.0 — 2026-10-20
+## 0.1.0 — 未发布
 
 首个 MVP。
 
@@ -30,7 +30,7 @@
 - 完整的 Charter 标签页与面板中英文界面，由 `dsh-client-locale` 和 DSH 当前语言驱动；计数、状态、按钮、
   占位符和错误码文案均包含在内。
 - 主对话页 `conversation.view` 的 Charter 标签页（中文「会话契约」/ English「Charter」），支持草稿暂存、
-  冲突保留、预览、归档/恢复、替代、待确认接受/拒绝、清除确认、进度和验证操作。标签跟随 Chat/Trajectory，
+  冲突保留、预览、归档/恢复、替代、待确认审阅（历史草案溢出；模型提议入口预留）、清除确认、进度和验证操作。标签跟随 Chat/Trajectory，
   并动态排到后续注册的插件标签之后。
 - 按 Session 授权的 Remote stream 和 edit 端点。
 - DSH 0.1.7-rc.2 / 0.2.0 兼容层（`@Remote` 资源回退、prompt-context 扩展字段、actor 回退），以及针对旧版
@@ -39,7 +39,7 @@
 - 新浏览器 client 可以兼容仍在运行旧 Host 的 view snapshot（旧 Host 仍带 active 条数字段），避免 host/client
   revision 不一致时「会话契约」白屏；新的 pending 导入语义仍需要完整重启 Host 才生效。
 - 已针对 DSH `0.2.1-rc.2` 验证，无需代码改动；现有 peer range 和兼容层已覆盖该 release candidate。
-- 71 个测试，覆盖内核、Host 组合、fork、幂等、配额、prompt 边界、Remote stream、历史抽取、客户端 tab
+- 78 个测试，覆盖内核、Host 组合、fork、幂等、配额、prompt 边界、Remote stream、历史抽取、客户端 tab
   排序和装饰器兼容。已在 DSH `0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-rc.1`、`0.2.1-rc.2` 上验证。
   真实 Web UI 在 `0.2.0-rc.2` 上验证了标签顺序、中英文切换、目标/约束编辑、预览、Apply 和刷新持久化。
 
@@ -56,3 +56,14 @@
 - 浏览器交互在 `0.2.0-rc.2` 上验证；0.1.7/0.2.1 仅通过 typecheck/build/tests，未逐版重复交互流程。
 - 默认配额尚未用生产样本校准。
 - 历史抽取是确定性启发式；摘要中的陈旧或噪声条目可能进入草案，必须人工审阅。
+
+### 修复
+
+- 在 service 和 `commitRecord()` 两层执行 actor 策略：拒绝 `host` 编辑；`user` 可普通编辑但不能 `item.purge`；
+  `owner` 可 purge；被拒绝的调用不改变 storage、revision 或已发布 view。
+- 在核心操作层拒绝 purge active accepted 或 pending item；只有 archived、rejected 或替代链条目可清除。
+- 检测父 Session 自引用、多节点环和深度溢出，不再让初始化 Promise 永久等待。
+- 最新合法摘要无法生成候选时回退到更旧的可用摘要。
+- 增加 bootstrap 失败重试/过期请求处理；view 卸载时释放每 Session source；修复 detach generation 竞态。
+- `charter_read` 的 `all` 视图限制为 64 条 / 32 KiB，并报告省略数量。
+- 将已弃用的 `snapshotEvents()` 读取隔离在一个兼容适配器中。

@@ -28,6 +28,9 @@ DSH `0.1.7` / `0.2.0` 只能校验 Session 是否 live、lifecycle identity 是�
 - 通过 `systemPrompt.context()` 以 user role 注入，绝不作为 system message；
 - 不得覆盖 Host policy、工具权限、sandbox 规则或执行守卫；
 - 模型只有 `charter_read`，没有写工具或可用写 Remote；
+- Host 执行 actor 策略：`owner` 可执行所有编辑（含 purge）；`user` 可普通编辑但不能 purge；`host` 在 Remote
+  edit 路径上被拒绝；
+- core 也拒绝 purge active accepted 或 pending item，直接调用 API 无法绕过 UI 保护；
 - 存储记录绑定 Session lifecycle identity；同一 Session id 但 `createdAt`、`cwd`、`parentSession` 不同会被拒绝；
 - UI 文案本地化，原始 storage 错误不会作为指令式内容渲染；
 - 普通日志不记录用户正文和证据摘录。
