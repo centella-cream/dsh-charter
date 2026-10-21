@@ -48,7 +48,7 @@ Initial MVP.
   restart is still required for the new pending-import semantics.
 - Verified against DSH `0.2.1-rc.2` with no code changes required; the existing peer range and compatibility layer
   cover the release candidate.
-- 95 tests across core, host composition, fork, idempotency, quota, prompt boundary, Remote stream, history
+- 112 tests across core, host composition, fork, idempotency, quota, prompt boundary, Remote stream, history
   extraction, client reordering, compatibility, and decorator compatibility. Verified on DSH `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`,
   `0.2.1-rc.1`, and `0.2.1-rc.2`. The actual Web UI was exercised on `0.2.0-rc.2`: tab order, Chinese/English
   switching, objective and invariant editing, preview, Apply, and reload persistence.
@@ -65,6 +65,8 @@ Initial MVP.
 
 ### Known limitations
 
+- Watch/edit frames still carry the full item set for a maximum-size charter; splitting history into a paged
+  Remote endpoint is a follow-up rather than part of this round.
 - Compaction rematerialization depends on the DSH runtime-context projection contract; the full compaction
   end-to-end still needs a real model session.
 - Browser interaction was verified on `0.2.0-rc.2`; 0.1.7/0.2.1 were verified by typecheck/build/tests, not by
@@ -106,6 +108,30 @@ Initial MVP.
 - Accept `maxPendingItems: 0` in the Remote wire schema, matching the Host configuration that disables proposals.
 - Document `item.propose` as a normal client edit operation (never model-facing) instead of a host-internal
   operation.
+- Isolate stored-record validation per Session: the domain boundary keeps raw documents and the service parses
+  each one, so one corrupt or forward-skewed record marks only that Session unavailable while every other
+  Session still reads and edits. The raw document is preserved for diagnosis.
+- Separate structural validation from admission policy. Lowering a budget later now renders the charter as
+  `overBudget` (not corrupt), stops injecting it, and admits shrinking edits so it can converge; non-viable
+  profile values are clamped to documented minimums with a warning. `maxRecordBytes` is exposed in the view.
+- Enforce the single-hop replacement model at the operation layer: archiving or replacing a replacement now
+  fails with `INVALID_TRANSITION` instead of `CORRUPT_STATE`, and the pane exposes the supported escape hatch
+  (purge the superseded predecessor to detach the successor).
+- Cache record validation per immutable record object and compare snapshot digests instead of serialising the
+  full item set; plan history imports in one pass (with an exact-render verification/fallback) and split
+  pathological single-line summaries with a running byte counter.
+- Move Pane draft ownership into a per-Session store: staged edits, inline editors, new-item text, feedback and
+  the reviewed history draft survive switching to Chat/Trajectory and back. Apply reuses a stable mutation id
+  for unknown-outcome retries, offers apply-to-latest after a conflict, and reports connection failures with a
+  working Retry path (including an attach watchdog and stream re-attach).
+- Render the projected draft view in the Pane: staged rows are visible immediately, counts split active/pending/
+  historical, historical rows collapse by default, item actions move into an accessible per-row menu, and the
+  sticky footer mirrors history-draft apply/discard.
+- Make bootstrap a persisted phase machine (checking / draft / no-summary / not-live / failed / unavailable /
+  dismissed) with Overview callouts and a stable Check again action, never stealing the section while the user
+  edits.
+- Keep feedback and bootstrap errors as locale-independent descriptors, make the redirect reason optional
+  instead of persisting UI copy, and localise byte units, counts, verification provenance, and preview labels.
 - Harden `npm run verify:compaction`: validate the storage record shape, accept `--store`, compare the full
   `charter_read` standing projection, and check multiple system-prompt leak signals. Document it as a manual
   check (the automated gate never runs a model).

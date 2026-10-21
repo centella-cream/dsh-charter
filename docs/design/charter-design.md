@@ -104,7 +104,8 @@ permissions, hooks, sandbox policy, or tool-execution guards.
 2. `baseRevision` is checked inside the `update()` write-chain slot.
 3. The same `mutationId + requestDigest` returns the original result within the idempotency window.
 4. If any operation fails, no operation in the batch becomes visible.
-5. Quota overflow rejects the batch; it never auto-deletes or auto-edits existing entries.
+5. Quota admission is relative to the previous snapshot: growth beyond a limit rejects the batch, while an
+   already-over-budget record may shrink toward the limit. It never auto-deletes or auto-edits existing entries.
 
 ### 3.4 Model context
 
@@ -236,6 +237,12 @@ automatically verify; a failed verification does not automatically archive.
    deleted.
 8. On plugin unload, new edits are blocked, in-flight writes are awaited, listeners and domain are released.
 
+Records are validated one by one at the service boundary. The domain keeps raw per-record documents, so a
+corrupt or forward-skewed record marks only that Session unavailable; it never prevents the domain from opening
+for every other Session, and the raw document is preserved for diagnosis. A failed initialization is cleared
+before the durable write publishes, then a final authoritative view is published; transient initialization
+failures are retried instead of being sticky.
+
 A non-live Session (for example one persisted by the Desktop process and viewed in a separate Web process)
 does not fail the stream. It returns a read-only stored view with an explanation and upgrades in place when the
 Session becomes live in the current Host.
@@ -245,7 +252,7 @@ Session becomes live in the current Host.
 ### 7.1 Operations
 
 - `objective.initialize`
-- `objective.redirect`
+- `objective.redirect` (the reason is optional; clients render a localized fallback instead of persisting UI copy)
 - `item.add`
 - `item.propose` (client history-import operation within `charter.edit`: always creates a pending proposal;
   same `clientRef`/id minting as `item.add`; never enters the model context until accepted; counts toward
@@ -464,8 +471,8 @@ Default limits:
 | Recent mutation receipts | 128 |
 
 `charter_read` returns the complete standing working set (objective plus every accepted/current item; bounded by
-the record quotas). Its `all` debugging view is paged to at most 64 items / 32 KiB and reports the omitted count
-in `truncated`.
+the record quotas) in a compact projection that omits debug-only ids, review, and lifecycle fields. Its `all`
+debugging view is paged to at most 64 items / 32 KiB and reports the omitted count in `truncated`.
 
 The only model-visible capacity is the final prompt byte budget. Active item counts are not capped separately;
 `maxItems`, `maxPendingItems`, `maxOps`, and `maxRecordBytes` remain storage/batch bounds. An over-limit edit
@@ -486,6 +493,12 @@ is rejected as a whole.
 
 **Choosing defaults.** 8 KiB of charter-contribution context is roughly 2k tokens; the objective can be 4 KiB and an item 1 KiB. These are deliberately larger than the original MVP values while still bounded. They are defaults, not universal optima: profiles can raise them when a team's charter is longer, at the cost of extra prompt bytes per request.
 
+**Budget changes and degradation.** Structural validation is independent of admission policy. Lowering a limit
+after records exist marks the view `overBudget` instead of corrupt: the charter is not injected, the UI explains
+the state, and shrinking edits (archive, purge, shorten) are admitted until the record fits again. Non-viable
+configurations are clamped to documented minimums with a warning so a profile cannot produce a ready but
+permanently uneditable Session. The view reports `maxRecordBytes` so the record ceiling is visible.
+
 
 Failure behavior:
 
@@ -493,6 +506,8 @@ Failure behavior:
 | --- | --- |
 | Domain open fails | Host returns unavailable views; ordinary conversation continues |
 | Record is semantically inconsistent | That Session is marked unavailable; no injection or editing |
+| One stored record fails the schema | Only that Session is unavailable; the domain opens, the raw document is kept |
+| Charter exceeds a tightened budget | View is `overBudget`, no injection, shrinking edits converge |
 | Lifecycle identity mismatch | No read, overwrite, or injection |
 | Storage write fails | Memory/store/prompt keep the old revision |
 | UI bundle fails | Host service, prompt, storage, and tool remain usable |
@@ -510,7 +525,8 @@ src/host/
 src/remote/
   compat.ts watch.ts service.ts wire.ts contribution.ts
 src/client/
-  store.ts preview.ts CharterPane.tsx charter.css locales.ts
+  store.ts draft.ts draft-store.ts preview.ts bootstrap-plan.ts
+  CharterPane.tsx charter.css locales.ts
 tests/core tests/host tests/client
 scripts/build scripts/verify
 ```
@@ -530,7 +546,7 @@ uninstall smoke; fault injection and side-by-side domain migration remain open.
 
 Current evidence:
 
-- 95 tests across 14 core, host, and client test files;
+- 112 tests across 16 core, host, and client test files;
 - Typecheck, build, and tests pass on DSH `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-rc.1`, and
   `0.2.1-rc.2`;
 - Real profile install/boot on `0.1.7-rc.2` and `0.2.0-rc.2`;
@@ -550,6 +566,10 @@ Current evidence:
 7. Any failing operation leaves no partial state.
 
 ### 14.2 Persistence and concurrency
+
+Regression coverage additionally requires: one schema-invalid record degrades only its own Session; an
+unavailable record is never overwritten; initialization retry publishes a final ready frame; lowering a budget
+yields an over-budget view whose shrinking edits converge; non-viable limits are clamped.
 
 1. Two edits with the same baseRevision: exactly one succeeds.
 2. A successful write with a lost response replays by mutation id.
@@ -572,6 +592,11 @@ Current evidence:
 
 ### 14.4 Remote and UI
 
+Regression coverage additionally requires: a staged draft survives a Pane unmount/remount in the same Session;
+an unknown-outcome retry reuses its mutation id; a conflict exposes apply-to-latest; bootstrap phases render on
+Overview and History without stealing the user's section; the projected draft is what the lists and preview
+render.
+
 1. Unauthorized watch/edit is rejected before business execution.
 2. Each stream generation starts with a full snapshot.
 3. A write racing with baseline read does not lose the latest revision; repeats dedupe.
@@ -583,6 +608,9 @@ Current evidence:
 8. Keyboard reachable, focus restoration, and non-color-only state.
 
 ### 14.5 Lifecycle and compatibility
+
+Regression coverage additionally requires: child-before-parent retries converge on the ready view; the Pane menu
+never offers archive/replace on a replacement; purging a superseded predecessor detaches its successor.
 
 1. Resume creates no new revision and calls no model.
 2. Fork copies once and records parent revision; later parent edits do not penetrate.
@@ -601,6 +629,10 @@ Logs contain stable ids, kinds, revisions, and error codes only. Evidence excerp
 paths, URLs, and command arguments are sensitive and do not enter ordinary logs or analytics.
 
 ## 16. Open items
+
+1. Watch/edit frames carry the full item set for a maximum-size charter; moving historical items to a paged
+   Remote endpoint is a protocol follow-up. The Pane already collapses history and reduces render/tab cost,
+   but the wire payload is unchanged in this round.
 
 1. Final ordering of `order:130` against every target Profile runtime context.
 2. Whether every compaction path clears all retained runtime snapshots.

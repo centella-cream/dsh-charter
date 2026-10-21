@@ -14,7 +14,7 @@ HTML live under `.tmp/` and are excluded from the published package.
 | Item | Result |
 | --- | --- |
 | Strict TypeScript check (5 DSH versions) | Pass |
-| Vitest (5 locally available versions × 95 tests) | Pass |
+| Vitest (5 locally available versions × 112 tests) | Pass |
 | Host ESM build + browser single-file bundle | Pass |
 | Remote decorator/resource smoke | Pass (0.1.7/0.2.0 have no resource declaration, as expected) |
 | Browser factory-bundle materialization and `apply` smoke | Pass |
@@ -22,7 +22,10 @@ HTML live under `.tmp/` and are excluded from the published package.
 | Web boot graph and `/plugins` serving | Pass |
 | Real browser UI (0.2.0-rc.2 Web profile) | Pass: tab order, zh/en switch, objective/invariant editing, preview, Apply, reload persistence; section 7 |
 | Read-only stored view for a non-live Session | Pass: composition test covers stored view and live upgrade |
-| History draft from a compaction summary | Pass: core parser + composition test on a real Session event; section 4.4 |
+| History draft from a compaction summary | Pass: core parser (including real bullet-only summary format) + composition test on a real Session event; section 4.4 |
+| Per-record storage isolation | Pass: one schema-invalid record disables only its own Session and is preserved; section 4.5 |
+| Budget degradation and convergence | Pass: lowered budgets become `overBudget`, injection stops, shrinking edits converge; non-viable config is clamped; section 4.5 |
+| Session-owned client drafts | Pass: unit tests cover draft survival across bindings, retry mutation-id reuse, conflict rebase, and bootstrap section ownership; section 4.5 |
 | Real model + compaction end-to-end | **Procedure + checker ready; live run pending** (`npm run verify:compaction`, section 8) |
 
 ## 2. Local baseline
@@ -36,7 +39,7 @@ Results:
 
 - typecheck passes;
 - build passes;
-- 14 test files, 95 tests pass;
+- 16 test files, 112 tests pass;
 - `remote-smoke` asserts `watch,bootstrap,edit`, stream mode, and Session resource;
 - `client-smoke` asserts the single-file factory bundle, external-dependency allowlist, no Node-only `Buffer`
   reference, and `apply` registering the tab/pane/Remote contribution.
@@ -52,12 +55,14 @@ Key test files:
 | `tests/core/state.spec.ts` | supersede chain must point at a current successor |
 | `tests/core/fork.spec.ts` | fork id re-minting and supersede remapping |
 | `tests/core/bootstrap.spec.ts` | section extraction, latest objective, UTF-8 split/no truncation, latest/broken summary, fallback to an older usable summary |
-| `tests/host/composition.spec.ts` | real Cordis/Storage/SystemPrompt/Tools composition, user-role boundary, actor policy, mixed `item.add` + `item.propose` atomic Apply, user-actor proposals, complete standing view vs bounded `all`, fork, idempotency, quota, parent-cycle rejection, lifecycle, non-live stored view + live upgrade, draft from a real `compaction/summary` event |
+| `tests/host/composition.spec.ts` | real Cordis/Storage/SystemPrompt/Tools composition, user-role boundary, actor policy, mixed `item.add` + `item.propose` atomic Apply, user-actor proposals, complete standing view vs bounded `all`, one schema-invalid record isolated from other Sessions, lowered-budget over-budget convergence, non-viable config clamp, successful child-retry ready frame, fork, idempotency, quota, parent-cycle rejection, lifecycle, non-live stored view + live upgrade, draft from a real `compaction/summary` event |
 | `tests/host/watch.spec.ts` | opening snapshot, race, dedupe, abort, decorator compatibility, resource-scope capability detection |
 | `tests/host/actor.spec.ts` | principal-aware policy: modern missing-principal denial, legacy-only owner fallback, non-owner recording, generation-aware `resolveRemoteActor` |
 | `tests/host/remote.spec.ts` | Remote descriptor, wire schema, legacy Host view snapshot, zero pending limit |
-| `tests/client/store.spec.ts` | accept committed view immediately, ignore stale/duplicate revisions, monotonic opening snapshot, shared source lease/ref count, stale-lease no-op, foreign-Session stream frames ignored |
-| `tests/client/bootstrap-plan.spec.ts` | overflow candidates stay in one plan; active prefix fits the byte budget; bootstrap outcome classifier (draft/discard/stale/unavailable) |
+| `tests/client/store.spec.ts` | accept committed view immediately, ignore stale/duplicate revisions, monotonic opening snapshot, authoritative availability demotion, attach retry, shared source lease/ref count, stale-lease no-op, foreign-Session stream frames ignored |
+| `tests/client/bootstrap-plan.spec.ts` | overflow candidates stay in one plan; one-pass planning with per-candidate outcomes; active prefix fits the byte budget; bootstrap outcome classifier (draft/discard/stale/unavailable) |
+| `tests/client/draft.spec.ts` / `tests/client/draft-store.spec.ts` | Session-scoped request guard; draft survival across binding unmount/remount; idempotent retry mutation-id reuse; conflict rebase; bootstrap does not steal the section |
+| `tests/client/preview.spec.ts` | projected draft rows for add/edit/accept/progress/supersede/purge; renderer parity and pending exclusion |
 | `tests/client/draft.spec.ts` | a staged draft is bound to its Session; Session A ops never build a request for Session B |
 
 ## 3. Cross-version matrix
@@ -85,11 +90,11 @@ Results:
 
 | Version | typecheck | build | Vitest | remote smoke | client smoke |
 | --- | --- | --- | --- | --- | --- |
-| `0.1.7-rc.2` | Pass | Pass | 95/95 | Pass (no-resources warning) | Pass |
-| `0.2.0-rc.1` | Pass | Pass | 95/95 | Pass (no-resources warning) | Pass |
-| `0.2.0-rc.2` | Pass | Pass | 95/95 | Pass (no-resources warning) | Pass |
-| `0.2.1-rc.1` | Pass | Pass | 95/95 | Pass | Pass |
-| `0.2.1-rc.2` | Pass | Pass | 95/95 | Pass | Pass |
+| `0.1.7-rc.2` | Pass | Pass | 112/112 | Pass (no-resources warning) | Pass |
+| `0.2.0-rc.1` | Pass | Pass | 112/112 | Pass (no-resources warning) | Pass |
+| `0.2.0-rc.2` | Pass | Pass | 112/112 | Pass (no-resources warning) | Pass |
+| `0.2.1-rc.1` | Pass | Pass | 112/112 | Pass | Pass |
+| `0.2.1-rc.2` | Pass | Pass | 112/112 | Pass | Pass |
 
 `0.1.7-rc.2` and `0.2.0` remote smoke prints:
 
@@ -161,7 +166,8 @@ Therefore:
 
 `tests/core/bootstrap.spec.ts` uses a representative summary to verify:
 
-- `Latest correction` is preferred as the objective, then `Original`, then the first paragraph;
+- `Latest correction` is preferred as the objective, then `Original`, then the first primary bullet (the real
+  DSH summary format), then the first paragraph;
 - Primary Request user-want bullets and requirement-like Critical Context lines become candidate invariants;
 - Pending Jobs / Next Step bullets become candidate deliverables;
 - text over the per-item byte limit is split into multiple candidates at sentence/clause/code-point boundaries without dropping content;
@@ -177,6 +183,29 @@ The UI auto-draft panel depends on a client `useEffect` and the Remote bootstrap
 live, already-compacted Session for a browser screenshot; the client passes typecheck/build and the Remote
 passes contract tests. The UI behavior on a real compacted Session still needs a manual pass in the target
 profile.
+
+### 4.5 Record isolation, budget degradation, and client draft ownership
+
+The third readiness review added platform-level regression coverage for degradation paths that previously had
+only static review:
+
+- **Invalid record isolation.** A persisted record document with an unexpected field is written directly under
+  `storages/dsh_charter_v1/sessions/<id>.json`. After remounting, that Session is `unavailable` and its raw file is
+  unchanged, while an unrelated Session still reads, injects, and edits its charter.
+- **Lowered budgets.** A charter created with the default 8 KiB budget is remounted with `maxPromptBytes: 300`.
+  The view is `ready` + `overBudget`, `promptText()` returns `''` (no injection), adding content returns
+  `QUOTA_EXCEEDED`, and archiving the items is admitted because the prompt shrinks; the view then leaves
+  `overBudget`.
+- **Non-viable configuration.** `maxPromptBytes`, `maxRecordBytes`, and `maxHistoryBytes` set to `1` are clamped
+  to documented minimums with a Host warning, so the Session is not ready-but-permanently-uneditable.
+- **Initialization retry.** A child Session created before its parent record is durable first reports
+  `unavailable`; after the parent appears, the transcript snapshot race is fixed (transient failure is cleared
+  before `put` publishes and a ready frame is published afterwards).
+- **Client ownership.** Unit tests cover: a draft survives unmount/remount; an unknown-outcome retry reuses the
+  mutation id; a conflict rebase mints a fresh id; a bootstrap response never steals the section while an editor
+  is open; projected items render the staged state before Apply.
+- **Planning scale.** The one-pass bootstrap planner is tested with 2,000 candidates and reports per-candidate
+  active/pending outcomes; a final exact render verifies the budget.
 
 ## 5. Browser bundle verification
 
@@ -426,6 +455,10 @@ Chinese screenshot: [charter-pane.png](assets/charter-pane.png). English screens
 translated.
 
 ### 7.6 Redesigned UI and budget verification
+
+The screenshots in this section were regenerated against the third-review build: the pane now shows the
+advisory-context disclaimer, an always-available **History draft** section, the record ceiling in **Context**,
+projected draft rows, and per-row action menus.
 
 The redesigned pane was exercised in the same Web profile at 1440×757 in both light and dark appearance, and in
 Chinese and English:

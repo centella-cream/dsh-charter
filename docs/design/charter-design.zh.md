@@ -13,8 +13,8 @@
 - [调研记录](../research/charter-research.zh.md)
 
 实现状态：MVP Host、纯内核、JSON storage 组合、Remote contract 和主对话页标签页 Client 已完成实现并通过版本矩阵
-验证。当前 `npm run typecheck`、`npm test`、`npm run build` 均通过（95 个测试）；同一源码在 DSH
-`0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-rc.1`、`0.2.1-rc.2` 上分别通过 typecheck、build 和 95 个测试。
+验证。当前 `npm run typecheck`、`npm test`、`npm run build` 均通过（112 个测试）；同一源码在 DSH
+`0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-rc.1`、`0.2.1-rc.2` 上分别通过 typecheck、build 和 112 个测试。
 真实 profile 的 tarball 安装、配置组合、Web 启动、boot graph 和客户端 bundle HTTP 已通过；DSH `0.2.0-rc.2`
 Web profile 上已用真实 Chrome 验证「对话」「轨迹」「会话契约」标签顺序、目标编辑、预览、Apply 和刷新持久化。
 完整 compaction 端到端仍需在目标 profile 手工执行。兼容边界与降级见
@@ -109,7 +109,8 @@ MVP 只包含：
 2. `baseRevision` 在 `update()` 的写链槽位内检查。
 3. 同一 `mutationId + requestDigest` 在幂等保留窗口内返回原结果。
 4. 任一 op 校验失败时，整批 op 不可见。
-5. 超配额只拒绝，不自动删改现有条目。
+5. 配额准入以上一快照为基线：超出上限的增长被整批拒绝，但已经超预算的记录可以通过缩小编辑逐步收敛；
+   从不自动删改现有条目。
 
 ### 3.4 模型上下文
 
@@ -258,6 +259,10 @@ interface EvidenceBinding {
 
 ### 6.1 一 Session 一记录
 
+记录校验在 service 边界逐条进行：domain 保留原始 per-record 文档，单条损坏或前向不兼容的记录只让该
+Session 不可用，不会阻止整个 domain 打开，也不会被重写覆盖；初始化失败会先清除瞬时不可用状态再发布最终
+ready view，并支持后续重试。
+
 Domain：
 
 ```text
@@ -374,7 +379,8 @@ interface CharterEditRequest {
 ```
 
 客户端新增条目使用临时 `clientRef`；Host 铸造正式 item id，并在成功结果中返回映射。actor、revision、
-时间和 origin 都由 Host 填充，不能相信客户端字段。
+时间和 origin 都由 Host 填充，不能相信客户端字段。`objective.redirect` 的 reason 可选：缺省时 UI 显示
+本地化默认文案，而不是把某一种 UI 语言的文案写进记录。
 
 操作集合：`objective.initialize`、`objective.redirect`、`item.add`、`item.propose`、`item.edit`、
 `item.accept` / `item.reject`、`item.supersede`、`item.archive` / `item.restore`、`item.purge`
@@ -662,7 +668,8 @@ interface CharterReadInput {
 
 - 默认返回 standing view；
 - archived/rejected/superseded 只在 `all` 调试视图中返回，且每条结果带状态；
-- standing 返回完整的当前工作集（目标 + 全部 accepted/current 条目），受 record 配额约束，不截断；
+- standing 以紧凑形式返回完整的当前工作集（目标 + 全部 accepted/current 条目），受 record 配额约束，不截断；
+  调试用 id/review/lifecycle 不进入 standing，避免元数据撑大工具结果；
 - `all` 最多返回 64 条 / 32 KiB，并报告 `truncated` 数量；
 - 默认只返回 standing；
 - 返回 canonical JSON，模型文本单独渲染；
@@ -750,7 +757,11 @@ Session dispose：
 | recent mutation receipts | 128 | 自动裁最旧幂等回执 |
 
 模型可见容量只有最终 prompt 字节预算；active 条目不单独设上限。`maxItems`、`maxPendingItems`、
-`maxOps`、`maxRecordBytes` 仍是存储/单批边界。超限整批拒绝。
+`maxOps`、`maxRecordBytes` 仍是存储/单批边界。超限增长整批拒绝。
+
+**预算收紧与降级。** 结构校验与准入策略彼此独立：记录已存在后调低上限，view 标记 `overBudget` 而不是
+损坏，停止注入，UI 解释状态，并允许归档、清除、缩短等缩小的编辑逐步收敛；不可用的配置值会被抬到
+文档化的最小值并记录 warning，避免出现 ready 但永久不可编辑的 Session。view 暴露 `maxRecordBytes`。
 
 **溢出策略。** 任何路径都不静默截断用户可见内容：
 
@@ -806,8 +817,11 @@ src/
     wire.ts           客户端 wire schema 与类型扩展
     contribution.ts   客户端 Remote 描述符
   client/
-    store.ts          RemoteSnapshotStream 客户端状态
-    preview.ts        草稿应用 + 共享渲染器
+    store.ts          RemoteSnapshotStream 客户端状态、连接重试、source lease
+    draft.ts          草稿请求构造
+    draft-store.ts    per-Session 草稿所有权（暂存/编辑器/历史草案/反馈）
+    bootstrap-plan.ts 历史草案单遍规划与结果分类
+    preview.ts        投影草稿视图 + 共享渲染器
     CharterPane.tsx   主对话页标签页面板
     locales.ts        中英文 UI 字典
     charter.css       面板样式

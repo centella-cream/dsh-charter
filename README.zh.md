@@ -51,6 +51,12 @@
 - **显式预算**：面板显示实时上下文预算和每个字段的字节计数；超限会被拒绝或交给用户选择，绝不静默截断。
 - **原子 Apply**：一次编辑要么全部提交，要么完全不提交；支持 revision 冲突与幂等重试。
 - **安全的上手**：已有压缩历史的 Session 会得到一份只读的「历史草案」；用户审阅并应用前不生效。
+- **草稿不随页面切换丢失**：暂存修改、打开中的行内编辑器和已审阅的历史草案都属于 Session 而不是当前挂载
+  的标签页；切到对话再回来不会丢失。
+- **逐 Session 降级与 fail closed**：单条无法读取的存储记录只禁用该 Session；后来收紧预算的会话契约显示为
+  over-budget 而不是损坏，不被注入，并可通过删除/归档收敛回预算内。
+- **可恢复的应用**：结果未知的请求重试时复用同一 mutation id；revision 冲突提供“应用到最新修订”，而不是
+  直接丢弃草稿。
 
 会话契约是**声明**，不是执行策略。需要机器强制的限制请使用 Host 权限、sandbox、hook 或工具守卫。
 
@@ -63,7 +69,8 @@
 - 吸顶的预览/丢弃/应用工具栏，以及模型实际收到的 user-role 上下文精确预览。
 - 从 `compaction/summary` 确定性生成历史草案；不调用模型，不自动写入。
 - 中英文界面、明暗主题、键盘焦点和容器查询响应式布局。
-- 只读 `charter_read` 工具；fork 一次性复制；重启/压缩/卸载时有明确降级状态。
+- 只读 `charter_read` 工具（紧凑 standing 投影）；fork 一次性复制；重启、压缩、卸载、记录损坏和预算收紧时
+  都有明确降级状态。
 
 ## 工作原理
 
@@ -231,8 +238,9 @@ bundle。否则使用上面的本地 tarball 路径。
 ## 安全与隐私
 
 - 用户正文永远不进入 system-role 消息。
-- 模型没有会话契约写能力；`charter_read` 只读。`standing` 返回完整的当前工作集（受 record 配额约束）；
-  `all` 调试页最多 64 条 / 32 KiB，并在 `truncated` 中报告省略数量。
+- 模型没有会话契约写能力；`charter_read` 只读。`standing` 以紧凑形式返回完整的当前工作集（受 record 配额
+  约束，省略仅供调试的 id/review/lifecycle，避免元数据撑大工具结果）；`all` 调试页最多 64 条 / 32 KiB，
+  并在 `truncated` 中报告省略数量。
 - Actor 策略：`owner` 可执行所有编辑（含永久清除）；`user` 可做普通编辑但不能 purge；`host` 在 Remote
   edit 路径上被拒绝。记录绑定 `createdAt`、`cwd`、`parentSession`；同一 Session id 的不同 lifecycle 会被拒绝。
 - 普通日志只记录稳定 id、kind、revision 和错误码，不记录用户正文。
@@ -249,7 +257,7 @@ npm run verify:compaction # 手工真实模型 compaction 校验（不在 check 
 ```
 
 测试覆盖纯内核、真实 Host 组合、storage domain、Remote framing、历史抽取、客户端状态和 factory bundle
-注册。当前矩阵：**DSH `0.1.7-rc.2`、`0.2.0-rc.1`/`rc.2`、`0.2.1-rc.1`/`rc.2` × 95 个测试全部通过**。命令与证据见[验证记录](docs/verification.zh.md)。
+注册。当前矩阵：**DSH `0.1.7-rc.2`、`0.2.0-rc.1`/`rc.2`、`0.2.1-rc.1`/`rc.2` × 112 个测试全部通过**。命令与证据见[验证记录](docs/verification.zh.md)。
 
 ## 致谢
 

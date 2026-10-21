@@ -56,6 +56,13 @@ permission boundary.
 - **Atomic Apply.** One edit commits completely or not at all, with revision conflicts and idempotent retries.
 - **Safe onboarding.** An existing compacted Session gets a review-only history draft from its latest compaction
   summary; nothing becomes effective until you review and apply it.
+- **Drafts survive navigation.** Staged edits, an open inline editor, and a reviewed history draft belong to the
+  Session, not to the mounted tab, so checking the conversation and coming back does not lose work.
+- **Fail closed and degrade per Session.** One unreadable stored record disables only that Session; a charter
+  that exceeds a later-tightened budget is shown as over-budget instead of corrupt, is not injected, and can be
+  shrunk back into range.
+- **Recoverable applies.** A retry reuses the mutation id of an unknown-outcome request, and a revision
+  conflict offers an explicit apply-to-latest action instead of discarding the draft.
 
 A charter is a declaration, not an enforcement policy. Use Host permissions, sandbox policy, hooks, or
 execution guards for restrictions that must be machine-enforced.
@@ -69,7 +76,8 @@ execution guards for restrictions that must be machine-enforced.
 - Sticky Preview / Discard / Apply toolbar and an exact preview of the model-visible user-role context.
 - History draft extraction from `compaction/summary`; deterministic, no model call, no automatic write.
 - English/Chinese UI, light/dark themes, keyboard focus states, and container-query responsiveness.
-- Read-only `charter_read` tool; one-time fork copy; explicit degraded states across restart/compaction/unload.
+- Read-only `charter_read` tool with a compact standing projection; one-time fork copy; explicit degraded
+  states across restart, compaction, unload, corrupted records, and over-budget configurations.
 
 ## How it works
 
@@ -252,8 +260,9 @@ environment.
 
 - User-authored text never enters a system-role message.
 - The model has no charter write capability; `charter_read` is read-only. Its `standing` view returns the complete
-  current working set (bounded by record quotas); the `all` debug page is capped at 64 items / 32 KiB and reports
-  omitted items.
+  current working set (bounded by record quotas) in a compact form that omits debug-only ids/review/lifecycle, so
+  metadata cannot inflate the tool result; the `all` debug page is capped at 64 items / 32 KiB and reports omitted
+  items.
 - Actor policy: `owner` may perform all edits including purge; `user` may perform ordinary edits but not purge;
   `host` is rejected on the Remote edit path. Records are bound to `createdAt`, `cwd`, and `parentSession`;
   reusing a Session id across lifecycles is rejected.
@@ -271,7 +280,7 @@ npm run verify:compaction # manual real-model compaction check (not part of chec
 ```
 
 The test suite covers the pure core, real Host composition, storage-domain behavior, Remote framing,
-history extraction, client state, and factory-bundle registration. Current matrix: **95 tests on DSH `0.1.7-rc.2`, `0.2.0-rc.1`/`rc.2`, and `0.2.1-rc.1`/`rc.2`**. See the [verification record](docs/verification.md) for commands and evidence.
+history extraction, client state, and factory-bundle registration. Current matrix: **112 tests on DSH `0.1.7-rc.2`, `0.2.0-rc.1`/`rc.2`, and `0.2.1-rc.1`/`rc.2`**. See the [verification record](docs/verification.md) for commands and evidence.
 
 ## Acknowledgements
 
