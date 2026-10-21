@@ -123,12 +123,16 @@ function paragraphLines(lines: readonly string[]): string[] {
 function hardSplit(value: string, maxBytes: number): string[] {
   const chunks: string[] = []
   let current = ''
+  let bytes = 0
   for (const character of value) {
-    if (current.length > 0 && utf8Bytes(current + character) > maxBytes) {
+    const size = utf8Bytes(character)
+    if (current.length > 0 && bytes + size > maxBytes) {
       chunks.push(current)
       current = ''
+      bytes = 0
     }
     current += character
+    bytes += size
   }
   if (current.length > 0) chunks.push(current)
   return chunks
@@ -147,14 +151,18 @@ function splitForLimit(value: string, maxBytes: number): string[] {
 
   const chunks: string[] = []
   let current = ''
+  let currentBytes = 0
   const push = (part: string): void => {
-    const candidate = current.length === 0 ? part : `${current} ${part}`
-    if (utf8Bytes(candidate) <= maxBytes) {
-      current = candidate
+    const partBytes = utf8Bytes(part)
+    const joinedBytes = current.length === 0 ? partBytes : currentBytes + 1 + partBytes
+    if (joinedBytes <= maxBytes) {
+      current = current.length === 0 ? part : `${current} ${part}`
+      currentBytes = joinedBytes
       return
     }
     if (current.length > 0) chunks.push(current)
     current = part
+    currentBytes = partBytes
   }
 
   for (const sentence of text.split(/(?<=[.!?。！？])\s+/u)) {
@@ -210,9 +218,15 @@ export function bootstrapFromSummary(
     .filter((line): line is string => line !== null && OBJECTIVE_LABEL.test(line))
   const latestLine = labeledLines.find(line => /^latest|最新修正/i.test(line))
   const originalLine = labeledLines.find(line => /^original|原始/i.test(line))
+  // Real DSH summaries usually describe the request as bullets without an
+  // `Original:`/`Latest correction:` label; the first primary bullet is the
+  // best deterministic objective after the explicit labels.
+  const firstPrimaryBullet = bulletLines(primaryLines)[0] ?? null
   const firstParagraph = paragraphLines(primaryLines)[0] ?? null
+  const firstAnyBullet = bulletLines(sections.flatMap(section => section.lines))[0] ?? null
   const fallbackParagraph = paragraphLines(sections.flatMap(section => section.lines))[0] ?? null
-  const objectiveLine = latestLine ?? originalLine ?? firstParagraph ?? fallbackParagraph
+  const objectiveLine = latestLine ?? originalLine ?? firstPrimaryBullet ?? firstParagraph
+    ?? firstAnyBullet ?? fallbackParagraph
   const objectiveSource = objectiveLine === null
     ? null
     : unquote(OBJECTIVE_LABEL.exec(objectiveLine)?.[1]?.trim() ?? objectiveLine)

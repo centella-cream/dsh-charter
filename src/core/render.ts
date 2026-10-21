@@ -13,15 +13,21 @@ export {
 } from './prompt.js'
 export type { PromptItem } from './prompt.js'
 
-export function buildSnapshot(
+/**
+ * Project a charter snapshot without applying the current quota configuration.
+ *
+ * Structural consistency validation must not depend on mutable admission
+ * limits: lowering a limit later is a policy change, not record corruption.
+ * Quotas are enforced separately when a new snapshot is admitted.
+ */
+export function buildSnapshotUnchecked(
   revision: number,
   objective: CharterObjective | undefined,
   items: readonly CharterItem[],
-  limits: CharterLimits,
 ): CharterSnapshot {
   const canonical = canonicalItems(items)
   const promptText = renderCharterPrompt(objective, canonical)
-  const snapshot: CharterSnapshot = {
+  return {
     revision,
     ...(objective === undefined ? {} : { objective }),
     items: [...canonical],
@@ -33,6 +39,16 @@ export function buildSnapshot(
       items: canonical,
     }),
   }
+}
+
+/** Build a snapshot and require it to satisfy the full quota configuration. */
+export function buildSnapshot(
+  revision: number,
+  objective: CharterObjective | undefined,
+  items: readonly CharterItem[],
+  limits: CharterLimits,
+): CharterSnapshot {
+  const snapshot = buildSnapshotUnchecked(revision, objective, items)
   assertStateQuota(snapshot, limits)
   return snapshot
 }

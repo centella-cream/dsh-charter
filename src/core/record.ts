@@ -3,13 +3,15 @@ import { jsonBytes, type CharterLimits } from './limits.js'
 import { sha256Json } from './digest.js'
 import { assertEditAuthorized } from './authorization.js'
 import { applyOps } from './commands.js'
-import { buildSnapshot, emptySnapshot } from './render.js'
+import { buildSnapshotUnchecked, emptySnapshot } from './render.js'
+import { utf8Bytes } from './limits.js'
 import { validateState } from './state.js'
 import type {
   CharterActor,
   CharterEditRequest,
   CharterRecord,
   CharterReceipt,
+  CharterSnapshot,
   MutationReceipt,
 } from './schemas.js'
 
@@ -50,13 +52,16 @@ export class RevisionConflict extends Error {
 }
 
 export function createEmptyRecord(identity: CharterIdentity, limits: CharterLimits): CharterRecord {
-  return {
+  const record: CharterRecord = {
     recordSchemaVersion: 1,
     identity,
     current: emptySnapshot(limits),
     history: [],
     recentMutations: [],
   }
+  assertSnapshotAdmission(undefined, record.current, limits)
+  assertRecordAdmission(undefined, record, limits)
+  return record
 }
 
 export function requestDigestOf(
@@ -74,13 +79,15 @@ export function requestDigestOf(
   })
 }
 
-function assertSnapshotIntegrity(record: CharterRecord, limits: CharterLimits): void {
+/** Records are immutable snapshots replaced by the single writer. */
+const validatedRecords = new WeakSet<CharterRecord>()
+
+function assertSnapshotIntegrity(record: CharterRecord): void {
   validateState(record.current.revision, record.current.objective, record.current.items)
-  const rebuilt = buildSnapshot(
+  const rebuilt = buildSnapshotUnchecked(
     record.current.revision,
     record.current.objective,
     record.current.items,
-    limits,
   )
   if (rebuilt.promptText !== record.current.promptText
     || rebuilt.promptDigest !== record.current.promptDigest
@@ -89,8 +96,17 @@ function assertSnapshotIntegrity(record: CharterRecord, limits: CharterLimits): 
   }
 }
 
+/**
+ * Validate record structure once per immutable record object.
+ *
+ * Quotas are deliberately excluded: they are admission policy for the next
+ * write, not an invariant of the stored data. `limits` stays in the signature
+ * for callers and future structure checks.
+ */
 export function assertRecordConsistency(record: CharterRecord, limits: CharterLimits): void {
-  assertSnapshotIntegrity(record, limits)
+  void limits
+  if (validatedRecords.has(record)) return
+  assertSnapshotIntegrity(record)
   const last = record.history.at(-1)
   if (record.current.revision === 0) {
     if (last !== undefined) {
@@ -145,6 +161,100 @@ export function assertRecordConsistency(record: CharterRecord, limits: CharterLi
       throw charterError('CORRUPT_STATE', `history and mutation receipt disagree for ${receipt.mutationId}`)
     }
   }
+  validatedRecords.add(record)
+}
+
+/**
+ * Whether a value may stay over its configured limit because the edit did not
+ * make it worse. This lets a charter created under a larger budget converge by
+ * removing content instead of becoming permanently uneditable.
+ */
+function overLimitGrowth(next: number, previous: number | undefined, limit: number): boolean {
+  if (next <= limit) return false
+  return previous === undefined || next > previous
+}
+
+function snapshotOverBudget(snapshot: CharterSnapshot, limits: CharterLimits): boolean {
+  return snapshot.items.length > limits.maxItems
+    || snapshot.items.filter(item => item.review === 'pending').length > limits.maxPendingItems
+    || (snapshot.objective !== undefined
+      && utf8Bytes(snapshot.objective.current.text) > limits.maxObjectiveBytes)
+    || snapshot.items.some(item => utf8Bytes(item.text) > limits.maxItemBytes)
+    || utf8Bytes(snapshot.promptText) > limits.maxPromptBytes
+}
+
+/** Admission policy for one new snapshot relative to the previous one. */
+export function assertSnapshotAdmission(
+  previous: CharterSnapshot | undefined,
+  next: CharterSnapshot,
+  limits: CharterLimits,
+): void {
+  const pending = (snapshot: CharterSnapshot): number =>
+    snapshot.items.filter(item => item.review === 'pending').length
+  if (overLimitGrowth(next.items.length, previous?.items.length, limits.maxItems)) {
+    throw charterError('QUOTA_EXCEEDED', `charter exceeds ${limits.maxItems} items`)
+  }
+  if (overLimitGrowth(pending(next), previous === undefined ? undefined : pending(previous), limits.maxPendingItems)) {
+    throw charterError('QUOTA_EXCEEDED', `charter exceeds ${limits.maxPendingItems} pending items`)
+  }
+  const nextObjective = next.objective?.current.text
+  if (nextObjective !== undefined && utf8Bytes(nextObjective) > limits.maxObjectiveBytes) {
+    const unchanged = previous?.objective?.current.text === nextObjective
+    if (!unchanged) {
+      throw charterError('QUOTA_EXCEEDED', `the objective exceeds ${limits.maxObjectiveBytes} UTF-8 bytes`)
+    }
+  }
+  const previousItems = new Map(previous?.items.map(item => [item.id, item]))
+  for (const item of next.items) {
+    if (utf8Bytes(item.text) <= limits.maxItemBytes) continue
+    const before = previousItems.get(item.id)
+    if (before !== undefined && before.text === item.text) continue
+    throw charterError('QUOTA_EXCEEDED', `an item exceeds ${limits.maxItemBytes} UTF-8 bytes`)
+  }
+  if (overLimitGrowth(
+    utf8Bytes(next.promptText),
+    previous === undefined ? undefined : utf8Bytes(previous.promptText),
+    limits.maxPromptBytes,
+  )) {
+    throw charterError('QUOTA_EXCEEDED', `charter prompt exceeds ${limits.maxPromptBytes} UTF-8 bytes`)
+  }
+}
+
+/** Admission policy for one new record relative to the previous one. */
+export function assertRecordAdmission(
+  previous: CharterRecord | undefined,
+  next: CharterRecord,
+  limits: CharterLimits,
+): void {
+  if (overLimitGrowth(
+    jsonBytes(next),
+    previous === undefined ? undefined : jsonBytes(previous),
+    limits.maxRecordBytes,
+  )) {
+    throw charterError('QUOTA_EXCEEDED', `charter record exceeds ${limits.maxRecordBytes} UTF-8 bytes`)
+  }
+  if (overLimitGrowth(
+    jsonBytes(next.history),
+    previous === undefined ? undefined : jsonBytes(previous.history),
+    limits.maxHistoryBytes,
+  )) {
+    throw charterError('QUOTA_EXCEEDED', `charter history exceeds ${limits.maxHistoryBytes} UTF-8 bytes`)
+  }
+  if (next.history.length > limits.historyLimit
+    && (previous === undefined || next.history.length > previous.history.length)) {
+    throw charterError('QUOTA_EXCEEDED', `charter history exceeds ${limits.historyLimit} receipts`)
+  }
+  if (next.recentMutations.length > limits.mutationLimit
+    && (previous === undefined || next.recentMutations.length > previous.recentMutations.length)) {
+    throw charterError('QUOTA_EXCEEDED', `charter mutations exceed ${limits.mutationLimit} receipts`)
+  }
+}
+
+/** Read-only policy state: the record is structurally valid but over budget. */
+export function isRecordOverBudget(record: CharterRecord, limits: CharterLimits): boolean {
+  return snapshotOverBudget(record.current, limits)
+    || jsonBytes(record) > limits.maxRecordBytes
+    || jsonBytes(record.history) > limits.maxHistoryBytes
 }
 
 function trimHistory(
@@ -153,9 +263,6 @@ function trimHistory(
 ): CharterReceipt[] {
   const next = history.slice(-limits.historyLimit)
   while (next.length > 1 && jsonBytes(next) > limits.maxHistoryBytes) next.shift()
-  if (jsonBytes(next) > limits.maxHistoryBytes) {
-    throw charterError('QUOTA_EXCEEDED', 'the newest charter history receipt exceeds the history budget')
-  }
   return next
 }
 
@@ -187,6 +294,7 @@ export function commitRecord(input: CommitRecordInput): CharterRecord {
     nextRevision: revision,
     limits: input.limits,
   })
+  assertSnapshotAdmission(input.record.current, applied.snapshot, input.limits)
   const historyReceipt: CharterReceipt = {
     revision,
     baseRevision: input.record.current.revision,
@@ -211,9 +319,7 @@ export function commitRecord(input: CommitRecordInput): CharterRecord {
     recentMutations: [...input.record.recentMutations, mutationReceipt]
       .slice(-input.limits.mutationLimit),
   }
-  if (jsonBytes(next) > input.limits.maxRecordBytes) {
-    throw charterError('QUOTA_EXCEEDED', `charter record exceeds ${input.limits.maxRecordBytes} UTF-8 bytes`)
-  }
+  assertRecordAdmission(input.record, next, input.limits)
   assertRecordConsistency(next, input.limits)
   return next
 }

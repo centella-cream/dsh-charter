@@ -19,10 +19,12 @@ import { bootstrapFromEvents } from '../core/bootstrap.js'
 import { readSessionEvents } from './session-events.js'
 import { assertEditAuthorized } from '../core/authorization.js'
 import {
+  clampCharterLimits,
   DEFAULT_CHARTER_LIMITS,
   type CharterLimits,
 } from '../core/limits.js'
 import {
+  charterRecordSchema,
   type CharterActor,
   type CharterEditRequest,
   type CharterRecord,
@@ -32,6 +34,7 @@ import {
   assertRecordConsistency,
   commitRecord,
   createEmptyRecord,
+  isRecordOverBudget,
   MutationReplay,
   requestDigestOf,
   RevisionConflict,
@@ -125,6 +128,8 @@ export class CharterService extends Service {
   private globalFailure?: string
   private admissionOpen = true
   private readonly unavailable = new Map<SessionIdType, string>()
+  /** Schema-invalid stored documents; preserved untouched for diagnosis. */
+  private readonly invalidRecords = new Set<SessionIdType>()
   private readonly waitingForParent = new Map<SessionIdType, SessionIdType>()
   private readonly initializations = new Map<SessionIdType, Promise<void>>()
   private readonly initializationControllers = new Map<SessionIdType, AbortController>()
@@ -134,7 +139,11 @@ export class CharterService extends Service {
 
   constructor(ctx: Context, config: CharterConfig) {
     super(ctx, 'charter')
-    this.config = { ...config }
+    const clamped = clampCharterLimits(config)
+    this.config = { ...config, ...clamped.limits }
+    if (clamped.adjusted.length > 0) {
+      this.ctx.logger.warn(`charter: config values below the viable minimum were raised: ${clamped.adjusted.join('; ')}`)
+    }
   }
 
   protected async [Service.init](): Promise<void> {
@@ -157,7 +166,8 @@ export class CharterService extends Service {
     }, { global: true })
 
     this.ctx.on('agent/disposed', ({ agent }) => {
-      this.listeners.delete(agent.session.id)
+      // A Session can outlive one Agent (and get a new Agent later), so keep
+      // its watchers; each stream removes its own listener on cleanup.
       this.initializationControllers.get(agent.session.id)?.abort(
         new Error('Agent disposed during Charter initialization'),
       )
@@ -166,6 +176,7 @@ export class CharterService extends Service {
     this.ctx.on('session/disposed', session => {
       this.listeners.delete(session.id)
       this.waitingForParent.delete(session.id)
+      this.unavailable.delete(session.id)
       this.initializationControllers.get(session.id)?.abort(
         new Error('Session disposed during Charter initialization'),
       )
@@ -217,10 +228,21 @@ export class CharterService extends Service {
   private async openDomain(): Promise<void> {
     try {
       const domain = await this.ctx.storageDomain.open(charterDomainSpec)
-      this.sessionsTable = domain.table(CHARTER_SESSIONS_TABLE)
-      for (const [id, record] of this.sessionsTable.entries()) {
+      const rawTable = domain.table(CHARTER_SESSIONS_TABLE) as unknown as KvTable<SessionIdType, unknown>
+      this.sessionsTable = rawTable as unknown as KvTable<SessionIdType, CharterRecord>
+      for (const [id, stored] of rawTable.entries()) {
+        const parsed = charterRecordSchema.safeParse(stored)
+        if (!parsed.success) {
+          // One unreadable or forward-skewed document must degrade only its
+          // own Session; keep the raw document untouched for diagnosis.
+          this.invalidRecords.add(id)
+          const message = `Stored charter cannot be read by this version: ${parsed.error.message}`
+          this.unavailable.set(id, message)
+          this.ctx.logger.error(`charter: ${id}: ${message}`)
+          continue
+        }
         try {
-          assertRecordConsistency(record, this.config)
+          assertRecordConsistency(parsed.data, this.config)
         } catch (error) {
           this.unavailable.set(id, `Stored charter is inconsistent: ${describeError(error)}`)
           this.ctx.logger.error(`charter: stored record for ${id} is inconsistent and has been disabled: ${describeError(error)}`)
@@ -332,6 +354,8 @@ export class CharterService extends Service {
   ): Promise<void> {
     signal?.throwIfAborted()
     if (this.ctx.sessions.get(session.id) !== session) return
+    // Preserve the raw schema-invalid document instead of overwriting it.
+    if (this.invalidRecords.has(session.id)) return
     const table = this.requireTable()
     if (session.header.parentSession !== undefined) {
       if (session.header.parentSession === session.id) {
@@ -379,9 +403,12 @@ export class CharterService extends Service {
     }
     signal?.throwIfAborted()
     if (this.ctx.sessions.get(session.id) !== session) return
+    // `put` emits `domain/changed` before it resolves, so clear the transient
+    // failure first; otherwise the only published frame is the stale error.
+    this.unavailable.delete(session.id)
     await table.put(session.id, record)
     this.waitingForParent.delete(session.id)
-    this.unavailable.delete(session.id)
+    this.publish(session.id)
   }
 
   private requireTable(): KvTable<SessionIdType, CharterRecord> {
@@ -392,6 +419,7 @@ export class CharterService extends Service {
   }
 
   private recordFor(session: Session): CharterRecord | undefined {
+    if (this.invalidRecords.has(session.id)) return undefined
     const record = this.sessionsTable?.get(session.id)
     if (record === undefined) return undefined
     if (!sameIdentity(record, session)) {
@@ -409,6 +437,10 @@ export class CharterService extends Service {
       this.ctx.logger.error(`charter: ${session.id}: ${message}`)
       return undefined
     }
+    // A successful read clears only transient initialization/availability
+    // state. Schema-invalid documents stay in `invalidRecords` and are never
+    // reachable through this path.
+    this.unavailable.delete(session.id)
     return record
   }
 
@@ -453,6 +485,7 @@ export class CharterService extends Service {
       maxItems: this.config.maxItems,
       maxPendingItems: this.config.maxPendingItems,
       maxOps: this.config.maxOps,
+      maxRecordBytes: this.config.maxRecordBytes,
       // Keep an older browser client rendering while the new Host loads.
       maxActiveInvariants: this.config.maxItems,
       maxActiveDeliverables: this.config.maxItems,
@@ -472,6 +505,12 @@ export class CharterService extends Service {
   viewById(sessionId: SessionIdType): CharterView {
     const session = this.ctx.sessions.get(sessionId)
     if (session !== undefined) return this.view(session)
+    if (this.invalidRecords.has(sessionId)) {
+      return this.unavailableView(
+        sessionId,
+        this.unavailable.get(sessionId) ?? 'Stored charter cannot be read by this version',
+      )
+    }
 
     const failure = this.globalFailure
       ?? (this.sessionsTable === undefined ? 'Charter storage is not ready' : undefined)
@@ -485,6 +524,7 @@ export class CharterService extends Service {
         promptText: '',
         promptDigest: '',
         limits: this.viewLimits(),
+        overBudget: false,
         message: failure,
       }
     }
@@ -500,6 +540,7 @@ export class CharterService extends Service {
         promptText: '',
         promptDigest: '',
         limits: this.viewLimits(),
+        overBudget: false,
         message: 'This Session is not live in the current Host process. '
           + 'Open or start it in this Web UI; the Charter tab will update automatically.',
       }
@@ -517,6 +558,7 @@ export class CharterService extends Service {
         promptText: '',
         promptDigest: '',
         limits: this.viewLimits(),
+        overBudget: false,
         message: `Stored charter is inconsistent: ${describeError(error)}`,
       }
     }
@@ -530,40 +572,41 @@ export class CharterService extends Service {
       promptText: record.current.promptText,
       promptDigest: record.current.promptDigest,
       limits: this.viewLimits(),
+      overBudget: isRecordOverBudget(record, this.config),
       message: 'This Session is not live in the current Host process; '
         + 'showing the stored charter read-only. Open or start the Session here to edit it.',
     }
   }
 
+  private unavailableView(sessionId: SessionIdType, message: string, revision = 0): CharterView {
+    return {
+      status: 'unavailable',
+      sessionId,
+      revision,
+      objective: null,
+      items: [],
+      promptText: '',
+      promptDigest: '',
+      limits: this.viewLimits(),
+      overBudget: false,
+      message,
+    }
+  }
+
   view(session: Session): CharterView {
-    const failure = this.globalFailure
-    if (failure !== undefined) {
-      return {
-        status: 'unavailable',
-        sessionId: session.id,
-        revision: 0,
-        objective: null,
-        items: [],
-        promptText: '',
-        promptDigest: '',
-        limits: this.viewLimits(),
-        message: failure,
-      }
+    if (this.globalFailure !== undefined) {
+      return this.unavailableView(session.id, this.globalFailure)
+    }
+    if (this.invalidRecords.has(session.id)) {
+      return this.unavailableView(
+        session.id,
+        this.unavailable.get(session.id) ?? 'Stored charter cannot be read by this version',
+      )
     }
     const record = this.recordFor(session)
     const recordFailure = this.unavailable.get(session.id)
     if (recordFailure !== undefined) {
-      return {
-        status: 'unavailable',
-        sessionId: session.id,
-        revision: 0,
-        objective: null,
-        items: [],
-        promptText: '',
-        promptDigest: '',
-        limits: this.viewLimits(),
-        message: recordFailure,
-      }
+      return this.unavailableView(session.id, recordFailure)
     }
     if (record === undefined) {
       return {
@@ -575,6 +618,7 @@ export class CharterService extends Service {
         promptText: '',
         promptDigest: '',
         limits: this.viewLimits(),
+        overBudget: false,
       }
     }
     return {
@@ -586,12 +630,15 @@ export class CharterService extends Service {
       promptText: record.current.promptText,
       promptDigest: record.current.promptDigest,
       limits: this.viewLimits(),
+      overBudget: isRecordOverBudget(record, this.config),
     }
   }
 
   promptText(session: Session): string {
     const view = this.view(session)
-    return view.status === 'ready' ? view.promptText : ''
+    // Never inject a charter that exceeds the current budget configuration;
+    // the UI exposes the over-budget state so the user can trim it down.
+    return view.status === 'ready' && !view.overBudget ? view.promptText : ''
   }
 
   readForModel(session: Session, mode: 'standing' | 'all'): CharterToolView {
@@ -624,15 +671,25 @@ export class CharterService extends Service {
     return {
       revision: record.current.revision,
       objective: record.current.objective?.current.text ?? null,
-      items: selected.map(item => ({
-        id: item.id,
-        kind: item.kind,
-        text: item.text,
-        review: item.review,
-        lifecycle: item.lifecycle,
-        verification: item.verification.state,
-        progress: item.kind === 'deliverable' ? item.progress : null,
-      })),
+      // `standing` is the working set: metadata that does not help the model
+      // (ids, review, lifecycle are constant for standing rows) only inflates
+      // the tool result. `all` keeps the full debugging projection.
+      items: selected.map(item => (mode === 'standing'
+        ? {
+            kind: item.kind,
+            text: item.text,
+            verification: item.verification.state,
+            progress: item.kind === 'deliverable' ? item.progress : null,
+          }
+        : {
+            id: item.id,
+            kind: item.kind,
+            text: item.text,
+            review: item.review,
+            lifecycle: item.lifecycle,
+            verification: item.verification.state,
+            progress: item.kind === 'deliverable' ? item.progress : null,
+          })),
       truncated: relevant.length - selected.length,
     }
   }
@@ -658,7 +715,17 @@ export class CharterService extends Service {
 
     const session = this.ctx.sessions.get(SessionId(request.sessionId))
     if (session === undefined) return unavailableResult('NOT_FOUND', 'The Session is not live')
-    const currentView = this.view(session)
+    let currentView = this.view(session)
+    if (currentView.status === 'unavailable'
+      && !this.invalidRecords.has(session.id)
+      && this.sessionsTable?.get(session.id) === undefined) {
+      try {
+        await this.ensureSession(session, 'startup')
+      } catch {
+        // The current view below carries the refreshed failure.
+      }
+      currentView = this.view(session)
+    }
     if (currentView.status === 'unavailable') {
       return unavailableResult('UNAVAILABLE', currentView.message ?? 'Charter is unavailable', currentView)
     }
@@ -675,7 +742,7 @@ export class CharterService extends Service {
       }
       if (current === undefined) {
         await this.ensureSession(session, 'startup')
-        current = table.get(session.id)
+        current = this.recordFor(session)
       }
       if (current === undefined) throw charterError('NOT_FOUND', 'Charter record is missing')
       if (!sameIdentity(current, session)) {

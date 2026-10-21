@@ -44,9 +44,14 @@ export const charterViewSchema = z.object({
     // must accept it as well (maxItems stays at least 1).
     maxPendingItems: z.number().int().nonnegative().default(512),
     maxOps: z.number().int().positive(),
+    // Added with the record-admission model; defaults keep a new client
+    // readable while an older Host process is still running.
+    maxRecordBytes: z.number().int().positive().default(1_048_576),
     maxActiveInvariants: z.number().int().positive().optional(),
     maxActiveDeliverables: z.number().int().positive().optional(),
   }).strict(),
+  /** The stored record is valid but exceeds the current budget configuration. */
+  overBudget: z.boolean().default(false),
   message: z.string().optional(),
 }).strict()
 
