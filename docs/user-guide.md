@@ -19,7 +19,7 @@ For a Web or Desktop profile the plugin registers:
 - Host service `charter`;
 - Remote service `charterRemote` (namespace `charter`);
 - read-only tool `charter_read`;
-- browser entry `dsh-charter/client.js` and the **Charter / 任务契约** tab in the conversation header.
+- browser entry `dsh-charter/client.js` and the **Charter / 会话契约** tab in the conversation header.
 
 ## 2. Install
 
@@ -107,7 +107,7 @@ summary keep the normal empty state.
    - `Run pnpm test before delivery`
    - `Keep the public API backward compatible`
 5. In **Deliverables**, add outcomes with `not-started` / `in-progress` / `blocked` / `done` / `cancelled`.
-   The tab label and every pane string follow the active DSH language: **Charter** in English, **任务契约** in Chinese.
+   The tab label and every pane string follow the active DSH language: **Charter** in English, **会话契约** in Chinese.
 6. Every change first enters a draft. **Preview context** shows the exact user-role text, byte count, and hash
    the model will see after Apply.
 7. **Apply** commits atomically. On success the revision increases and the next request sees it.

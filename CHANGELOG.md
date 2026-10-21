@@ -31,7 +31,7 @@ Initial MVP.
   existing Session; no model call and no automatic write. The user edits/unchecks the draft and applies it.
 - Complete English/Chinese localization for the Charter tab and pane, driven by `dsh-client-locale` and the
   active DSH language, including counts, statuses, buttons, placeholders, and error-code messages.
-- Conversation-view Charter tab (中文「任务契约」/ English 「Charter」) with draft staging, conflict preservation,
+- Conversation-view Charter tab (中文「会话契约」/ English 「Charter」) with draft staging, conflict preservation,
   preview, archive/restore, supersede, pending accept/reject, purge confirmation, progress, and verification
   controls. The tab follows Chat and Trajectory and dynamically moves after any later-registered plugin tab.
 - Session-scoped Remote stream and edit endpoints.

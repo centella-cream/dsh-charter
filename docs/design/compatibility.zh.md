@@ -56,8 +56,8 @@ prerelease 后再追加一段。`0.1.7-rc.1` 不在范围内；最低支持版�
 - **0.1.7-rc.2 / 0.2.0 可以用**，但 Gateway 没有 per-Peer 资源授权。插件只能校验 Session 存活和 lifecycle
   identity；任何能访问该 Host 的 Peer 都能调用本插件的 Session Remote。请在可信的单操作者环境使用这些版本。
 - **0.2.1+ 是推荐版本**。`@Remote.resources` 让 Gateway 在业务方法执行前完成 Session 资源授权，
-  `required:true` 让任务契约在可选 runtime context 被关闭时仍保留。
-- 任务契约正文的完整性不依赖版本：每次 assembly 都从 storage 正本读取，并对 `{{` 做 JSON 转义。
+  `required:true` 让会话契约在可选 runtime context 被关闭时仍保留。
+- 会话契约正文的完整性不依赖版本：每次 assembly 都从 storage 正本读取，并对 `{{` 做 JSON 转义。
 
 ## 3. 兼容实现位置
 

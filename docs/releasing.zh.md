@@ -32,7 +32,7 @@ DSH_HOME=/tmp/dsh-charter-release-home \
   dsh --profile release-smoke --no-open --port 19399
 ```
 
-打开打印的 URL，新建 Session，检查任务契约 tab 和中英文切换。
+打开打印的 URL，新建 Session，检查会话契约 tab 和中英文切换。
 
 ## 3. 发布
 
