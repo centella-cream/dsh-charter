@@ -34,6 +34,10 @@ DSH_HOME=/tmp/dsh-charter-release-home \
 
 Open the printed URL, start a Session, and check the Charter tab and English/Chinese switching.
 
+Real-model compaction acceptance is manual: apply a charter, run `/compact`, send one message, then run
+`npm run verify:compaction -- --session <id> --home <DSH_HOME>` and record the `PASS` evidence in the
+verification record (section 8). This check needs a model and is never part of `npm run check`.
+
 ## 3. Publish
 
 1. Commit and tag `vX.Y.Z`.

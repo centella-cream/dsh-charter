@@ -14,10 +14,10 @@ This document answers three questions:
 
 | DSH version | Status | Verification |
 | --- | --- | --- |
-| `0.1.7-rc.2` | Supported (minimum) | typecheck, build, 78 tests, remote/client smoke, real profile install and startup |
-| `0.2.0-rc.1` | Supported | typecheck, build, 78 tests, remote/client smoke |
+| `0.1.7-rc.2` | Supported (minimum) | typecheck, build, 90 tests, remote/client smoke, real profile install and startup |
+| `0.2.0-rc.1` | Supported | typecheck, build, 90 tests, remote/client smoke |
 | `0.2.0-rc.2` | Supported | same + real profile install/startup, boot graph, bundle HTTP |
-| `0.2.1-rc.1` | Supported | typecheck, build, 78 tests, remote/client smoke |
+| `0.2.1-rc.1` | Supported | typecheck, build, 90 tests, remote/client smoke |
 | `0.2.1-rc.2` | Supported (primary development baseline) | same |
 | `0.1.5-rc.1` / `0.1.5-rc.2` / `0.1.5-rc.3` | Not supported | contract differences too large; see section 4 |
 | `0.1.6-alpha.x` | Not supported | same generation as 0.1.5; not individually verified |
@@ -70,9 +70,9 @@ Add a new clause after verifying each new minor prerelease. `0.1.7-rc.1` is excl
 | Resource declaration test | `scripts/verify/remote-smoke.mjs` |
 | PromptContext extension fields | `src/host/service.ts` |
 | `{{` escaping | `src/core/prompt.ts` |
-| Actor fallback | `resolveActor()` in `src/host/service.ts` |
+| Actor resolution | `resolveActor()` in `src/host/service.ts`, generation policy in `src/remote/actor.ts`; 0.2.1+ fails closed when a Remote call has no Peer principal |
 | Version-specific type verification | independent `node_modules` copies described in [verification](../verification.md) |
-| Deprecated historical event read | isolated in `src/host/session-events.ts`; DSH 0.2.1-rc.2 has no public non-deprecated replacement yet |
+| Deprecated historical event read | isolated in `src/host/session-events.ts`; **known technical debt**, not a completed replacement — DSH 0.2.1-rc.2 exposes no public non-deprecated reader yet |
 
 The compatibility layer is deliberately small: only decorator shape, two optional context fields, an actor
 reading branch, and the isolated historical-event reader. There is no second Remote codec, second session event protocol, or second sidebar API for old
@@ -114,7 +114,7 @@ the [verification record](../verification.md).
 
 ## 6. Upgrade policy
 
-- New `0.2.x` stable: peer range already covers it; run 78 tests + profile smoke once.
+- New `0.2.x` stable: peer range already covers it; run 90 tests + profile smoke once.
 - New `0.2.x` prerelease: extend the peer range, then run the version matrix; do not claim compatibility
   without verification.
 - `0.2.1` introduces resource authorization and is the minimum security recommendation.

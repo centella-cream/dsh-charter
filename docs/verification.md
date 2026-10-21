@@ -2,7 +2,7 @@
 
 English | [中文](verification.zh.md)
 
-Verification date: 2026-10-20.
+Verification date: 2026-10-20; re-run after the second readiness review: 2026-10-21.
 Environment: macOS, Node `v22.23.1`, npm `12.0.2`, pnpm `12.3.4`; current Desktop runtime DSH `0.2.0-rc.2`.
 Local development dependency baseline: DSH `0.2.1-rc.2`.
 
@@ -14,7 +14,7 @@ HTML live under `.tmp/` and are excluded from the published package.
 | Item | Result |
 | --- | --- |
 | Strict TypeScript check (5 DSH versions) | Pass |
-| Vitest (5 locally available versions × 78 tests) | Pass |
+| Vitest (5 locally available versions × 90 tests) | Pass |
 | Host ESM build + browser single-file bundle | Pass |
 | Remote decorator/resource smoke | Pass (0.1.7/0.2.0 have no resource declaration, as expected) |
 | Browser factory-bundle materialization and `apply` smoke | Pass |
@@ -23,7 +23,7 @@ HTML live under `.tmp/` and are excluded from the published package.
 | Real browser UI (0.2.0-rc.2 Web profile) | Pass: tab order, zh/en switch, objective/invariant editing, preview, Apply, reload persistence; section 7 |
 | Read-only stored view for a non-live Session | Pass: composition test covers stored view and live upgrade |
 | History draft from a compaction summary | Pass: core parser + composition test on a real Session event; section 4.4 |
-| Real model + compaction end-to-end | **Not completed**; requires a working model session; section 8 |
+| Real model + compaction end-to-end | **Procedure + checker ready; live run pending** (`npm run verify:compaction`, section 8) |
 
 ## 2. Local baseline
 
@@ -36,7 +36,7 @@ Results:
 
 - typecheck passes;
 - build passes;
-- 13 test files, 78 tests pass;
+- 13 test files, 90 tests pass;
 - `remote-smoke` asserts `watch,bootstrap,edit`, stream mode, and Session resource;
 - `client-smoke` asserts the single-file factory bundle, external-dependency allowlist, no Node-only `Buffer`
   reference, and `apply` registering the tab/pane/Remote contribution.
@@ -45,19 +45,19 @@ Key test files:
 
 | File | Coverage |
 | --- | --- |
-| `tests/core/commands.spec.ts` | objective, items, supersede, transitions, purge lifecycle guard, whole-batch rollback |
+| `tests/core/commands.spec.ts` | objective, items, supersede, transitions, purge lifecycle guard, `item.propose` clientRef minting, whole-batch rollback |
 | `tests/core/record.spec.ts` | atomic commit, idempotency, revision, history pruning, tamper detection |
 | `tests/core/prompt.spec.ts` | deterministic rendering, `{{` escaping, UI preview/Host render parity |
 | `tests/core/normalize-render.spec.ts` | NFC, control characters, byte limits, 100-render stability |
 | `tests/core/state.spec.ts` | supersede chain must point at a current successor |
 | `tests/core/fork.spec.ts` | fork id re-minting and supersede remapping |
 | `tests/core/bootstrap.spec.ts` | section extraction, latest objective, UTF-8 split/no truncation, latest/broken summary, fallback to an older usable summary |
-| `tests/host/composition.spec.ts` | real Cordis/Storage/SystemPrompt/Tools composition, user-role boundary, actor policy, fork, idempotency, quota, parent-cycle rejection, lifecycle, non-live stored view + live upgrade, draft from a real `compaction/summary` event, bounded `charter_read` |
-| `tests/host/watch.spec.ts` | opening snapshot, race, dedupe, abort, decorator compatibility |
-| `tests/host/actor.spec.ts` | 0.1.7/0.2.0 no-principal fallback, non-owner recording |
+| `tests/host/composition.spec.ts` | real Cordis/Storage/SystemPrompt/Tools composition, user-role boundary, actor policy, mixed `item.add` + `item.propose` atomic Apply, fork, idempotency, quota, parent-cycle rejection, lifecycle, non-live stored view + live upgrade, draft from a real `compaction/summary` event, bounded `charter_read` |
+| `tests/host/watch.spec.ts` | opening snapshot, race, dedupe, abort, decorator compatibility, resource-scope capability detection |
+| `tests/host/actor.spec.ts` | principal-aware policy: modern missing-principal denial, legacy-only owner fallback, non-owner recording, generation-aware `resolveRemoteActor` |
 | `tests/host/remote.spec.ts` | Remote descriptor, wire schema, and a legacy Host view snapshot |
-| `tests/client/store.spec.ts` | accept committed view immediately, ignore stale/duplicate revisions, release a Session source |
-| `tests/client/bootstrap-plan.spec.ts` | overflow candidates stay in one plan; active prefix fits the byte budget |
+| `tests/client/store.spec.ts` | accept committed view immediately, ignore stale/duplicate revisions, shared source lease/ref count, stale-lease no-op, foreign-Session stream frames ignored |
+| `tests/client/bootstrap-plan.spec.ts` | overflow candidates stay in one plan; active prefix fits the byte budget; bootstrap outcome classifier (draft/discard/stale/unavailable) |
 
 ## 3. Cross-version matrix
 
@@ -84,11 +84,11 @@ Results:
 
 | Version | typecheck | build | Vitest | remote smoke | client smoke |
 | --- | --- | --- | --- | --- | --- |
-| `0.1.7-rc.2` | Pass | Pass | 78/78 | Pass (no-resources warning) | Pass |
-| `0.2.0-rc.1` | Pass | Pass | 78/78 | Pass (no-resources warning) | Pass |
-| `0.2.0-rc.2` | Pass | Pass | 78/78 | Pass (no-resources warning) | Pass |
-| `0.2.1-rc.1` | Pass | Pass | 78/78 | Pass | Pass |
-| `0.2.1-rc.2` | Pass | Pass | 78/78 | Pass | Pass |
+| `0.1.7-rc.2` | Pass | Pass | 90/90 | Pass (no-resources warning) | Pass |
+| `0.2.0-rc.1` | Pass | Pass | 90/90 | Pass (no-resources warning) | Pass |
+| `0.2.0-rc.2` | Pass | Pass | 90/90 | Pass (no-resources warning) | Pass |
+| `0.2.1-rc.1` | Pass | Pass | 90/90 | Pass | Pass |
+| `0.2.1-rc.2` | Pass | Pass | 90/90 | Pass | Pass |
 
 `0.1.7-rc.2` and `0.2.0` remote smoke prints:
 
@@ -154,7 +154,7 @@ Therefore:
 
 - unit/composition level verifies "every assembly reads authority" and "re-assembly is byte-stable";
 - platform level verifies the runtime-context re-materialization path;
-- **not yet** executed: a full compaction on a real model session, followed by observing subsequent requests.
+- the runtime check (`npm run verify:compaction`) is defined in section 8; a live compaction on a real model Session is still pending.
 
 ### 4.4 History draft from a compaction summary
 
@@ -457,23 +457,65 @@ round.
   interaction on 0.1.7/0.2.1. Host/Remote tests cover the logic; a manual pass in the target profile is still
   recommended.
 
-## 8. Unfinished compaction end-to-end
+## 8. Real compaction end-to-end
 
-A full compaction needs a working model provider and a long enough conversation. This round made no model
-requests. Suggested flow:
+Status: the executable check exists and the runtime injection path is confirmed on a real DSH Session; the
+cross-compaction live run is the remaining manual step. `npm run check` never runs a model and therefore never
+runs this check.
 
-1. set an objective and 2-3 invariants in a test Session;
-2. continue the conversation and run `/compact` (or let automatic compaction trigger);
-3. after compaction check:
-   - the Charter pane still shows the same revision/body;
-   - `charter_read` returns standing content;
-   - the system prompt contains no charter body;
-   - the next request's runtime context contains the full charter;
-4. restart DSH, reopen the Session, and re-check revision and body.
+### 8.1 What is already proven
 
-Platform basis: `@deepseek-ai/dsh-agent-loop@0.2.0-rc.2` `RuntimeContextProjection` clears retained after a
-replacement/compaction shadows the snapshot and regenerates on the next request; this plugin reads the storage
-authority on every provider call.
+- DSH persists each assembled runtime context as a `user/message` event with
+  `source.kind === "runtime-context"` and a `sections` array. In a real Web-profile Session
+  (`session-aa06df32…`, revision 6, 245 B charter), seven such snapshots contain a `charter:standing` section
+  whose bytes equal the storage record's `promptText` and whose SHA-256 equals `promptDigest`. This proves the
+  user-role injection path on a real DSH runtime, including UI-driven edits.
+- Composition tests prove the provider re-assembles from the storage authority on every request; the platform's
+  `RuntimeContextProjection` clears retained state when a replacement/compaction shadows it.
+
+### 8.2 Manual acceptance check
+
+`npm run verify:compaction` is a developer tool: it is not part of `npm run check`, it is not included in the npm
+package (`scripts/` is outside the `files` allowlist), it reads the local DSH transcript, and it needs the `zstd`
+binary. It supports the JSON storage backend layout
+`$DSH_HOME/storages/<domain>/sessions/<sessionId>.json`; pass `--store <file>` for another layout.
+
+```bash
+npm run verify:compaction                          # current Session: DSH_SESSION_ID + DSH_HOME
+npm run verify:compaction -- --session <id> --json # another Session / machine-readable
+```
+
+The command reads the Session transcript and the charter storage record, then requires all of:
+
+1. the current revision's commit time is earlier than the latest `compaction/end` (a charter created after the
+   compaction cannot prove survival);
+2. the latest runtime-context snapshot sits after that compaction;
+3. that snapshot contains `charter:standing`, its text is byte-identical to `promptText`, and its SHA-256 equals
+   `promptDigest`;
+4. no system-prompt snapshot contains the charter prefix, body, objective, or a long item text;
+5. a `charter_read` standing result in the transcript equals the full projected standing items for the current
+   revision (not only revision/objective);
+6. a compaction summary after the compaction does not carry the rendered body (a warning: it would weaken the
+   proof, not silently pass it).
+
+Procedure in a real profile:
+
+1. open the Charter tab in the target Session, review the history draft, click Apply (or set an objective
+   manually), then send one message so the runtime context is persisted in the transcript;
+2. run `npm run verify:compaction`: expect `charter established`, injection, digest, system-prompt, and
+   `charter_read` checks to pass, with the compaction step in `WAIT`;
+3. run `/compact` in the same Session, then send one message;
+4. run the command again: expect `PASS` with the compaction seq, post-compaction snapshot seq, and digest.
+
+The checker fails closed as `BLOCKED` (no charter yet) or `WAIT` (no post-compaction request yet); it never
+treats a checkpoint summary as proof of survival.
+
+### 8.3 Platform basis
+
+`@deepseek-ai/dsh-agent-loop@0.2.1-rc.2` `RuntimeContextProjection` clears retained state after a
+replacement/compaction shadows the snapshot and regenerates it on the next request; this plugin's context
+provider calls `charter.promptText(session)`, which synchronously reads the storage authority and validates the
+derived digest.
 
 ## 9. Unsupported verification
 

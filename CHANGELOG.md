@@ -48,13 +48,16 @@ Initial MVP.
   restart is still required for the new pending-import semantics.
 - Verified against DSH `0.2.1-rc.2` with no code changes required; the existing peer range and compatibility layer
   cover the release candidate.
-- 78 tests across core, host composition, fork, idempotency, quota, prompt boundary, Remote stream, history
+- 90 tests across core, host composition, fork, idempotency, quota, prompt boundary, Remote stream, history
   extraction, client reordering, compatibility, and decorator compatibility. Verified on DSH `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`,
   `0.2.1-rc.1`, and `0.2.1-rc.2`. The actual Web UI was exercised on `0.2.0-rc.2`: tab order, Chinese/English
   switching, objective and invariant editing, preview, Apply, and reload persistence.
 
 ### Security
 
+- Principal-aware Remote actor resolution: DSH 0.2.1+ requires a `PeerScope.principal`. An absent principal
+  is denied with `FORBIDDEN` instead of being elevated to `owner`; the owner fallback applies only to a
+  runtime confirmed to be DSH 0.1.7/0.2.0 (no principal field).
 - User-authored text never enters a system-role message.
 - The model has no charter write capability.
 - DSH 0.1.7-rc.2 and 0.2.0 cannot enforce per-Peer Remote resources; the plugin degrades to live-Session and
@@ -83,4 +86,17 @@ Initial MVP.
 - Add bootstrap retry/stale-request handling and release per-Session client sources on view unmount; guard the
   detach generation race.
 - Bound the `charter_read` all view to 64 items / 32 KiB and report the omitted count.
-- Isolate the deprecated `snapshotEvents()` read behind one compatibility adapter.
+- Isolate the deprecated `snapshotEvents()` read behind one compatibility adapter. This is a known technical
+  debt, not a completed migration: DSH 0.2.1-rc.2 exposes no public non-deprecated historical-event reader.
+- Mint Host ids for `item.propose` client refs, so a history Apply that contains both active items and
+  overflow proposals commits atomically instead of failing with `INVALID_REFERENCE`.
+- Replace the per-`sessionId` client source release with an instance-bound lease and ref counting: several
+  view bindings share one stream and only the last lease disposes it; a stale lease can no longer dispose a
+  newer binding.
+- Surface `bootstrap` unavailability reasons (`not-live` / `no-summary` / `unavailable`) with a Retry action,
+  allow a later view/lifecycle change to ask again, and silently discard an in-flight draft when the user
+  started editing instead of showing a stale error.
+- Validate `view.sessionId` on stream snapshots and updates, not only on the immediate edit response.
+- Harden `npm run verify:compaction`: validate the storage record shape, accept `--store`, compare the full
+  `charter_read` standing projection, and check multiple system-prompt leak signals. Document it as a manual
+  check (the automated gate never runs a model).
