@@ -169,6 +169,9 @@ if (view.definition.label() !== 'Charter') {
 if (typeof view.component !== 'function') {
   throw new Error('client apply did not register the charter view body')
 }
+if (typeof view.definition.inject !== 'function') {
+  throw new Error('charter view does not provide per-binding source/draft injection')
+}
 
 // A plugin that registers its tab after us must force ours to the end again.
 addExternalView('fleet', 25)

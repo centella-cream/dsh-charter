@@ -12,6 +12,7 @@ import type {
   CharterFrame,
   CharterSnapshotFrame,
 } from '../remote/wire.js'
+import { CharterDraft } from './draft-store.js'
 
 export interface CharterClientState {
   readonly status: 'connecting' | 'ready' | 'error'
@@ -42,6 +43,8 @@ function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
+const ATTACH_TIMEOUT_MS = 15_000
+
 export class CharterSessionSource implements CharterSource {
   private state = INITIAL_STATE
   private readonly listeners = new Set<() => void>()
@@ -49,6 +52,7 @@ export class CharterSessionSource implements CharterSource {
   private snapshotStream: RemoteSnapshotStream<CharterSnapshotFrame, CharterChangedFrame> | undefined
   private remote: CharterRemote | undefined
   private attachGeneration = 0
+  private watchdog: ReturnType<typeof setTimeout> | undefined
 
   constructor(
     private readonly ctx: ClientContext,
@@ -86,7 +90,17 @@ export class CharterSessionSource implements CharterSource {
   }
 
   readonly retry = (): void => {
-    this.snapshotStream?.restart()
+    // A live stream can be restarted in place; when an earlier attach failed
+    // before the snapshot stream existed, attach the already mounted Remote
+    // again instead of leaving Retry as a no-op.
+    if (this.snapshotStream !== undefined) {
+      this.snapshotStream.restart()
+      this.publish({ ...this.state, status: 'connecting', error: null })
+      return
+    }
+    if (this.remote !== undefined) {
+      this.attach(this.remote)
+    }
   }
 
   attach(remote: CharterRemote): void {
@@ -110,10 +124,22 @@ export class CharterSessionSource implements CharterSource {
         isSnapshot: (frame): frame is CharterSnapshotFrame => frame.type === 'snapshot',
         replace: frame => this.publishIfNewer(frame.value),
         update: frame => this.publishIfNewer(frame.value),
-        failed: error => this.publish({ ...this.state, status: 'error', error: messageOf(error) }),
+        failed: error => {
+          if (generation !== this.attachGeneration) return
+          this.publish({ ...this.state, status: 'error', error: messageOf(error) })
+        },
       })
       this.stream = stream
       this.snapshotStream = snapshots
+      this.watchdog = setTimeout(() => {
+        if (generation !== this.attachGeneration || this.state.status === 'ready') return
+        this.publish({
+          ...this.state,
+          status: 'error',
+          error: 'Charter connection timed out before the first snapshot.',
+        })
+      }, ATTACH_TIMEOUT_MS)
+      this.watchdog.unref?.()
       snapshots.start()
     }).catch(error => {
       if (generation !== this.attachGeneration) return
@@ -142,12 +168,22 @@ export class CharterSessionSource implements CharterSource {
   private publishIfNewer(view: CharterView): void {
     if (view.sessionId !== this.sessionId) return
     const current = this.state.view
-    if (current !== null && view.revision < current.revision) return
+    if (current !== null && view.revision < current.revision) {
+      // A `ready` snapshot must never roll back an accepted revision. An
+      // authoritative availability demotion (for example the record becoming
+      // unreadable) must still reach the Pane; `initializing` frames from a
+      // new generation are not authoritative and are ignored here.
+      if (view.status !== 'unavailable') return
+    }
     if (current !== null
       && view.revision === current.revision
       && view.status === current.status
       && view.promptDigest === current.promptDigest
       && view.message === current.message) return
+    if (this.watchdog !== undefined) {
+      clearTimeout(this.watchdog)
+      this.watchdog = undefined
+    }
     this.publish({ status: 'ready', view, error: null })
   }
 
@@ -157,6 +193,10 @@ export class CharterSessionSource implements CharterSource {
   }
 
   private async stop(): Promise<void> {
+    if (this.watchdog !== undefined) {
+      clearTimeout(this.watchdog)
+      this.watchdog = undefined
+    }
     const snapshots = this.snapshotStream
     const stream = this.stream
     this.snapshotStream = undefined
@@ -178,11 +218,28 @@ interface SourceEntry {
   refs: number
 }
 
+export interface CharterViewLease {
+  readonly source: CharterSessionSource
+  readonly draft: CharterDraft
+  readonly release: () => void
+}
+
 export class CharterClientController {
   private remote: CharterRemote | undefined
   private readonly sources = new Map<SessionId, SourceEntry>()
+  private readonly drafts = new Map<SessionId, CharterDraft>()
 
   constructor(private readonly ctx: ClientContext) {}
+
+  /** The per-Session draft survives Pane unmounts; clear it when the view switches. */
+  draftFor(sessionId: SessionId): CharterDraft {
+    let draft = this.drafts.get(sessionId)
+    if (draft === undefined) {
+      draft = new CharterDraft(sessionId, () => this.sources.get(sessionId)?.source)
+      this.drafts.set(sessionId, draft)
+    }
+    return draft
+  }
 
   /**
    * Acquire the source for one view binding.
@@ -192,7 +249,7 @@ export class CharterClientController {
    * only the owning lease may release, and disposal happens when the last lease
    * is gone.
    */
-  acquire(sessionId: SessionId): CharterSourceLease {
+  acquire(sessionId: SessionId): CharterViewLease {
     let entry = this.sources.get(sessionId)
     if (entry === undefined) {
       entry = { source: new CharterSessionSource(this.ctx, sessionId), refs: 0 }
@@ -201,9 +258,11 @@ export class CharterClientController {
     }
     entry.refs += 1
     const held = entry
+    const draft = this.draftFor(sessionId)
     let released = false
     return {
       source: held.source,
+      draft,
       release: () => {
         if (released) return
         released = true
@@ -231,6 +290,8 @@ export class CharterClientController {
 
   async dispose(): Promise<void> {
     this.remote = undefined
+    for (const draft of this.drafts.values()) draft.dispose()
+    this.drafts.clear()
     await Promise.all([...this.sources.values()].map(entry => entry.source.dispose()))
     this.sources.clear()
   }

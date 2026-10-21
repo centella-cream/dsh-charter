@@ -24,10 +24,13 @@ const en = {
   'status.lifecycle': 'The stored charter belongs to another Session lifecycle.',
   'status.corrupt': 'The stored charter is inconsistent.',
   'status.storage': 'Charter storage is unavailable.',
+  'status.overBudget': 'The stored charter is valid but exceeds the current budget limits, so it is not injected. Remove or archive items to bring it back within budget.',
+  'status.reconnecting': 'Reconnecting to the charter service...',
+  'header.disclaimer': 'Advisory model context, not an enforced policy or security boundary.',
 
   'empty.kicker': 'Get started',
   'empty.title': 'This session has no charter yet.',
-  'empty.body': 'Set an objective or add a constraint; the model sees it from the next request.',
+  'empty.body': 'Set an objective or add an invariant, then Apply. The model sees the charter from the next request.',
 
   'nav.label': 'Sections',
   'nav.overview': 'Overview',
@@ -67,8 +70,8 @@ const en = {
   'bootstrap.noSummary': 'No usable compaction summary exists for this Session yet. A draft appears after a compaction.',
   'bootstrap.unavailable': 'Charter storage is unavailable, so the history draft cannot be read.',
 
-  'notice.conflict': 'The charter advanced from revision {from} to {to}. '
-    + 'Your draft is preserved; discard it or re-stage it against the new revision.',
+  'notice.conflict': 'The charter advanced from revision {from} to {to}. Your draft is preserved. '
+    + 'Apply it to the latest revision, or discard it and review the new version.',
 
   'objective.kicker': 'Objective',
   'objective.empty': 'No objective has been set.',
@@ -76,15 +79,18 @@ const en = {
   'objective.redirect': 'Redirect',
   'objective.original': 'Original: {text}',
   'objective.reason': 'Redirect reason: {reason}',
+  'objective.reasonDefault': 'No reason recorded.',
+  'pending.hint': 'Pending proposals stay out of the model context until accepted.',
 
   'invariants.kicker': 'Invariants',
-  'invariants.one': '1 constraint',
-  'invariants.other': '{count} constraints',
-  'invariants.empty': 'No constraints yet.',
+  'invariants.one': '1 invariant',
+  'invariants.other': '{count} invariants',
+  'invariants.empty': 'No invariants yet.',
+  'invariants.hint': 'Invariants are model-visible guidance, not machine-enforced rules.',
 
   'deliverables.kicker': 'Deliverables',
-  'deliverables.one': '1 outcome',
-  'deliverables.other': '{count} outcomes',
+  'deliverables.one': '1 deliverable',
+  'deliverables.other': '{count} deliverables',
   'deliverables.empty': 'No deliverables yet.',
 
   'tag.proposal': 'proposal',
@@ -108,8 +114,8 @@ const en = {
   'item.editAria': 'Edit item',
   'item.replace': 'Replace',
   'item.archive': 'Archive',
-  'item.verify': 'Verify',
-  'item.unverify': 'Unverify',
+  'item.verify': 'Mark verified',
+  'item.unverify': 'Mark unchecked',
   'item.restore': 'Restore',
   'item.purge': 'Purge',
   'item.confirmPurge': 'Confirm purge',
@@ -135,8 +141,10 @@ const en = {
   'composer.addDeliverable': 'Add deliverable',
   'composer.stageItem': 'Stage item',
 
-  'preview.title': 'Next user-role runtime context',
+  'preview.title': 'Model context after Apply',
+  'preview.subtitle': 'Exact text the model receives after Apply (user role, not system).',
   'preview.bytes': '{bytes} bytes',
+  'preview.bytesLabel': 'Bytes: {bytes}',
   'preview.empty': '(empty)',
 
   'footer.none': 'No staged changes',
@@ -151,8 +159,12 @@ const en = {
   'budget.itemOver': 'One item exceeds the {limit} limit.',
   'budget.objectiveOver': 'The objective exceeds the {limit} limit.',
   'budget.contextOver': 'The charter contribution exceeds the {limit} budget (this does not include history, system, tools, or other DSH contexts).',
+  'budget.recordLimit': 'Record limit: {limit}',
   'footer.saved': 'Saved revision {revision}.',
-  'footer.bootstrapSaved': 'Applied revision {revision}: {active} active, {pending} pending proposals.',
+  'footer.bootstrapSaved': 'Applied revision {revision}. Active: {active}; pending: {pending}.',
+  'footer.discarded': 'Draft discarded.',
+  'footer.draftStatus': 'History draft open — not applied.',
+  'footer.applyHint': 'Apply commits every staged change atomically; the model sees it from the next request.',
   'footer.replayed': 'The saved edit was replayed safely.',
 
   'button.retry': 'Retry',
@@ -172,6 +184,50 @@ const en = {
   'error.connection': 'Charter connection is unavailable.',
   'error.draftScope': 'The staged draft belonged to another Session and was discarded.',
   'error.unexpected': 'The edit failed unexpectedly.',
+
+  'tag.staged': 'staged',
+  'tag.verifiedUser': 'verified (marked)',
+  'tag.verifiedValidator': 'verified (validator)',
+  'tag.verificationFailedReason': 'failed: {reason}',
+  'tag.verificationUnavailableReason': 'unavailable: {reason}',
+  'tag.replacement': 'replacement',
+  'tag.replacedBy': 'replaced by: {text}',
+
+  'item.actions': 'Actions',
+  'item.actionsAria': 'Actions for {text}',
+  'item.unstage': 'Unstage',
+  'item.replacementHint': 'A replacement cannot be archived or replaced again; purge its superseded predecessor first.',
+  'item.purgeDetaches': 'Purge also detaches the replacement.',
+
+  'counts.summary': '{active} active · {pending} pending',
+  'counts.history': '{count} historical',
+  'history.show': 'Show {count} historical items',
+  'history.hide': 'Hide historical items',
+
+  'bootstrap.ready': 'History draft ready',
+  'bootstrap.reviewNow': 'Review draft',
+  'bootstrap.checkAgain': 'Check again',
+  'bootstrap.requestFailed': 'Could not read the compaction history. Retry to try again.',
+  'bootstrap.saveFailed': 'Could not apply the history draft.',
+  'bootstrap.overviewFailed': 'The history draft could not be read.',
+  'bootstrap.outcomeActive': 'Will be active',
+  'bootstrap.outcomePending': 'Saved as pending',
+  'bootstrap.summary': '{active} active · {pending} pending',
+  'bootstrap.selectAll': 'Select all',
+  'bootstrap.selectNone': 'Clear selection',
+  'bootstrap.showMore': 'Show {count} more',
+  'bootstrap.pendingOne': '1 candidate exceeds the active context budget and will be kept as a pending proposal. Nothing is discarded.',
+  'bootstrap.pendingOther': '{count} candidates exceed the active context budget and will be kept as pending proposals. Nothing is discarded.',
+  'bootstrap.blockedEditor': 'Close or stage the open editor before reviewing the history draft.',
+  'bootstrap.dismissed': 'Draft dismissed.',
+
+  'conflict.rebase': 'Apply draft to revision {revision}',
+  'bootstrap.includeAria': 'Include candidate {index}',
+  'bootstrap.editAria': 'Edit candidate {index} text',
+  'editor.reasonLabel': 'Redirect reason',
+
+  'unit.bytes': '{value} B',
+  'unit.kib': '{value} KiB',
 } as const
 
 export type CharterLocaleKey = keyof typeof en
@@ -180,6 +236,7 @@ const zh: Record<CharterLocaleKey, string> = {
   tab: '会话契约',
   'header.title': '会话契约',
   'header.subtitle': '压缩会改写历史，但你的约定不会。',
+  'header.disclaimer': '这是提供给模型的声明性上下文，不强制执行，也不是安全边界。',
   'stats.revision': '修订 {revision}',
   'stats.active': '{count} 生效',
   'stats.stored': '{count} 已存储',
@@ -197,10 +254,12 @@ const zh: Record<CharterLocaleKey, string> = {
   'status.lifecycle': '已保存的会话契约属于另一个会话生命周期。',
   'status.corrupt': '已保存的会话契约数据不一致。',
   'status.storage': '会话契约存储暂不可用。',
+  'status.overBudget': '已保存的会话契约有效，但超出当前预算限制，因此暂时不注入。请删除或归档条目以回到预算内。',
+  'status.reconnecting': '正在重新连接会话契约服务...',
 
   'empty.kicker': '开始',
   'empty.title': '这个会话还没有会话契约。',
-  'empty.body': '先设置目标或添加约束；模型会在下一次请求中看到它。',
+  'empty.body': '先设置目标或添加硬约束，然后点击应用；模型会从下一次请求起看到会话契约。',
 
   'nav.label': '模块',
   'nav.overview': '概览',
@@ -239,8 +298,8 @@ const zh: Record<CharterLocaleKey, string> = {
   'bootstrap.noSummary': '该 Session 还没有可用的压缩摘要；完成一次压缩后才会出现草案。',
   'bootstrap.unavailable': '会话契约存储不可用，暂时无法读取历史草案。',
 
-  'notice.conflict': '会话契约已从修订 {from} 更新到 {to}。'
-    + '草稿已保留；请丢弃后基于最新修订重新编辑。',
+  'notice.conflict': '会话契约已从修订 {from} 更新到 {to}。草稿已保留；'
+    + '可将草稿应用到最新修订，或丢弃后查看新版本。',
 
   'objective.kicker': '目标',
   'objective.empty': '尚未设置目标。',
@@ -248,15 +307,18 @@ const zh: Record<CharterLocaleKey, string> = {
   'objective.redirect': '调整目标',
   'objective.original': '原始目标：{text}',
   'objective.reason': '调整原因：{reason}',
+  'objective.reasonDefault': '未记录调整原因。',
+  'pending.hint': '待审提案在被接受前不会进入模型上下文。',
 
   'invariants.kicker': '硬约束',
-  'invariants.one': '1 条约束',
-  'invariants.other': '{count} 条约束',
-  'invariants.empty': '暂无约束。',
+  'invariants.one': '1 条硬约束',
+  'invariants.other': '{count} 条硬约束',
+  'invariants.empty': '暂无硬约束。',
+  'invariants.hint': '硬约束是模型可见的指引，不会由系统强制执行。',
 
   'deliverables.kicker': '交付物',
-  'deliverables.one': '1 项交付物',
-  'deliverables.other': '{count} 项交付物',
+  'deliverables.one': '1 条交付物',
+  'deliverables.other': '{count} 条交付物',
   'deliverables.empty': '暂无交付物。',
 
   'tag.proposal': '待确认',
@@ -280,8 +342,8 @@ const zh: Record<CharterLocaleKey, string> = {
   'item.editAria': '编辑条目',
   'item.replace': '替换',
   'item.archive': '归档',
-  'item.verify': '标记验证',
-  'item.unverify': '取消验证',
+  'item.verify': '标记为已验证',
+  'item.unverify': '标记为未验证',
   'item.restore': '恢复',
   'item.purge': '永久清除',
   'item.confirmPurge': '确认清除',
@@ -307,8 +369,10 @@ const zh: Record<CharterLocaleKey, string> = {
   'composer.addDeliverable': '添加交付物',
   'composer.stageItem': '暂存条目',
 
-  'preview.title': '下一次 user-role 运行时上下文',
+  'preview.title': '应用后模型收到的上下文',
+  'preview.subtitle': '应用后模型收到的确切文本（user 角色，不是 system 提示）。',
   'preview.bytes': '{bytes} 字节',
+  'preview.bytesLabel': '字节数：{bytes}',
   'preview.empty': '（空）',
 
   'footer.none': '没有暂存的修改',
@@ -322,9 +386,13 @@ const zh: Record<CharterLocaleKey, string> = {
   'budget.editorOver': '文本超过 {limit} 上限。',
   'budget.itemOver': '有条目超过 {limit} 上限。',
   'budget.objectiveOver': '目标超过 {limit} 上限。',
-  'budget.contextOver': '会话契约 contribution 超过 {limit} 预算（不含历史消息、system、tools 或其他 DSH context）。',
+  'budget.contextOver': '会话契约所占上下文超过 {limit} 预算（不含历史消息、系统提示、工具定义或其他 DSH 上下文）。',
+  'budget.recordLimit': '记录上限：{limit}',
   'footer.saved': '已保存修订 {revision}。',
-  'footer.bootstrapSaved': '已应用修订 {revision}：{active} 条生效，{pending} 条保存为待审提案。',
+  'footer.bootstrapSaved': '已应用修订 {revision}。生效 {active} 条，待审 {pending} 条。',
+  'footer.discarded': '草稿已丢弃。',
+  'footer.draftStatus': '历史草案已打开，尚未应用。',
+  'footer.applyHint': '应用会原子提交全部暂存修改，模型从下一次请求起可见。',
   'footer.replayed': '已安全重放此前保存的编辑。',
 
   'button.retry': '重试',
@@ -344,6 +412,50 @@ const zh: Record<CharterLocaleKey, string> = {
   'error.connection': '会话契约连接不可用。',
   'error.draftScope': '暂存草稿属于另一个 Session，已丢弃。',
   'error.unexpected': '编辑发生意外错误。',
+
+  'tag.staged': '已暂存',
+  'tag.verifiedUser': '已验证（手动标记）',
+  'tag.verifiedValidator': '已验证（校验器）',
+  'tag.verificationFailedReason': '验证失败：{reason}',
+  'tag.verificationUnavailableReason': '验证不可用：{reason}',
+  'tag.replacement': '替代项',
+  'tag.replacedBy': '被替代：{text}',
+
+  'item.actions': '操作',
+  'item.actionsAria': '{text} 的操作',
+  'item.unstage': '取消暂存',
+  'item.replacementHint': '替代项不能再次归档或替换；请先清除它已替代的前任条目。',
+  'item.purgeDetaches': '清除该条目同时会解除对替代项的关联。',
+
+  'counts.summary': '生效 {active} 条 · 待审 {pending} 条',
+  'counts.history': '{count} 条历史',
+  'history.show': '显示 {count} 条历史条目',
+  'history.hide': '隐藏历史条目',
+
+  'bootstrap.ready': '历史草案已生成',
+  'bootstrap.reviewNow': '查看草案',
+  'bootstrap.checkAgain': '重新检查',
+  'bootstrap.requestFailed': '无法读取压缩历史，请重试。',
+  'bootstrap.saveFailed': '无法应用历史草案。',
+  'bootstrap.overviewFailed': '历史草案读取失败。',
+  'bootstrap.outcomeActive': '将生效',
+  'bootstrap.outcomePending': '保存为待审',
+  'bootstrap.summary': '生效 {active} 条 · 待审 {pending} 条',
+  'bootstrap.selectAll': '全选',
+  'bootstrap.selectNone': '清空选择',
+  'bootstrap.showMore': '再显示 {count} 条',
+  'bootstrap.pendingOne': '1 条候选超出当前上下文预算，将保存为待审提案，不会丢弃。',
+  'bootstrap.pendingOther': '{count} 条候选超出当前上下文预算，将保存为待审提案，不会丢弃。',
+  'bootstrap.blockedEditor': '请先关闭或暂存正在编辑的内容，再查看历史草案。',
+  'bootstrap.dismissed': '草案已丢弃。',
+
+  'conflict.rebase': '将草稿应用到修订 {revision}',
+  'bootstrap.includeAria': '包含候选 {index}',
+  'bootstrap.editAria': '编辑候选 {index} 的文本',
+  'editor.reasonLabel': '调整原因',
+
+  'unit.bytes': '{value} B',
+  'unit.kib': '{value} KiB',
 }
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
