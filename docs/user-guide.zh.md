@@ -185,6 +185,7 @@ archived / rejected / superseded 条目仍计入“全部条目”配额。**Pur
 | 现象 | 原因 | 处理 |
 | --- | --- | --- |
 | 面板一直 `Loading charter...` | Session 尚未初始化或初始化被阻塞 | 查看 Host 日志中的 `charter:` 行；确认 Session 存活 |
+| 插件更新后会话契约面板白屏 | 浏览器 bundle 与 Host bundle 来自不同 revision（尤其手动安装 profile 后） | 完全重启 `dsh web` / DeepSeek Harness，让新 Host 加载；只刷新浏览器可能不会重启 Host |
 | `unavailable` + lifecycle mismatch | 同 id 的 Session 换了 lifecycle | 不读取旧记录；新 Session 使用新记录 |
 | 面板提示 Session 不在当前 Host / 只读 | 该 Session 属于另一个 DSH 进程（例如 Desktop），尚未在 Web 进程加载 | 在 Web 中新建会话或发送消息使其变为 live；标签页会自动升级为可编辑 |
 | `unavailable` + inconsistent record | 存储记录被外部篡改或派生 digest 不一致 | 停止编辑，检查 storage；修复前不注入 |

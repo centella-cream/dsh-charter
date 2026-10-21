@@ -201,6 +201,7 @@ Raise the budgets in the profile when your charter needs more room.
 | Symptom | Cause | Action |
 | --- | --- | --- |
 | Pane stays at `Loading charter...` | Session not initialized or initialization blocked | Check `charter:` lines in Host logs; confirm the Session is alive |
+| Charter pane is blank after a plugin update | Browser bundle and Host bundle are from different revisions (especially after a manual profile install) | Fully restart `dsh web` / DeepSeek Harness so the new Host loads; refreshing only the browser may not restart it |
 | `unavailable` + lifecycle mismatch | Same id, different Session lifecycle | Old record is not read; the new Session uses a new record |
 | Pane says the Session is not live / read-only | The Session belongs to another DSH process (for example Desktop) and is not loaded in this Web process | Create or start a Session in Web; the tab upgrades to editable automatically |
 | `unavailable` + inconsistent record | Record tampered with or derived digest mismatch | Stop editing, inspect storage; no injection until repaired |

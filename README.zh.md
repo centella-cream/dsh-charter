@@ -240,7 +240,7 @@ npm run check            # typecheck + test
 ```
 
 测试覆盖纯内核、真实 Host 组合、storage domain、Remote framing、历史抽取、客户端状态和 factory bundle
-注册。当前矩阵：**本地验证的 DSH 版本矩阵 × 70 个测试**。命令与证据见[验证记录](docs/verification.zh.md)。
+注册。当前矩阵：**本地验证的 DSH 版本矩阵 × 71 个测试**。命令与证据见[验证记录](docs/verification.zh.md)。
 
 ## 致谢
 
