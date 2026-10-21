@@ -2,7 +2,7 @@
 
 [English](verification.md) | 中文
 
-验证日期：2026-10-20；第二轮发布就绪评审后复跑：2026-10-21。
+验证日期：2026-10-20；第二、三轮发布就绪评审后复跑：2026-10-21。
 环境：macOS，Node `v22.23.1`，npm `12.0.2`，pnpm `12.3.4`；当前 Desktop 运行时 DSH `0.2.0-rc.2`。
 本地开发依赖基线：DSH `0.2.1-rc.2`。
 
@@ -13,7 +13,7 @@
 | 验证项 | 结果 |
 | --- | --- |
 | TypeScript 严格类型检查（5 个 DSH 版本） | 通过 |
-| Vitest（5 个本地可用版本 × 90 tests） | 通过 |
+| Vitest（5 个本地可用版本 × 95 tests） | 通过 |
 | Host ESM 构建 + 浏览器单文件 bundle | 通过 |
 | Remote 装饰器/资源 smoke | 通过（0.1.7/0.2.0 按预期无资源声明） |
 | 浏览器 factory bundle 物化与 `apply` smoke | 通过 |
@@ -35,7 +35,7 @@ npm test
 
 - typecheck 通过；
 - build 通过；
-- `13` 个测试文件、`90` 个测试全部通过；
+- `14` 个测试文件、`95` 个测试全部通过；
 - `remote-smoke` 断言 `watch,bootstrap,edit`、stream mode 和 Session resource；
 - `client-smoke` 断言单文件 factory bundle、外部依赖白名单、不引用 Node-only `Buffer`、`apply` 注册
   tab/pane/Remote contribution。
@@ -51,12 +51,13 @@ npm test
 | `tests/core/state.spec.ts` | 替代链必须指向 current successor |
 | `tests/core/fork.spec.ts` | fork 重铸 id、替代链重映射 |
 | `tests/core/bootstrap.spec.ts` | 压缩摘要分节抽取、latest objective、UTF-8 拆分/不截断、最新/损坏 summary、回退到较旧可用 summary |
-| `tests/host/composition.spec.ts` | 真实 Cordis/Storage/SystemPrompt/Tools 组合、user-role 边界、actor 策略、`item.add` + `item.propose` 混合原子 Apply、fork、幂等、配额、父环拒绝、lifecycle、非 live Session 的只读 stored view 与 live 升级、从真实 `compaction/summary` 事件生成草案、有上限的 `charter_read` |
+| `tests/host/composition.spec.ts` | 真实 Cordis/Storage/SystemPrompt/Tools 组合、user-role 边界、actor 策略、`item.add` + `item.propose` 混合原子 Apply、user actor 的 proposal、完整 standing 与有上限 `all`、fork、幂等、配额、父环拒绝、lifecycle、非 live Session 的只读 stored view 与 live 升级、从真实 `compaction/summary` 事件生成草案 |
 | `tests/host/watch.spec.ts` | opening snapshot、竞态、去重、abort、装饰器兼容、resource-scope 能力检测 |
 | `tests/host/actor.spec.ts` | principal 感知策略：现代运行时缺失 principal 拒绝、仅旧版 owner 回退、非 owner 记录、按版本选择的 `resolveRemoteActor` |
-| `tests/host/remote.spec.ts` | Remote 描述符、wire schema 和旧 Host view snapshot |
-| `tests/client/store.spec.ts` | 提交后立即接受 view、忽略陈旧/重复 revision、共享 source lease/引用计数、旧 lease no-op、忽略其他 Session 的 stream 帧 |
+| `tests/host/remote.spec.ts` | Remote 描述符、wire schema、旧 Host view snapshot、零 pending 上限 |
+| `tests/client/store.spec.ts` | 提交后立即接受 view、忽略陈旧/重复 revision、opening snapshot 单调、共享 source lease/引用计数、旧 lease no-op、忽略其他 Session 的 stream 帧 |
 | `tests/client/bootstrap-plan.spec.ts` | 溢出候选仍在一个 plan 中；active 前缀符合字节预算；bootstrap 结果分类（draft/discard/stale/unavailable） |
+| `tests/client/draft.spec.ts` | 暂存草稿绑定其 Session；Session A 的 ops 不会为 Session B 构造请求 |
 
 ## 3. 跨版本矩阵
 
@@ -82,11 +83,11 @@ npm run build
 
 | 版本 | typecheck | build | Vitest | remote smoke | client smoke |
 | --- | --- | --- | --- | --- | --- |
-| `0.1.7-rc.2` | 通过 | 通过 | 90/90 | 通过（无 resources 警告） | 通过 |
-| `0.2.0-rc.1` | 通过 | 通过 | 90/90 | 通过（无 resources 警告） | 通过 |
-| `0.2.0-rc.2` | 通过 | 通过 | 90/90 | 通过（无 resources 警告） | 通过 |
-| `0.2.1-rc.1` | 通过 | 通过 | 90/90 | 通过 | 通过 |
-| `0.2.1-rc.2` | 通过 | 通过 | 90/90 | 通过 | 通过 |
+| `0.1.7-rc.2` | 通过 | 通过 | 95/95 | 通过（无 resources 警告） | 通过 |
+| `0.2.0-rc.1` | 通过 | 通过 | 95/95 | 通过（无 resources 警告） | 通过 |
+| `0.2.0-rc.2` | 通过 | 通过 | 95/95 | 通过（无 resources 警告） | 通过 |
+| `0.2.1-rc.1` | 通过 | 通过 | 95/95 | 通过 | 通过 |
+| `0.2.1-rc.2` | 通过 | 通过 | 95/95 | 通过 | 通过 |
 
 `0.1.7-rc.2` 和 `0.2.0` 的 remote smoke 输出：
 
@@ -453,8 +454,10 @@ prompt renderer 计算草案预览，并在条目/目标/所选草案/投影上�
 
 ### 8.2 手工验收命令
 
-`npm run verify:compaction` 是开发工具：不在 `npm run check` 中，不进入 npm 包（`scripts/` 不在 `files`
-白名单内），读取本地 DSH transcript，并且需要 `zstd` 可执行文件。它支持 JSON storage backend 布局
+`npm run verify:compaction` 是 transcript evidence checker，不是自动化端到端测试：runtime context 断言是精确的
+字节/digest 相等，system-prompt 泄漏检查则是信号式启发（前缀、渲染正文、目标、较长的条目文本）。它不在
+`npm run check` 中，不进入 npm 包（`scripts/` 不在 `files` 白名单内），读取本地 DSH transcript，并且需要
+`zstd` 可执行文件。它支持 JSON storage backend 布局
 `$DSH_HOME/storages/<domain>/sessions/<sessionId>.json`；其他布局用 `--store <file>` 指定。
 
 ```bash

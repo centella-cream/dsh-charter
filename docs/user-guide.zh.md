@@ -115,7 +115,7 @@ npm run build
 
 | 维度 | 值 | 说明 |
 | --- | --- | --- |
-| `review` | `pending` / `accepted` / `rejected` | 用户新建即 accepted；历史草案溢出导入为 pending；模型提议入口尚未开放 |
+| `review` | `pending` / `accepted` / `rejected` | 用户新建即 accepted；历史草案溢出导入和显式客户端 `item.propose` 为 pending；模型没有写工具 |
 | `lifecycle` | `current` / `superseded` / `archived` | archived 可恢复；superseded 不复活 |
 | `verification` | `unchecked` / `verified` / `failed` / `unavailable` | 与 lifecycle 独立 |
 | `progress` | 仅 deliverable | 与 verification 独立 |
@@ -138,7 +138,8 @@ active accepted/pending 条目会被核心拒绝；只有 archived、rejected �
 
 ### 3.3 只读工具视图
 
-`charter_read` 默认返回 `standing`。`all` 是**有上限的调试视图**，不是当前工作集：它包含 rejected、
+`charter_read` 默认返回 `standing`，返回完整的当前工作集（目标 + 全部 accepted/current 条目，受 record 配额
+约束）。`all` 是**有上限的调试视图**，不是当前工作集：它包含 rejected、
 archived、superseded 条目，最多返回 64 条 / 32 KiB，并在 `truncated` 中报告省略数量。它不能替代
 standing 会话契约，也不应作为常规工作流。
 
@@ -174,7 +175,7 @@ Web 进程可以只读显示另一个进程中 live 的 Session 的已存会话�
 | `maxObjectiveBytes` | 4096 | 目标文本的 UTF-8 上限 |
 | `maxItemBytes` | 1024 | 单条条目文本上限 |
 | `maxItems` | 512 | 全部条目存储上限 |
-| `maxPendingItems` | 512 | pending 条目上限 |
+| `maxPendingItems` | 512 | pending 条目上限；设为 `0` 可禁用新提案 |
 | `maxOps` | 1024 | 单次 Apply 的 op 数 |
 | `maxRecordBytes` | 1048576 | 单条 Session record 上限 |
 | `historyLimit` | 64 | 近期 history 条数 |

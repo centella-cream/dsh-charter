@@ -24,7 +24,7 @@ Initial MVP.
 - Redesigned Charter pane with DSH semantic tokens: compact page header and budget meter, sticky Preview/Discard/
   Apply toolbar, objective card, responsive invariants/deliverables columns, hover/focus item actions, inline
   add composers, and light/dark support.
-- Raised default budgets to 8 KiB context, 4 KiB objective, and 1 KiB per item. No path silently truncates:
+- Raised the default charter-contribution budget to 8 KiB, the objective to 4 KiB, and one item to 1 KiB. No path silently truncates:
   long history-draft items are split into candidates, over-limit fields are highlighted, and Apply is disabled
   until the selection fits the budget.
 - Review-only history draft extracted deterministically from the latest compaction summary for an empty
@@ -48,7 +48,7 @@ Initial MVP.
   restart is still required for the new pending-import semantics.
 - Verified against DSH `0.2.1-rc.2` with no code changes required; the existing peer range and compatibility layer
   cover the release candidate.
-- 90 tests across core, host composition, fork, idempotency, quota, prompt boundary, Remote stream, history
+- 95 tests across core, host composition, fork, idempotency, quota, prompt boundary, Remote stream, history
   extraction, client reordering, compatibility, and decorator compatibility. Verified on DSH `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`,
   `0.2.1-rc.1`, and `0.2.1-rc.2`. The actual Web UI was exercised on `0.2.0-rc.2`: tab order, Chinese/English
   switching, objective and invariant editing, preview, Apply, and reload persistence.
@@ -97,6 +97,15 @@ Initial MVP.
   allow a later view/lifecycle change to ask again, and silently discard an in-flight draft when the user
   started editing instead of showing a stale error.
 - Validate `view.sessionId` on stream snapshots and updates, not only on the immediate edit response.
+- Reset every Pane draft field when the view binding switches Sessions, and route Apply through a
+  Session-scoped request builder so one Session's staged ops can never be submitted under another Session id;
+  async Apply completions are fenced by a Session generation.
+- Make the opening runtime snapshot revision-monotonic, so an older stream generation cannot roll the accepted
+  view back after an edit response.
+- Return the complete standing working set from `charter_read`; only the `all` debugging view is paged.
+- Accept `maxPendingItems: 0` in the Remote wire schema, matching the Host configuration that disables proposals.
+- Document `item.propose` as a normal client edit operation (never model-facing) instead of a host-internal
+  operation.
 - Harden `npm run verify:compaction`: validate the storage record shape, accept `--store`, compare the full
   `charter_read` standing projection, and check multiple system-prompt leak signals. Document it as a manual
   check (the automated gate never runs a model).

@@ -251,8 +251,9 @@ environment.
 ## Security and privacy
 
 - User-authored text never enters a system-role message.
-- The model has no charter write capability; `charter_read` is read-only. Its `all` view is a bounded debug page
-  (max 64 items / 32 KiB) and is not the standing working set.
+- The model has no charter write capability; `charter_read` is read-only. Its `standing` view returns the complete
+  current working set (bounded by record quotas); the `all` debug page is capped at 64 items / 32 KiB and reports
+  omitted items.
 - Actor policy: `owner` may perform all edits including purge; `user` may perform ordinary edits but not purge;
   `host` is rejected on the Remote edit path. Records are bound to `createdAt`, `cwd`, and `parentSession`;
   reusing a Session id across lifecycles is rejected.
@@ -270,7 +271,7 @@ npm run verify:compaction # manual real-model compaction check (not part of chec
 ```
 
 The test suite covers the pure core, real Host composition, storage-domain behavior, Remote framing,
-history extraction, client state, and factory-bundle registration. Current matrix: **90 tests on DSH `0.1.7-rc.2`, `0.2.0-rc.1`/`rc.2`, and `0.2.1-rc.1`/`rc.2`**. See the [verification record](docs/verification.md) for commands and evidence.
+history extraction, client state, and factory-bundle registration. Current matrix: **95 tests on DSH `0.1.7-rc.2`, `0.2.0-rc.1`/`rc.2`, and `0.2.1-rc.1`/`rc.2`**. See the [verification record](docs/verification.md) for commands and evidence.
 
 ## Acknowledgements
 

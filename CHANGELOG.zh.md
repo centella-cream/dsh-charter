@@ -20,7 +20,7 @@
   变为 live 后原位升级为可编辑，而不是让 Remote stream 直接抛 "not live" 原始错误。
 - 重新设计 Charter 面板：使用 DSH 语义 token，紧凑页头与预算条、吸顶预览/丢弃/应用工具栏、目标卡片、
   响应式硬约束/交付物双栏、hover/focus 条目操作、section 内联添加输入，并支持明暗主题。
-- 默认预算提升到 8 KiB context、4 KiB 目标、1 KiB 单条条目。任何路径都不静默截断：超长历史草案条目拆成
+- 默认 charter-contribution 预算提升到 8 KiB、目标 4 KiB、单条条目 1 KiB。任何路径都不静默截断：超长历史草案条目拆成
   多个候选，超限字段高亮。历史导入以真实上下文预算为准，不再用 per-kind active 条数拒绝整个草案：放不下的
   候选会在同一次原子 Apply 中保存为待审提案（`item.propose`），不会丢弃或截断。
 - 移除 per-kind active 条数上限；存储限制提高到 `maxItems` 512、`maxPendingItems` 512、`maxOps` 1024、
@@ -39,7 +39,7 @@
 - 新浏览器 client 可以兼容仍在运行旧 Host 的 view snapshot（旧 Host 仍带 active 条数字段），避免 host/client
   revision 不一致时「会话契约」白屏；新的 pending 导入语义仍需要完整重启 Host 才生效。
 - 已针对 DSH `0.2.1-rc.2` 验证，无需代码改动；现有 peer range 和兼容层已覆盖该 release candidate。
-- 90 个测试，覆盖内核、Host 组合、fork、幂等、配额、prompt 边界、Remote stream、历史抽取、客户端 tab
+- 95 个测试，覆盖内核、Host 组合、fork、幂等、配额、prompt 边界、Remote stream、历史抽取、客户端 tab
   排序和装饰器兼容。已在 DSH `0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-rc.1`、`0.2.1-rc.2` 上验证。
   真实 Web UI 在 `0.2.0-rc.2` 上验证了标签顺序、中英文切换、目标/约束编辑、预览、Apply 和刷新持久化。
 
@@ -77,5 +77,11 @@
 - `bootstrap` 的 `not-live` / `no-summary` / `unavailable` 原因会显示并提供 Retry；允许后续 view/lifecycle
   变化后重新请求；请求返回时用户已开始编辑则静默丢弃，不显示 stale 错误。
 - stream snapshot/update 也校验 `view.sessionId`，不再只校验 edit 响应。
+- view binding 切换 Session 时完整重置 Pane 草稿状态，并让 Apply 通过绑定 Session 的请求构造器提交，保证一个
+  Session 的暂存 ops 不会被写到另一个 Session；异步 Apply 完成时用 Session generation 围栏丢弃过期结果。
+- opening runtime snapshot 改为按 revision 单调更新，旧的 stream generation 不能再把已接受的 view 回退。
+- `charter_read` 的 standing 返回完整工作集；只有 `all` 调试视图分页。
+- Remote wire schema 接受 `maxPendingItems: 0`，与可关闭 proposal 的 Host 配置一致。
+- 文档将 `item.propose` 定位为普通客户端编辑操作（模型不可见），不再称其为 host-internal 操作。
 - 加固 `npm run verify:compaction`：校验 storage record 结构、支持 `--store`、比较完整的 `charter_read`
   standing 投影、检查多个 system-prompt 泄漏信号；并在文档中明确它是手工检查（自动门禁不运行模型）。

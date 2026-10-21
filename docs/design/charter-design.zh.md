@@ -13,8 +13,8 @@
 - [调研记录](../research/charter-research.zh.md)
 
 实现状态：MVP Host、纯内核、JSON storage 组合、Remote contract 和主对话页标签页 Client 已完成实现并通过版本矩阵
-验证。当前 `npm run typecheck`、`npm test`、`npm run build` 均通过（90 个测试）；同一源码在 DSH
-`0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-rc.1`、`0.2.1-rc.2` 上分别通过 typecheck、build 和 90 个测试。
+验证。当前 `npm run typecheck`、`npm test`、`npm run build` 均通过（95 个测试）；同一源码在 DSH
+`0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-rc.1`、`0.2.1-rc.2` 上分别通过 typecheck、build 和 95 个测试。
 真实 profile 的 tarball 安装、配置组合、Web 启动、boot graph 和客户端 bundle HTTP 已通过；DSH `0.2.0-rc.2`
 Web profile 上已用真实 Chrome 验证「对话」「轨迹」「会话契约」标签顺序、目标编辑、预览、Apply 和刷新持久化。
 完整 compaction 端到端仍需在目标 profile 手工执行。兼容边界与降级见
@@ -378,9 +378,9 @@ interface CharterEditRequest {
 
 操作集合：`objective.initialize`、`objective.redirect`、`item.add`、`item.propose`、`item.edit`、
 `item.accept` / `item.reject`、`item.supersede`、`item.archive` / `item.restore`、`item.purge`
-（owner-only）、`item.verification.set`、`deliverable.progress`。其中 `item.propose` 只由历史草案溢出路径产生，并通过同一个 `charter.edit` 请求提交，保证导入的原子性；
-它不是模型可见的写工具。Host 与 `item.add` 一样从 `clientRef` 铸造 id，条目始终为 pending、origin 为
-agent，进入 prompt 前必须显式 accept。
+（owner-only）、`item.verification.set`、`deliverable.progress`。其中 `item.propose` 由审阅后的历史草案导入产生，并通过同一个 `charter.edit` 请求提交，保证导入的原子性。
+任何有 edit 权限的客户端都可以在普通编辑中发送它；actor 策略与 `item.add` 相同，pending 条目计入
+`maxPendingItems`。它不是模型可见的写工具，也不是权限提升：pending 条目只有 accept 后才进入 prompt。
 
 ### 7.2 Actor 策略
 
@@ -662,6 +662,7 @@ interface CharterReadInput {
 
 - 默认返回 standing view；
 - archived/rejected/superseded 只在 `all` 调试视图中返回，且每条结果带状态；
+- standing 返回完整的当前工作集（目标 + 全部 accepted/current 条目），受 record 配额约束，不截断；
 - `all` 最多返回 64 条 / 32 KiB，并报告 `truncated` 数量；
 - 默认只返回 standing；
 - 返回 canonical JSON，模型文本单独渲染；
