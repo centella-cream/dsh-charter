@@ -1266,3 +1266,18 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/* View ownership                                                             */
+/* -------------------------------------------------------------------------- */
+
+/*
+ * While the Charter view is active it owns the whole reading surface. Keep the
+ * composer mounted so its draft survives, but hide its seat (and the content
+ * width handles) until the user returns to Chat. Approval, question and plan
+ * review seats must remain visible because they gate the current turn.
+ */
+[data-conversation-scroll]:has(.charter-root) > [data-composer-seat]:not(:has([data-approval-key], [data-question-key], [data-plan-review-key])),
+[data-conversation-scroll]:has(.charter-root) ~ [data-width-handle] {
+  display: none;
+}
