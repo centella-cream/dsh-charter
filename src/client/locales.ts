@@ -25,7 +25,7 @@ const en = {
   'status.corrupt': 'The stored charter is inconsistent.',
   'status.storage': 'Charter storage is unavailable.',
   'status.overBudget': 'The stored charter is valid but exceeds the current budget limits, so it is not injected. Remove or archive items to bring it back within budget.',
-  'status.reconnecting': 'Reconnecting to the charter service...',
+  'status.reconnecting': 'Reconnecting to the charter service; editing is paused and this is the last confirmed state.',
   'header.disclaimer': 'Advisory model context, not an enforced policy or security boundary.',
 
   'empty.kicker': 'Get started',
@@ -130,6 +130,9 @@ const en = {
   'editor.unchangedObjective': 'The objective is unchanged.',
   'editor.unchangedItem': 'The item is unchanged.',
   'editor.defaultReason': 'User edited the current objective.',
+  'editor.issue.empty': 'The text must not be empty.',
+  'editor.issue.control': 'The text contains unsupported control characters.',
+  'editor.issue.surrogate': 'The text contains invalid Unicode.',
 
   'composer.invariant': 'Invariant',
   'composer.deliverable': 'Deliverable',
@@ -255,7 +258,7 @@ const zh: Record<CharterLocaleKey, string> = {
   'status.corrupt': '已保存的会话契约数据不一致。',
   'status.storage': '会话契约存储暂不可用。',
   'status.overBudget': '已保存的会话契约有效，但超出当前预算限制，因此暂时不注入。请删除或归档条目以回到预算内。',
-  'status.reconnecting': '正在重新连接会话契约服务...',
+  'status.reconnecting': '正在重新连接会话契约服务；编辑已暂停，当前显示的是最近一次已确认状态。',
 
   'empty.kicker': '开始',
   'empty.title': '这个会话还没有会话契约。',
@@ -358,6 +361,9 @@ const zh: Record<CharterLocaleKey, string> = {
   'editor.unchangedObjective': '目标没有变化。',
   'editor.unchangedItem': '条目没有变化。',
   'editor.defaultReason': '用户调整了当前目标。',
+  'editor.issue.empty': '文本不能为空。',
+  'editor.issue.control': '文本包含不支持的控制字符。',
+  'editor.issue.surrogate': '文本包含无效 Unicode。',
 
   'composer.invariant': '硬约束',
   'composer.deliverable': '交付物',

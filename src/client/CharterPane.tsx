@@ -23,12 +23,14 @@ import type {
 } from './draft-store.js'
 import { CHARTER_LOCALE_NS, type CharterLocaleKey } from './locales.js'
 import {
+  activeItems,
   itemCounts,
+  pendingItems,
   previewPrompt,
   projectView,
   type ProjectedItem,
 } from './preview.js'
-import { buildBootstrapPlan, type BootstrapPlan } from './bootstrap-plan.js'
+import { buildBootstrapPlan, firstDraftTextIssue, type BootstrapPlan } from './bootstrap-plan.js'
 import './charter.css'
 
 type CharterText = TranslateNS<typeof CHARTER_LOCALE_NS>
@@ -71,6 +73,12 @@ function errorLabel(code: CharterErrorCode, t: CharterText): string {
   return t(`error.${code}`)
 }
 
+function textIssueMessage(issue: 'empty' | 'control' | 'surrogate', t: CharterText): string {
+  if (issue === 'control') return t('editor.issue.control')
+  if (issue === 'surrogate') return t('editor.issue.surrogate')
+  return t('editor.issue.empty')
+}
+
 function countLabel(
   t: CharterText,
   count: number,
@@ -99,6 +107,7 @@ function feedbackText(feedback: DraftFeedback | null, t: CharterText): string | 
     case 'itemBudget': return t('budget.itemOver', { limit: formatBytes(t, feedback.limit) })
     case 'editorUnchanged':
       return feedback.target === 'objective' ? t('editor.unchangedObjective') : t('editor.unchangedItem')
+    case 'editorInvalid': return textIssueMessage(feedback.issue, t)
     case 'discarded': return t('footer.discarded')
   }
 }
@@ -529,6 +538,10 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   }, [view, state.status, draft])
 
   useEffect(() => {
+    draft.bindLifecycle(view?.lifecycle)
+  }, [view?.lifecycle, draft])
+
+  useEffect(() => {
     if (editor === null) triggerRef.current?.focus?.()
   }, [editor])
 
@@ -538,9 +551,13 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   const invariants = projectedItems.filter(item => item.kind === 'invariant')
   const deliverables = projectedItems.filter((item): item is ProjectedItem & { kind: 'deliverable' } => item.kind === 'deliverable')
   const counts = itemCounts(projectedItems)
-  const currentInvariants = invariants.filter(item => item.lifecycle === 'current' && item.review !== 'rejected')
+  const activeInvariants = activeItems(invariants)
+  const pendingInvariants = pendingItems(invariants)
+  const currentInvariants = [...activeInvariants, ...pendingInvariants]
   const historyInvariants = invariants.filter(item => item.lifecycle !== 'current' || item.review === 'rejected')
-  const currentDeliverables = deliverables.filter(item => item.lifecycle === 'current' && item.review !== 'rejected')
+  const activeDeliverables = activeItems(deliverables)
+  const pendingDeliverables = pendingItems(deliverables)
+  const currentDeliverables = [...activeDeliverables, ...pendingDeliverables]
   const historyDeliverables = deliverables.filter(item => item.lifecycle !== 'current' || item.review === 'rejected')
   const successorOf = (item: ProjectedItem): ProjectedItem | undefined =>
     item.supersededBy === undefined ? undefined : projectedItems.find(candidate => candidate.id === item.supersededBy)
@@ -572,6 +589,9 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
     || view.items.length + bootstrapPlan.active + bootstrapPlan.pending > view.limits.maxItems
     || view.items.filter(item => item.review === 'pending').length + bootstrapPlan.pending > view.limits.maxPendingItems
   )
+  const bootstrapTextIssue = bootstrapPhase === 'draft' && bootstrap !== null
+    ? firstDraftTextIssue(bootstrapObjective, bootstrapItems)
+    : undefined
   const canApplyBootstrap = bootstrap !== null
     && bootstrapPhase === 'draft'
     && state.status === 'ready'
@@ -583,6 +603,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
     && !bootstrapItemsOver
     && !bootstrapBudgetOver
     && !bootstrapStorageOver
+    && bootstrapTextIssue === undefined
 
   if (state.status === 'connecting' && view === null) {
     return (
@@ -711,6 +732,9 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
           </div>
         </header>
 
+        {state.status === 'connecting' && view !== null && (
+          <div className="charter-notice" role="status">{t('status.reconnecting')}</div>
+        )}
         {disconnected && (
           <div className="charter-notice charter-notice--danger" role="alert">
             <span>{t('error.connection')}</span>
@@ -903,23 +927,23 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                 <div className="charter-overview-grid">
                   <button type="button" className="charter-card charter-statcard" onClick={() => goSection('invariants')}>
                     <span className="charter-kicker">{t('invariants.kicker')}</span>
-                    <span className="charter-statcard__value">{currentInvariants.length}</span>
-                    <span className="charter-statcard__label">{countLabel(t, currentInvariants.length, 'invariants.one', 'invariants.other')}</span>
+                    <span className="charter-statcard__value">{activeInvariants.length}</span>
+                    <span className="charter-statcard__label">{countLabel(t, activeInvariants.length, 'invariants.one', 'invariants.other')}</span>
                     <span className="charter-statcard__list">
-                      {currentInvariants.length === 0
+                      {activeInvariants.length === 0
                         ? t('invariants.empty')
-                        : currentInvariants.slice(0, 3).map(item => <span key={item.id}>{item.text}</span>)}
+                        : activeInvariants.slice(0, 3).map(item => <span key={item.id}>{item.text}</span>)}
                     </span>
                     <span className="charter-statcard__link">{t('nav.open')}</span>
                   </button>
                   <button type="button" className="charter-card charter-statcard" onClick={() => goSection('deliverables')}>
                     <span className="charter-kicker">{t('deliverables.kicker')}</span>
-                    <span className="charter-statcard__value">{currentDeliverables.length}</span>
-                    <span className="charter-statcard__label">{countLabel(t, currentDeliverables.length, 'deliverables.one', 'deliverables.other')}</span>
+                    <span className="charter-statcard__value">{activeDeliverables.length}</span>
+                    <span className="charter-statcard__label">{countLabel(t, activeDeliverables.length, 'deliverables.one', 'deliverables.other')}</span>
                     <span className="charter-statcard__list">
-                      {currentDeliverables.length === 0
+                      {activeDeliverables.length === 0
                         ? t('deliverables.empty')
-                        : currentDeliverables.slice(0, 3).map(item => (
+                        : activeDeliverables.slice(0, 3).map(item => (
                           <span key={item.id}>{item.text}<em>{progressLabel(item.progress, t)}</em></span>
                         ))}
                     </span>
@@ -937,8 +961,8 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                   <div className="charter-budgetgrid">
                     <span>{t('stats.budget', { used: formatBytes(t, previewBytes), limit: formatBytes(t, view.limits.maxPromptBytes) })}</span>
                     <span>{t('objective.kicker')} {formatBytes(t, utf8Bytes(projectedObjective?.current.text ?? ''))} / {formatBytes(t, view.limits.maxObjectiveBytes)}</span>
-                    <span>{t('invariants.kicker')} {currentInvariants.length}</span>
-                    <span>{t('deliverables.kicker')} {currentDeliverables.length}</span>
+                    <span>{t('invariants.kicker')} {activeInvariants.length}</span>
+                    <span>{t('deliverables.kicker')} {activeDeliverables.length}</span>
                     <span>{t('budget.recordLimit', { limit: formatBytes(t, view.limits.maxRecordBytes) })}</span>
                   </div>
                 </section>
@@ -1001,7 +1025,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                 <div className="charter-cardhead">
                   <div className="charter-cardtitle">
                     <span className="charter-kicker">{t('invariants.kicker')}</span>
-                    <h3>{t('counts.summary', { active: currentInvariants.length, pending: currentInvariants.filter(item => item.review === 'pending').length })}</h3>
+                    <h3>{t('counts.summary', { active: activeInvariants.length, pending: pendingInvariants.length })}</h3>
                   </div>
                   <span className="charter-count">{invariants.length}</span>
                 </div>
@@ -1060,7 +1084,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                 <div className="charter-cardhead">
                   <div className="charter-cardtitle">
                     <span className="charter-kicker">{t('deliverables.kicker')}</span>
-                    <h3>{t('counts.summary', { active: currentDeliverables.length, pending: currentDeliverables.filter(item => item.review === 'pending').length })}</h3>
+                    <h3>{t('counts.summary', { active: activeDeliverables.length, pending: pendingDeliverables.length })}</h3>
                   </div>
                   <span className="charter-count">{deliverables.length}</span>
                 </div>
@@ -1245,6 +1269,14 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                         </>
                       )
                     })()}
+                    {bootstrapTextIssue !== undefined && (
+                      <div className="charter-notice charter-notice--danger" role="alert">
+                        {textIssueMessage(bootstrapTextIssue.issue, t)}
+                        {bootstrapTextIssue.where === 'candidate'
+                          ? ` (${t('bootstrap.editAria', { index: (bootstrapTextIssue.index ?? 0) + 1 })})`
+                          : ''}
+                      </div>
+                    )}
                     {bootstrapBudgetOver && (
                       <div className="charter-notice charter-notice--danger" role="alert">
                         {t('bootstrap.overBudget', { limit: formatBytes(t, view.limits.maxPromptBytes) })}

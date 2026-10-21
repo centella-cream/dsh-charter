@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildBootstrapPlan,
   classifyBootstrapOutcome,
+  firstDraftTextIssue,
   type BootstrapDraftItem,
 } from '../../src/client/bootstrap-plan.js'
 import { previewPrompt } from '../../src/client/preview.js'
@@ -60,6 +61,18 @@ describe('bootstrap plan', () => {
     expect(plan.ops).toHaveLength(2)
     expect(plan.active).toBe(2)
     expect(plan.pending).toBe(0)
+  })
+})
+
+describe('draft text issues', () => {
+  it('flags invalid objective or candidate text before Apply', () => {
+    const items: BootstrapDraftItem[] = [
+      { id: 'a', kind: 'invariant', text: 'safe', selected: true },
+      { id: 'b', kind: 'invariant', text: 'bad\u0000', selected: true },
+    ]
+    expect(firstDraftTextIssue('', items)).toEqual({ issue: 'control', where: 'candidate', index: 1 })
+    expect(firstDraftTextIssue('bad\uD800', [])).toEqual({ issue: 'surrogate', where: 'objective' })
+    expect(firstDraftTextIssue('ok', [items[0]!])).toBeUndefined()
   })
 })
 

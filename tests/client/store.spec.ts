@@ -143,6 +143,21 @@ describe('client charter source', () => {
     await controller.dispose()
   })
 
+  it('evicts the least recently used released draft when the map grows', async () => {
+    const controller = new CharterClientController({} as never)
+    const first = controller.acquire(SessionId('session-draft-0'))
+    const firstDraft = first.draft
+    first.release()
+    for (let index = 1; index <= 16; index += 1) {
+      const lease = controller.acquire(SessionId(`session-draft-${index}`))
+      lease.release()
+    }
+    const again = controller.acquire(SessionId('session-draft-0'))
+    expect(again.draft).not.toBe(firstDraft)
+    again.release()
+    await controller.dispose()
+  })
+
   it('cannot release a newer acquire cycle through a stale binding', async () => {
     const controller = new CharterClientController({} as never)
     const sessionId = SessionId('session-stale')
