@@ -94,16 +94,16 @@
 }
 
 .charter-pagehead h2 {
-  margin: 3px 0 0;
-  font-size: 24px;
+  margin: 0;
+  font-size: 26px;
   font-weight: 600;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
 }
 
 .charter-subtitle {
   max-width: 58ch;
-  margin: 5px 0 0;
+  margin: 7px 0 0;
   color: var(--dsw-alias-label-secondary, #777);
   font-size: 13px;
   line-height: 1.5;
