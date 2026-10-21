@@ -439,6 +439,7 @@ Chinese and English:
   draft no longer pushes the working sections down;
 - focused Objective and item tabs with inline add composers and `0 B / 1.0 KiB` counters;
 - hover/focus-revealed item actions (Edit / Replace / Archive / Verify);
+- while Charter is active the chat composer is hidden, and an unsent draft survives switching back to Chat;
 - light/dark themes driven entirely by DSH semantic tokens.
 
 Screenshots: [Chinese light](assets/charter-pane.png), [English light](assets/charter-pane.en.png).

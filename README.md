@@ -183,6 +183,9 @@ has a left section navigation on wide screens and a horizontal tab strip on narr
 | **History** | Review a draft extracted from the latest compaction summary (only when available) |
 | **Context** | Exact user-role runtime context, bytes, and limits |
 
+While the Charter view is active it owns the whole reading surface: the chat composer is hidden, and its
+draft returns untouched when you switch back to **Chat**. Approval/question/plan-review seats stay visible.
+
 When a history draft has more candidates than the context budget can hold, the extra candidates are imported as
 **pending proposals** in the same atomic Apply. They remain visible and reviewable; nothing is rejected because
 of an arbitrary per-kind active-count cap.

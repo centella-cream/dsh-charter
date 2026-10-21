@@ -169,6 +169,10 @@ bounded by `maxItems` and `maxPendingItems`.
 
 ## 4.1 Budgets and overflow
 
+While the Charter tab is active it owns the reading surface: the chat composer is hidden and its unsent draft is
+preserved; switching back to **Chat** restores the composer and the draft. Approval, question, and plan-review
+seats remain visible.
+
 The tab shows a live context meter and per-field byte counters. Nothing is silently truncated:
 
 - Long history-draft items are split into multiple candidates at sentence/clause boundaries; every candidate is

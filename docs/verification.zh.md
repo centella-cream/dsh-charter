@@ -420,6 +420,7 @@ DSH_HOME="$PWD/.tmp/webview/home" dsh --profile charterweb2 --no-open --port 193
 - 概览 dashboard 包含目标、约束/交付物卡片和预算明细，大块历史草案不再挤压工作模块；
 - 独立的目标/条目 tab，section 内联添加输入和 `0 B / 1.0 KiB` 计数；
 - hover/focus 出现的条目操作（编辑/替换/归档/标记验证）；
+- 会话契约激活时隐藏对话框；切回对话后未发送草稿仍然保留；
 - 明暗主题完全由 DSH 语义 token 驱动。
 
 截图：[中文浅色](assets/charter-pane.png)、[英文浅色](assets/charter-pane.en.png)。
