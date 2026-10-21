@@ -80,6 +80,37 @@ describe('charter commands', () => {
     })
   })
 
+  it('adds overflow candidates as pending proposals without publishing them', () => {
+    let snapshot = apply(initialSnapshot(), request([
+      { type: 'item.propose', item: { clientRef: 'p', kind: 'invariant', text: 'Keep the API stable', order: 1 } },
+    ]), { p: 'item-proposal' })
+    expect(snapshot.items[0]).toMatchObject({
+      kind: 'invariant',
+      review: 'pending',
+      lifecycle: 'current',
+      origin: 'agent',
+    })
+    expect(snapshot.promptText).toBe('')
+
+    snapshot = apply(snapshot, request([
+      { type: 'item.accept', itemId: 'item-proposal' },
+    ], 1))
+    expect(snapshot.items[0]?.review).toBe('accepted')
+    expect(snapshot.promptText).toContain('Keep the API stable')
+  })
+
+  it('does not cap active items by kind; storage is the remaining bound', () => {
+    const ops = Array.from({ length: 26 }, (_, index) => ({
+      type: 'item.add' as const,
+      item: { clientRef: `inv-${index}`, kind: 'invariant' as const, text: `Constraint ${index}`, order: index },
+    }))
+    const snapshot = apply(initialSnapshot(), request(ops), Object.fromEntries(
+      ops.map((op, index) => [op.item.clientRef, `item-${index}`]),
+    ))
+    expect(snapshot.items).toHaveLength(26)
+    expect(snapshot.items.every(item => item.review === 'accepted')).toBe(true)
+  })
+
   it('edits text, resets verification, and leaves order-only verification intact', () => {
     let snapshot = apply(initialSnapshot(), request([
       { type: 'item.add', item: { clientRef: 'inv', kind: 'invariant', text: 'Run tests', order: 1 } },

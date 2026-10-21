@@ -1,10 +1,5 @@
 import { charterError } from './errors.js'
 import { utf8Bytes, type CharterLimits } from './limits.js'
-import {
-  isDeliverable,
-  isInvariant,
-  isStandingItem,
-} from './items.js'
 import { normalizeUserText } from './normalize.js'
 import type {
   CharterItem,
@@ -134,16 +129,6 @@ export function assertStateQuota(snapshot: CharterSnapshot, limits: CharterLimit
   const pending = snapshot.items.filter(item => item.review === 'pending').length
   if (pending > limits.maxPendingItems) {
     throw charterError('QUOTA_EXCEEDED', `charter exceeds ${limits.maxPendingItems} pending items`)
-  }
-
-  const standing = snapshot.items.filter(isStandingItem)
-  const invariants = standing.filter(isInvariant)
-  const deliverables = standing.filter(isDeliverable)
-  if (invariants.length > limits.maxActiveInvariants) {
-    throw charterError('QUOTA_EXCEEDED', `charter exceeds ${limits.maxActiveInvariants} active invariants`)
-  }
-  if (deliverables.length > limits.maxActiveDeliverables) {
-    throw charterError('QUOTA_EXCEEDED', `charter exceeds ${limits.maxActiveDeliverables} active deliverables`)
   }
 
   if (snapshot.objective !== undefined

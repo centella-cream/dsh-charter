@@ -67,8 +67,6 @@ export const Config: Schema<CharterConfig> = Schema.object({
   maxItemBytes: Schema.number().step(1).min(1).default(DEFAULT_CHARTER_CONFIG.maxItemBytes),
   maxItems: Schema.number().step(1).min(1).default(DEFAULT_CHARTER_CONFIG.maxItems),
   maxPendingItems: Schema.number().step(1).min(0).default(DEFAULT_CHARTER_CONFIG.maxPendingItems),
-  maxActiveInvariants: Schema.number().step(1).min(0).default(DEFAULT_CHARTER_CONFIG.maxActiveInvariants),
-  maxActiveDeliverables: Schema.number().step(1).min(0).default(DEFAULT_CHARTER_CONFIG.maxActiveDeliverables),
   maxOps: Schema.number().step(1).min(1).default(DEFAULT_CHARTER_CONFIG.maxOps),
   maxRecordBytes: Schema.number().step(1).min(1).default(DEFAULT_CHARTER_CONFIG.maxRecordBytes),
   historyLimit: Schema.number().step(1).min(1).default(DEFAULT_CHARTER_CONFIG.historyLimit),
@@ -412,8 +410,8 @@ export class CharterService extends Service {
       maxPromptBytes: this.config.maxPromptBytes,
       maxObjectiveBytes: this.config.maxObjectiveBytes,
       maxItemBytes: this.config.maxItemBytes,
-      maxActiveInvariants: this.config.maxActiveInvariants,
-      maxActiveDeliverables: this.config.maxActiveDeliverables,
+      maxItems: this.config.maxItems,
+      maxPendingItems: this.config.maxPendingItems,
       maxOps: this.config.maxOps,
     }
   }

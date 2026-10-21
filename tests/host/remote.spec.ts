@@ -67,9 +67,9 @@ describe('charter Remote contract', () => {
           maxPromptBytes: 8_192,
           maxObjectiveBytes: 4_096,
           maxItemBytes: 1_024,
-          maxActiveInvariants: 24,
-          maxActiveDeliverables: 16,
-          maxOps: 64,
+          maxItems: 512,
+          maxPendingItems: 512,
+          maxOps: 1024,
         },
       },
     }).success).toBe(true)
