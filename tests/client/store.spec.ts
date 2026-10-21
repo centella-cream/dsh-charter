@@ -3,11 +3,23 @@ import { SessionId } from '@deepseek-ai/dsh-session'
 
 // The DSH 0.2.0 package has no Node-specific client entry; the store test only
 // exercises state acceptance, so a structural stub is sufficient and portable.
-vi.mock('@deepseek-ai/dsh-api-gateway/client', () => ({
-  RemoteSnapshotStream: class {},
-}))
+vi.mock('@deepseek-ai/dsh-api-gateway/client', () => {
+  class RemoteSnapshotStream {
+    static instances: RemoteSnapshotStream[] = []
+    disposed: Promise<void>
+    resolveDispose!: () => void
+    constructor() {
+      this.disposed = new Promise(resolve => { this.resolveDispose = resolve })
+      RemoteSnapshotStream.instances.push(this)
+    }
+    start() {}
+    dispose(): Promise<void> { return this.disposed }
+  }
+  return { RemoteSnapshotStream }
+})
+import { RemoteSnapshotStream as MockRemoteSnapshotStream } from '@deepseek-ai/dsh-api-gateway/client'
 import type { CharterView } from '../../src/host/types.js'
-import { CharterSessionSource } from '../../src/client/store.js'
+import { CharterClientController, CharterSessionSource } from '../../src/client/store.js'
 
 function view(revision: number, promptText = ''): CharterView {
   return {
@@ -50,5 +62,37 @@ describe('client charter source', () => {
 
     unsubscribe()
     await source.dispose()
+  })
+
+  it('does not let an old detach overwrite a newer attach', async () => {
+    const controller = new CharterClientController({
+      remote: { $stream: () => ({}) },
+    } as never)
+    const source = controller.source(SessionId('session-race'))
+    const oldRemote = {} as never
+    const newRemote = {} as never
+    source.attach(oldRemote)
+    await new Promise(resolve => setTimeout(resolve, 0))
+    const mockClass = MockRemoteSnapshotStream as unknown as {
+      instances: Array<{ resolveDispose: () => void }>
+    }
+    const oldStream = mockClass.instances.at(-1)
+    source.detach(oldRemote)
+    source.attach(newRemote)
+    oldStream?.resolveDispose()
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(source.getSnapshot().status).toBe('connecting')
+    mockClass.instances.at(-1)?.resolveDispose()
+    await controller.dispose()
+  })
+
+  it('releases a Session source when its view binding unmounts', async () => {
+    const controller = new CharterClientController({} as never)
+    const first = controller.source(SessionId('session-release'))
+    expect(controller.source(SessionId('session-release'))).toBe(first)
+    controller.release(SessionId('session-release'))
+    const second = controller.source(SessionId('session-release'))
+    expect(second).not.toBe(first)
+    await controller.dispose()
   })
 })

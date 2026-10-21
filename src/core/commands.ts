@@ -272,6 +272,11 @@ export function applyOps(input: ApplyOpsInput): ApplyOpsOutput {
   for (const id of purgeIds) requireItem(items, id)
   for (const id of purgeIds) {
     const item = requireItem(items, id)
+    if (item.lifecycle !== 'archived'
+      && item.lifecycle !== 'superseded'
+      && item.review !== 'rejected') {
+      throw charterError('INVALID_TRANSITION', `item ${id} is not purgeable in its current lifecycle`)
+    }
     if (item.supersedes !== undefined && !purgeIds.has(item.supersedes)) {
       throw charterError(
         'INVALID_TRANSITION',

@@ -1,6 +1,7 @@
 import { charterError, CharterError } from './errors.js'
 import { jsonBytes, type CharterLimits } from './limits.js'
 import { sha256Json } from './digest.js'
+import { assertEditAuthorized } from './authorization.js'
 import { applyOps } from './commands.js'
 import { buildSnapshot, emptySnapshot } from './render.js'
 import { validateState } from './state.js'
@@ -160,6 +161,7 @@ function trimHistory(
 
 export function commitRecord(input: CommitRecordInput): CharterRecord {
   assertRecordConsistency(input.record, input.limits)
+  assertEditAuthorized(input.actor, input.request.ops)
 
   const existing = input.record.recentMutations.find(
     receipt => receipt.mutationId === input.request.mutationId,

@@ -116,6 +116,57 @@ describe('dsh-charter host composition', () => {
     expect(service.view(session).revision).toBe(2)
   })
 
+  it('enforces owner/user/host edit policies and owner-only purge', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-actors-'))
+    roots.push(root)
+    const ctx = await mount(root)
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('actors'), {
+      meta: { cwd: root, createdAt: 1_700_000_000_700 },
+    })
+    await waitForReady(service, session)
+
+    const added = await service.edit(addInvariant(session.id, 0, 'actor-add', 'Owner edit'), { kind: 'user' })
+    expect(added).toMatchObject({ ok: true })
+    if (!added.ok) throw new Error('expected user edit to succeed')
+    const itemId = added.ids['actor-add']
+    if (itemId === undefined) throw new Error('expected item id')
+
+    const archived = await service.edit({
+      sessionId: session.id,
+      baseRevision: 1,
+      mutationId: 'actor-archive',
+      ops: [{ type: 'item.archive', itemId }],
+    }, { kind: 'owner' })
+    expect(archived).toMatchObject({ ok: true })
+
+    let published = 0
+    const unsubscribe = service.subscribe(session.id, () => { published += 1 })
+    const userPurge = await service.edit({
+      sessionId: session.id,
+      baseRevision: 2,
+      mutationId: 'actor-purge',
+      ops: [{ type: 'item.purge', itemId, confirmed: true }],
+    }, { kind: 'user' })
+    expect(userPurge).toMatchObject({ ok: false, code: 'FORBIDDEN' })
+    expect(service.view(session).revision).toBe(2)
+
+    const hostEdit = await service.edit(addInvariant(session.id, 2, 'actor-host', 'Host edit'), { kind: 'host' })
+    expect(hostEdit).toMatchObject({ ok: false, code: 'FORBIDDEN' })
+    expect(service.view(session).revision).toBe(2)
+    expect(published).toBe(0)
+    unsubscribe()
+
+    const ownerPurge = await service.edit({
+      sessionId: session.id,
+      baseRevision: 2,
+      mutationId: 'actor-owner-purge',
+      ops: [{ type: 'item.purge', itemId, confirmed: true }],
+    }, { kind: 'owner' })
+    expect(ownerPurge).toMatchObject({ ok: true })
+    expect(service.view(session).items).toHaveLength(0)
+  })
+
   it('reopens the same durable record only for the matching Session lifecycle', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-charter-reopen-'))
     roots.push(root)
@@ -404,6 +455,36 @@ describe('dsh-charter host composition', () => {
     expect(all.items.map(item => item.text)).toContain('Hidden after archive')
   })
 
+  it('bounds the charter_read all debugging view', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-read-all-'))
+    roots.push(root)
+    const ctx = await mount(root)
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('read-all'), {
+      meta: { cwd: root, createdAt: 1_700_000_000_800 },
+    })
+    await waitForReady(service, session)
+    const ops = Array.from({ length: 70 }, (_, index) => ({
+      type: 'item.add' as const,
+      item: {
+        clientRef: `read-all-${index}`,
+        kind: 'invariant' as const,
+        text: `Constraint ${index}`,
+        order: index,
+      },
+    }))
+    const result = await service.edit({
+      sessionId: session.id,
+      baseRevision: 0,
+      mutationId: 'read-all-add',
+      ops,
+    })
+    expect(result).toMatchObject({ ok: true })
+    const all = service.readForModel(session, 'all')
+    expect(all.items).toHaveLength(64)
+    expect(all.truncated).toBe(6)
+  })
+
   it('serves a stored read-only view before a session becomes live in this process', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-charter-stored-view-'))
     roots.push(root)
@@ -438,6 +519,23 @@ describe('dsh-charter host composition', () => {
     unsubscribe()
     expect(views.at(-1)).toMatchObject({ status: 'ready', revision: 1 })
     expect(views.at(-1)?.promptText).toContain('Survives another process')
+  })
+
+  it('rejects a cross-session parent cycle instead of deadlocking initialization', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-parent-cycle-'))
+    roots.push(root)
+    const ctx = await mount(root)
+    const service = ctx.charter as CharterService
+    const a = ctx.sessions.create(SessionId('cycle-a'), {
+      meta: { cwd: root, createdAt: 1_700_000_000_020, parentSession: SessionId('cycle-b') },
+    })
+    const b = ctx.sessions.create(SessionId('cycle-b'), {
+      meta: { cwd: root, createdAt: 1_700_000_000_021, parentSession: SessionId('cycle-a') },
+    })
+    await waitForStatus(service, a, 'unavailable')
+    await waitForStatus(service, b, 'unavailable')
+    expect(service.view(a).message).toContain('cycle')
+    expect(service.view(b).message).toContain('cycle')
   })
 
   it('retries a child charter after its parent record becomes durable', async () => {

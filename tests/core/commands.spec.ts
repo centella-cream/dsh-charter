@@ -263,6 +263,22 @@ describe('charter commands', () => {
     ], 2)), 'INVALID_TRANSITION')
   })
 
+  it('rejects purging an active accepted or pending item', () => {
+    const added = apply(initialSnapshot(), request([
+      { type: 'item.add', item: { clientRef: 'a', kind: 'invariant', text: 'Active', order: 1 } },
+    ]), { a: 'item-a' })
+    expectCode(() => apply(added, request([
+      { type: 'item.purge', itemId: 'item-a', confirmed: true },
+    ], 1)), 'INVALID_TRANSITION')
+
+    const proposed = apply(initialSnapshot(), request([
+      { type: 'item.propose', item: { clientRef: 'p', kind: 'invariant', text: 'Pending', order: 1 } },
+    ]), { p: 'item-p' })
+    expectCode(() => apply(proposed, request([
+      { type: 'item.purge', itemId: 'item-p', confirmed: true },
+    ], 1)), 'INVALID_TRANSITION')
+  })
+
   it('rolls back the whole batch when a later operation fails', () => {
     const before = initialSnapshot()
     const edit = request([

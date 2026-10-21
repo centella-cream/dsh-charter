@@ -63,6 +63,8 @@ export interface CharterToolView {
   readonly revision: number
   readonly objective: string | null
   readonly items: readonly CharterToolItem[]
+  /** Number of historical items omitted from an `all` view (debug cap). */
+  readonly truncated: number
 }
 
 export type CharterEditResult =

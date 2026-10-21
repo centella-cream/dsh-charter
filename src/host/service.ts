@@ -16,6 +16,8 @@ import {
   type CharterErrorCode,
 } from '../core/errors.js'
 import { bootstrapFromEvents } from '../core/bootstrap.js'
+import { readSessionEvents } from './session-events.js'
+import { assertEditAuthorized } from '../core/authorization.js'
 import {
   DEFAULT_CHARTER_LIMITS,
   type CharterLimits,
@@ -127,6 +129,7 @@ export class CharterService extends Service {
   private readonly initializations = new Map<SessionIdType, Promise<void>>()
   private readonly initializationControllers = new Map<SessionIdType, AbortController>()
   private readonly initializationOwners = new Map<SessionIdType, Session>()
+  private readonly initializationParents = new Map<SessionIdType, SessionIdType>()
   private readonly listeners = new Map<SessionIdType, Set<CharterListener>>()
 
   constructor(ctx: Context, config: CharterConfig) {
@@ -265,7 +268,14 @@ export class CharterService extends Service {
     session: Session,
     _source: SessionStartSource,
     signal?: AbortSignal,
+    ancestors: ReadonlySet<SessionIdType> = new Set(),
   ): Promise<void> {
+    if (ancestors.has(session.id)) {
+      return Promise.reject(charterError('CORRUPT_STATE', `Session ${session.id} forms a parent cycle in the charter ancestry`))
+    }
+    if (ancestors.size >= 64) {
+      return Promise.reject(charterError('CORRUPT_STATE', `Session ${session.id} exceeds the charter ancestry depth limit`))
+    }
     const existing = this.initializations.get(session.id)
     const existingOwner = this.initializationOwners.get(session.id)
     if (existing !== undefined && existingOwner === session) return existing
@@ -278,12 +288,15 @@ export class CharterService extends Service {
     const effectiveSignal = signal === undefined
       ? controller.signal
       : AbortSignal.any([signal, controller.signal])
-    const initialization = this.initializeSession(session, effectiveSignal)
+    const nextAncestors = new Set(ancestors)
+    nextAncestors.add(session.id)
+    const initialization = this.initializeSession(session, effectiveSignal, nextAncestors)
       .finally(() => {
         if (this.initializations.get(session.id) === initialization) {
           this.initializations.delete(session.id)
           this.initializationControllers.delete(session.id)
           this.initializationOwners.delete(session.id)
+          this.initializationParents.delete(session.id)
         }
       })
     this.initializations.set(session.id, initialization)
@@ -292,7 +305,31 @@ export class CharterService extends Service {
     return initialization
   }
 
-  private async initializeSession(session: Session, signal?: AbortSignal): Promise<void> {
+  /**
+   * Detect a parent cycle across independently started initialization chains.
+   * The ancestry set alone is insufficient when both Sessions are already
+   * initializing and each awaits the other's cached promise.
+   */
+  private assertInitializationAcyclic(sessionId: SessionIdType, parentId: SessionIdType): void {
+    let cursor: SessionIdType | undefined = parentId
+    const seen = new Set<SessionIdType>()
+    while (cursor !== undefined) {
+      if (cursor === sessionId) {
+        throw charterError('CORRUPT_STATE', `Session ${sessionId} forms a parent cycle in the charter ancestry`)
+      }
+      if (seen.has(cursor) || seen.size >= 64) {
+        throw charterError('CORRUPT_STATE', `Session ${sessionId} exceeds the charter ancestry safety limit`)
+      }
+      seen.add(cursor)
+      cursor = this.initializationParents.get(cursor)
+    }
+  }
+
+  private async initializeSession(
+    session: Session,
+    signal?: AbortSignal,
+    ancestors: ReadonlySet<SessionIdType> = new Set(),
+  ): Promise<void> {
     signal?.throwIfAborted()
     if (this.ctx.sessions.get(session.id) !== session) return
     const table = this.requireTable()
@@ -300,9 +337,12 @@ export class CharterService extends Service {
       if (session.header.parentSession === session.id) {
         throw charterError('CORRUPT_STATE', `Session ${session.id} cannot be its own Charter parent`)
       }
-      const parentSession = this.ctx.sessions.get(SessionId(session.header.parentSession))
+      const parentId = SessionId(session.header.parentSession)
+      this.assertInitializationAcyclic(session.id, parentId)
+      this.initializationParents.set(session.id, parentId)
+      const parentSession = this.ctx.sessions.get(parentId)
       if (parentSession !== undefined) {
-        await this.ensureSession(parentSession, 'startup', signal)
+        await this.ensureSession(parentSession, 'startup', signal, ancestors)
       }
     }
     const existing = table.get(session.id)
@@ -386,7 +426,7 @@ export class CharterService extends Service {
     if (session === undefined) {
       return { available: false, reason: 'not-live' }
     }
-    const events = session.snapshotEvents().map(event => ({
+    const events = readSessionEvents(session).map(event => ({
       type: event.type,
       seq: event.seq,
       time: event.time,
@@ -559,9 +599,21 @@ export class CharterService extends Service {
     if (record === undefined) {
       throw charterError('UNAVAILABLE', this.globalFailure ?? this.unavailable.get(session.id) ?? 'Charter is not initialized')
     }
-    const selected = mode === 'standing'
+    const all = mode === 'standing'
       ? record.current.items.filter(isStandingItem)
       : record.current.items
+    // `all` is a debugging view; return a bounded page so a model call cannot
+    // pull the entire historical charter into one tool result.
+    const maxItems = 64
+    const maxBytes = 32 * 1_024
+    const selected: typeof all[number][] = []
+    let bytes = 0
+    for (const item of all) {
+      const itemBytes = Buffer.byteLength(JSON.stringify(item), 'utf8')
+      if (selected.length >= maxItems || bytes + itemBytes > maxBytes) break
+      selected.push(item)
+      bytes += itemBytes
+    }
     return {
       revision: record.current.revision,
       objective: record.current.objective?.current.text ?? null,
@@ -574,6 +626,7 @@ export class CharterService extends Service {
         verification: item.verification.state,
         progress: item.kind === 'deliverable' ? item.progress : null,
       })),
+      truncated: all.length - selected.length,
     }
   }
 
@@ -589,6 +642,12 @@ export class CharterService extends Service {
       return unavailableResult('INVALID_ARGUMENT', describeError(error))
     }
     if (!this.admissionOpen) return unavailableResult('UNAVAILABLE', this.globalFailure ?? 'Charter is closing')
+    try {
+      assertEditAuthorized(actor, request.ops)
+    } catch (error) {
+      if (error instanceof CharterError) return unavailableResult(error.code, error.message)
+      throw error
+    }
 
     const session = this.ctx.sessions.get(SessionId(request.sessionId))
     if (session === undefined) return unavailableResult('NOT_FOUND', 'The Session is not live')
