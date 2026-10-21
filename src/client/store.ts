@@ -108,7 +108,7 @@ export class CharterSessionSource implements CharterSource {
       const snapshots = new RemoteSnapshotStream<CharterSnapshotFrame, CharterChangedFrame>(stream, {
         name: `dsh-charter:${this.sessionId}`,
         isSnapshot: (frame): frame is CharterSnapshotFrame => frame.type === 'snapshot',
-        replace: frame => this.publishSnapshot(frame.value),
+        replace: frame => this.publishIfNewer(frame.value),
         update: frame => this.publishIfNewer(frame.value),
         failed: error => this.publish({ ...this.state, status: 'error', error: messageOf(error) }),
       })
@@ -137,11 +137,6 @@ export class CharterSessionSource implements CharterSource {
     this.remote = undefined
     await this.stop()
     this.listeners.clear()
-  }
-
-  private publishSnapshot(view: CharterView): void {
-    if (view.sessionId !== this.sessionId) return
-    this.publish({ status: 'ready', view, error: null })
   }
 
   private publishIfNewer(view: CharterView): void {

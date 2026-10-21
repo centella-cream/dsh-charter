@@ -40,7 +40,9 @@ export const charterViewSchema = z.object({
     // still running the previous bundle. The maxActive* fields are accepted
     // for that same version-skew window and are not used by new clients.
     maxItems: z.number().int().positive().default(512),
-    maxPendingItems: z.number().int().positive().default(512),
+    // Host config allows 0 to disable proposals entirely, so wire validation
+    // must accept it as well (maxItems stays at least 1).
+    maxPendingItems: z.number().int().nonnegative().default(512),
     maxOps: z.number().int().positive(),
     maxActiveInvariants: z.number().int().positive().optional(),
     maxActiveDeliverables: z.number().int().positive().optional(),

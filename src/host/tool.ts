@@ -6,8 +6,9 @@ export function defineCharterReadTool(charter: CharterService): ToolDefinition {
     name: 'charter_read',
     description:
       'Read the current user-authored session charter. This tool is read-only. '
-      + 'Use the standing view for the current objective, active invariants, and active deliverables; '
-      + 'use all only when historical or inactive charter entries are needed; all is a bounded debugging view.',
+      + 'Use the standing view for the complete current objective, active invariants, and active deliverables; '
+      + 'use all only when historical or inactive charter entries are needed. '
+      + 'all is a bounded debugging page (at most 64 items / 32 KiB) and reports omitted items in truncated.',
     parameters: {
       view: {
         type: 'string',

@@ -225,6 +225,42 @@ describe('dsh-charter host composition', () => {
     await new Promise(resolve => setTimeout(resolve, 10))
   })
 
+  it('accepts item.propose from a user actor as a documented client operation', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-user-propose-'))
+    roots.push(root)
+    const ctx = await mount(root)
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('user-propose'), {
+      meta: { cwd: root, createdAt: 1_700_000_001_000 },
+    })
+    await waitForReady(service, session)
+
+    const request = {
+      sessionId: session.id,
+      mutationId: 'user-propose',
+      baseRevision: 0,
+      ops: [{
+        type: 'item.propose' as const,
+        item: { clientRef: 'pending', kind: 'invariant' as const, text: 'Review later', order: 0 },
+      }],
+    }
+    const proposed = await service.edit(request, { kind: 'user' })
+    expect(proposed).toMatchObject({ ok: true, committedRevision: 1 })
+    const view = service.view(session)
+    expect(view.items).toHaveLength(1)
+    expect(view.items[0]).toMatchObject({ review: 'pending', origin: 'agent' })
+    expect(view.promptText).toBe('')
+
+    // The host actor is still rejected on the Remote edit path.
+    const hostProposal = await service.edit({
+      ...request,
+      mutationId: 'host-propose',
+      baseRevision: 1,
+    }, { kind: 'host' })
+    expect(hostProposal).toMatchObject({ ok: false, code: 'FORBIDDEN' })
+    expect(service.view(session).revision).toBe(1)
+  })
+
   it('reopens the same durable record only for the matching Session lifecycle', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-charter-reopen-'))
     roots.push(root)
@@ -541,6 +577,9 @@ describe('dsh-charter host composition', () => {
     const all = service.readForModel(session, 'all')
     expect(all.items).toHaveLength(64)
     expect(all.truncated).toBe(6)
+    const standing = service.readForModel(session, 'standing')
+    expect(standing.items).toHaveLength(70)
+    expect(standing.truncated).toBe(0)
   })
 
   it('serves a stored read-only view before a session becomes live in this process', async () => {
