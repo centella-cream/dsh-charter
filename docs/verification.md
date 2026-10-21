@@ -57,6 +57,7 @@ Key test files:
 | `tests/host/actor.spec.ts` | 0.1.7/0.2.0 no-principal fallback, non-owner recording |
 | `tests/host/remote.spec.ts` | Remote descriptor and wire schema |
 | `tests/client/store.spec.ts` | accept committed view immediately, ignore stale/duplicate revisions |
+| `tests/client/bootstrap-plan.spec.ts` | overflow candidates stay in one plan; active prefix fits the byte budget |
 
 ## 3. Cross-version matrix
 
@@ -67,7 +68,6 @@ Each version uses its own directory and `node_modules`:
 .tmp/compat/020rc1/proj
 .tmp/compat/020rc2/proj
 .tmp/compat/021rc1/proj
-.tmp/compat/021rc2  verified directly in the main workspace
 ```
 
 Copy source (excluding `node_modules`, `lib`, `.build-ts`, `.tmp`), link the version's `node_modules` into

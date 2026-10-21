@@ -35,7 +35,7 @@ npm test
 
 - typecheck 通过；
 - build 通过；
-- `12` 个测试文件、`66` 个测试全部通过；
+- `13` 个测试文件、`70` 个测试全部通过；
 - `remote-smoke` 断言 `watch,bootstrap,edit`、stream mode 和 Session resource；
 - `client-smoke` 断言单文件 factory bundle、外部依赖白名单、`apply` 注册 tab/pane/Remote contribution。
 
@@ -55,6 +55,7 @@ npm test
 | `tests/host/actor.spec.ts` | 0.1.7/0.2.0 无 principal 回退、非 owner 记录 |
 | `tests/host/remote.spec.ts` | Remote 描述符和 wire schema |
 | `tests/client/store.spec.ts` | 提交后立即接受 view、忽略陈旧/重复 revision |
+| `tests/client/bootstrap-plan.spec.ts` | 溢出候选仍在一个 plan 中；active 前缀符合字节预算 |
 
 ## 3. 跨版本矩阵
 
@@ -65,7 +66,6 @@ npm test
 .tmp/compat/020rc1/proj
 .tmp/compat/020rc2/proj
 .tmp/compat/021rc1/proj
-.tmp/compat/021rc2 由主仓库直接验证
 ```
 
 复制源码（排除 `node_modules`、`lib`、`.build-ts`、`.tmp`），把版本目录的 `node_modules` 链接进 `proj`，然后执行：
