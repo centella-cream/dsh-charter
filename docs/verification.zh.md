@@ -12,8 +12,8 @@
 
 | 验证项 | 结果 |
 | --- | --- |
-| TypeScript 严格类型检查（4 个 DSH 版本） | 通过 |
-| Vitest（4 个本地可用版本 × 71 tests） | 通过 |
+| TypeScript 严格类型检查（5 个 DSH 版本） | 通过 |
+| Vitest（5 个本地可用版本 × 71 tests） | 通过 |
 | Host ESM 构建 + 浏览器单文件 bundle | 通过 |
 | Remote 装饰器/资源 smoke | 通过（0.1.7/0.2.0 按预期无资源声明） |
 | 浏览器 factory bundle 物化与 `apply` smoke | 通过 |
@@ -67,6 +67,7 @@ npm test
 .tmp/compat/020rc1/proj
 .tmp/compat/020rc2/proj
 .tmp/compat/021rc1/proj
+.tmp/compat/021rc2/proj
 ```
 
 复制源码（排除 `node_modules`、`lib`、`.build-ts`、`.tmp`），把版本目录的 `node_modules` 链接进 `proj`，然后执行：
@@ -85,8 +86,7 @@ npm run build
 | `0.2.0-rc.1` | 通过 | 通过 | 71/71 | 通过（无 resources 警告） | 通过 |
 | `0.2.0-rc.2` | 通过 | 通过 | 71/71 | 通过（无 resources 警告） | 通过 |
 | `0.2.1-rc.1` | 通过 | 通过 | 71/71 | 通过 | 通过 |
-
-`0.2.1-rc.2` 在较早 revision 上验证过；本地可用后，下个 release candidate 再跑同一矩阵。
+| `0.2.1-rc.2` | 通过 | 通过 | 71/71 | 通过 | 通过 |
 
 `0.1.7-rc.2` 和 `0.2.0` 的 remote smoke 输出：
 
