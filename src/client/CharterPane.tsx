@@ -715,7 +715,6 @@ export function CharterPane({ sessionId, source, t }: CharterPaneProps) {
           <div className="charter-heading">
             <CharterMark />
             <div className="charter-heading__copy">
-              <span className="charter-eyebrow">{t('header.eyebrow')}</span>
               <h2>{t('header.title')}</h2>
               <p className="charter-subtitle">{t('header.subtitle')}</p>
             </div>
