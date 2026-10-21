@@ -61,7 +61,9 @@ function normalizeOp(op: CharterOp): CharterOp {
       return {
         type: op.type,
         text: normalizeUserText(op.text, 'objective'),
-        reason: normalizeUserText(op.reason, 'redirect reason'),
+        ...(op.reason === undefined
+          ? {}
+          : { reason: normalizeUserText(op.reason, 'redirect reason') }),
       }
     case 'item.add':
     case 'item.propose':

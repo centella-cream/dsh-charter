@@ -4,6 +4,7 @@ import type { CharterView } from '../../src/host/types.js'
 import { renderCharterPrompt } from '../../src/core/prompt.js'
 import { previewPrompt } from '../../src/client/preview.js'
 import { normalizeEditRequest } from '../../src/core/normalize.js'
+import { assertSnapshotAdmission } from '../../src/core/record.js'
 import { apply, initialSnapshot, limits, request } from './helpers.js'
 
 function viewOf(snapshot: CharterSnapshot): CharterView {
@@ -15,6 +16,7 @@ function viewOf(snapshot: CharterSnapshot): CharterView {
     items: [...snapshot.items],
     promptText: snapshot.promptText,
     promptDigest: snapshot.promptDigest,
+    overBudget: false,
     limits: {
       maxPromptBytes: 8_192,
       maxObjectiveBytes: 4_096,
@@ -22,6 +24,7 @@ function viewOf(snapshot: CharterSnapshot): CharterView {
       maxItems: 512,
       maxPendingItems: 512,
       maxOps: 1024,
+      maxRecordBytes: 1_048_576,
     },
   }
 }
@@ -181,6 +184,8 @@ describe('client draft preview', () => {
       { type: 'item.edit', itemId: 'item-a', text: 'x'.repeat(limits.maxPromptBytes + 1) },
     ], base.revision)
     expect(() => previewPrompt(viewOf(base), edit.ops)).not.toThrow()
-    expect(() => apply(base, edit)).toThrow()
+    // Quota admission belongs to the write path, not to the pure projection.
+    const staged = apply(base, edit)
+    expect(() => assertSnapshotAdmission(base, staged, limits)).toThrow()
   })
 })

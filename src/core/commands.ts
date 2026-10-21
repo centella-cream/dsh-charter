@@ -2,12 +2,11 @@ import { charterError } from './errors.js'
 import type {
   CharterChange,
   CharterItem,
-  CharterObjective,
   CharterOp,
   CharterSnapshot,
   NewItemInput,
 } from './schemas.js'
-import { buildSnapshot } from './render.js'
+import { buildSnapshotUnchecked } from './render.js'
 import { validateState } from './state.js'
 import type { CharterLimits } from './limits.js'
 
@@ -72,15 +71,6 @@ function assertEditable(item: CharterItem): void {
   }
 }
 
-function sameState(
-  leftObjective: CharterObjective | undefined,
-  leftItems: readonly CharterItem[],
-  right: CharterSnapshot,
-): boolean {
-  return JSON.stringify({ objective: leftObjective ?? null, items: leftItems })
-    === JSON.stringify({ objective: right.objective ?? null, items: right.items })
-}
-
 export function applyOps(input: ApplyOpsInput): ApplyOpsOutput {
   if (input.nextRevision !== input.snapshot.revision + 1) {
     throw charterError('INVALID_ARGUMENT', 'nextRevision must advance exactly once')
@@ -132,7 +122,7 @@ export function applyOps(input: ApplyOpsInput): ApplyOpsOutput {
           current: {
             text: op.text,
             setAtRevision: input.nextRevision,
-            reason: op.reason,
+            ...(op.reason === undefined ? {} : { reason: op.reason }),
           },
         }
         changes.push({ type: 'objective.redirected' })
@@ -196,6 +186,12 @@ export function applyOps(input: ApplyOpsInput): ApplyOpsOutput {
         if (item.review !== 'accepted' || item.lifecycle !== 'current') {
           throw charterError('INVALID_TRANSITION', `item ${item.id} is not an active accepted item`)
         }
+        if (item.supersedes !== undefined) {
+          throw charterError(
+            'INVALID_TRANSITION',
+            `item ${item.id} is a replacement; purge its superseded predecessor before archiving it`,
+          )
+        }
         items.set(item.id, { ...item, lifecycle: 'archived' })
         changes.push({ type: 'item.archived', itemId: item.id })
         break
@@ -213,6 +209,12 @@ export function applyOps(input: ApplyOpsInput): ApplyOpsOutput {
         const item = requireItem(items, op.itemId)
         if (item.review !== 'accepted' || item.lifecycle !== 'current') {
           throw charterError('INVALID_TRANSITION', `item ${item.id} is not an active accepted item`)
+        }
+        if (item.supersedes !== undefined) {
+          throw charterError(
+            'INVALID_TRANSITION',
+            `item ${item.id} is a replacement; purge its predecessor before replacing it again`,
+          )
         }
         if (item.kind !== op.replacement.kind) {
           throw charterError('INVALID_TRANSITION', 'a replacement must have the same item kind')
@@ -296,11 +298,9 @@ export function applyOps(input: ApplyOpsInput): ApplyOpsOutput {
 
   const nextItems = [...items.values()]
   validateState(input.nextRevision, objective, nextItems)
-  if (sameState(objective, nextItems, input.snapshot)) {
+  const snapshot = buildSnapshotUnchecked(input.nextRevision, objective, nextItems)
+  if (snapshot.stateDigest === input.snapshot.stateDigest) {
     throw charterError('INVALID_TRANSITION', 'the edit produces no state change')
   }
-  return {
-    snapshot: buildSnapshot(input.nextRevision, objective, nextItems, input.limits),
-    changes,
-  }
+  return { snapshot, changes }
 }

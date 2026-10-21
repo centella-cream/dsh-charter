@@ -11,6 +11,7 @@ function view(revision: number, text = ''): CharterView {
     objective: null,
     items: [],
     promptText: text,
+    overBudget: false,
     promptDigest: text === '' ? '' : `sha256:${'0'.repeat(64)}`,
     limits: {
       maxPromptBytes: 8_192,
@@ -19,6 +20,7 @@ function view(revision: number, text = ''): CharterView {
       maxItems: 512,
       maxPendingItems: 512,
       maxOps: 1024,
+      maxRecordBytes: 1_048_576,
     },
   }
 }

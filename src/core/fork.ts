@@ -1,8 +1,8 @@
 import { charterError } from './errors.js'
 import type { CharterLimits } from './limits.js'
 import { sha256Json } from './digest.js'
-import { buildSnapshot } from './render.js'
-import { assertRecordConsistency, createEmptyRecord, type CharterIdentity } from './record.js'
+import { buildSnapshotUnchecked } from './render.js'
+import { assertRecordAdmission, assertRecordConsistency, assertSnapshotAdmission, createEmptyRecord, type CharterIdentity } from './record.js'
 import type { CharterItem, CharterRecord, CharterReceipt, MutationReceipt } from './schemas.js'
 import { compareItems } from './state.js'
 
@@ -57,7 +57,7 @@ export function forkRecord(input: ForkRecordInput): CharterRecord {
             : { reason: input.parent.current.objective.current.reason }),
         },
       }
-  const current = buildSnapshot(1, objective, items, input.limits)
+  const current = buildSnapshotUnchecked(1, objective, items)
   if (current.promptText !== input.parent.current.promptText
     || current.promptDigest !== input.parent.current.promptDigest) {
     throw charterError('CORRUPT_STATE', 'fork changed the model-visible charter')
@@ -86,6 +86,7 @@ export function forkRecord(input: ForkRecordInput): CharterRecord {
     resultDigest: current.stateDigest,
     ids: {},
   }
+  assertSnapshotAdmission(input.parent.current, current, input.limits)
   const child: CharterRecord = {
     ...empty,
     forkedFrom: {
@@ -96,6 +97,7 @@ export function forkRecord(input: ForkRecordInput): CharterRecord {
     history: [history],
     recentMutations: [mutation],
   }
+  assertRecordAdmission(input.parent, child, input.limits)
   assertRecordConsistency(child, input.limits)
   return child
 }

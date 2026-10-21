@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -21,7 +21,7 @@ afterEach(async () => {
   await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true })))
 })
 
-async function mount(root: string): Promise<Context> {
+async function mount(root: string, config: Partial<Record<string, number>> = {}): Promise<Context> {
   const ctx = new Context()
   contexts.push(ctx)
   await ctx.plugin(AgentRegistry)
@@ -31,7 +31,7 @@ async function mount(root: string): Promise<Context> {
   await ctx.plugin(StorageDomain, { backend: 'json' })
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
-  await ctx.plugin(CharterService)
+  await ctx.plugin(CharterService, config as never)
   return ctx
 }
 
@@ -580,6 +580,11 @@ describe('dsh-charter host composition', () => {
     const standing = service.readForModel(session, 'standing')
     expect(standing.items).toHaveLength(70)
     expect(standing.truncated).toBe(0)
+    // The standing projection is compact: no debug-only id/review/lifecycle.
+    expect(standing.items.every(item => item.id === undefined)).toBe(true)
+    expect(standing.items.every(item => item.review === undefined)).toBe(true)
+    expect(Buffer.byteLength(JSON.stringify(standing), 'utf8')).toBeLessThan(16 * 1_024)
+    expect(all.items[0]?.id).toBeDefined()
   })
 
   it('serves a stored read-only view before a session becomes live in this process', async () => {
@@ -635,7 +640,7 @@ describe('dsh-charter host composition', () => {
     expect(service.view(b).message).toContain('cycle')
   })
 
-  it('retries a child charter after its parent record becomes durable', async () => {
+  it('publishes the ready frame again after a failed child retry succeeds', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-charter-parent-retry-'))
     roots.push(root)
     const ctx = await mount(root)
@@ -647,13 +652,136 @@ describe('dsh-charter host composition', () => {
     await new Promise(resolve => setTimeout(resolve, 20))
     expect(service.view(child).status).toBe('unavailable')
 
+    const published: string[] = []
+    const unsubscribe = service.subscribe(child.id, view => published.push(view.status))
     const parent = ctx.sessions.create(parentId, {
       meta: { cwd: root, createdAt: 1_700_000_000_009 },
     })
     await waitForReady(service, parent)
     await waitForStatus(service, child, 'ready')
+    unsubscribe()
     expect(service.view(child).revision).toBe(1)
     expect(service.view(child).promptText).toBe('')
+    expect(published.at(-1)).toBe('ready')
+  })
+
+  it('isolates one schema-invalid record from every other Session', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-bad-record-'))
+    roots.push(root)
+    const first = await mount(root)
+    const firstService = first.charter as CharterService
+    const badId = SessionId('bad-record')
+    const goodId = SessionId('good-record')
+    const bad = first.sessions.create(badId, {
+      meta: { cwd: root, createdAt: 1_700_000_000_950 },
+    })
+    const good = first.sessions.create(goodId, {
+      meta: { cwd: root, createdAt: 1_700_000_000_951 },
+    })
+    await waitForReady(firstService, bad)
+    await waitForReady(firstService, good)
+    await firstService.edit(addInvariant(bad.id, 0, 'bad-1', 'Bad record constraint'))
+    await firstService.edit(addInvariant(good.id, 0, 'good-1', 'Good record constraint'))
+    await first.fiber.dispose()
+    contexts.splice(contexts.indexOf(first), 1)
+
+    const file = join(root, 'storage', 'dsh_charter_v1', 'sessions', `${badId}.json`)
+    const stored = JSON.parse(await readFile(file, 'utf8')) as { record: Record<string, unknown> }
+    stored.record['unexpectedFutureField'] = 1
+    await writeFile(file, JSON.stringify(stored))
+
+    const second = await mount(root)
+    const secondService = second.charter as CharterService
+    const badAgain = second.sessions.create(badId, {
+      meta: { cwd: root, createdAt: 1_700_000_000_950 },
+    })
+    const goodAgain = second.sessions.create(goodId, {
+      meta: { cwd: root, createdAt: 1_700_000_000_951 },
+    })
+    await waitForReady(secondService, goodAgain)
+    await waitForStatus(secondService, badAgain, 'unavailable')
+    expect(secondService.view(goodAgain).promptText).toContain('Good record constraint')
+    expect(await secondService.edit(addInvariant(goodAgain.id, 1, 'good-2', 'Still editable')))
+      .toMatchObject({ ok: true })
+    expect(await secondService.edit(addInvariant(badAgain.id, 1, 'bad-2', 'Blocked')))
+      .toMatchObject({ ok: false, code: 'UNAVAILABLE' })
+    // The invalid document is preserved for diagnosis, not silently replaced.
+    const preserved = JSON.parse(await readFile(file, 'utf8')) as { record: Record<string, unknown> }
+    expect(preserved.record['unexpectedFutureField']).toBe(1)
+  })
+
+  it('treats lowered budgets as over-budget state instead of corruption and lets edits shrink it', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-over-budget-'))
+    roots.push(root)
+    const first = await mount(root)
+    const firstService = first.charter as CharterService
+    const sessionId = SessionId('over-budget')
+    const session = first.sessions.create(sessionId, {
+      meta: { cwd: root, createdAt: 1_700_000_000_970 },
+    })
+    await waitForReady(firstService, session)
+    const ops = Array.from({ length: 6 }, (_, index) => ({
+      type: 'item.add' as const,
+      item: {
+        clientRef: `over-${index}`,
+        kind: 'invariant' as const,
+        text: `Constraint ${index} ${'x'.repeat(120)}`,
+        order: index,
+      },
+    }))
+    expect(await firstService.edit({
+      sessionId: session.id,
+      mutationId: 'over-budget-add',
+      baseRevision: 0,
+      ops,
+    })).toMatchObject({ ok: true })
+    await first.fiber.dispose()
+    contexts.splice(contexts.indexOf(first), 1)
+
+    const second = await mount(root, { maxPromptBytes: 300 })
+    const secondService = second.charter as CharterService
+    const again = second.sessions.create(sessionId, {
+      meta: { cwd: root, createdAt: 1_700_000_000_970 },
+    })
+    await waitForReady(secondService, again)
+    const overView = secondService.view(again)
+    expect(overView.status).toBe('ready')
+    expect(overView.overBudget).toBe(true)
+    expect(secondService.promptText(again)).toBe('')
+
+    // Adding content is rejected while the record is over budget.
+    expect(await secondService.edit(addInvariant(again.id, 1, 'grow', 'New constraint')))
+      .toMatchObject({ ok: false, code: 'QUOTA_EXCEEDED' })
+
+    // Removing content is admitted because the prompt only shrinks.
+    const archived = await secondService.edit({
+      sessionId: again.id,
+      mutationId: 'over-budget-shrink',
+      baseRevision: 1,
+      ops: overView.items.map(item => ({ type: 'item.archive' as const, itemId: item.id })),
+    })
+    expect(archived).toMatchObject({ ok: true })
+    expect(secondService.view(again).overBudget).toBe(false)
+  })
+
+  it('clamps non-viable budget configurations instead of making every edit fail', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-clamp-'))
+    roots.push(root)
+    const ctx = await mount(root, {
+      maxPromptBytes: 1,
+      maxRecordBytes: 1,
+      maxHistoryBytes: 1,
+    })
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('clamped'), {
+      meta: { cwd: root, createdAt: 1_700_000_000_980 },
+    })
+    await waitForReady(service, session)
+    const view = service.view(session)
+    expect(view.limits.maxPromptBytes).toBeGreaterThan(100)
+    expect(view.limits.maxRecordBytes).toBeGreaterThanOrEqual(16 * 1_024)
+    expect(await service.edit(addInvariant(session.id, 0, 'clamped-1', 'Works'))
+      .then(result => result.ok)).toBe(true)
   })
 })
 

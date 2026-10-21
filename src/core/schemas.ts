@@ -100,7 +100,9 @@ export const charterOpSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('objective.redirect'),
     text: z.string(),
-    reason: z.string(),
+    // Optional: a redirect without a recorded reason is valid; clients render a
+    // localized fallback instead of persisting UI copy in the record.
+    reason: z.string().optional(),
   }).strict(),
   z.object({ type: z.literal('item.add'), item: newItemInputSchema }).strict(),
   z.object({ type: z.literal('item.propose'), item: newItemInputSchema }).strict(),

@@ -14,6 +14,8 @@ export interface CharterViewLimits {
   readonly maxItems: number
   readonly maxPendingItems: number
   readonly maxOps: number
+  /** One Session record including bounded history/mutation receipts. */
+  readonly maxRecordBytes: number
 }
 
 export interface CharterView {
@@ -25,6 +27,8 @@ export interface CharterView {
   readonly promptText: string
   readonly promptDigest: string
   readonly limits: CharterViewLimits
+  /** The durable record is valid but exceeds the current budget configuration. */
+  readonly overBudget: boolean
   readonly message?: string | undefined
 }
 
@@ -50,11 +54,14 @@ export type CharterBootstrapResult =
     }
 
 export interface CharterToolItem {
-  readonly id: string
+  /** Present only in the bounded `all` debugging view. */
+  readonly id?: string
   readonly kind: CharterItem['kind']
   readonly text: string
-  readonly review: CharterItem['review']
-  readonly lifecycle: CharterItem['lifecycle']
+  /** Present only in the bounded `all` debugging view. */
+  readonly review?: CharterItem['review']
+  /** Present only in the bounded `all` debugging view. */
+  readonly lifecycle?: CharterItem['lifecycle']
   readonly verification: CharterItem['verification']['state']
   readonly progress: string | null
 }

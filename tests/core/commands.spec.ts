@@ -263,6 +263,35 @@ describe('charter commands', () => {
     ], 2)), 'INVALID_TRANSITION')
   })
 
+  it('requires purging a superseded predecessor before archiving or replacing its successor', () => {
+    const initialState = initialSnapshot()
+    const first = apply(initialState, request([
+      { type: 'item.add', item: { clientRef: 'a', kind: 'invariant', text: 'Original', order: 1 } },
+    ]), { a: 'item-a' })
+    const replaced = apply(first, request([
+      { type: 'item.supersede', itemId: 'item-a', replacement: { clientRef: 'b', kind: 'invariant', text: 'Replacement', order: 2 } },
+    ], 1), { b: 'item-b' })
+
+    expectCode(() => apply(replaced, request([
+      { type: 'item.archive', itemId: 'item-b' },
+    ], 2)), 'INVALID_TRANSITION')
+    expectCode(() => apply(replaced, request([
+      { type: 'item.supersede', itemId: 'item-b', replacement: { clientRef: 'c', kind: 'invariant', text: 'Next', order: 3 } },
+    ], 2), { c: 'item-c' }), 'INVALID_TRANSITION')
+
+    // The supported escape hatch: purge the superseded predecessor, which
+    // detaches the successor, then the successor is an ordinary item again.
+    const purged = apply(replaced, request([
+      { type: 'item.purge', itemId: 'item-a', confirmed: true },
+    ], 2))
+    expect(purged.items.map(item => ({ id: item.id, lifecycle: item.lifecycle, supersedes: item.supersedes })))
+      .toEqual([{ id: 'item-b', lifecycle: 'current', supersedes: undefined }])
+    const archived = apply(purged, request([
+      { type: 'item.archive', itemId: 'item-b' },
+    ], 3))
+    expect(archived.items[0]?.lifecycle).toBe('archived')
+  })
+
   it('rejects purging an active accepted or pending item', () => {
     const added = apply(initialSnapshot(), request([
       { type: 'item.add', item: { clientRef: 'a', kind: 'invariant', text: 'Active', order: 1 } },

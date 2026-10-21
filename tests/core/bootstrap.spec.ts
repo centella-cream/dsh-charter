@@ -59,6 +59,30 @@ describe('bootstrapFromSummary', () => {
     expect(Buffer.byteLength(draft.deliverables[0] ?? '', 'utf8')).toBeLessThanOrEqual(256)
   })
 
+  it('falls back to the first primary bullet when the summary has no objective label', () => {
+    // Real DSH summaries usually use bullet-only Primary Request sections.
+    const draft = bootstrapFromSummary(`## Primary Request and Intent
+- Build a durable session charter plugin for DSH.
+- Keep the existing UI styling.
+## Key Technical Concepts
+- storage-domain records.
+## Critical Context
+- Must survive compaction.
+## Pending Jobs
+- Run the full check.
+`, limits)
+    expect(draft.objective).toBe('Build a durable session charter plugin for DSH.')
+    expect(draft.invariants).toContain('Must survive compaction.')
+  })
+
+  it('splits a pathological single-line summary without quadratic cost', () => {
+    const draft = bootstrapFromSummary(
+      `## Primary Request and Intent\n- ${'界'.repeat(20_000)}`,
+      { maxObjectiveBytes: 256, maxItemBytes: 256 },
+    )
+    expect(draft.objective).toHaveLength(20_000)
+  })
+
   it('returns an empty draft for a summary without recognizable sections', () => {
     const draft = bootstrapFromSummary('Nothing structured here.', limits)
     expect(draft).toEqual({ objective: 'Nothing structured here.', invariants: [], deliverables: [] })
