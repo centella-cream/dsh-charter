@@ -406,14 +406,18 @@ export class CharterService extends Service {
   }
 
   private viewLimits(): CharterViewLimits {
-    return {
+    const limits = {
       maxPromptBytes: this.config.maxPromptBytes,
       maxObjectiveBytes: this.config.maxObjectiveBytes,
       maxItemBytes: this.config.maxItemBytes,
       maxItems: this.config.maxItems,
       maxPendingItems: this.config.maxPendingItems,
       maxOps: this.config.maxOps,
+      // Keep an older browser client rendering while the new Host loads.
+      maxActiveInvariants: this.config.maxItems,
+      maxActiveDeliverables: this.config.maxItems,
     }
+    return limits
   }
 
   /**
