@@ -74,7 +74,7 @@
 - 没有 revision、CAS 或并发写保护；
 - `strict:false` 允许违规状态落盘；
 - 模型工具可以直接执行有效写入；
-- TBox/ABox、推理闭包和图查询不属于会话任务契约问题；
+- TBox/ABox、推理闭包和图查询不属于会话会话契约问题；
 - term comment 会进入 system prompt，存在把普通数据提升为系统指令的风险。
 
 ### 2.3 共同结论
@@ -138,7 +138,7 @@
 产生新快照。它监听 surface replacement；当前 retained snapshot 被替换或遮蔽后会清空 retained，下一次
 请求可从当前 context 重新物化同样的文本。
 
-因此，独立 storage 正本配合 `context()` 能实现“每次请求重新得到当前用户级任务契约”，不需要把用户正文
+因此，独立 storage 正本配合 `context()` 能实现“每次请求重新得到当前用户级会话契约”，不需要把用户正文
 提升到 system role。代价是任一 context 贡献变化都会追加整份联合快照。
 
 ### 3.4 Session projection
@@ -236,14 +236,14 @@ Ignored。调用方不能指定 Anthropic 式缓存断点，只能维持前缀�
 
 1. 约束应独立于压缩摘要维护。
 2. 外部 DSH 插件当前应使用 storage domain，而不是实验性 Session plugin record。
-3. 用户可编辑任务契约应保持 user role；system role 留给 Host policy。
+3. 用户可编辑会话契约应保持 user role；system role 留给 Host policy。
 4. 一次 Apply 应收敛到单记录原子 update。
 5. UI 应按 Session 授权并使用 snapshot stream，不做 Host-wide baseline。
 6. 模型注入文本必须确定、有界，并从正本重新物化。
 
 本轮事实不能证明：
 
-1. 模型一定遵守任务契约；
+1. 模型一定遵守会话契约；
 2. DeepSeek 一定在某个 token 边界命中缓存；
 3. 2KB、16 条或任何具体配额是最优值；
 4. 外部插件能精确继承 fork boundary 时刻的父 Charter；

@@ -3,7 +3,7 @@
 [English](charter-design.md) | 中文
 
 > 定位：保存当前会话中用户明确确认的目标、硬约束和交付物，并在每次模型请求前从独立正本确定性重建。
-> 压缩可以改写历史摘要，不能成为任务契约的写入者或恢复来源。
+> 压缩可以改写历史摘要，不能成为会话契约的写入者或恢复来源。
 
 调研基准日：2026-10-19。目标契约基线：DSH `0.2.1-rc.2`。
 
@@ -16,7 +16,7 @@
 验证。当前 `npm run typecheck`、`npm test`、`npm run build` 均通过（66 个测试）；同一源码在 DSH
 `0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-rc.1`、`0.2.1-rc.2` 上分别通过 typecheck、build 和 66 个测试。
 真实 profile 的 tarball 安装、配置组合、Web 启动、boot graph 和客户端 bundle HTTP 已通过；DSH `0.2.0-rc.2`
-Web profile 上已用真实 Chrome 验证「对话」「轨迹」「任务契约」标签顺序、目标编辑、预览、Apply 和刷新持久化。
+Web profile 上已用真实 Chrome 验证「对话」「轨迹」「会话契约」标签顺序、目标编辑、预览、Apply 和刷新持久化。
 完整 compaction 端到端仍需在目标 profile 手工执行。兼容边界与降级见
 [兼容矩阵](compatibility.zh.md)，证据和复现命令见[验证记录](../verification.zh.md)。
 
@@ -25,7 +25,7 @@ Client 入口依赖宿主提供的 DSH UI bundle，不把 `@deepseek-ai/dsh-clie
 
 ## 1. 产品定义
 
-`dsh-charter` 是会话级任务契约，不是通用记忆、任务摘要、知识图谱或权限系统。
+`dsh-charter` 是会话级会话契约，不是通用记忆、任务摘要、知识图谱或权限系统。
 
 它回答三个问题：
 
@@ -33,17 +33,17 @@ Client 入口依赖宿主提供的 DSH UI bundle，不把 `@deepseek-ai/dsh-clie
 2. 执行时哪些用户约束不能丢；
 3. 哪些交付物还没有完成。
 
-任务契约需要满足五项要求：
+会话契约需要满足五项要求：
 
 | 要求 | 可验证行为 |
 | --- | --- |
-| 保真 | 当前任务契约由独立正本重建，不依赖压缩摘要 |
+| 保真 | 当前会话契约由独立正本重建，不依赖压缩摘要 |
 | 有界 | 模型可见切片和持久记录都有硬字节上限，超限拒绝，不静默驱逐 |
 | 用户主导 | 用户决定生效、替代、归档和永久清除；模型不能直接改有效条目 |
 | 原子 | 一次 Apply 要么全部提交，要么全部不提交 |
 | 可降级 | UI、模型或注入失败时，Session 仍能正常使用，正本不受影响 |
 
-任务契约是声明，不是强制策略。需要机器保证的限制必须进入 Host 权限、hook 或工具执行守卫。
+会话契约是声明，不是强制策略。需要机器保证的限制必须进入 Host 权限、hook 或工具执行守卫。
 
 ## 2. 范围
 
@@ -55,7 +55,7 @@ MVP 只包含：
 - `invariant`：用户确认的持续约束；
 - `deliverable`：交付物及进度；
 - 每会话持久化；
-- 主对话页顶部「任务契约」标签页编辑面；
+- 主对话页顶部「会话契约」标签页编辑面；
 - 一个原子写 Remote；
 - 一个按 Session 授权的 snapshot stream；
 - 从已有 Session 最近一次压缩摘要生成只读草案的 bootstrap 流程；
@@ -79,7 +79,7 @@ MVP 只包含：
 
 - 不替换 compaction backend；
 - 不做跨会话长期记忆；
-- 不让辅助模型维护整份任务契约；
+- 不让辅助模型维护整份会话契约；
 - 不给用户条目设置 TTL；
 - 不按 `lastUsed` 自动归档或删除；
 - 不使用外部插件无权调用的 `appendPluginRecord()`；
@@ -92,7 +92,7 @@ MVP 只包含：
 ### 3.1 权限
 
 1. 用户可编辑字节不得进入 system-role message。
-2. Host policy、工具权限和执行守卫高于用户任务契约。
+2. Host policy、工具权限和执行守卫高于用户会话契约。
 3. 模型不能执行使条目生效、归档、恢复、清除或修改进度的操作。
 4. 每个远程端点必须声明 Session resource，不能退化成 global resource。
 
@@ -309,7 +309,7 @@ interface CharterSnapshot {
 - 启动时扫描最大 revision 会让成本随历史增长；
 - 需要额外 repair 协议。
 
-任务契约编辑频率低、记录有硬上限，单记录重写比两阶段协议更小、更可靠。
+会话契约编辑频率低、记录有硬上限，单记录重写比两阶段协议更小、更可靠。
 
 ### 6.3 History 的定位
 
@@ -426,7 +426,7 @@ interface CharterEditRequest {
 
 ### 8.1 使用 user-role runtime context
 
-任务契约正文注册为：
+会话契约正文注册为：
 
 ```ts
 ctx.systemPrompt.context({
@@ -496,7 +496,7 @@ tool-permission, or execution policies.
 
 - 无时间戳、轮次、session id、随机 id 和相对时间；
 - 同 revision 文本哈希稳定；
-- 任务契约变化只发生在明确 Apply 后；
+- 会话契约变化只发生在明确 Apply 后；
 - 模型、工具和其他 context 的变化单独归因，不能算成 Charter 自身变化。
 
 实现不保证 provider 命中缓存。面板最多展示：
@@ -519,7 +519,7 @@ ctx.slots.register({
   id: 'charter',
   order: nextViewOrder(ctx),
   locale: 'dsh-charter',
-  label: () => t('tab'), // zh: 任务契约；en: Charter
+  label: () => t('tab'), // zh: 会话契约；en: Charter
   inject: sessionId => ({ source: controller.source(sessionId) }),
 }, CharterPane)
 ```
@@ -528,7 +528,7 @@ ctx.slots.register({
 - 主对话页 tab bar 按 slot 注册顺序渲染，单靠数值 `order` 不能保证排在已有插件之后；
 - 因此同时订阅 `conversation.view`：若本插件的 entry 不是最后一个，就 dispose 后重新注册，使其
   顺延到当前所有 tab 之后；其他插件后续注册时也会再次顺延；
-- 标签名和面板全部文案走 `dsh-client-locale` 的同一 namespace：中文「任务契约」，英文「Charter」；计数、状态、
+- 标签名和面板全部文案走 `dsh-client-locale` 的同一 namespace：中文「会话契约」，英文「Charter」；计数、状态、
   按钮、占位符、错误码说明均随当前 DSH 语言切换；
 - 空白 Session 隐藏 View tab bar；开始会话后显示；
 - 若 Session 由另一个 DSH 进程持有、尚未在当前 Web 进程加载，`watch` 返回 stored record 的只读 view 与说明，
@@ -542,12 +542,12 @@ ctx.slots.register({
 界面采用与 `dsh-context` 等信息密集插件一致的 DSH 语义 token 视觉语言：
 
 ```text
-会话任务契约                                        修订 7   1 生效   1 已存储
-任务契约                                            240 B / 8.0 KiB 上下文
+会话会话契约                                        修订 7   1 生效   1 已存储
+会话契约                                            240 B / 8.0 KiB 上下文
 跨压缩保留的目标、约束与交付物。
 [ 没有暂存的修改 ]                  [预览上下文] [丢弃] [应用]   <- sticky toolbar
 模块                  概览
-概览（当前）          目标    完成任务契约重设计……                    [打开]
+概览（当前）          目标    完成会话契约重设计……                    [打开]
 目标                  硬约束 1          交付物 0
 硬约束  1               不要破坏公共 API   暂无交付物
 交付物  0             预算    240 B / 8.0 KiB；1 / 24；0 / 16
@@ -611,7 +611,7 @@ Remote 只做身份、授权和协议适配，全部领域校验走同一 core c
 
 ### 9.5 从压缩历史生成草案
 
-已有用户不应该从空面板开始。当「任务契约」标签页在一个 **live** Session 中打开，且任务契约为空时，客户端调用一次
+已有用户不应该从空面板开始。当「会话契约」标签页在一个 **live** Session 中打开，且会话契约为空时，客户端调用一次
 `charter.bootstrap(sessionId)`。Host 从该 Session 日志中读取最近一次 `compaction/summary`，确定性抽取：
 
 - **目标**：优先 latest correction，其次 original，最后取第一段；
@@ -746,7 +746,7 @@ Session dispose：
 - 解析器返回所选章节的全部候选，不设置隐藏的候选数量上限。
 
 **默认值取舍。** 8 KiB 模型可见上下文约 2k tokens；目标可到 4 KiB，单条条目 1 KiB。这是比原 MVP
-更宽裕但仍有界的默认值，不是普适最优。团队任务契约更长时可以在 profile 中调高，代价是每次请求增加 prompt
+更宽裕但仍有界的默认值，不是普适最优。团队会话契约更长时可以在 profile 中调高，代价是每次请求增加 prompt
 字节。
 
 用户条目没有自动 TTL。允许两种显式减少：
@@ -895,7 +895,7 @@ scripts/
 3. 同 mutationId 不同 digest 被拒绝。
 4. backend write 失败时内存、stream 和 prompt 都保持旧 revision。
 5. lifecycle identity 不匹配时不读取、不覆盖、不注入。
-6. record schema 损坏时 domain 打开失败，不静默返回空任务契约。
+6. record schema 损坏时 domain 打开失败，不静默返回空会话契约。
 7. history 裁剪不改变 current state 或 prompt digest。
 
 ### 15.3 Prompt 与压缩
@@ -906,7 +906,7 @@ scripts/
 4. 一次正文 Apply 最多产生一次自身文本变化。
 5. 仅修改 verification、来源或 UI 状态不改变 contribution。
 6. retained runtime snapshot 被 replace、区间 shadow、compaction 三种路径遮蔽后，下一请求重新物化同值。
-7. 压缩摘要是否包含任务契约，不影响恢复后的正文哈希。
+7. 压缩摘要是否包含会话契约，不影响恢复后的正文哈希。
 8. 恶意文本包含 `{{...}}`、JSON 引号、换行和伪标签时，仍保持 user role，且 canonical JSON 可解析。
 
 ### 15.4 Remote 与 UI

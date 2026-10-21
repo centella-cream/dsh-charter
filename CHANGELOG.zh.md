@@ -10,23 +10,23 @@
 
 ### 新增
 
-- 基于 `dsh-storage-domain`（`dsh_charter_v1`）的每 Session 持久任务契约正本。
+- 基于 `dsh-storage-domain`（`dsh_charter_v1`）的每 Session 持久会话契约正本。
 - 原始/当前目标、硬约束、交付物，以及 review/lifecycle/verification/progress 状态。
 - 单记录原子 Apply，包含 revision 冲突、幂等 mutation 回执、配额准入和有界 history。
 - 通过 `systemPrompt.context()` 注入确定性的 user-role runtime context。
 - 只读 `charter_read` 工具，支持 standing 和全部条目两种视图。
-- 子 Session fork 时一次性复制父任务契约，并重铸条目 id。
-- 非 live Session（例如在独立 Web 进程中打开 Desktop 会话）显示已保存任务契约的只读视图和说明；Session
+- 子 Session fork 时一次性复制父会话契约，并重铸条目 id。
+- 非 live Session（例如在独立 Web 进程中打开 Desktop 会话）显示已保存会话契约的只读视图和说明；Session
   变为 live 后原位升级为可编辑，而不是让 Remote stream 直接抛 "not live" 原始错误。
 - 重新设计 Charter 面板：使用 DSH 语义 token，紧凑页头与预算条、吸顶预览/丢弃/应用工具栏、目标卡片、
   响应式硬约束/交付物双栏、hover/focus 条目操作、section 内联添加输入，并支持明暗主题。
 - 默认预算提升到 8 KiB context、4 KiB 目标、1 KiB 单条条目。任何路径都不静默截断：超长历史草案条目拆成
   多个候选，超限字段高亮，所选内容超预算时 Apply 禁用。
-- 已有压缩历史且任务契约为空的 Session 会自动显示从最近一次压缩摘要确定性抽取的只读草案；不调用模型、不自动
+- 已有压缩历史且会话契约为空的 Session 会自动显示从最近一次压缩摘要确定性抽取的只读草案；不调用模型、不自动
   写入。用户编辑/取消勾选后点击应用才会生效。
 - 完整的 Charter 标签页与面板中英文界面，由 `dsh-client-locale` 和 DSH 当前语言驱动；计数、状态、按钮、
   占位符和错误码文案均包含在内。
-- 主对话页 `conversation.view` 的 Charter 标签页（中文「任务契约」/ English「Charter」），支持草稿暂存、
+- 主对话页 `conversation.view` 的 Charter 标签页（中文「会话契约」/ English「Charter」），支持草稿暂存、
   冲突保留、预览、归档/恢复、替代、待确认接受/拒绝、清除确认、进度和验证操作。标签跟随 Chat/Trajectory，
   并动态排到后续注册的插件标签之后。
 - 按 Session 授权的 Remote stream 和 edit 端点。
@@ -40,7 +40,7 @@
 ### 安全
 
 - 用户正文永远不进入 system-role 消息。
-- 模型没有任务契约写能力。
+- 模型没有会话契约写能力。
 - DSH 0.1.7-rc.2 和 0.2.0 无法执行 per-Peer Remote 资源授权；插件降级为 live-Session 和 lifecycle 校验，
   并在文档中说明限制。
 
