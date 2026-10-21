@@ -50,4 +50,5 @@ npm publish --access public
 
 - 用已发布产物验证 README 安装命令；
 - 若测试了新的 DSH 版本，更新兼容矩阵；
-- 保持 `docs/archive/` 不被 git 跟踪；它只包含本地历史设计材料。
+- 保持 `docs/archive/` 不被 git 跟踪；它只包含本地历史设计材料，并且不在 npm `files` 白名单内，保证
+  GitHub 与 npm 内容一致。

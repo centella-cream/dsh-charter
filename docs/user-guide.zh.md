@@ -22,10 +22,28 @@ dsh --profile web --dump-config | grep -n "charter" || true
 
 ## 2. 安装
 
-> **预发布说明。** npm 包和 Desktop 插件目录会随首次公开发布上线。在此之前请使用
-> [本地预发布构建](#23-本地预发布构建)。按版本安装的 Web 命令和 Desktop Plugins 流程是发布后的正式路径。
+> **当前状态：预发布。** npm 包和 Desktop 插件目录尚不存在。现在请使用本地 tarball；按版本安装和
+> Desktop Plugins 安装会在首次公开发布后生效。
 
-### 2.1 Web profile — 按版本安装
+### 2.1 环境要求
+
+- DSH **`0.1.7-rc.2`** 或更高；推荐 `0.2.0-rc.1+`，完整 per-Peer Remote 资源授权推荐 `0.2.1+`。
+- Node.js **`^22.19.0 || >=24.0.0`**。
+- Web 或 Desktop profile。
+
+### 2.2 当前预发布 — 本地 tarball
+
+```bash
+npm install
+npm run build
+npm pack
+dsh plugin --profile web add ./dsh-charter-0.1.0.tgz
+```
+
+Desktop 若支持本地插件导入，可在 Plugins 页面安装同一个 tarball；否则通过 Desktop profile 自己的包管理器
+安装（`dsh plugin --profile desktop` 会被 Electron app 拒绝）。发布前 profile 依赖是本地 `file:` 路径。
+
+### 2.3 发布后 — Web profile 按版本安装
 
 ```bash
 dsh plugin --profile web add dsh-charter@0.1.0
@@ -50,25 +68,13 @@ dsh plugin --profile web add dsh-charter@latest
 安装时 pnpm 可能提示缺少 `@deepseek-ai/dsh-*` peer。这些包由 DSH 运行时提供，不需要装进 profile；以 DSH 的
 peer 兼容检查结果为准。
 
-### 2.2 Desktop — 从 Plugins 安装
+### 2.4 发布后 — Desktop Plugins
 
-打开 **Desktop → Plugins**，搜索 **`dsh-charter`**，点击 **Install**。已安装时点击 **Update**；Desktop
-管理插件生命周期并热更新 bundle，不需要终端命令。更新后重新打开或刷新「会话契约」tab。
+如果你的 Desktop 版本已接入公开插件目录，且包已发布到该目录，打开 **Desktop → Plugins**，搜索
+**`dsh-charter`**，点击 **Install**。已安装时点击 **Update**；Desktop 管理插件生命周期并热更新 bundle。
+否则使用 tarball 路径。
 
-### 2.3 本地预发布构建
-
-首次 registry 发布前，或测试工作树时使用：
-
-```bash
-npm install
-npm run build
-npm pack
-dsh plugin --profile web add ./dsh-charter-0.1.0.tgz
-```
-
-Desktop 可在 Plugins 页面安装同一个 tarball。发布前 profile 依赖是本地 `file:` 路径。
-
-### 2.4 源码开发
+### 2.5 源码开发
 
 源码改动可以链接 checkout 并重新构建：
 
@@ -109,23 +115,45 @@ npm run build
 
 | 维度 | 值 | 说明 |
 | --- | --- | --- |
-| `review` | `pending` / `accepted` / `rejected` | 用户新建即 accepted；模型提议只能 pending |
+| `review` | `pending` / `accepted` / `rejected` | 用户新建即 accepted；历史草案溢出导入为 pending；模型提议入口尚未开放 |
 | `lifecycle` | `current` / `superseded` / `archived` | archived 可恢复；superseded 不复活 |
 | `verification` | `unchecked` / `verified` / `failed` / `unavailable` | 与 lifecycle 独立 |
 | `progress` | 仅 deliverable | 与 verification 独立 |
 
 只有 `accepted + current` 进入 standing 工作集和模型可见 context。`done` 不自动 verified，
-`verification.failed` 也不自动归档。
+`verification.failed` 也不自动归档。当前 MVP UI 只切换 `unchecked`/`verified`；`failed`/`unavailable`
+是记录层接受、留给未来 validator 集成的只读状态，不能从当前 UI 创建。
 
 ### 3.2 永久清除
 
-archived / rejected / superseded 条目仍计入“全部条目”配额。**Purge** 会二次确认，并在同一个原子记录更新中：
+archived / rejected / superseded 条目仍计入“全部条目”配额。**Purge** 仅 owner 可执行，会二次确认，并在同一个
+原子记录更新中：
 
 - 删除该条目；
 - 解除可安全解除的替代链接；
 - 清洗近期 history 和 mutation 回执中可能包含的正文。
 
-若后续条目仍引用它，Purge 会被拒绝；先处理引用方。
+active accepted/pending 条目会被核心拒绝；只有 archived、rejected 或 superseded 链条目可清除。若后续条目仍
+引用它，Purge 会被拒绝；先处理引用方。
+
+### 3.3 只读工具视图
+
+`charter_read` 默认返回 `standing`。`all` 是**有上限的调试视图**，不是当前工作集：它包含 rejected、
+archived、superseded 条目，最多返回 64 条 / 32 KiB，并在 `truncated` 中报告省略数量。它不能替代
+standing 会话契约，也不应作为常规工作流。
+
+### 3.4 Actor 策略
+
+- `owner`：所有会话契约编辑，包括不可逆的永久清除；
+- `user`：普通目标/条目/进度/验证编辑，但不能 `item.purge`；
+- `host`：不会通过 Remote edit 路径被接受；内部初始化/fork 使用专门代码；
+- agent/model：没有暴露写工具或 edit API。
+
+### 3.5 非 live Session
+
+Web 进程可以只读显示另一个进程中 live 的 Session 的已存会话契约。编辑和历史草案抽取要求 Session 在当前
+进程 live；Session 重连后标签页升级为可编辑。因此 `charter.bootstrap` 返回 `not-live`，而不是读取另一个
+进程的事件日志。
 
 ## 4. 配置
 
@@ -142,7 +170,7 @@ archived / rejected / superseded 条目仍计入“全部条目”配额。**Pur
 
 | 字段 | 默认 | 说明 |
 | --- | ---: | --- |
-| `maxPromptBytes` | 8192 | 最终模型可见 context 的 UTF-8 上限 |
+| `maxPromptBytes` | 8192 | 仅会话契约 contribution 的 UTF-8 预算（不含历史消息、system、tools 和其他 context） |
 | `maxObjectiveBytes` | 4096 | 目标文本的 UTF-8 上限 |
 | `maxItemBytes` | 1024 | 单条条目文本上限 |
 | `maxItems` | 512 | 全部条目存储上限 |

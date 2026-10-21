@@ -91,13 +91,13 @@ flowchart LR
 
 The Host service initializes a record on `session/created` and before the first prompt on `agent/created`.
 The browser registers a `conversation.view` entry; the pane and `charter.watch` use the same revisioned view.
-`charter.bootstrap` reads the latest compaction summary and returns a draft only — it does not write storage.
+`charter.bootstrap` reads the latest usable compaction summary and returns a draft only — it does not write storage.
 
 ## Install
 
-> **Pre-release note.** The registry package and the Desktop catalog entry go live with the first public
-> release. Until then, use the [local pre-release build](#pre-release--local-builds); the versioned and Desktop
-> commands below are the supported production paths once the package is published.
+> **Current status: pre-release.** `dsh-charter` is not published on the npm registry or in the Desktop plugin
+> catalog yet. The only currently executable path is the local tarball build. The versioned Web command and
+> Desktop Plugins flow become available with the first public release.
 
 ### Requirements
 
@@ -106,7 +106,26 @@ The browser registers a `conversation.view` entry; the pane and `charter.watch` 
 - Node.js **`^22.19.0 || >=24.0.0`**.
 - A Web or Desktop profile.
 
-### Web profile — install by version
+### Current pre-release — local tarball
+
+From a checkout:
+
+```bash
+npm install
+npm run build
+npm pack                         # dsh-charter-0.1.0.tgz
+dsh plugin --profile web add ./dsh-charter-0.1.0.tgz
+```
+
+For Desktop, use the Plugins page when your build offers local plugin import; otherwise add the tarball through the
+Desktop profile's own package manager. `dsh plugin --profile desktop` is intentionally refused by the Electron
+app that owns that profile.
+Source-level development is described in [CONTRIBUTING.md](CONTRIBUTING.md); do not use `git clone` as the
+normal installation method.
+
+### After the first public release
+
+#### Web profile — install by version
 
 ```bash
 dsh plugin --profile web add dsh-charter@0.1.0
@@ -122,31 +141,18 @@ dsh plugin --profile web add dsh-charter@latest
 Restart `dsh web` (or let profile HMR recompose), then refresh the page. The profile `package.json` gains the
 dependency and bundle entry.
 
-### Desktop — install from Plugins
+#### Desktop — install from Plugins
 
-Open **Desktop → Plugins**, search for **`dsh-charter`**, and click **Install** (or **Update** when already
-installed). Desktop owns the plugin lifecycle and hot-applies the new bundle; no terminal command is required.
-Reopen or refresh the Charter tab after the update.
-
-### Pre-release / local builds
-
-Use this path before the first registry release, or when testing a worktree. From a checkout:
-
-```bash
-npm install
-npm run build
-npm pack                         # dsh-charter-0.1.0.tgz
-dsh plugin --profile web add ./dsh-charter-0.1.0.tgz
-```
-
-For Desktop, install the same tarball from the Plugins page. Source-level development is described in
-[CONTRIBUTING.md](CONTRIBUTING.md); do not use `git clone` as the primary installation method.
+If your Desktop build exposes the public plugin catalog and `dsh-charter` has been published there, open
+**Desktop → Plugins**, search for **`dsh-charter`**, and click **Install** (or **Update** when already
+installed). Desktop owns the plugin lifecycle and hot-applies the new bundle. Otherwise use the local tarball
+path above.
 
 ### Update
 
-- **Web:** `dsh plugin --profile web add dsh-charter@latest`, then restart/refresh.
-- **Desktop:** Plugins → `dsh-charter` → **Update**; Desktop hot-applies it.
-- **Pinned version:** repeat the versioned Web command with the new version.
+- **Local tarball:** rebuild and repeat the local install command.
+- **Web after release:** `dsh plugin --profile web add dsh-charter@latest`, then restart/refresh.
+- **Desktop after release:** Plugins → `dsh-charter` → **Update**; Desktop hot-applies it.
 
 ## Quick start
 
@@ -180,7 +186,7 @@ has a left section navigation on wide screens and a horizontal tab strip on narr
 | **Objective** | Edit or redirect the objective; the original is immutable |
 | **Invariants** | Add, edit, replace, archive, purge, and verify hard constraints |
 | **Deliverables** | Same actions plus delivery progress |
-| **History** | Review a draft extracted from the latest compaction summary (only when available) |
+| **History** | Review a draft extracted from the latest usable compaction summary (only when available) |
 | **Context** | Exact user-role runtime context, bytes, and limits |
 
 While the Charter view is active it owns the whole reading surface: the chat composer is hidden, and its
@@ -191,7 +197,7 @@ When a history draft has more candidates than the context budget can hold, the e
 of an arbitrary per-kind active-count cap.
 
 Budgets are visible everywhere. Long draft items become multiple candidates; over-limit fields are highlighted.
-The actual context budget is the gate: when a history draft does not fit, the remaining candidates become pending
+The charter-context budget is the gate: when a history draft does not fit, the remaining candidates become pending
 proposals instead of blocking the whole import. Apply is disabled only for real field, storage, or atomic limits.
 
 ## Configuration
@@ -209,7 +215,7 @@ Defaults live in `cordis.patch.yml`. Override them in the profile patch:
 
 | Field | Default | Meaning |
 | --- | ---: | --- |
-| `maxPromptBytes` | 8192 | UTF-8 budget for the final model-visible context |
+| `maxPromptBytes` | 8192 | UTF-8 budget for the charter contribution only (excludes history, system, tools, and other contexts) |
 | `maxObjectiveBytes` | 4096 | UTF-8 budget for the objective |
 | `maxItemBytes` | 1024 | per-item text budget |
 | `maxItems` | 512 | all-items storage limit |
@@ -236,6 +242,8 @@ truncated, or silently dropped.
 | `0.1.5-rc.1` and earlier | Not supported |
 | `0.2.2-rc.x`, `0.3.x` | Not declared until verified |
 
+"Supported" means typecheck, build, tests, and Remote/client smoke for that version. Interactive Web UI was
+exercised on `0.2.0-rc.2`; other versions are API/build verified. Real-model compaction end-to-end is still open.
 The full matrix and degradation notes are in the [compatibility document](docs/design/compatibility.md).
 `0.1.7`/`0.2.0` have no per-Peer Remote resource authorization; use them only in a trusted single-operator
 environment.
@@ -243,8 +251,11 @@ environment.
 ## Security and privacy
 
 - User-authored text never enters a system-role message.
-- The model has no charter write capability; `charter_read` is read-only.
-- Records are bound to `createdAt`, `cwd`, and `parentSession`; reusing a Session id across lifecycles is rejected.
+- The model has no charter write capability; `charter_read` is read-only. Its `all` view is a bounded debug page
+  (max 64 items / 32 KiB) and is not the standing working set.
+- Actor policy: `owner` may perform all edits including purge; `user` may perform ordinary edits but not purge;
+  `host` is rejected on the Remote edit path. Records are bound to `createdAt`, `cwd`, and `parentSession`;
+  reusing a Session id across lifecycles is rejected.
 - Ordinary logs contain stable ids, kinds, revisions, and error codes — not user body text.
 - A charter is not a permission system. See [SECURITY.md](SECURITY.md) for the threat model and reporting path.
 
@@ -258,7 +269,7 @@ npm run check            # typecheck + test
 ```
 
 The test suite covers the pure core, real Host composition, storage-domain behavior, Remote framing,
-history extraction, client state, and factory-bundle registration. Current matrix: **71 tests on DSH `0.1.7-rc.2`, `0.2.0-rc.1`/`rc.2`, and `0.2.1-rc.1`/`rc.2`**. See the [verification record](docs/verification.md) for commands and evidence.
+history extraction, client state, and factory-bundle registration. Current matrix: **78 tests on DSH `0.1.7-rc.2`, `0.2.0-rc.1`/`rc.2`, and `0.2.1-rc.1`/`rc.2`**. See the [verification record](docs/verification.md) for commands and evidence.
 
 ## Acknowledgements
 

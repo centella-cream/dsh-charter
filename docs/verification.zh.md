@@ -13,7 +13,7 @@
 | 验证项 | 结果 |
 | --- | --- |
 | TypeScript 严格类型检查（5 个 DSH 版本） | 通过 |
-| Vitest（5 个本地可用版本 × 71 tests） | 通过 |
+| Vitest（5 个本地可用版本 × 78 tests） | 通过 |
 | Host ESM 构建 + 浏览器单文件 bundle | 通过 |
 | Remote 装饰器/资源 smoke | 通过（0.1.7/0.2.0 按预期无资源声明） |
 | 浏览器 factory bundle 物化与 `apply` smoke | 通过 |
@@ -44,18 +44,18 @@ npm test
 
 | 文件 | 覆盖 |
 | --- | --- |
-| `tests/core/commands.spec.ts` | 目标、条目、替代、状态转换、整批回滚 |
+| `tests/core/commands.spec.ts` | 目标、条目、替代、状态转换、purge 生命周期保护、整批回滚 |
 | `tests/core/record.spec.ts` | 原子提交、幂等、revision、history 裁剪、篡改检测 |
 | `tests/core/prompt.spec.ts` | 确定性渲染、`{{` 转义、UI 预览与 Host 渲染一致 |
 | `tests/core/normalize-render.spec.ts` | NFC、控制字符、字节上限、100 次稳定性 |
 | `tests/core/state.spec.ts` | 替代链必须指向 current successor |
 | `tests/core/fork.spec.ts` | fork 重铸 id、替代链重映射 |
-| `tests/core/bootstrap.spec.ts` | 压缩摘要分节抽取、latest objective、UTF-8 拆分/不截断、最新/损坏 summary |
-| `tests/host/composition.spec.ts` | 真实 Cordis/Storage/SystemPrompt/Tools 组合、user-role 边界、fork、幂等、配额、lifecycle、非 live Session 的只读 stored view 与 live 升级、从真实 `compaction/summary` 事件生成草案、`charter_read` |
+| `tests/core/bootstrap.spec.ts` | 压缩摘要分节抽取、latest objective、UTF-8 拆分/不截断、最新/损坏 summary、回退到较旧可用 summary |
+| `tests/host/composition.spec.ts` | 真实 Cordis/Storage/SystemPrompt/Tools 组合、user-role 边界、actor 策略、fork、幂等、配额、父环拒绝、lifecycle、非 live Session 的只读 stored view 与 live 升级、从真实 `compaction/summary` 事件生成草案、有上限的 `charter_read` |
 | `tests/host/watch.spec.ts` | opening snapshot、竞态、去重、abort、装饰器兼容 |
 | `tests/host/actor.spec.ts` | 0.1.7/0.2.0 无 principal 回退、非 owner 记录 |
 | `tests/host/remote.spec.ts` | Remote 描述符、wire schema 和旧 Host view snapshot |
-| `tests/client/store.spec.ts` | 提交后立即接受 view、忽略陈旧/重复 revision |
+| `tests/client/store.spec.ts` | 提交后立即接受 view、忽略陈旧/重复 revision、释放 Session source |
 | `tests/client/bootstrap-plan.spec.ts` | 溢出候选仍在一个 plan 中；active 前缀符合字节预算 |
 
 ## 3. 跨版本矩阵
@@ -82,11 +82,11 @@ npm run build
 
 | 版本 | typecheck | build | Vitest | remote smoke | client smoke |
 | --- | --- | --- | --- | --- | --- |
-| `0.1.7-rc.2` | 通过 | 通过 | 71/71 | 通过（无 resources 警告） | 通过 |
-| `0.2.0-rc.1` | 通过 | 通过 | 71/71 | 通过（无 resources 警告） | 通过 |
-| `0.2.0-rc.2` | 通过 | 通过 | 71/71 | 通过（无 resources 警告） | 通过 |
-| `0.2.1-rc.1` | 通过 | 通过 | 71/71 | 通过 | 通过 |
-| `0.2.1-rc.2` | 通过 | 通过 | 71/71 | 通过 | 通过 |
+| `0.1.7-rc.2` | 通过 | 通过 | 78/78 | 通过（无 resources 警告） | 通过 |
+| `0.2.0-rc.1` | 通过 | 通过 | 78/78 | 通过（无 resources 警告） | 通过 |
+| `0.2.0-rc.2` | 通过 | 通过 | 78/78 | 通过（无 resources 警告） | 通过 |
+| `0.2.1-rc.1` | 通过 | 通过 | 78/78 | 通过 | 通过 |
+| `0.2.1-rc.2` | 通过 | 通过 | 78/78 | 通过 | 通过 |
 
 `0.1.7-rc.2` 和 `0.2.0` 的 remote smoke 输出：
 

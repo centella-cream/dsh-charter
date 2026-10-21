@@ -31,6 +31,9 @@ or private user content in a report.
 - It is injected through `systemPrompt.context()` (user role), never as a system message.
 - It must not override Host policy, tool permissions, sandbox rules, or execution guards.
 - The model only has `charter_read`; no write tool or Remote method is exposed to it.
+- The Host enforces an actor policy: `owner` may perform all edits including purge; `user` may make ordinary edits
+  but not purge; `host` is rejected on the Remote edit path.
+- Core also rejects purging active accepted or pending items, so a direct API caller cannot bypass the UI guard.
 - Storage records are bound to Session lifecycle identity; a reused Session id with different `createdAt`,
   `cwd`, or `parentSession` is rejected.
 - UI text is localised; raw storage errors are not rendered as instruction-like content.

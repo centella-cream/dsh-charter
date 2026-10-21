@@ -13,8 +13,8 @@
 - [调研记录](../research/charter-research.zh.md)
 
 实现状态：MVP Host、纯内核、JSON storage 组合、Remote contract 和主对话页标签页 Client 已完成实现并通过版本矩阵
-验证。当前 `npm run typecheck`、`npm test`、`npm run build` 均通过（71 个测试）；同一源码在 DSH
-`0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-rc.1`、`0.2.1-rc.2` 上分别通过 typecheck、build 和 71 个测试。
+验证。当前 `npm run typecheck`、`npm test`、`npm run build` 均通过（78 个测试）；同一源码在 DSH
+`0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-rc.1`、`0.2.1-rc.2` 上分别通过 typecheck、build 和 78 个测试。
 真实 profile 的 tarball 安装、配置组合、Web 启动、boot graph 和客户端 bundle HTTP 已通过；DSH `0.2.0-rc.2`
 Web profile 上已用真实 Chrome 验证「对话」「轨迹」「会话契约」标签顺序、目标编辑、预览、Apply 和刷新持久化。
 完整 compaction 端到端仍需在目标 profile 手工执行。兼容边界与降级见
@@ -223,7 +223,7 @@ interface CharterItem {
 
 约束：
 
-- user 新建条目直接为 `accepted`；agent 新建条目只能为 `pending`；
+- user 新建条目直接为 `accepted`；历史草案溢出导入为 `pending`；模型提议入口暂未开放；
 - `pending` 只能转 `accepted` 或 `rejected`；
 - 只有 `accepted + current` 进入有效工作集；
 - `superseded` 必须与替代条目建立双向链接；
@@ -376,7 +376,17 @@ interface CharterEditRequest {
 客户端新增条目使用临时 `clientRef`；Host 铸造正式 item id，并在成功结果中返回映射。actor、revision、
 时间和 origin 都由 Host 填充，不能相信客户端字段。
 
-### 7.2 提交顺序
+### 7.2 Actor 策略
+
+- `owner`：所有操作，包括不可逆的 `item.purge`；
+- `user`：普通目标/条目/进度/验证操作，但不能 `item.purge`；
+- `host`：不会通过 Remote edit 路径被接受；初始化和 fork 使用专门内部代码；
+- agent/model：不暴露 edit API 或写工具。
+
+Service 在打开 storage transaction 前检查策略，`commitRecord()` 再检查一次，防止未来调用方绕过；`FORBIDDEN`
+不改变 revision、storage 或已发布 view。
+
+### 7.3 提交顺序
 
 1. Gateway 校验参数并完成 Session resource 授权；
 2. 确认 live Session 与 storage lifecycle identity 一致；
@@ -392,7 +402,7 @@ interface CharterEditRequest {
 
 线性化点是 `KvTable.update()` 对该记录的 durable write。
 
-### 7.3 幂等
+### 7.4 幂等
 
 - 同 `mutationId + requestDigest`：返回原 committed revision；
 - 同 mutationId、不同 digest：`MUTATION_ID_REUSED`；
@@ -403,7 +413,7 @@ interface CharterEditRequest {
 后端、不产生 `domain/changed`。成功结果中的 `clientRef -> itemId` 从 `MutationReceipt.ids` 返回；响应丢失后的
 重试不能重新铸造另一组可见 id。
 
-### 7.4 错误码
+### 7.5 错误码
 
 | Code | 含义 |
 | --- | --- |
@@ -614,7 +624,7 @@ Remote 只做身份、授权和协议适配，全部领域校验走同一 core c
 ### 9.5 从压缩历史生成草案
 
 已有用户不应该从空面板开始。当「会话契约」标签页在一个 **live** Session 中打开，且会话契约为空时，客户端调用一次
-`charter.bootstrap(sessionId)`。Host 从该 Session 日志中读取最近一次 `compaction/summary`，确定性抽取：
+`charter.bootstrap(sessionId)`。Host 从该 Session 日志中读取最近一次能产出候选的 `compaction/summary`（若最新摘要合法但为空，会继续向前回退），确定性抽取：
 
 - **目标**：优先 latest correction，其次 original，最后取第一段；
 - **硬约束**：Primary Request 中的 user-wants 条目，以及 Critical Context 中带约束语义的行；
@@ -637,17 +647,16 @@ MVP 只注册 `charter_read`：
 
 ```ts
 interface CharterReadInput {
-  readonly view?: 'standing' | 'all' | 'item'
-  readonly itemId?: string
-  readonly includeInactive?: boolean
+  readonly view?: 'standing' | 'all'
 }
 ```
 
 规则：
 
 - 默认返回 standing view；
-- archived/rejected/superseded 必须显式请求，且每条结果带状态；
-- 结果有 item 数与字节上限；
+- archived/rejected/superseded 只在 `all` 调试视图中返回，且每条结果带状态；
+- `all` 最多返回 64 条 / 32 KiB，并报告 `truncated` 数量；
+- 默认只返回 standing；
 - 返回 canonical JSON，模型文本单独渲染；
 - 不读取其他 Session；
 - 不提供任何写能力。
@@ -667,6 +676,7 @@ interface CharterReadInput {
 `agent/created` 是串行、可等待的初始化边界。插件在该监听器完成：
 
 - 创建 revision 0 的空 record；
+- 初始化前检查父链自引用、多节点环和最大深度；环标记 `CORRUPT_STATE`，不会让初始化 Promise 互相等待；
 - 若记录已存在，校验 lifecycle identity；
 - 初始化失败时禁用该 Session 的 Charter 并记录错误。监听器内部捕获故障，不向外抛出，避免回滚 Session 创建。
 
@@ -721,7 +731,7 @@ Session dispose：
 
 | 对象 | 候选上限 | 超限行为 |
 | --- | ---: | --- |
-| 最终模型可见 contribution | 8 KiB UTF-8 | 拒绝整次 Apply |
+| 会话契约 contribution | 8 KiB UTF-8 | 拒绝整次 Apply |
 | 目标 | 4 KiB UTF-8 | 拒绝该批次 |
 | 单条模型可见条目文本 | 1 KiB UTF-8 | 拒绝该批次 |
 | 全部 item | 512 | 要求用户合并或永久清除；归档不释放持久条目配额 |
@@ -919,6 +929,7 @@ scripts/
 3. baseline 读取窗口内发生写入时，不丢最新 revision；重复 revision 可去重。
 4. conflict 后草稿不丢，UI 展示服务端最新 revision。
 5. 标签页组件抛错或挂载失败时，Host service、Session 和设置仍可用。
+6. view binding 卸载时释放对应 client source；旧的 detach 不能覆盖新的 attach 状态。
 6. 360px 容器与移动全屏可完成新增、编辑和 Apply。
 7. 键盘可达、焦点恢复、状态不只靠颜色表达。
 

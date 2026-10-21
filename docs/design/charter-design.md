@@ -207,7 +207,7 @@ State dimensions are orthogonal:
 
 | Dimension | Values | Notes |
 | --- | --- | --- |
-| `review` | pending / accepted / rejected | user-created items are accepted; agent proposals are pending |
+| `review` | pending / accepted / rejected | user-created items are accepted; history-overflow imports are pending; model proposals are reserved |
 | `lifecycle` | current / superseded / archived | archived can be restored; superseded cannot be revived |
 | `verification` | unchecked / verified / failed / unavailable | does not change lifecycle |
 | `progress` | deliverable only | does not imply verification |
@@ -228,7 +228,9 @@ automatically verify; a failed verification does not automatically archive.
 3. On `session/created`, the service initializes the Session in the background.
 4. On `agent/created` (serial and awaitable), the listener awaits initialization before the first prompt can be
    assembled.
-5. If a child Session appears before its parent record is durable, the child waits for `domain/changed` and
+5. Parent ancestry is checked for self/multi-node cycles and a depth bound. A cycle is marked `CORRUPT_STATE`;
+   it never leaves two initialization promises waiting on each other.
+6. If a child Session appears before its parent record is durable, the child waits for `domain/changed` and
    retries.
 6. `session/disposed` aborts in-flight initialization and removes UI listeners. The durable record is not
    deleted.
@@ -249,14 +251,24 @@ Session becomes live in the current Host.
 - `item.accept` / `item.reject`
 - `item.supersede`
 - `item.archive` / `item.restore`
-- `item.purge` (requires confirmation and is user-only)
+- `item.purge` (requires confirmation; current actor policy is owner-only)
 - `item.verification.set`
 - `deliverable.progress`
 
 A batch contains 1..`maxOps` operations. Every operation is validated against a draft copy; the entire batch is
 rejected on any failure.
 
-### 7.2 Revision and idempotency
+### 7.2 Actor policy
+
+- `owner`: all operations, including irreversible `item.purge`.
+- `user`: ordinary objective/item/progress/verification operations, but not `item.purge`.
+- `host`: rejected on the Remote edit path; initialization and fork use dedicated internal code.
+- agent/model: no edit API or write tool is exposed.
+
+The service checks the policy before opening a storage transaction; `commitRecord()` repeats the check so a
+future caller cannot bypass it. `FORBIDDEN` leaves revision, storage, and published views unchanged.
+
+### 7.3 Revision and idempotency
 
 - Client sends `baseRevision`.
 - Host mints item ids for new `clientRef`s before the atomic update.
@@ -266,7 +278,7 @@ rejected on any failure.
 - A replay with the same mutation id and digest returns the stored ids and revision.
 - Reusing a mutation id for different content returns `MUTATION_ID_REUSED`.
 
-### 7.3 Error codes
+### 7.4 Error codes
 
 `INVALID_ARGUMENT`, `FORBIDDEN`, `NOT_FOUND`, `LIFECYCLE_MISMATCH`, `REVISION_CONFLICT`,
 `MUTATION_ID_REUSED`, `INVALID_REFERENCE`, `INVALID_TRANSITION`, `IMMUTABLE_FIELD`, `QUOTA_EXCEEDED`,
@@ -382,7 +394,8 @@ preservation, and explicit degraded states.
 ### 9.3 Remote endpoints
 
 - `charter.watch(sessionId, signal)`: one opening `snapshot`, then `changed` frames with the full view.
-- `charter.bootstrap(sessionId)`: a read-only draft extracted from the latest compaction summary.
+- `charter.bootstrap(sessionId)`: a read-only draft extracted from the latest compaction summary that actually yields candidates (older usable
+summaries are tried if the newest is valid but empty).
 - `charter.edit(request)`: one atomic Apply, returning the current view on failure.
 - Each endpoint declares `resources.session`.
 - DSH 0.2.1+ enforces per-Peer resource authorization.
@@ -433,7 +446,7 @@ Default limits:
 
 | Object | Default |
 | --- | ---: |
-| Final model-visible context | 8 KiB UTF-8 |
+| Charter contribution context | 8 KiB UTF-8 |
 | Objective | 4 KiB UTF-8 |
 | One model-visible item text | 1 KiB UTF-8 |
 | All items | 512 |
@@ -460,7 +473,7 @@ is rejected as a whole.
   bytes — can block Apply; the UI identifies the exact limit and highlights the affected field.
 - The parser returns all candidates from the selected sections; it does not impose a hidden candidate cap.
 
-**Choosing defaults.** 8 KiB of model-visible context is roughly 2k tokens; the objective can be 4 KiB and an item 1 KiB. These are deliberately larger than the original MVP values while still bounded. They are defaults, not universal optima: profiles can raise them when a team's charter is longer, at the cost of extra prompt bytes per request.
+**Choosing defaults.** 8 KiB of charter-contribution context is roughly 2k tokens; the objective can be 4 KiB and an item 1 KiB. These are deliberately larger than the original MVP values while still bounded. They are defaults, not universal optima: profiles can raise them when a team's charter is longer, at the cost of extra prompt bytes per request.
 
 
 Failure behavior:
@@ -480,9 +493,9 @@ Failure behavior:
 ```text
 src/core/
   errors.ts limits.ts digest.ts schemas.ts normalize.ts
-  items.ts prompt.ts state.ts commands.ts record.ts fork.ts bootstrap.ts
+  items.ts prompt.ts state.ts commands.ts record.ts fork.ts bootstrap.ts authorization.ts
 src/host/
-  domain.ts service.ts tool.ts types.ts
+  domain.ts service.ts session-events.ts tool.ts types.ts
 src/remote/
   compat.ts watch.ts service.ts wire.ts contribution.ts
 src/client/
@@ -506,7 +519,7 @@ uninstall smoke; fault injection and side-by-side domain migration remain open.
 
 Current evidence:
 
-- 71 tests across 13 core, host, and client test files;
+- 78 tests across 13 core, host, and client test files;
 - Typecheck, build, and tests pass on DSH `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-rc.1`, and
   `0.2.1-rc.2`;
 - Real profile install/boot on `0.1.7-rc.2` and `0.2.0-rc.2`;
@@ -553,6 +566,7 @@ Current evidence:
 3. A write racing with baseline read does not lose the latest revision; repeats dedupe.
 4. Conflict preserves the draft and shows the server revision.
 5. A tab crash or mount failure leaves Host service, Session, and settings usable.
+6. A view binding releases its client source on unmount; an older detach cannot overwrite a newer attach.
 6. 360px container and mobile full-screen can add/edit/apply.
 7. Keyboard reachable, focus restoration, and non-color-only state.
 
