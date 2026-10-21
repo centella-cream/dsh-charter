@@ -36,9 +36,14 @@ export const charterViewSchema = z.object({
     maxPromptBytes: z.number().int().positive(),
     maxObjectiveBytes: z.number().int().positive(),
     maxItemBytes: z.number().int().positive(),
-    maxItems: z.number().int().positive(),
-    maxPendingItems: z.number().int().positive(),
+    // Defaults keep a newly built client readable when the Host process is
+    // still running the previous bundle. The maxActive* fields are accepted
+    // for that same version-skew window and are not used by new clients.
+    maxItems: z.number().int().positive().default(512),
+    maxPendingItems: z.number().int().positive().default(512),
     maxOps: z.number().int().positive(),
+    maxActiveInvariants: z.number().int().positive().optional(),
+    maxActiveDeliverables: z.number().int().positive().optional(),
   }).strict(),
   message: z.string().optional(),
 }).strict()

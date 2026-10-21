@@ -52,6 +52,34 @@ describe('charter Remote contract', () => {
     }).success).toBe(true)
   })
 
+  it('reads a view emitted by a Host that predates the storage-limit fields', () => {
+    const parsed = charterFrameSchema.safeParse({
+      type: 'snapshot',
+      value: {
+        status: 'ready',
+        sessionId: 's1',
+        revision: 1,
+        objective: null,
+        items: [],
+        promptText: '',
+        promptDigest: '',
+        limits: {
+          maxPromptBytes: 8_192,
+          maxObjectiveBytes: 4_096,
+          maxItemBytes: 1_024,
+          maxOps: 64,
+          maxActiveInvariants: 24,
+          maxActiveDeliverables: 16,
+        },
+      },
+    })
+    expect(parsed.success).toBe(true)
+    if (parsed.success) {
+      expect(parsed.data.value.limits.maxItems).toBe(512)
+      expect(parsed.data.value.limits.maxPendingItems).toBe(512)
+    }
+  })
+
   it('keeps frame schema strict and discriminated', () => {
     expect(charterFrameSchema.safeParse({
       type: 'snapshot',
