@@ -39,7 +39,11 @@ Initial MVP.
   actor fallback) and prompt-variable escaping for their interpolator.
 - Self-contained factory-form browser bundle, with inlined CSS and bundled zod, matching the DSH Web module
   loader contract.
-- 66 tests across core, host composition, fork, idempotency, quota, prompt boundary, Remote stream, history
+- History import now treats the real context byte budget as the gate, not per-kind active counts: overflowing
+  candidates are applied in one atomic edit as pending proposals (`item.propose`) instead of blocking the draft.
+  No candidate is dropped or truncated. The per-kind active caps were removed; storage limits were raised to
+  `maxItems` 512, `maxPendingItems` 512, `maxOps` 1024, and `maxRecordBytes` 1 MiB.
+- 70 tests across core, host composition, fork, idempotency, quota, prompt boundary, Remote stream, history
   extraction, client reordering, and decorator compatibility. Verified on DSH `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`,
   `0.2.1-rc.1`, and `0.2.1-rc.2`. The actual Web UI was exercised on `0.2.0-rc.2`: tab order, Chinese/English
   switching, objective and invariant editing, preview, Apply, and reload persistence.

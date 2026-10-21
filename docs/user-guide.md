@@ -147,8 +147,6 @@ Defaults live in `cordis.patch.yml`. Override the same keys in the profile's `co
     maxPromptBytes: 8192
     maxObjectiveBytes: 4096
     maxItemBytes: 1024
-    maxActiveInvariants: 24
-    maxActiveDeliverables: 16
     contextOrder: 130
 ```
 
@@ -157,19 +155,17 @@ Defaults live in `cordis.patch.yml`. Override the same keys in the profile's `co
 | `maxPromptBytes` | 8192 | UTF-8 budget for the final model-visible context |
 | `maxObjectiveBytes` | 4096 | UTF-8 budget for the objective |
 | `maxItemBytes` | 1024 | per-item text budget |
-| `maxItems` | 256 | all-items limit |
-| `maxPendingItems` | 64 | pending-items limit |
-| `maxActiveInvariants` | 24 | active invariants |
-| `maxActiveDeliverables` | 16 | active deliverables |
-| `maxOps` | 64 | operations per Apply |
-| `maxRecordBytes` | 524288 | one Session record |
+| `maxItems` | 512 | all-items storage limit |
+| `maxPendingItems` | 512 | pending-items limit |
+| `maxOps` | 1024 | operations per Apply |
+| `maxRecordBytes` | 1048576 | one Session record |
 | `historyLimit` | 64 | recent history receipts |
 | `maxHistoryBytes` | 131072 | recent history bytes |
 | `mutationLimit` | 128 | recent mutation receipts |
 | `contextOrder` | 130 | runtime-context order; after sandbox/approval/subagent by default |
 
-Priority: final prompt bytes > per-item bytes > item counts. An over-limit Apply is rejected as a whole; no
-existing item is automatically edited or evicted.
+The only model-visible capacity is `maxPromptBytes`; active item counts are not capped separately. Storage is
+bounded by `maxItems` and `maxPendingItems`.
 
 ## 4.1 Budgets and overflow
 
@@ -179,9 +175,11 @@ The tab shows a live context meter and per-field byte counters. Nothing is silen
   preserved. An over-limit candidate is highlighted and Apply stays disabled until you shorten it.
 - The objective is kept whole. If it exceeds `maxObjectiveBytes`, the draft shows the full text and an over-limit
   message; shorten it before applying.
-- If the selected draft exceeds `maxPromptBytes`, the tab reports the overage and lets you uncheck items. It never
-  drops or re-summarizes content for you.
-- Apply is disabled while any field or the total budget is over.
+- If candidates do not fit the context budget, the candidates that fit become active and the rest are saved as
+  **pending proposals**. Apply remains available; nothing is rejected, truncated, dropped, or re-summarized.
+  Review and accept the proposals when you have context room.
+- The objective, per-item byte limits, and storage/atomic limits remain hard gates; the UI shows the exact
+  problem and Apply stays disabled only for those real limits.
 
 Raise the budgets in the profile when your charter needs more room.
 
@@ -203,7 +201,7 @@ Raise the budgets in the profile when your charter needs more room.
 | Pane says the Session is not live / read-only | The Session belongs to another DSH process (for example Desktop) and is not loaded in this Web process | Create or start a Session in Web; the tab upgrades to editable automatically |
 | `unavailable` + inconsistent record | Record tampered with or derived digest mismatch | Stop editing, inspect storage; no injection until repaired |
 | Apply returns `REVISION_CONFLICT` | Another commit happened first | Draft is preserved; discard and re-stage against the latest revision |
-| Apply returns `QUOTA_EXCEEDED` | Prompt/per-item/item limit exceeded | Merge or purge items; do not expect automatic eviction |
+| Apply returns `QUOTA_EXCEEDED` | Prompt, per-item, or storage/batch limit exceeded | Check the highlighted field; reduce candidates or raise the relevant limit. Active item counts are not capped |
 | `charter_read` returns `UNAVAILABLE` | Storage not ready or record unavailable | The Session remains usable; retry after repair |
 | No Charter tab | Client bundle not loaded/injected, or blank Session | Check `dsh --profile web --dump-config` for `charter`; send a message to start the Session; refresh |
 | Authorization concern on 0.1.7-rc.2 / 0.2.0 | Gateway has no `@Remote.resources` | Upgrade to 0.2.1+, or use a trusted single-operator environment |

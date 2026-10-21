@@ -169,8 +169,11 @@ Desktop 可在 Plugins 页面安装同一个 tarball。源码开发流程见 [CO
 | **历史草案** | 审阅从最近压缩摘要抽取的草案（仅在有草案时出现） |
 | **上下文** | 精确的 user-role runtime context、字节数和限额 |
 
-预算在界面各处可见。超长草案条目会拆成多个候选；超限字段高亮；目标、单条、所选草案或投影上下文超预算时
-Apply 禁用。
+历史草案候选多于上下文预算时，多出的候选会在同一次原子 Apply 中保存为**待审提案**，仍然可见、可审阅；
+不会因为任意 per-kind active 条数上限而拒绝整个草案。
+
+预算在界面各处可见。超长草案条目会拆成多个候选，超限字段高亮。真正的上下文预算是门槛：历史草案放不下时，
+剩余候选保存为待审提案，而不是阻塞整个导入。只有真实的字段、存储或单批限制才会禁用 Apply。
 
 ## 配置
 
@@ -182,8 +185,6 @@ Apply 禁用。
     maxPromptBytes: 8192
     maxObjectiveBytes: 4096
     maxItemBytes: 1024
-    maxActiveInvariants: 24
-    maxActiveDeliverables: 16
     contextOrder: 130
 ```
 
@@ -192,19 +193,18 @@ Apply 禁用。
 | `maxPromptBytes` | 8192 | 最终模型可见 context 的 UTF-8 上限 |
 | `maxObjectiveBytes` | 4096 | 目标文本的 UTF-8 上限 |
 | `maxItemBytes` | 1024 | 单条条目文本上限 |
-| `maxItems` | 256 | 全部条目上限 |
-| `maxPendingItems` | 64 | pending 提议上限 |
-| `maxActiveInvariants` | 24 | active invariant 上限 |
-| `maxActiveDeliverables` | 16 | active deliverable 上限 |
-| `maxOps` | 64 | 单次 Apply 的 op 数 |
-| `maxRecordBytes` | 524288 | 单条 Session record 上限 |
+| `maxItems` | 512 | 全部条目存储上限 |
+| `maxPendingItems` | 512 | pending 提议上限 |
+| `maxOps` | 1024 | 单次 Apply 的 op 数 |
+| `maxRecordBytes` | 1048576 | 单条 Session record 上限 |
 | `historyLimit` | 64 | 近期 history 条数 |
 | `maxHistoryBytes` | 131072 | 近期 history 字节上限 |
 | `mutationLimit` | 128 | 近期 mutation 回执上限 |
 | `contextOrder` | 130 | runtime context 排序；默认在 sandbox/approval/subagent 之后 |
 
-优先级是 **prompt 字节 > 单条字节 > 条目数**。默认值刻意宽裕但有界；团队会话契约更长时可以调高，代价是每次
-请求增加 prompt 字节。
+模型可见容量只有 `maxPromptBytes`；active invariant/deliverable 不再单独设条数上限。`maxItems` 和
+`maxPendingItems` 约束存储。历史草案放不进上下文预算时，能放下的候选会直接生效，其余保存为待审提案，
+不会被拒绝、截断或静默丢弃。
 
 ## 兼容性
 
@@ -237,7 +237,7 @@ npm run check            # typecheck + test
 ```
 
 测试覆盖纯内核、真实 Host 组合、storage domain、Remote framing、历史抽取、客户端状态和 factory bundle
-注册。当前矩阵：**5 个 DSH 版本 × 66 个测试**。命令与证据见[验证记录](docs/verification.zh.md)。
+注册。当前矩阵：**本地验证的 DSH 版本矩阵 × 70 个测试**。命令与证据见[验证记录](docs/verification.zh.md)。
 
 ## 致谢
 
