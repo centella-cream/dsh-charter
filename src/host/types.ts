@@ -11,8 +11,8 @@ export interface CharterViewLimits {
   readonly maxPromptBytes: number
   readonly maxObjectiveBytes: number
   readonly maxItemBytes: number
-  readonly maxActiveInvariants: number
-  readonly maxActiveDeliverables: number
+  readonly maxItems: number
+  readonly maxPendingItems: number
   readonly maxOps: number
 }
 

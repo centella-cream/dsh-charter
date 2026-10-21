@@ -58,7 +58,8 @@ const en = {
   'bootstrap.budget': 'Draft: {used} / {limit}',
   'bootstrap.overBudget': 'The draft exceeds the {limit} context budget. Uncheck or shorten items.',
   'bootstrap.itemOver': 'This candidate exceeds the {limit} item limit.',
-  'bootstrap.overItems': 'The draft has more items than the charter allows.',
+  'bootstrap.overItems': 'The draft exceeds the profile storage or single-batch capacity. Uncheck some candidates or raise maxItems, maxPendingItems, or maxOps.',
+  'bootstrap.pending': '{count} candidates exceed the active context budget and will be kept as pending proposals. Nothing is discarded.',
   'bootstrap.blocked': 'Apply or discard the staged changes before reviewing the history draft.',
   'bootstrap.error': 'Could not extract a draft from history.',
 
@@ -145,6 +146,7 @@ const en = {
   'budget.objectiveOver': 'The objective exceeds the {limit} limit.',
   'budget.contextOver': 'The selected content exceeds the {limit} context budget.',
   'footer.saved': 'Saved revision {revision}.',
+  'footer.bootstrapSaved': 'Applied revision {revision}: {active} active, {pending} pending proposals.',
   'footer.replayed': 'The saved edit was replayed safely.',
 
   'button.retry': 'Retry',
@@ -221,7 +223,8 @@ const zh: Record<CharterLocaleKey, string> = {
   'bootstrap.budget': '草案：{used} / {limit}',
   'bootstrap.overBudget': '草案超过 {limit} 上下文预算，请取消勾选或缩短条目。',
   'bootstrap.itemOver': '该候选超过 {limit} 条目上限。',
-  'bootstrap.overItems': '草案条目数超过会话契约上限。',
+  'bootstrap.overItems': '草案超出本 profile 的存储或单批容量，请减少候选或调高 maxItems、maxPendingItems、maxOps。',
+  'bootstrap.pending': '{count} 条候选超出当前上下文预算，将保存为待审提案，不会丢弃。',
   'bootstrap.blocked': '请先应用或丢弃暂存的修改，再查看历史草案。',
   'bootstrap.error': '无法从历史中生成草案。',
 
@@ -308,6 +311,7 @@ const zh: Record<CharterLocaleKey, string> = {
   'budget.objectiveOver': '目标超过 {limit} 上限。',
   'budget.contextOver': '所选内容超过 {limit} 上下文预算。',
   'footer.saved': '已保存修订 {revision}。',
+  'footer.bootstrapSaved': '已应用修订 {revision}：{active} 条生效，{pending} 条保存为待审提案。',
   'footer.replayed': '已安全重放此前保存的编辑。',
 
   'button.retry': '重试',

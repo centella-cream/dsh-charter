@@ -145,6 +145,14 @@ export function applyOps(input: ApplyOpsInput): ApplyOpsOutput {
         changes.push({ type: 'item.added', itemId: id })
         break
       }
+      case 'item.propose': {
+        const id = requireMappedId(input.ids, op.item.clientRef)
+        if (items.has(id)) throw charterError('INVALID_REFERENCE', `minted item id ${id} already exists`)
+        // A proposal is always pending, even when a user imported it from history.
+        items.set(id, itemFromInput(op.item, id, input.nextRevision, 'agent'))
+        changes.push({ type: 'item.added', itemId: id })
+        break
+      }
       case 'item.edit': {
         const item = requireItem(items, op.itemId)
         assertEditable(item)

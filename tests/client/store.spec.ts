@@ -22,9 +22,9 @@ function view(revision: number, promptText = ''): CharterView {
       maxPromptBytes: 8_192,
       maxObjectiveBytes: 4_096,
       maxItemBytes: 1_024,
-      maxActiveInvariants: 24,
-      maxActiveDeliverables: 16,
-      maxOps: 64,
+      maxItems: 512,
+      maxPendingItems: 512,
+      maxOps: 1024,
     },
   }
 }

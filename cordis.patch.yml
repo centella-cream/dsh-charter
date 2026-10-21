@@ -5,12 +5,10 @@
         maxPromptBytes: 8192
         maxObjectiveBytes: 4096
         maxItemBytes: 1024
-        maxItems: 256
-        maxPendingItems: 64
-        maxActiveInvariants: 24
-        maxActiveDeliverables: 16
-        maxOps: 64
-        maxRecordBytes: 524288
+        maxItems: 512
+        maxPendingItems: 512
+        maxOps: 1024
+        maxRecordBytes: 1048576
         historyLimit: 64
         maxHistoryBytes: 131072
         mutationLimit: 128

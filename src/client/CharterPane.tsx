@@ -18,6 +18,7 @@ import type { CharterBootstrapProposal, CharterView } from '../host/types.js'
 import type { CharterSource } from './store.js'
 import { CHARTER_LOCALE_NS, type CharterLocaleKey } from './locales.js'
 import { displayItems, previewPrompt } from './preview.js'
+import { buildBootstrapPlan, type BootstrapDraftItem } from './bootstrap-plan.js'
 import './charter.css'
 
 type CharterText = TranslateNS<typeof CHARTER_LOCALE_NS>
@@ -30,12 +31,7 @@ type CharterPaneProps = PropsRuntime<'conversation.view'>
   & PropsLocale<typeof CHARTER_LOCALE_NS>
   & CharterPaneInjected
 
-interface BootstrapDraftItem {
-  readonly id: string
-  readonly kind: 'invariant' | 'deliverable'
-  readonly text: string
-  readonly selected: boolean
-}
+
 
 type CharterSection = 'overview' | 'objective' | 'invariants' | 'deliverables' | 'history' | 'context'
 
@@ -231,39 +227,6 @@ function newItem(
     : { clientRef: clientRef(), kind, text, order, progress: 'not-started' }
 }
 
-function buildBootstrapOps(
-  view: CharterView,
-  objective: string,
-  items: readonly BootstrapDraftItem[],
-): CharterOp[] {
-  const ops: CharterOp[] = []
-  if (view.objective === null && objective.trim().length > 0) {
-    ops.push({ type: 'objective.initialize', text: objective.trim() })
-  }
-  let order = view.items.reduce((maximum, item) => Math.max(maximum, item.order), -1) + 1
-  for (const item of items) {
-    if (!item.selected || item.text.trim().length === 0) continue
-    if (item.kind === 'invariant') {
-      ops.push({
-        type: 'item.add',
-        item: { clientRef: `bootstrap-${item.id}`, kind: 'invariant', text: item.text.trim(), order },
-      })
-    } else {
-      ops.push({
-        type: 'item.add',
-        item: {
-          clientRef: `bootstrap-${item.id}`,
-          kind: 'deliverable',
-          text: item.text.trim(),
-          order,
-          progress: 'not-started',
-        },
-      })
-    }
-    order += 1
-  }
-  return ops
-}
 
 function ItemRow({
   item,
@@ -591,8 +554,8 @@ export function CharterPane({ sessionId, source, t }: CharterPaneProps) {
 
   const applyBootstrap = async (): Promise<void> => {
     if (view === null || bootstrap === null || bootstrapSaving || ops.length > 0 || editor !== null) return
-    const bootstrapOps = buildBootstrapOps(view, bootstrapObjective, bootstrapItems)
-    if (bootstrapOps.length === 0) return
+    const plan = buildBootstrapPlan(view, bootstrapObjective, bootstrapItems)
+    if (plan.ops.length === 0) return
 
     setBootstrapSaving(true)
     setBootstrapError(null)
@@ -601,7 +564,7 @@ export function CharterPane({ sessionId, source, t }: CharterPaneProps) {
         sessionId,
         mutationId: mutationId(),
         baseRevision: view.revision,
-        ops: bootstrapOps,
+        ops: plan.ops,
       })
       if (result.view !== undefined) source.accept(result.view)
       if (result.ok) {
@@ -609,7 +572,15 @@ export function CharterPane({ sessionId, source, t }: CharterPaneProps) {
         setBootstrapState('dismissed')
         setBootstrapObjective('')
         setBootstrapItems([])
-        setMessage(t('footer.saved', { revision: result.committedRevision }))
+        setMessage(plan.pending > 0
+          ? t('footer.bootstrapSaved', {
+              active: plan.active,
+              pending: plan.pending,
+              revision: result.committedRevision,
+            })
+          : t('footer.saved', { revision: result.committedRevision }))
+        if (plan.pendingInvariants > 0) setSection('invariants')
+        else if (plan.pendingDeliverables > 0) setSection('deliverables')
       } else {
         setBootstrapError(errorLabel(result.code, t))
       }
@@ -652,7 +623,10 @@ export function CharterPane({ sessionId, source, t }: CharterPaneProps) {
   const bootstrapInvariants = bootstrapItems.filter(item => item.kind === 'invariant')
   const bootstrapDeliverables = bootstrapItems.filter(item => item.kind === 'deliverable')
   const selectedBootstrapItems = bootstrapItems.filter(item => item.selected && item.text.trim().length > 0)
-  const bootstrapOps = view === null ? [] : buildBootstrapOps(view, bootstrapObjective, bootstrapItems)
+  const bootstrapPlan = view === null
+    ? { ops: [] as CharterOp[], active: 0, pending: 0, pendingInvariants: 0, pendingDeliverables: 0 }
+    : buildBootstrapPlan(view, bootstrapObjective, bootstrapItems)
+  const bootstrapOps = bootstrapPlan.ops
   const bootstrapPrompt = view === null ? '' : previewPrompt(view, bootstrapOps)
   const bootstrapBytes = utf8Bytes(bootstrapPrompt)
   const bootstrapObjectiveOver = view !== null
@@ -660,10 +634,11 @@ export function CharterPane({ sessionId, source, t }: CharterPaneProps) {
   const bootstrapItemsOver = view !== null
     && selectedBootstrapItems.some(item => utf8Bytes(item.text) > view.limits.maxItemBytes)
   const bootstrapBudgetOver = view !== null && bootstrapBytes > view.limits.maxPromptBytes
-  const bootstrapCountOver = view !== null && (
+  const bootstrapPendingCount = bootstrapPlan.pending
+  const bootstrapStorageOver = view !== null && (
     bootstrapOps.length > view.limits.maxOps
-    || selectedBootstrapItems.filter(item => item.kind === 'invariant').length > view.limits.maxActiveInvariants
-    || selectedBootstrapItems.filter(item => item.kind === 'deliverable').length > view.limits.maxActiveDeliverables
+    || view.items.length + bootstrapPlan.active + bootstrapPlan.pending > view.limits.maxItems
+    || view.items.filter(item => item.review === 'pending').length + bootstrapPlan.pending > view.limits.maxPendingItems
   )
   const canApplyBootstrap = bootstrap !== null
     && ops.length === 0
@@ -673,7 +648,7 @@ export function CharterPane({ sessionId, source, t }: CharterPaneProps) {
     && !bootstrapObjectiveOver
     && !bootstrapItemsOver
     && !bootstrapBudgetOver
-    && !bootstrapCountOver
+    && !bootstrapStorageOver
   const maxObjectiveBytes = view.limits.maxObjectiveBytes
   const maxItemBytes = view.limits.maxItemBytes
   const maxPromptBytes = view.limits.maxPromptBytes
@@ -897,8 +872,8 @@ export function CharterPane({ sessionId, source, t }: CharterPaneProps) {
                   <div className="charter-budgetgrid">
                     <span>{t('stats.budget', { used: formatBytes(projectedBytes), limit: formatBytes(maxPromptBytes) })}</span>
                     <span>{t('objective.kicker')} {formatBytes(objectiveBytes)} / {formatBytes(maxObjectiveBytes)}</span>
-                    <span>{t('invariants.kicker')} {invariants.length} / {view.limits.maxActiveInvariants}</span>
-                    <span>{t('deliverables.kicker')} {deliverables.length} / {view.limits.maxActiveDeliverables}</span>
+                    <span>{t('invariants.kicker')} {invariants.length}</span>
+                    <span>{t('deliverables.kicker')} {deliverables.length}</span>
                   </div>
                 </section>
               </>
@@ -1181,7 +1156,12 @@ export function CharterPane({ sessionId, source, t }: CharterPaneProps) {
                         {t('bootstrap.overBudget', { limit: formatBytes(maxPromptBytes) })}
                       </div>
                     )}
-                    {bootstrapCountOver && (
+                    {bootstrapPendingCount > 0 && (
+                      <div className="charter-notice charter-notice--warning" role="note">
+                        {t('bootstrap.pending', { count: bootstrapPendingCount })}
+                      </div>
+                    )}
+                    {bootstrapStorageOver && (
                       <div className="charter-notice charter-notice--danger" role="alert">
                         {t('bootstrap.overItems')}
                       </div>

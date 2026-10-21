@@ -14,14 +14,15 @@ function draftItem(
   text: string,
   order: number,
   progress?: DeliverableProgress,
+  review: 'accepted' | 'pending' = 'accepted',
 ): PreviewItem {
   return kind === 'invariant'
-    ? { id, kind: 'invariant', text: normalize(text), review: 'accepted', lifecycle: 'current', order }
+    ? { id, kind: 'invariant', text: normalize(text), review, lifecycle: 'current', order }
     : {
         id,
         kind: 'deliverable',
         text: normalize(text),
-        review: 'accepted',
+        review,
         lifecycle: 'current',
         order,
         progress: progress ?? 'not-started',
@@ -70,6 +71,16 @@ export function previewPrompt(view: CharterView, ops: readonly CharterOp[]): str
           op.item.text,
           op.item.order,
           op.item.kind === 'deliverable' ? op.item.progress : undefined,
+        ))
+        break
+      case 'item.propose':
+        items.set(`draft:${op.item.clientRef}`, draftItem(
+          `draft:${op.item.clientRef}`,
+          op.item.kind,
+          op.item.text,
+          op.item.order,
+          op.item.kind === 'deliverable' ? op.item.progress : undefined,
+          'pending',
         ))
         break
       case 'item.edit': {

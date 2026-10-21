@@ -103,6 +103,7 @@ export const charterOpSchema = z.discriminatedUnion('type', [
     reason: z.string(),
   }).strict(),
   z.object({ type: z.literal('item.add'), item: newItemInputSchema }).strict(),
+  z.object({ type: z.literal('item.propose'), item: newItemInputSchema }).strict(),
   z.object({
     type: z.literal('item.edit'),
     itemId: identifierSchema,
