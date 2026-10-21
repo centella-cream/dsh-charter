@@ -105,8 +105,9 @@ summary keep the normal empty state.
 1. Open a started Session. The header shows Chat, Trajectory, then Charter. If Charter is missing, confirm the
    profile boot graph contains `dsh-charter/client.js` and that the Session is not blank (a blank Session hides
    the View tab bar). The Charter tab is dynamically placed after every other plugin tab.
-2. Use the left section navigation: **Overview / Objective / Invariants / Deliverables / Context**, plus
-   **History draft** when one exists. Narrow windows turn this navigation into a horizontal tab strip.
+2. Use the left section navigation: **Overview / Objective / Invariants / Deliverables / History draft /
+   Context**. History is always available: it shows the current bootstrap phase and offers **Check again**.
+   Narrow windows turn this navigation into a horizontal tab strip.
 3. In **Objective**, set the objective. The original objective is written once and is immutable.
 4. In **Invariants**, add constraints that must remain visible, for example:
    - `Do not modify migrations/`
@@ -114,13 +115,26 @@ summary keep the normal empty state.
    - `Keep the public API backward compatible`
 5. In **Deliverables**, add outcomes with `not-started` / `in-progress` / `blocked` / `done` / `cancelled`.
    The tab label and every pane string follow the active DSH language: **Charter** in English, **会话契约** in Chinese.
-6. Every change first enters a draft. **Preview context** shows the exact user-role text, byte count, and hash
-   the model will see after Apply.
-7. **Apply** commits atomically. On success the revision increases and the next request sees it.
-8. If another tab or process commits first, the pane shows a conflict and preserves the draft. Discard it and
-   re-stage against the latest revision.
+6. Every change first enters a draft, and the list itself renders the projected result immediately. **Preview
+   context** shows the exact user-role text and byte count the model will see after Apply.
+7. **Apply** commits atomically. On success the revision increases and the next request sees it. A network
+   failure keeps the same mutation id so Retry can safely replay an unknown-outcome write.
+8. If another tab or process commits first, the pane keeps the draft and offers **Apply draft to revision N**;
+   choose it to re-target the same changes, or discard the draft to start over.
+9. Staged edits, an open inline editor, and a reviewed history draft belong to the Session, not to the mounted
+   tab: switching to Chat and back restores them. Only Apply, explicit Discard, or a Session change clears them.
 
-### 3.1 State dimensions
+### 3.1 Item actions and replacement chains
+
+Item actions live in an **Actions** menu on each row (only while the row is editable), so a long charter does
+not create thousands of tab stops. A replacement successor cannot be archived or replaced again: purge its
+superseded predecessor first, which detaches the successor and makes it an ordinary item again. Historical rows
+are collapsed by default; use **Show N historical items** to inspect and restore/purge them.
+
+Verification is a human mark: **Mark verified** records `verified (marked)`. A validator-produced
+`failed`/`unavailable` state is read-only and its reason is shown; the UI cannot create those states.
+
+### 3.2 State dimensions
 
 | Dimension | Values | Notes |
 | --- | --- | --- |
@@ -188,6 +202,7 @@ Defaults live in `cordis.patch.yml`. Override the same keys in the profile's `co
 | `maxItemBytes` | 1024 | per-item text budget |
 | `maxItems` | 512 | all-items storage limit |
 | `maxPendingItems` | 512 | pending-items limit; `0` disables new proposals |
+| `maxRecordBytes` | 1048576 | one Session record including bounded history/receipts; shown in the pane |
 | `maxOps` | 1024 | operations per Apply |
 | `maxRecordBytes` | 1048576 | one Session record |
 | `historyLimit` | 64 | recent history receipts |
@@ -196,7 +211,8 @@ Defaults live in `cordis.patch.yml`. Override the same keys in the profile's `co
 | `contextOrder` | 130 | runtime-context order; after sandbox/approval/subagent by default |
 
 The only model-visible capacity is `maxPromptBytes`; active item counts are not capped separately. Storage is
-bounded by `maxItems` and `maxPendingItems`.
+bounded by `maxItems`, `maxPendingItems`, and `maxRecordBytes`. Values that would make a Session ready but
+permanently uneditable are raised to documented minimums with a Host warning.
 
 ## 4.1 Budgets and overflow
 
@@ -217,6 +233,13 @@ The tab shows a live context meter and per-field byte counters. Nothing is silen
   problem and Apply stays disabled only for those real limits.
 
 Raise the budgets in the profile when your charter needs more room.
+
+### 4.2 Over-budget records
+
+Budgets are admission policy, not record validity. If a profile lowers a limit after records exist, the
+affected Session shows an **over-budget** state: its view remains readable, the Host does not inject the
+charter into the prompt, and the Pane explains the state. Adding content is rejected, while archive, purge, and
+shorten operations are admitted until the record fits again. The record ceiling is shown in **Context**.
 
 ## 5. Data and privacy
 

@@ -13,7 +13,7 @@
 | 验证项 | 结果 |
 | --- | --- |
 | TypeScript 严格类型检查（5 个 DSH 版本） | 通过 |
-| Vitest（5 个本地可用版本 × 95 tests） | 通过 |
+| Vitest（5 个本地可用版本 × 112 tests） | 通过 |
 | Host ESM 构建 + 浏览器单文件 bundle | 通过 |
 | Remote 装饰器/资源 smoke | 通过（0.1.7/0.2.0 按预期无资源声明） |
 | 浏览器 factory bundle 物化与 `apply` smoke | 通过 |
@@ -21,7 +21,10 @@
 | Web boot graph 与 `/plugins` 服务 | 通过 |
 | 真实浏览器 UI 交互（0.2.0-rc.2 Web profile） | 通过：标签顺序、中英文切换、目标/约束编辑、预览、Apply、刷新持久化；见第 7 节 |
 | 非 live Session 的只读 stored view | 通过：composition 测试覆盖 stored view 与 live 后自动升级 |
-| 从压缩摘要生成历史草案 | 通过：core 解析器 + composition 真实 Session 事件；见 4.4 |
+| 从压缩摘要生成历史草案 | 通过：core 解析器（含真实 bullet-only 摘要格式）+ composition 真实 Session 事件；见 4.4 |
+| 单记录损坏隔离 | 通过：单条 schema 不合法记录只禁用其 Session 并保留原文；见 4.5 |
+| 预算收紧与收敛 | 通过：调低预算后显示 `overBudget`、停止注入、缩小编辑可收敛；不可用配置被 clamp；见 4.5 |
+| Session 级客户端草稿 | 通过：单测覆盖 binding 卸载/重挂载后草稿存活、重试复用 mutation id、冲突 rebase、bootstrap 不抢占 section；见 4.5 |
 | 真实模型 + compaction 端到端 | **校验命令已就绪，实测待执行**（`npm run verify:compaction`，见第 8 节） |
 
 ## 2. 本地基线
@@ -51,12 +54,14 @@ npm test
 | `tests/core/state.spec.ts` | 替代链必须指向 current successor |
 | `tests/core/fork.spec.ts` | fork 重铸 id、替代链重映射 |
 | `tests/core/bootstrap.spec.ts` | 压缩摘要分节抽取、latest objective、UTF-8 拆分/不截断、最新/损坏 summary、回退到较旧可用 summary |
-| `tests/host/composition.spec.ts` | 真实 Cordis/Storage/SystemPrompt/Tools 组合、user-role 边界、actor 策略、`item.add` + `item.propose` 混合原子 Apply、user actor 的 proposal、完整 standing 与有上限 `all`、fork、幂等、配额、父环拒绝、lifecycle、非 live Session 的只读 stored view 与 live 升级、从真实 `compaction/summary` 事件生成草案 |
+| `tests/host/composition.spec.ts` | 真实 Cordis/Storage/SystemPrompt/Tools 组合、user-role 边界、actor 策略、`item.add` + `item.propose` 混合原子 Apply、user actor 的 proposal、完整 standing 与有上限 `all`、单条损坏记录隔离、调低预算后的 over-budget 收敛、不可用配置 clamp、child retry 发布 ready 帧、fork、幂等、配额、父环拒绝、lifecycle、非 live Session 的只读 stored view 与 live 升级、从真实 `compaction/summary` 事件生成草案 |
 | `tests/host/watch.spec.ts` | opening snapshot、竞态、去重、abort、装饰器兼容、resource-scope 能力检测 |
 | `tests/host/actor.spec.ts` | principal 感知策略：现代运行时缺失 principal 拒绝、仅旧版 owner 回退、非 owner 记录、按版本选择的 `resolveRemoteActor` |
 | `tests/host/remote.spec.ts` | Remote 描述符、wire schema、旧 Host view snapshot、零 pending 上限 |
-| `tests/client/store.spec.ts` | 提交后立即接受 view、忽略陈旧/重复 revision、opening snapshot 单调、共享 source lease/引用计数、旧 lease no-op、忽略其他 Session 的 stream 帧 |
+| `tests/client/store.spec.ts` | 提交后立即接受 view、忽略陈旧/重复 revision、opening snapshot 单调、权威不可用降级、attach 重试、共享 source lease/引用计数、旧 lease no-op、忽略其他 Session 的 stream 帧 |
 | `tests/client/bootstrap-plan.spec.ts` | 溢出候选仍在一个 plan 中；active 前缀符合字节预算；bootstrap 结果分类（draft/discard/stale/unavailable） |
+| `tests/client/draft.spec.ts` / `draft-store.spec.ts` | Session 绑定的请求构造；binding 卸载/重挂载后草稿存活；重试复用 mutation id；冲突 rebase；bootstrap 不抢占 section |
+| `tests/client/preview.spec.ts` | 投影后的 draft 行（add/edit/accept/progress/supersede/purge）；渲染器一致性与 pending 排除 |
 | `tests/client/draft.spec.ts` | 暂存草稿绑定其 Session；Session A 的 ops 不会为 Session B 构造请求 |
 
 ## 3. 跨版本矩阵
@@ -83,11 +88,11 @@ npm run build
 
 | 版本 | typecheck | build | Vitest | remote smoke | client smoke |
 | --- | --- | --- | --- | --- | --- |
-| `0.1.7-rc.2` | 通过 | 通过 | 95/95 | 通过（无 resources 警告） | 通过 |
-| `0.2.0-rc.1` | 通过 | 通过 | 95/95 | 通过（无 resources 警告） | 通过 |
-| `0.2.0-rc.2` | 通过 | 通过 | 95/95 | 通过（无 resources 警告） | 通过 |
-| `0.2.1-rc.1` | 通过 | 通过 | 95/95 | 通过 | 通过 |
-| `0.2.1-rc.2` | 通过 | 通过 | 95/95 | 通过 | 通过 |
+| `0.1.7-rc.2` | 通过 | 通过 | 112/112 | 通过（无 resources 警告） | 通过 |
+| `0.2.0-rc.1` | 通过 | 通过 | 112/112 | 通过（无 resources 警告） | 通过 |
+| `0.2.0-rc.2` | 通过 | 通过 | 112/112 | 通过（无 resources 警告） | 通过 |
+| `0.2.1-rc.1` | 通过 | 通过 | 112/112 | 通过 | 通过 |
+| `0.2.1-rc.2` | 通过 | 通过 | 112/112 | 通过 | 通过 |
 
 `0.1.7-rc.2` 和 `0.2.0` 的 remote smoke 输出：
 
@@ -173,6 +178,24 @@ ln -sfn ../node_modules ./proj/node_modules
 UI 的自动草案面板依赖客户端 `useEffect` 和 Remote bootstrap；本轮未在真实浏览器中构造“已完成压缩且为 live”的
 Session 做截图验证，客户端代码通过 typecheck/build，Remote 通过契约测试。真实压缩会话的 UI 行为仍需在目标
 profile 手工确认。
+
+### 4.5 记录隔离、预算降级与客户端草稿所有权
+
+第三轮发布就绪评审补充了此前只有静态审查的降级路径平台级回归：
+
+- **损坏记录隔离**：直接在 `storages/dsh_charter_v1/sessions/<id>.json` 写入带未知字段的记录后重新挂载，
+  仅该 Session 变为 `unavailable` 且原始文件保持不变；无关 Session 仍能读取、注入和编辑。
+- **预算调低**：默认 8 KiB 预算下创建的契约，以 `maxPromptBytes: 300` 重新挂载；view 为 `ready` +
+  `overBudget`，`promptText()` 返回空（不注入），增加内容返回 `QUOTA_EXCEEDED`，归档条目因 prompt 缩小而被
+  允许，最终离开 `overBudget`。
+- **不可用配置**：`maxPromptBytes`、`maxRecordBytes`、`maxHistoryBytes` 设为 `1` 时被抬到文档化最小值并
+  记录 Host warning，避免出现 ready 但永久不可编辑的 Session。
+- **初始化重试**：parent record 尚未持久化时先创建的 child Session 先显示 `unavailable`；parent 出现后，
+  瞬时失败在 `put` 发布前清除，随后发布 ready 帧（修复了此前只发布 stale unavailable 帧的问题）。
+- **客户端所有权**：单测覆盖 draft 在卸载/重挂载后存活、未知结果重试复用 mutation id、冲突 rebase 使用新 id、
+  bootstrap 在编辑器打开时不抢占 section、投影条目在 Apply 前即显示暂存状态。
+- **规划规模**：单遍 bootstrap planner 用 2,000 个候选测试，并返回逐候选 active/pending 结果；最终用精确渲染
+  校验预算。
 
 ## 5. 浏览器 bundle 验证
 
@@ -413,6 +436,9 @@ DSH_HOME="$PWD/.tmp/webview/home" dsh --profile charterweb2 --no-open --port 193
 [charter-pane.en.png](assets/charter-pane.en.png)。用户输入的目标和约束正文不翻译，这是数据，不是 UI 文案。
 
 ### 7.6 重设计 UI 与预算验证
+
+本节截图已用第三轮评审后的构建重新生成：面板现在包含声明性上下文提示、始终可用的**历史草案** section、
+**上下文** 中的 record 上限、投影后的草稿行，以及逐行操作菜单。
 
 重设计后的面板在同一个 Web profile、1440×757 下验证了明暗主题和中英文：
 

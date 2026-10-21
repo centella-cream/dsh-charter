@@ -39,7 +39,7 @@
 - 新浏览器 client 可以兼容仍在运行旧 Host 的 view snapshot（旧 Host 仍带 active 条数字段），避免 host/client
   revision 不一致时「会话契约」白屏；新的 pending 导入语义仍需要完整重启 Host 才生效。
 - 已针对 DSH `0.2.1-rc.2` 验证，无需代码改动；现有 peer range 和兼容层已覆盖该 release candidate。
-- 95 个测试，覆盖内核、Host 组合、fork、幂等、配额、prompt 边界、Remote stream、历史抽取、客户端 tab
+- 112 个测试，覆盖内核、Host 组合、fork、幂等、配额、prompt 边界、Remote stream、历史抽取、客户端 tab
   排序和装饰器兼容。已在 DSH `0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-rc.1`、`0.2.1-rc.2` 上验证。
   真实 Web UI 在 `0.2.0-rc.2` 上验证了标签顺序、中英文切换、目标/约束编辑、预览、Apply 和刷新持久化。
 
@@ -54,6 +54,7 @@
 
 ### 已知限制
 
+- 最大规模的会话契约仍会在 watch/edit 帧中携带完整条目集合；把历史拆成可分页的 Remote 端点是后续工作。
 - 压缩后重新物化依赖 DSH 的 runtime-context projection 契约；完整 compaction 端到端仍需要真实模型会话。
 - 浏览器交互在 `0.2.0-rc.2` 上验证；0.1.7/0.2.1 仅通过 typecheck/build/tests，未逐版重复交互流程。
 - 默认配额尚未用生产样本校准。
@@ -83,5 +84,22 @@
 - `charter_read` 的 standing 返回完整工作集；只有 `all` 调试视图分页。
 - Remote wire schema 接受 `maxPendingItems: 0`，与可关闭 proposal 的 Host 配置一致。
 - 文档将 `item.propose` 定位为普通客户端编辑操作（模型不可见），不再称其为 host-internal 操作。
+- 存储记录校验按 Session 隔离：domain 边界保留原始文档，service 逐条解析；单条损坏或前向不兼容的记录只让该
+  Session 不可用，其他 Session 仍可读写，原始文档保留用于诊断。
+- 结构校验与配额准入分离：事后收紧预算时契约显示为 `overBudget` 而不是损坏，停止注入，并允许缩小的编辑逐步
+  收敛；不可用的 profile 配置会被抬到文档化的最小值并记录 warning；view 暴露 `maxRecordBytes`。
+- 在操作层强制单跳替代模型：对替代项归档/再次替换返回 `INVALID_TRANSITION` 而不是 `CORRUPT_STATE`；UI
+  提供受支持的清理路径（清除被替代的前任以解除后继关联）。
+- 按不可变 record 对象缓存校验，用 snapshot digest 比较代替全量 JSON 序列化；历史草案改为单遍规划（附带
+  精确渲染校验/回退），病态单行摘要用累计字节数拆分。
+- Pane 草稿所有权移到 per-Session store：暂存修改、行内编辑器、新条目输入、反馈和已审阅历史草案在切到
+  对话/轨迹再回来时保留。Apply 对未知结果重试复用稳定 mutation id，冲突后提供“应用到最新修订”，连接失败
+  有可用的 Retry 路径（含 attach watchdog 与重新挂载 stream）。
+- Pane 渲染投影后的草稿视图：暂存条目立即可见，计数区分 active/pending/history，历史条目默认折叠，条目
+  操作移入可访问的逐行菜单，sticky footer 同步历史草案的 Apply/Discard。
+- bootstrap 改为持久化 phase machine（checking / draft / no-summary / not-live / failed / unavailable /
+  dismissed），Overview 提供 callout 与稳定的“重新检查”，用户编辑时不再抢占当前 section。
+- 反馈与 bootstrap 错误改为与语言无关的描述符；redirect reason 改为可选，不再把 UI 文案写入记录；字节
+  单位、计数、验证来源和预览标签全部本地化。
 - 加固 `npm run verify:compaction`：校验 storage record 结构、支持 `--store`、比较完整的 `charter_read`
   standing 投影、检查多个 system-prompt 泄漏信号；并在文档中明确它是手工检查（自动门禁不运行模型）。

@@ -98,8 +98,8 @@ npm run build
 1. 打开任意已开始的会话，会话头部会依次出现「对话」「轨迹」「会话契约」。若没有「会话契约」，先确认 profile 的
    boot graph 包含 `dsh-charter/client.js`，并确认会话不是空白 Session（空白 Session 会隐藏 View 标签栏）。
    「会话契约」标签会动态排在所有其他插件标签之后。
-2. 使用左侧 section 导航：**概览 / 目标 / 硬约束 / 交付物 / 上下文**；有草案时出现**历史草案**。窄窗口下
-   自动变成横向 tab。
+2. 使用左侧 section 导航：**概览 / 目标 / 硬约束 / 交付物 / 历史草案 / 上下文**。历史草案始终可见，展示当前
+   bootstrap 阶段并提供**重新检查**。窄窗口下自动变成横向 tab。
 3. 在 **目标** 中设置目标。原始目标只写一次。
 4. 在 **硬约束** 中添加必须长期可见的约束，例如：
    - `Do not modify migrations/`
@@ -107,11 +107,25 @@ npm run build
    - `Keep the public API backward compatible`
 5. 在 **交付物** 中添加交付物，选择 `not-started` / `in-progress` / `blocked` / `done` / `cancelled`。
    标签名和面板全部文案跟随 DSH 当前语言：中文显示「会话契约」，英文显示 `Charter`。
-6. 所有修改先进入草稿。**Preview context** 显示 Apply 后模型会看到的 user-role 文本、字节数和哈希。
-7. **Apply** 原子提交。成功后 revision 加一，下一个请求生效。
-8. 如果期间其他人或另一个标签页提交了修改，面板会显示冲突并保留草稿。丢弃草稿后基于最新 revision 重新编辑。
+6. 所有修改先进入草稿，列表会立即显示投影后的结果。**Preview context** 显示 Apply 后模型会看到的 user-role
+   文本和字节数。
+7. **Apply** 原子提交。成功后 revision 加一，下一个请求生效。网络失败时保留同一 mutation id，Retry 可以
+   安全重放结果未知的写入。
+8. 如果期间其他人或另一个标签页提交了修改，面板会保留草稿并提供**将草稿应用到修订 N**；选择它即可基于
+   最新 revision 重新提交，或丢弃草稿重新开始。
+9. 暂存修改、打开中的行内编辑器和已审阅的历史草案属于 Session 而不是当前挂载的标签页：切到「对话」再回来
+   会恢复。只有 Apply、显式丢弃或 Session 变化才会清除。
 
-### 3.1 状态维度
+### 3.1 条目操作与替代链
+
+条目操作放在每行的**操作**菜单里（仅可编辑时出现），避免长会话契约产生大量 tab 停靠点。替代项不能再次
+归档或替换：请先清除它已替代的前任条目，这会解除后继关联，使后继恢复为普通条目。历史条目默认折叠，使用
+**显示 N 条历史条目**检查、恢复或清除。
+
+验证是人工标记：**标记为已验证**记录 `verified（手动标记）`。validator 产生的 `failed`/`unavailable`
+是只读状态，原因会显示出来，当前 UI 不能创建这些状态。
+
+### 3.2 状态维度
 
 | 维度 | 值 | 说明 |
 | --- | --- | --- |
@@ -176,6 +190,7 @@ Web 进程可以只读显示另一个进程中 live 的 Session 的已存会话�
 | `maxItemBytes` | 1024 | 单条条目文本上限 |
 | `maxItems` | 512 | 全部条目存储上限 |
 | `maxPendingItems` | 512 | pending 条目上限；设为 `0` 可禁用新提案 |
+| `maxRecordBytes` | 1048576 | 单条 Session record（含受限历史/回执）上限；面板中显示 |
 | `maxOps` | 1024 | 单次 Apply 的 op 数 |
 | `maxRecordBytes` | 1048576 | 单条 Session record 上限 |
 | `historyLimit` | 64 | 近期 history 条数 |
@@ -183,7 +198,8 @@ Web 进程可以只读显示另一个进程中 live 的 Session 的已存会话�
 | `mutationLimit` | 128 | 近期 mutation 回执上限 |
 | `contextOrder` | 130 | runtime context 排序；默认在 sandbox/approval/subagent 之后 |
 
-模型可见容量只有 `maxPromptBytes`；active 条目数不再单独设上限。存储由 `maxItems` 和 `maxPendingItems` 约束。
+模型可见容量只有 `maxPromptBytes`；active 条目数不再单独设上限。存储由 `maxItems`、`maxPendingItems` 和
+`maxRecordBytes` 约束。会让 Session 处于 ready 但永久不可编辑的配置值会被抬到文档化最小值，并由 Host 记录 warning。
 
 ## 4.1 预算与溢出
 
@@ -200,6 +216,12 @@ Web 进程可以只读显示另一个进程中 live 的 Session 的已存会话�
 - 目标、单条字节、存储/单批容量仍是硬限制；UI 会显示具体问题，只有这些真实限制会让 Apply 禁用。
 
 会话契约需要更多空间时，可在 profile 中调高预算。
+
+### 4.2 超预算记录
+
+预算是准入策略，不是记录有效性。若记录已存在后调低上限，受影响的 Session 显示 **over-budget** 状态：视图
+仍可读取，Host 不把会话契约注入 prompt，面板解释原因。增加内容会被拒绝，而归档、清除、缩短等操作会被允许，
+直到记录回到预算内。**上下文** 中会显示 record 上限。
 
 ## 5. 数据与隐私
 
