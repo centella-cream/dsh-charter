@@ -192,7 +192,6 @@ Web 进程可以只读显示另一个进程中 live 的 Session 的已存会话�
 | `maxPendingItems` | 512 | pending 条目上限；设为 `0` 可禁用新提案 |
 | `maxRecordBytes` | 1048576 | 单条 Session record（含受限历史/回执）上限；面板中显示 |
 | `maxOps` | 1024 | 单次 Apply 的 op 数 |
-| `maxRecordBytes` | 1048576 | 单条 Session record 上限 |
 | `historyLimit` | 64 | 近期 history 条数 |
 | `maxHistoryBytes` | 131072 | 近期 history 字节上限 |
 | `mutationLimit` | 128 | 近期 mutation 回执上限 |

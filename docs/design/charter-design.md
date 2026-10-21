@@ -237,9 +237,11 @@ automatically verify; a failed verification does not automatically archive.
    deleted.
 8. On plugin unload, new edits are blocked, in-flight writes are awaited, listeners and domain are released.
 
-Records are validated one by one at the service boundary. The domain keeps raw per-record documents, so a
-corrupt or forward-skewed record marks only that Session unavailable; it never prevents the domain from opening
-for every other Session, and the raw document is preserved for diagnosis. A failed initialization is cleared
+Records are validated one by one at the service boundary, and every runtime read and write path re-parses the
+stored document with the strict schema (`recordFor`, read-only views, parent/fork reads, and the
+`table.update` transform). The domain keeps raw per-record documents, so a corrupt or forward-skewed record
+marks only that Session unavailable; it never prevents the domain from opening for every other Session, is
+never overwritten, and the raw document is preserved for diagnosis. A failed initialization is cleared
 before the durable write publishes, then a final authoritative view is published; transient initialization
 failures are retried instead of being sticky.
 
@@ -347,7 +349,10 @@ ctx.slots.register({
   order: nextViewOrder(ctx),
   locale: 'dsh-charter',
   label: () => t('tab'), // 会话契约 / Charter
-  inject: sessionId => ({ source: controller.source(sessionId) }),
+  inject: sessionId => {
+    const lease = controller.acquire(sessionId)
+    return { source: lease.source, draft: lease.draft, release: lease.release }
+  },
 }, CharterPane)
 ```
 
@@ -361,8 +366,10 @@ ctx.slots.register({
 - A blank Session hides the View tab bar; the tab appears once the Session starts.
 - The pane scrolls in the main content area; its footer actions sit at the end of the content.
 
-Dynamic reordering remounts the pane body. During normal startup this happens before user interaction; if a
-new plugin tab is installed while a draft is staged, apply or discard the draft first.
+Dynamic reordering remounts the pane body. The draft store survives this remount (and Chat/Charter switches),
+because drafts are owned per Session and only the source lease is released; if a new lifecycle is observed, the
+draft is reset. The released-draft map is bounded by an LRU, and client/Host share one text-inspection function so
+control characters and unpaired surrogates are rejected before Apply.
 
 ### 9.2 MVP page
 
@@ -379,7 +386,7 @@ Objective             INVARIANTS 1        DELIVERABLES 0
 Invariants  1           Do not break ...    No deliverables yet.
 Deliverables 0        BUDGET       240 B / 8.0 KiB; 1 / 24; 0 / 16
 Context
-History draft (only when available)
+History draft (always available; apply only in draft phase)
 ```
 
 Layout and interaction principles:
@@ -472,7 +479,9 @@ Default limits:
 
 `charter_read` returns the complete standing working set (objective plus every accepted/current item; bounded by
 the record quotas) in a compact projection that omits debug-only ids, review, and lifecycle fields. Its `all`
-debugging view is paged to at most 64 items / 32 KiB and reports the omitted count in `truncated`.
+debugging view carries full item metadata (id, origin, order, createdRevision, review/lifecycle, supersede chain,
+verification provenance) and is capped at 64 items and a 32 KiB **final tool envelope**; it reports the omitted
+count in `truncated`.
 
 The only model-visible capacity is the final prompt byte budget. Active item counts are not capped separately;
 `maxItems`, `maxPendingItems`, `maxOps`, and `maxRecordBytes` remain storage/batch bounds. An over-limit edit
@@ -493,8 +502,9 @@ is rejected as a whole.
 
 **Choosing defaults.** 8 KiB of charter-contribution context is roughly 2k tokens; the objective can be 4 KiB and an item 1 KiB. These are deliberately larger than the original MVP values while still bounded. They are defaults, not universal optima: profiles can raise them when a team's charter is longer, at the cost of extra prompt bytes per request.
 
-**Budget changes and degradation.** Structural validation is independent of admission policy. Lowering a limit
-after records exist marks the view `overBudget` instead of corrupt: the charter is not injected, the UI explains
+**Budget changes and degradation.** Structural validation is independent of admission policy. `overBudget`
+covers byte budgets, item counts, and history/mutation count limits. Lowering a limit after records exist marks
+the view `overBudget` instead of corrupt: the charter is not injected, the UI explains
 the state, and shrinking edits (archive, purge, shorten) are admitted until the record fits again. Non-viable
 configurations are clamped to documented minimums with a warning so a profile cannot produce a ready but
 permanently uneditable Session. The view reports `maxRecordBytes` so the record ceiling is visible.
@@ -546,7 +556,7 @@ uninstall smoke; fault injection and side-by-side domain migration remain open.
 
 Current evidence:
 
-- 112 tests across 16 core, host, and client test files;
+- 121 tests across 16 core, host, and client test files;
 - Typecheck, build, and tests pass on DSH `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-rc.1`, and
   `0.2.1-rc.2`;
 - Real profile install/boot on `0.1.7-rc.2` and `0.2.0-rc.2`;
@@ -634,13 +644,13 @@ paths, URLs, and command arguments are sensitive and do not enter ordinary logs 
    Remote endpoint is a protocol follow-up. The Pane already collapses history and reduces render/tab cost,
    but the wire payload is unchanged in this round.
 
-1. Final ordering of `order:130` against every target Profile runtime context.
-2. Whether every compaction path clears all retained runtime snapshots.
-3. Whether fork initialization listeners precede the first prompt assembly on every entry point.
-4. Real sample distribution for the 8 KiB prompt and 512 KiB record budgets.
-5. Domain migration entry for incompatible upgrades.
-6. Whether a legal-grade permanent audit is needed; it would be a separate project, not a bounded history.
-7. DSH 0.1.7/0.2.0 have no per-Peer resource authorization.
+2. Final ordering of `order:130` against every target Profile runtime context.
+3. Whether every compaction path clears all retained runtime snapshots.
+4. Whether fork initialization listeners precede the first prompt assembly on every entry point.
+5. Real sample distribution for the 8 KiB prompt and 512 KiB record budgets.
+6. Domain migration entry for incompatible upgrades.
+7. Whether a legal-grade permanent audit is needed; it would be a separate project, not a bounded history.
+8. DSH 0.1.7/0.2.0 have no per-Peer resource authorization.
 
 ## 17. Decision status
 

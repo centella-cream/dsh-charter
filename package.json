@@ -1,7 +1,7 @@
 {
   "name": "dsh-charter",
   "version": "0.1.0",
-  "description": "A durable, user-owned session charter for DeepSeek Harness that survives context compaction.",
+  "description": "A durable, user-owned session charter for DeepSeek Harness, designed to survive context compaction.",
   "license": "MIT",
   "type": "module",
   "main": "./lib/index.js",
@@ -77,7 +77,8 @@
     "smoke:client": "node scripts/verify/client-smoke.mjs",
     "verify:compaction": "node scripts/verify/compaction-e2e.mjs",
     "check": "npm run typecheck && npm test",
-    "prepack": "npm run build"
+    "prepack": "npm run build",
+    "smoke:package": "node scripts/verify/package-smoke.mjs"
   },
   "dsh": {
     "bundle": {
@@ -125,7 +126,6 @@
     "@deepseek-ai/dsh-system-prompt": ">=0.1.7-rc.2 <0.2.0-0 || >=0.2.0-rc.1 <0.3.0-0 || >=0.2.1-rc.1 <0.3.0-0",
     "@deepseek-ai/dsh-tools": ">=0.1.7-rc.2 <0.2.0-0 || >=0.2.0-rc.1 <0.3.0-0 || >=0.2.1-rc.1 <0.3.0-0",
     "@deepseek-ai/dsh-typert-protocol": ">=0.1.7-rc.2 <0.2.0-0 || >=0.2.0-rc.1 <0.3.0-0 || >=0.2.1-rc.1 <0.3.0-0",
-    "@deepseek-ai/schemastery": "^3.18.2",
     "react": "^18.2.0"
   },
   "devDependencies": {

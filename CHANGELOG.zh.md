@@ -39,7 +39,7 @@
 - 新浏览器 client 可以兼容仍在运行旧 Host 的 view snapshot（旧 Host 仍带 active 条数字段），避免 host/client
   revision 不一致时「会话契约」白屏；新的 pending 导入语义仍需要完整重启 Host 才生效。
 - 已针对 DSH `0.2.1-rc.2` 验证，无需代码改动；现有 peer range 和兼容层已覆盖该 release candidate。
-- 112 个测试，覆盖内核、Host 组合、fork、幂等、配额、prompt 边界、Remote stream、历史抽取、客户端 tab
+- 121 个测试，覆盖内核、Host 组合、fork、幂等、配额、prompt 边界、Remote stream、历史抽取、客户端 tab
   排序和装饰器兼容。已在 DSH `0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-rc.1`、`0.2.1-rc.2` 上验证。
   真实 Web UI 在 `0.2.0-rc.2` 上验证了标签顺序、中英文切换、目标/约束编辑、预览、Apply 和刷新持久化。
 
@@ -84,6 +84,20 @@
 - `charter_read` 的 standing 返回完整工作集；只有 `all` 调试视图分页。
 - Remote wire schema 接受 `maxPendingItems: 0`，与可关闭 proposal 的 Host 配置一致。
 - 文档将 `item.propose` 定位为普通客户端编辑操作（模型不可见），不再称其为 host-internal 操作。
+- 存储记录在每次运行期读取和写入路径（`recordFor`、只读 view、parent/fork 读取、`table.update` transform）都
+  重新做严格 schema 校验，而不再只在启动时校验一次；运行期变成不合法的记录只禁用该 Session，且绝不被覆盖。
+- Remote 装饰失败改为 fail closed：只有文档化的 “不支持装饰器选项” 错误才走 legacy 无 resources 路径；现代
+  factory 的任意其他异常直接抛出，避免被误判为旧版而让缺 principal 的调用回退到 owner。
+- 客户端草稿绑定 Session lifecycle 指纹，并对已释放草稿做有界 LRU；同一 Session id 被新 lifecycle 复用时
+  不会继承旧草稿，长时间浏览也不会无界增长内存。
+- 客户端复用 Host 的文本规范化规则：编辑器与历史候选会在编辑阶段拒绝控制字符和孤立 surrogate，并给出本地化
+  反馈，而不是等到 Apply 才报通用错误。
+- active UI 计数和列表只包含 accepted + current；pending proposal 仍在各自 section 可见；连接重试时显示非阻塞
+  提示，说明暂时只读并展示最近一次确认状态。
+- `charter_read all` 返回完整的有界调试投影（origin/order/createdRevision/替代链/验证来源），最终 tool
+  envelope 限制在 32 KiB；over-budget 状态纳入 history/mutation 数量上限。
+- CI 增加打包产物 smoke（tarball 可安装、exports 可解析、client bundle 可加载）；移除多余的
+  `@deepseek-ai/schemastery` peer 声明；明确预发布与 compaction 验收口径。
 - 存储记录校验按 Session 隔离：domain 边界保留原始文档，service 逐条解析；单条损坏或前向不兼容的记录只让该
   Session 不可用，其他 Session 仍可读写，原始文档保留用于诊断。
 - 结构校验与配额准入分离：事后收紧预算时契约显示为 `overBudget` 而不是损坏，停止注入，并允许缩小的编辑逐步

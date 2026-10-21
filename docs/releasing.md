@@ -16,10 +16,13 @@ This checklist keeps a GitHub/npm release reproducible and avoids shipping stale
 ```bash
 npm ci
 npm run check
+npm run smoke:package
 npm pack
 ```
 
-`npm run check` must pass typecheck, build, Remote smoke, client smoke, and the full Vitest suite.
+`npm run check` must pass typecheck, build, Remote smoke, client smoke, and the full Vitest suite;
+`npm run smoke:package` additionally packs the tarball and verifies its required files, every `exports` target,
+the packed Host import, and the packed client bundle. CI runs both.
 
 Install the packed tarball into a fresh profile and verify:
 
@@ -37,6 +40,9 @@ Open the printed URL, start a Session, and check the Charter tab and English/Chi
 Real-model compaction acceptance is manual: apply a charter, run `/compact`, send one message, then run
 `npm run verify:compaction -- --session <id> --home <DSH_HOME>` and record the `PASS` evidence in the
 verification record (section 8). This check needs a model and is never part of `npm run check`.
+
+Do not label the build a release candidate for the compaction-resilience claim until that `PASS` evidence is
+recorded; light, dark, bilingual, and narrow-layout screenshots are now part of the verification record.
 
 ## 3. Publish
 

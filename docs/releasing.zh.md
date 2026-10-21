@@ -16,10 +16,13 @@
 ```bash
 npm ci
 npm run check
+npm run smoke:package
 npm pack
 ```
 
-`npm run check` 必须通过 typecheck、build、Remote smoke、client smoke 和完整 Vitest。
+`npm run check` 必须通过 typecheck、build、Remote smoke、client smoke 和完整 Vitest；
+`npm run smoke:package` 另外会打包 tarball 并校验必需文件、所有 `exports` 目标、packed Host import 和 packed
+client bundle。CI 同时运行两者。
 
 用一个全新 profile 安装 tarball 并验证：
 
@@ -37,6 +40,9 @@ DSH_HOME=/tmp/dsh-charter-release-home \
 真实模型 compaction 验收是手工步骤：应用会话契约、执行 `/compact`、发送一条消息，然后运行
 `npm run verify:compaction -- --session <id> --home <DSH_HOME>`，并把 `PASS` 证据记录到验证记录第 8 节。
 这项检查需要模型，永远不属于 `npm run check`。
+
+在该 `PASS` 证据记录之前，不要把构建标记为 compaction 能力的正式 release candidate；浅色、暗色、中英文和
+窄屏截图已纳入验证记录。
 
 ## 3. 发布
 

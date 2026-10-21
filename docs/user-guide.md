@@ -204,7 +204,6 @@ Defaults live in `cordis.patch.yml`. Override the same keys in the profile's `co
 | `maxPendingItems` | 512 | pending-items limit; `0` disables new proposals |
 | `maxRecordBytes` | 1048576 | one Session record including bounded history/receipts; shown in the pane |
 | `maxOps` | 1024 | operations per Apply |
-| `maxRecordBytes` | 1048576 | one Session record |
 | `historyLimit` | 64 | recent history receipts |
 | `maxHistoryBytes` | 131072 | recent history bytes |
 | `mutationLimit` | 128 | recent mutation receipts |
