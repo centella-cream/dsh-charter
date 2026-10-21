@@ -34,6 +34,16 @@ type ModernRemoteFactory = (options: CompatRemoteOptions) => CompatMethodDecorat
 type LegacyStreamFactory = (options: { readonly mode: 'stream' }) => CompatMethodDecorator
 
 /**
+ * Only the documented "unknown decorator options" rejection may select the
+ * legacy path. Any other exception is a real failure: swallowing it would mark
+ * the runtime as having no Peer principals and re-open the owner fallback.
+ */
+function isUnsupportedRemoteOptions(error: unknown): boolean {
+  return error instanceof TypeError
+    && /Remote options must (?:contain|be) exactly .*mode/u.test(error.message)
+}
+
+/**
  * What the loaded DSH generation can enforce through the Remote layer.
  *
  * `resourceScopes` is the runtime signal for "DSH 0.2.1 or later": that is the
@@ -65,7 +75,8 @@ export function createRemoteMethodFactory(
         const decorator = modern(options)
         if (options.resources !== undefined) capabilities.resourceScopes = true
         return decorator
-      } catch {
+      } catch (error) {
+        if (!isUnsupportedRemoteOptions(error)) throw error
         // DSH 0.1.7/0.2.0 reject unknown decorator options. Fall through.
         if (options.resources !== undefined) capabilities.resourceScopes = false
       }

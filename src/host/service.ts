@@ -50,6 +50,7 @@ import {
 import { defineCharterReadTool } from './tool.js'
 import type {
   CharterEditResult,
+  CharterToolItem,
   CharterListener,
   CharterToolView,
   CharterBootstrapResult,
@@ -79,6 +80,14 @@ export const Config: Schema<CharterConfig> = Schema.object({
   mutationLimit: Schema.number().step(1).min(1).default(DEFAULT_CHARTER_CONFIG.mutationLimit),
   contextOrder: Schema.number().default(DEFAULT_CHARTER_CONFIG.contextOrder),
 })
+
+function lifecycleFingerprint(identity: CharterIdentity): string {
+  return JSON.stringify({
+    createdAt: identity.createdAt,
+    cwd: identity.cwd ?? null,
+    parentSession: identity.parentSession ?? null,
+  })
+}
 
 function identityOf(session: Session): CharterIdentity {
   return {
@@ -369,7 +378,9 @@ export class CharterService extends Service {
         await this.ensureSession(parentSession, 'startup', signal, ancestors)
       }
     }
-    const existing = table.get(session.id)
+    const storedExisting = table.get(session.id)
+    const existing = storedExisting === undefined ? undefined : this.parseStoredRecord(session.id, storedExisting)
+    if (storedExisting !== undefined && existing === undefined) return
     if (existing !== undefined) {
       if (!sameIdentity(existing, session)) {
         throw charterError('LIFECYCLE_MISMATCH', `stored charter for ${session.id} belongs to another Session lifecycle`)
@@ -382,7 +393,10 @@ export class CharterService extends Service {
 
     let record: CharterRecord
     if (session.header.parentSession !== undefined) {
-      const parent = table.get(session.header.parentSession)
+      const storedParent = table.get(session.header.parentSession)
+      const parent = storedParent === undefined
+        ? undefined
+        : this.parseStoredRecord(SessionId(session.header.parentSession), storedParent)
       if (parent === undefined) {
         this.waitingForParent.set(session.id, SessionId(session.header.parentSession))
         throw charterError('NOT_FOUND', `parent charter ${session.header.parentSession} is unavailable`)
@@ -418,9 +432,24 @@ export class CharterService extends Service {
     return this.sessionsTable
   }
 
+  /** Parse a stored document at the client-integrity boundary. */
+  private parseStoredRecord(sessionId: SessionIdType, stored: unknown): CharterRecord | undefined {
+    const parsed = charterRecordSchema.safeParse(stored)
+    if (!parsed.success) {
+      this.invalidRecords.add(sessionId)
+      const message = `Stored charter cannot be read by this version: ${parsed.error.message}`
+      this.unavailable.set(sessionId, message)
+      this.ctx.logger.error(`charter: ${sessionId}: ${message}`)
+      return undefined
+    }
+    return parsed.data
+  }
+
   private recordFor(session: Session): CharterRecord | undefined {
     if (this.invalidRecords.has(session.id)) return undefined
-    const record = this.sessionsTable?.get(session.id)
+    const stored = this.sessionsTable?.get(session.id)
+    if (stored === undefined) return undefined
+    const record = this.parseStoredRecord(session.id, stored)
     if (record === undefined) return undefined
     if (!sameIdentity(record, session)) {
       this.unavailable.set(
@@ -529,8 +558,9 @@ export class CharterService extends Service {
       }
     }
 
-    const record = this.sessionsTable?.get(sessionId)
-    if (record === undefined) {
+    const stored = this.sessionsTable?.get(sessionId)
+    const record = stored === undefined ? undefined : this.parseStoredRecord(sessionId, stored)
+    if (stored === undefined) {
       return {
         status: 'unavailable',
         sessionId,
@@ -546,6 +576,12 @@ export class CharterService extends Service {
       }
     }
 
+    if (record === undefined) {
+      return this.unavailableView(
+        sessionId,
+        this.unavailable.get(sessionId) ?? 'Stored charter cannot be read by this version',
+      )
+    }
     try {
       assertRecordConsistency(record, this.config)
     } catch (error) {
@@ -573,16 +609,23 @@ export class CharterService extends Service {
       promptDigest: record.current.promptDigest,
       limits: this.viewLimits(),
       overBudget: isRecordOverBudget(record, this.config),
+      lifecycle: lifecycleFingerprint(record.identity),
       message: 'This Session is not live in the current Host process; '
         + 'showing the stored charter read-only. Open or start the Session here to edit it.',
     }
   }
 
-  private unavailableView(sessionId: SessionIdType, message: string, revision = 0): CharterView {
+  private unavailableView(
+    sessionId: SessionIdType,
+    message: string,
+    revision = 0,
+    lifecycle?: string,
+  ): CharterView {
     return {
       status: 'unavailable',
       sessionId,
       revision,
+      ...(lifecycle === undefined ? {} : { lifecycle }),
       objective: null,
       items: [],
       promptText: '',
@@ -595,24 +638,27 @@ export class CharterService extends Service {
 
   view(session: Session): CharterView {
     if (this.globalFailure !== undefined) {
-      return this.unavailableView(session.id, this.globalFailure)
+      return this.unavailableView(session.id, this.globalFailure, 0, lifecycleFingerprint(identityOf(session)))
     }
     if (this.invalidRecords.has(session.id)) {
       return this.unavailableView(
         session.id,
         this.unavailable.get(session.id) ?? 'Stored charter cannot be read by this version',
+        0,
+        lifecycleFingerprint(identityOf(session)),
       )
     }
     const record = this.recordFor(session)
     const recordFailure = this.unavailable.get(session.id)
     if (recordFailure !== undefined) {
-      return this.unavailableView(session.id, recordFailure)
+      return this.unavailableView(session.id, recordFailure, 0, lifecycleFingerprint(identityOf(session)))
     }
     if (record === undefined) {
       return {
         status: 'initializing',
         sessionId: session.id,
         revision: 0,
+        lifecycle: lifecycleFingerprint(identityOf(session)),
         objective: null,
         items: [],
         promptText: '',
@@ -631,6 +677,7 @@ export class CharterService extends Service {
       promptDigest: record.current.promptDigest,
       limits: this.viewLimits(),
       overBudget: isRecordOverBudget(record, this.config),
+      lifecycle: lifecycleFingerprint(identityOf(session)),
     }
   }
 
@@ -649,48 +696,66 @@ export class CharterService extends Service {
     const relevant = mode === 'standing'
       ? record.current.items.filter(isStandingItem)
       : record.current.items
-    // `standing` is the model's working set and must be complete: its size is
-    // already bounded by the record quotas and the prompt budget. Only the
-    // debugging `all` view is paged.
-    let selected: readonly typeof relevant[number][]
+    const objective = record.current.objective?.current.text ?? null
     if (mode === 'standing') {
-      selected = relevant
-    } else {
-      const maxItems = 64
-      const maxBytes = 32 * 1_024
-      const page: typeof relevant[number][] = []
-      let bytes = 0
-      for (const item of relevant) {
-        const itemBytes = Buffer.byteLength(JSON.stringify(item), 'utf8')
-        if (page.length >= maxItems || bytes + itemBytes > maxBytes) break
-        page.push(item)
-        bytes += itemBytes
+      // `standing` is the model's working set: metadata that does not help the
+      // model (ids, review, lifecycle are constant for standing rows) only
+      // inflates the tool result.
+      return {
+        revision: record.current.revision,
+        objective,
+        items: relevant.map(item => ({
+          kind: item.kind,
+          text: item.text,
+          verification: item.verification.state,
+          progress: item.kind === 'deliverable' ? item.progress : null,
+        })),
+        truncated: 0,
       }
-      selected = page
+    }
+
+    // `all` is the bounded debugging projection. The cap applies to the final
+    // tool envelope (revision/objective/items/truncated), not only item JSON.
+    const maxItems = 64
+    const maxEnvelopeBytes = 32 * 1_024
+    const toToolItem = (item: typeof relevant[number]): CharterToolItem => ({
+      id: item.id,
+      kind: item.kind,
+      text: item.text,
+      review: item.review,
+      lifecycle: item.lifecycle,
+      verification: item.verification.state,
+      ...(item.verification.state === 'verified' ? { verificationBy: item.verification.by } : {}),
+      ...(item.verification.state === 'failed' || item.verification.state === 'unavailable'
+        ? { verificationReason: item.verification.reason }
+        : {}),
+      progress: item.kind === 'deliverable' ? item.progress : null,
+      origin: item.origin,
+      order: item.order,
+      createdRevision: item.createdRevision,
+      ...(item.supersedes === undefined ? {} : { supersedes: item.supersedes }),
+      ...(item.supersededBy === undefined ? {} : { supersededBy: item.supersededBy }),
+    })
+    const envelopeBytes = (items: readonly CharterToolItem[]): number => Buffer.byteLength(
+      JSON.stringify({
+        revision: record.current.revision,
+        objective,
+        items,
+        truncated: relevant.length - items.length,
+      }),
+      'utf8',
+    )
+    const page: CharterToolItem[] = []
+    for (const item of relevant) {
+      const candidate = [...page, toToolItem(item)]
+      if (candidate.length > maxItems || envelopeBytes(candidate) > maxEnvelopeBytes) break
+      page.push(candidate.at(-1)!)
     }
     return {
       revision: record.current.revision,
-      objective: record.current.objective?.current.text ?? null,
-      // `standing` is the working set: metadata that does not help the model
-      // (ids, review, lifecycle are constant for standing rows) only inflates
-      // the tool result. `all` keeps the full debugging projection.
-      items: selected.map(item => (mode === 'standing'
-        ? {
-            kind: item.kind,
-            text: item.text,
-            verification: item.verification.state,
-            progress: item.kind === 'deliverable' ? item.progress : null,
-          }
-        : {
-            id: item.id,
-            kind: item.kind,
-            text: item.text,
-            review: item.review,
-            lifecycle: item.lifecycle,
-            verification: item.verification.state,
-            progress: item.kind === 'deliverable' ? item.progress : null,
-          })),
-      truncated: relevant.length - selected.length,
+      objective,
+      items: page,
+      truncated: relevant.length - page.length,
     }
   }
 
@@ -752,7 +817,11 @@ export class CharterService extends Service {
       const ids = Object.fromEntries(clientRefsOf(request.ops).map(ref => [ref, itemId()]))
       const requestDigest = requestDigestOf(request, current.identity, actor)
       try {
-        const next = await table.update(session.id, record => {
+        const next = await table.update(session.id, stored => {
+          const record = this.parseStoredRecord(session.id, stored)
+          if (record === undefined) {
+            throw charterError('UNAVAILABLE', 'Stored charter cannot be read by this version')
+          }
           if (!sameIdentity(record, session)) {
             throw charterError('LIFECYCLE_MISMATCH', 'Stored charter belongs to another Session lifecycle')
           }

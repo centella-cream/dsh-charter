@@ -255,6 +255,8 @@ export function isRecordOverBudget(record: CharterRecord, limits: CharterLimits)
   return snapshotOverBudget(record.current, limits)
     || jsonBytes(record) > limits.maxRecordBytes
     || jsonBytes(record.history) > limits.maxHistoryBytes
+    || record.history.length > limits.historyLimit
+    || record.recentMutations.length > limits.mutationLimit
 }
 
 function trimHistory(
