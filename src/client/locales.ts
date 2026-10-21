@@ -170,6 +170,7 @@ const en = {
   'error.CORRUPT_STATE': 'The stored charter is inconsistent.',
   'error.UNAVAILABLE': 'Charter is unavailable.',
   'error.connection': 'Charter connection is unavailable.',
+  'error.draftScope': 'The staged draft belonged to another Session and was discarded.',
   'error.unexpected': 'The edit failed unexpectedly.',
 } as const
 
@@ -341,6 +342,7 @@ const zh: Record<CharterLocaleKey, string> = {
   'error.CORRUPT_STATE': '已保存的会话契约数据不一致。',
   'error.UNAVAILABLE': '会话契约暂不可用。',
   'error.connection': '会话契约连接不可用。',
+  'error.draftScope': '暂存草稿属于另一个 Session，已丢弃。',
   'error.unexpected': '编辑发生意外错误。',
 }
 

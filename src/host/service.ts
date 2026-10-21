@@ -599,20 +599,27 @@ export class CharterService extends Service {
     if (record === undefined) {
       throw charterError('UNAVAILABLE', this.globalFailure ?? this.unavailable.get(session.id) ?? 'Charter is not initialized')
     }
-    const all = mode === 'standing'
+    const relevant = mode === 'standing'
       ? record.current.items.filter(isStandingItem)
       : record.current.items
-    // `all` is a debugging view; return a bounded page so a model call cannot
-    // pull the entire historical charter into one tool result.
-    const maxItems = 64
-    const maxBytes = 32 * 1_024
-    const selected: typeof all[number][] = []
-    let bytes = 0
-    for (const item of all) {
-      const itemBytes = Buffer.byteLength(JSON.stringify(item), 'utf8')
-      if (selected.length >= maxItems || bytes + itemBytes > maxBytes) break
-      selected.push(item)
-      bytes += itemBytes
+    // `standing` is the model's working set and must be complete: its size is
+    // already bounded by the record quotas and the prompt budget. Only the
+    // debugging `all` view is paged.
+    let selected: readonly typeof relevant[number][]
+    if (mode === 'standing') {
+      selected = relevant
+    } else {
+      const maxItems = 64
+      const maxBytes = 32 * 1_024
+      const page: typeof relevant[number][] = []
+      let bytes = 0
+      for (const item of relevant) {
+        const itemBytes = Buffer.byteLength(JSON.stringify(item), 'utf8')
+        if (page.length >= maxItems || bytes + itemBytes > maxBytes) break
+        page.push(item)
+        bytes += itemBytes
+      }
+      selected = page
     }
     return {
       revision: record.current.revision,
@@ -626,7 +633,7 @@ export class CharterService extends Service {
         verification: item.verification.state,
         progress: item.kind === 'deliverable' ? item.progress : null,
       })),
-      truncated: all.length - selected.length,
+      truncated: relevant.length - selected.length,
     }
   }
 

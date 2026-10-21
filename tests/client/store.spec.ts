@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { describe, expect, it, vi } from 'vitest'
 import { SessionId } from '@deepseek-ai/dsh-session'
 
@@ -37,7 +38,9 @@ function view(revision: number, promptText = '', sessionId = 'session-1'): Chart
     objective: null,
     items: [],
     promptText,
-    promptDigest: promptText === '' ? '' : `sha256:${'0'.repeat(64)}`,
+    promptDigest: promptText === ''
+      ? ''
+      : `sha256:${createHash('sha256').update(promptText).digest('hex')}`,
     limits: {
       maxPromptBytes: 8_192,
       maxObjectiveBytes: 4_096,
@@ -147,6 +150,32 @@ describe('client charter source', () => {
     stale.release()
     expect(current.source.getSnapshot().status).toBe('connecting')
     current.release()
+    await controller.dispose()
+  })
+
+  it('does not let an opening snapshot roll back an accepted revision', async () => {
+    const controller = new CharterClientController(streamContext())
+    const lease = controller.acquire(SessionId('session-1'))
+    // An edit response is accepted before the older stream generation delivers
+    // its opening snapshot.
+    lease.source.accept(view(2, 'accepted'))
+    lease.source.attach({} as never)
+    await tick()
+    const stream = mockClass.instances.at(-1)
+    if (stream === undefined) throw new Error('no stream was created')
+
+    stream.options.replace({ value: view(1, 'opening snapshot') })
+    expect(lease.source.getSnapshot().view).toMatchObject({ revision: 2, promptText: 'accepted' })
+
+    // Equal revisions keep the newer authoritative snapshot.
+    stream.options.replace({ value: view(2, 'authoritative') })
+    expect(lease.source.getSnapshot().view).toMatchObject({ revision: 2, promptText: 'authoritative' })
+
+    stream.options.replace({ value: view(3, 'next generation') })
+    expect(lease.source.getSnapshot().view).toMatchObject({ revision: 3 })
+
+    stream.resolveDispose()
+    lease.release()
     await controller.dispose()
   })
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { charterRemoteContribution } from '../../src/remote/contribution.js'
 import { charterEditRequestSchema, charterItemSchema } from '../../src/core/schemas.js'
-import { charterBootstrapResultSchema, charterFrameSchema } from '../../src/remote/wire.js'
+import { charterBootstrapResultSchema, charterFrameSchema, charterViewSchema } from '../../src/remote/wire.js'
 
 describe('charter Remote contract', () => {
   it('uses rc.2 create-based strict codecs and validates wire payloads', () => {
@@ -78,6 +78,48 @@ describe('charter Remote contract', () => {
       expect(parsed.data.value.limits.maxItems).toBe(512)
       expect(parsed.data.value.limits.maxPendingItems).toBe(512)
     }
+  })
+
+  it('accepts a Host view with proposals disabled', () => {
+    const parsed = charterFrameSchema.safeParse({
+      type: 'snapshot',
+      value: {
+        status: 'ready',
+        sessionId: 's1',
+        revision: 1,
+        objective: null,
+        items: [],
+        promptText: '',
+        promptDigest: '',
+        limits: {
+          maxPromptBytes: 8_192,
+          maxObjectiveBytes: 4_096,
+          maxItemBytes: 1_024,
+          maxItems: 512,
+          maxPendingItems: 0,
+          maxOps: 1024,
+        },
+      },
+    })
+    expect(parsed.success).toBe(true)
+    if (parsed.success) expect(parsed.data.value.limits.maxPendingItems).toBe(0)
+    expect(charterViewSchema.safeParse({
+      status: 'ready',
+      sessionId: 's1',
+      revision: 0,
+      objective: null,
+      items: [],
+      promptText: '',
+      promptDigest: '',
+      limits: {
+        maxPromptBytes: 8_192,
+        maxObjectiveBytes: 4_096,
+        maxItemBytes: 1_024,
+        maxItems: 512,
+        maxPendingItems: -1,
+        maxOps: 1024,
+      },
+    }).success).toBe(false)
   })
 
   it('keeps frame schema strict and discriminated', () => {

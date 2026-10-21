@@ -19,6 +19,7 @@ import type { CharterSource } from './store.js'
 import { CHARTER_LOCALE_NS, type CharterLocaleKey } from './locales.js'
 import { displayItems, previewPrompt } from './preview.js'
 import { buildBootstrapPlan, classifyBootstrapOutcome, type BootstrapDraftItem } from './bootstrap-plan.js'
+import { draftRequestFor } from './draft.js'
 import './charter.css'
 
 type CharterText = TranslateNS<typeof CHARTER_LOCALE_NS>
@@ -386,19 +387,37 @@ export function CharterPane({ sessionId, source, release, t }: CharterPaneProps)
   const bootstrapRequested = useRef(false)
   const bootstrapGeneration = useRef(0)
   const stagedOps = useRef(0)
+  const draftSession = useRef<SessionId | null>(null)
+  const sessionGeneration = useRef(0)
 
   useEffect(() => {
     stagedOps.current = ops.length
   }, [ops.length])
 
   useEffect(() => {
+    // One view binding can be reused for another Session. Every draft belongs
+    // to the Session that produced it, so a switch must drop all of it before
+    // the new Session's view is shown or applied.
+    sessionGeneration.current += 1
+    draftSession.current = null
     bootstrapGeneration.current += 1
     bootstrapRequested.current = false
+    setOps([])
+    setBaseRevision(null)
+    setEditor(null)
+    setEditorText('')
+    setEditorReason('')
+    setEditorNeedsReason(false)
+    setNewInvariant('')
+    setNewDeliverable('')
+    setMessage(null)
+    setSaving(false)
     setBootstrap(null)
     setBootstrapState('idle')
     setBootstrapObjective('')
     setBootstrapItems([])
     setBootstrapError(null)
+    setBootstrapSaving(false)
     setSection('overview')
   }, [sessionId])
 
@@ -514,6 +533,7 @@ export function CharterPane({ sessionId, source, release, t }: CharterPaneProps)
 
   const queue = (op: CharterOp): void => {
     if (view === null || view.status !== 'ready' || saving) return
+    draftSession.current = sessionId
     setBaseRevision(current => current ?? view.revision)
     setOps(current => current.some(existing => JSON.stringify(existing) === JSON.stringify(op))
       ? current
@@ -598,13 +618,24 @@ export function CharterPane({ sessionId, source, release, t }: CharterPaneProps)
   }
 
   const applyDraft = async (): Promise<void> => {
-    if (view === null || ops.length === 0 || baseRevision === null) return
+    const request = draftRequestFor(sessionId, draftSession.current, baseRevision, ops, mutationId())
+    if (request === undefined) {
+      // A defensive path: the reset effect already clears the draft on switch.
+      if (ops.length > 0 || baseRevision !== null) {
+        discard()
+        setMessage(t('error.draftScope'))
+      }
+      return
+    }
+    const generation = sessionGeneration.current
     setSaving(true)
     setMessage(null)
     try {
-      const result = await source.edit({ sessionId, mutationId: mutationId(), baseRevision, ops })
+      const result = await source.edit(request)
+      if (generation !== sessionGeneration.current) return
       if (result.view !== undefined) source.accept(result.view)
       if (result.ok) {
+        draftSession.current = null
         setOps([])
         setBaseRevision(null)
         setMessage(result.replayed
@@ -615,9 +646,9 @@ export function CharterPane({ sessionId, source, release, t }: CharterPaneProps)
       }
     } catch (error) {
       console.error('charter: edit request failed', error)
-      setMessage(t('error.connection'))
+      if (generation === sessionGeneration.current) setMessage(t('error.connection'))
     } finally {
-      setSaving(false)
+      if (generation === sessionGeneration.current) setSaving(false)
     }
   }
 
@@ -638,6 +669,7 @@ export function CharterPane({ sessionId, source, release, t }: CharterPaneProps)
     const plan = buildBootstrapPlan(view, bootstrapObjective, bootstrapItems)
     if (plan.ops.length === 0) return
 
+    const generation = sessionGeneration.current
     setBootstrapSaving(true)
     setBootstrapError(null)
     try {
@@ -647,6 +679,7 @@ export function CharterPane({ sessionId, source, release, t }: CharterPaneProps)
         baseRevision: view.revision,
         ops: plan.ops,
       })
+      if (generation !== sessionGeneration.current) return
       if (result.view !== undefined) source.accept(result.view)
       if (result.ok) {
         setBootstrap(null)
@@ -667,9 +700,9 @@ export function CharterPane({ sessionId, source, release, t }: CharterPaneProps)
       }
     } catch (error) {
       console.error('charter: bootstrap apply failed', error)
-      setBootstrapError(t('error.connection'))
+      if (generation === sessionGeneration.current) setBootstrapError(t('error.connection'))
     } finally {
-      setBootstrapSaving(false)
+      if (generation === sessionGeneration.current) setBootstrapSaving(false)
     }
   }
 
