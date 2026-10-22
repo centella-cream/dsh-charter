@@ -122,19 +122,17 @@ Desktop 若支持本地插件导入，可在 Plugins 页面安装同一个 tarba
 安装。`dsh plugin --profile desktop` 会被拥有该 profile 的 Electron app 拒绝。源码开发流程见
 [CONTRIBUTING.zh.md](CONTRIBUTING.zh.md)；不要把 `git clone` 当作普通用户的安装方式。
 
-### 首次公开发布之后
+### 首次公开发布预发布版之后
 
-#### Web profile — 按版本安装
-
-```bash
-dsh plugin --profile web add dsh-charter@0.1.0-rc.1
-```
-
-推荐固定明确版本，保证 profile 可复现。需要主动使用最新发布时：
+#### Web profile — 按版本或预发布 tag 安装
 
 ```bash
-dsh plugin --profile web add dsh-charter@latest
+dsh plugin --profile web add dsh-charter@0.1.0-rc.1   # 精确版本：可复现
+dsh plugin --profile web add dsh-charter@next         # 最新预发布
 ```
+
+推荐固定明确版本，保证 profile 可复现。`0.1.0-rc.1` 发布在 `next` dist-tag 下，而不是 `latest`：只有在稳定版
+发布之后才使用 `@latest`，否则 npm 会解析到上一个稳定版，或在首次稳定发布前安装失败。
 
 重启 `dsh web`（或等待 profile HMR 重新组合），然后刷新页面。profile 的 `package.json` 会增加依赖和
 bundle 选择。
@@ -148,7 +146,8 @@ bundle。否则使用上面的本地 tarball 路径。
 ### 更新
 
 - **本地 tarball**：重新构建并重复本地安装命令；
-- **发布后的 Web**：`dsh plugin --profile web add dsh-charter@latest`，然后重启/刷新；
+- **发布后的 Web 预发布版**：`dsh plugin --profile web add dsh-charter@next`，然后重启/刷新；固定版本的
+  profile 在稳定 `latest` 出现前继续使用显式的 `0.1.0-rc.1`；
 - **发布后的 Desktop**：Plugins → `dsh-charter` → **Update**，Desktop 会热更新。
 
 ## 快速开始
@@ -263,7 +262,7 @@ npm run verify:compaction # 手工真实模型 compaction 校验（不在 check 
 ```
 
 测试覆盖纯内核、真实 Host 组合、storage domain、Remote framing、历史抽取、客户端状态和 factory bundle
-注册。当前矩阵：**DSH `0.1.7-rc.2`、`0.2.0-rc.1`/`rc.2`、`0.2.1-rc.1`/`rc.2` × 153 个测试全部通过**。命令与证据见[验证记录](docs/verification.zh.md)。
+注册。当前矩阵：**DSH `0.1.7-rc.2`、`0.2.0-rc.1`/`rc.2`、`0.2.1-rc.1`/`rc.2` × 157 个测试全部通过**。命令与证据见[验证记录](docs/verification.zh.md)。
 
 ## 致谢
 
@@ -296,10 +295,11 @@ npm run verify:compaction # 手工真实模型 compaction 校验（不在 check 
 
 ## 状态
 
-Pre-1.0。DSH 插件 ABI 仍在演进；项目对上述版本做兼容验证，并刻意保持兼容层很小。当前是**预发布候选，
-不是 compaction 能力的正式 release candidate**：完整 compaction 端到端仍需真实模型会话，`npm run verify:compaction`
-是手工验收，只有在验证记录中写入 `PASS` 证据后该能力才可视为发布验证通过；解析器、Host、Remote 和客户端
-机制已有自动化测试覆盖，CI 现在会打包并 smoke 测试可安装产物。
+Pre-1.0。DSH 插件 ABI 仍在演进；项目对上述版本做兼容验证，并刻意保持兼容层很小。当前树是 `0.1.0-rc.1`
+预发布：真实模型 compaction 验收 **PASS 已于 2026-10-22 记录**（session `session-45c509c6…`；326 条消息 /
+约 228k tokens 被压缩，revision 1 契约携带匹配 digest 存活——见验证记录第 8.4 节）。剩余发布阻塞是发布前置项
+（公开仓库与 dist-tag），不再是 compaction 证据。解析器、Host、Remote 和客户端机制已有自动化测试覆盖；CI
+会打包并 smoke 测试可安装产物。
 
 ## 许可证
 

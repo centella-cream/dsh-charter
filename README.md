@@ -133,20 +133,18 @@ app that owns that profile.
 Source-level development is described in [CONTRIBUTING.md](CONTRIBUTING.md); do not use `git clone` as the
 normal installation method.
 
-### After the first public release
+### After the first public pre-release
 
-#### Web profile — install by version
-
-```bash
-dsh plugin --profile web add dsh-charter@0.1.0-rc.1
-```
-
-Pin an explicit version for reproducible profiles. Use `@latest` when you intentionally want the newest
-release:
+#### Web profile — install by version or pre-release tag
 
 ```bash
-dsh plugin --profile web add dsh-charter@latest
+dsh plugin --profile web add dsh-charter@0.1.0-rc.1   # exact version: reproducible
+dsh plugin --profile web add dsh-charter@next         # newest pre-release
 ```
+
+Pin an explicit version for reproducible profiles. `0.1.0-rc.1` is published under the `next` dist-tag, never
+under `latest`: use `@latest` only after a stable release exists, otherwise npm resolves it to the last stable
+version or fails before the first stable publication.
 
 Restart `dsh web` (or let profile HMR recompose), then refresh the page. The profile `package.json` gains the
 dependency and bundle entry.
@@ -161,7 +159,8 @@ path above.
 ### Update
 
 - **Local tarball:** rebuild and repeat the local install command.
-- **Web after release:** `dsh plugin --profile web add dsh-charter@latest`, then restart/refresh.
+- **Web pre-release:** `dsh plugin --profile web add dsh-charter@next`, then restart/refresh; pinned profiles
+  keep their explicit `0.1.0-rc.1` entry until a stable `latest` exists.
 - **Desktop after release:** Plugins → `dsh-charter` → **Update**; Desktop hot-applies it.
 
 ## Quick start
@@ -284,7 +283,7 @@ npm run verify:compaction # manual real-model compaction check (not part of chec
 ```
 
 The test suite covers the pure core, real Host composition, storage-domain behavior, Remote framing,
-history extraction, client state, and factory-bundle registration. Current matrix: **153 tests on DSH `0.1.7-rc.2`, `0.2.0-rc.1`/`rc.2`, and `0.2.1-rc.1`/`rc.2`**. See the [verification record](docs/verification.md) for commands and evidence.
+history extraction, client state, and factory-bundle registration. Current matrix: **157 tests on DSH `0.1.7-rc.2`, `0.2.0-rc.1`/`rc.2`, and `0.2.1-rc.1`/`rc.2`**. See the [verification record](docs/verification.md) for commands and evidence.
 
 ## Acknowledgements
 

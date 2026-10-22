@@ -39,7 +39,7 @@
 - 新浏览器 client 可以兼容仍在运行旧 Host 的 view snapshot（旧 Host 仍带 active 条数字段），避免 host/client
   revision 不一致时「会话契约」白屏；新的 pending 导入语义仍需要完整重启 Host 才生效。
 - 已针对 DSH `0.2.1-rc.2` 验证，无需代码改动；现有 peer range 和兼容层已覆盖该 release candidate。
-- 153 个测试，覆盖内核、Host 组合、fork、幂等、配额、prompt 边界、Remote stream、历史抽取、客户端 tab
+- 157 个测试，覆盖内核、Host 组合、fork、幂等、配额、prompt 边界、Remote stream、历史抽取、客户端 tab
   排序和装饰器兼容。已在 DSH `0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-rc.1`、`0.2.1-rc.2` 上验证。
   真实 Web UI 在 `0.2.0-rc.2` 上验证了标签顺序、中英文切换、目标/约束编辑、预览、Apply 和刷新持久化。
 
@@ -59,9 +59,9 @@
   分页或显式响应 cap 是后续工作，本轮不做。
 - 活跃客户端草稿不受额外字节上限约束（受 UI 输入限制）；idle TTL/LRU 约束的是已释放草稿，而不是当前挂载的
   编辑器/bootstrap 面板持有的文本。
-- 当前树是 `0.1.0-rc.1` 预发布，必须使用 `npm publish --tag next` 发布；稳定 `latest` 需要真实模型 compaction
-  PASS。公开 GitHub 仓库尚未创建，因此 `package.json` 中的 `repository`、`homepage`、`bugs` 在仓库创建并可访问前
-  故意留空。
+- 当前树是 `0.1.0-rc.1` 预发布，必须使用 `npm publish --tag next` 发布；稳定 `latest` 还需要公开仓库链接
+  以及重启后对已安装 profile 的复核。公开 GitHub 仓库尚未创建，因此 `package.json` 中的 `repository`、
+  `homepage`、`bugs` 在仓库创建并可访问前故意留空。
 - 压缩后重新物化依赖 DSH 的 runtime-context projection 契约；真实模型端到端 PASS 已记录在验证记录 8.4
   （2026-10-22）。
 - 浏览器交互在 `0.2.0-rc.2` 上验证；0.1.7/0.2.1 仅通过 typecheck/build/tests，未逐版重复交互流程。
@@ -74,6 +74,8 @@
   条目（只有仍持有捕获 Set 时才删除）。
 - 修复 attach/stream generation 竞态：同 Remote 的重复 attach 是真正 no-op；旧 stream 的 `replace`/`update` 帧
   在触达状态或 draft lifecycle 前先检查 generation。
+- 把待生效的 Remote attach 记录为可取消状态：若上一个 stream 尚未 dispose 完成就收到 detach，则取消待生效的
+  attach generation，被取消的 attach 恢复后也绝不会迟到启动 stream；source 保持 detached 状态。
 - Apply/bootstrap 保存期间禁用并拒绝 Rebase，保留未知结果重试所需的 mutation attempt；bootstrap 抽取结果绑定
   source 实例/connection generation，重连后的旧 proposal 不会写入当前 draft。
 - 不静默清除脏 draft：idle TTL 和 LRU 容量淘汰只针对空 draft，容量淘汰同时清理时间戳；staged ops、编辑器文本和
@@ -89,6 +91,8 @@
   `dismissBootstrap` 会清除 attempt。
 - `isEmpty` 把非空 bootstrap 草案视为 dirty，Chat/Charter 切换时 lease-release 清理不再删除已审阅的历史草案。
 - 已超预算的 objective/item 允许继续分步缩短，即使仍高于上限，也能在预算收紧后逐步收敛。
+- Apply 按钮与 Host 准入使用同一条 prompt 预算规则：渲染后的 prompt 仍超限但正在缩短时允许提交；只有仍然
+  超限或变大时才保持禁用。
 - `maxObjectiveBytes` 大于 `all` envelope 时，省略 objective 并返回 `objectiveTruncated: true`，不再突破响应
   上限；`shadowedTokenCount` 在进入 Remote codec 前校验为非负整数。
 - 在证据比较前，把旧版 debug 形状的 `charter_read` tool result（未重启 Host 返回的额外

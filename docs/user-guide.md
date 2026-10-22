@@ -47,17 +47,16 @@ For Desktop, use the Plugins page if local import is available; otherwise instal
 profile's own package manager (`dsh plugin --profile desktop` is refused by the Electron app). The profile dependency
 is a local `file:` path until the package is published.
 
-### 2.3 After release — Web profile by version
+### 2.3 After release — Web profile by version or pre-release tag
 
 ```bash
-dsh plugin --profile web add dsh-charter@0.1.0-rc.1
+dsh plugin --profile web add dsh-charter@0.1.0-rc.1   # exact version: reproducible
+dsh plugin --profile web add dsh-charter@next         # newest pre-release
 ```
 
-Pin a version for reproducible profiles. To update to the newest release:
-
-```bash
-dsh plugin --profile web add dsh-charter@latest
-```
+`0.1.0-rc.1` is published under the `next` dist-tag, not `latest`: use `@latest` only after a stable release
+exists, otherwise npm resolves it to the last stable version or fails before the first stable publication. Pin an
+explicit version for reproducible profiles.
 
 Restart `dsh web`, or let profile HMR recompose, then refresh the page. The profile's `package.json` gains the
 dependency and bundle selection:

@@ -13,7 +13,7 @@
 | 验证项 | 结果 |
 | --- | --- |
 | TypeScript 严格类型检查（5 个 DSH 版本） | 通过 |
-| Vitest（5 个本地可用版本 × 153 tests） | 通过 |
+| Vitest（5 个本地可用版本 × 157 tests） | 通过 |
 | Host ESM 构建 + 浏览器单文件 bundle | 通过 |
 | Remote 装饰器/资源 smoke | 通过（0.1.7/0.2.0 按预期无资源声明） |
 | 浏览器 factory bundle 物化与 `apply` smoke | 通过 |
@@ -42,7 +42,7 @@ npm test
 
 - typecheck 通过；
 - build 通过；
-- 17 个测试文件、153 个测试全部通过；
+- 17 个测试文件、157 个测试全部通过（来自 `npm test`，即 build 后运行 `vitest run`）；
 - `remote-smoke` 断言 `watch,bootstrap,edit`、stream mode 和 Session resource；
 - `client-smoke` 断言单文件 factory bundle、外部依赖白名单、不引用 Node-only `Buffer`、`apply` 注册
   tab/pane/Remote contribution。
@@ -50,7 +50,8 @@ npm test
   把 tarball 安装到一个**空 consumer 项目**（只使用其声明依赖），再加载 packed `dsh-charter/core` 入口与
   client bundle。
 
-CI 在每次 push/PR 上运行 `npm run check` 和 `npm run smoke:package`，绿色构建现在同时代表可安装产物已验证。
+CI 在每次 push/PR 上对 Node `22.19.0` 与 Node `24` 运行 `npm run check` 和 `npm run smoke:package`，绿色构建
+现在同时代表可安装产物在最低支持版本与当前 LTS 上都已验证。
 
 关键测试文件：
 
@@ -67,10 +68,10 @@ CI 在每次 push/PR 上运行 `npm run check` 和 `npm run smoke:package`，绿
 | `tests/host/watch.spec.ts` | opening snapshot、竞态、去重、abort、装饰器兼容、resource-scope 能力检测 |
 | `tests/host/actor.spec.ts` | principal 感知策略：现代运行时缺失 principal 拒绝、仅旧版 owner 回退、非 owner 记录、按版本选择的 `resolveRemoteActor` |
 | `tests/host/remote.spec.ts` | Remote 描述符、wire schema、旧 Host view snapshot、零 pending 上限 |
-| `tests/client/store.spec.ts` | 提交后立即接受 view、忽略陈旧/重复 revision、opening snapshot 单调、权威不可用降级、attach 重试、共享 source lease/引用计数、旧 lease no-op、忽略其他 Session 的 stream 帧 |
+| `tests/client/store.spec.ts` | 提交后立即接受 view、忽略陈旧/重复 revision、opening snapshot 单调、权威不可用降级、attach 重试、待生效 attach 在 stream 启动前被取消、共享 source lease/引用计数、旧 lease no-op、忽略其他 Session 的 stream 帧 |
 | `tests/client/bootstrap-plan.spec.ts` | 溢出候选仍在一个 plan 中；单遍规划与逐候选结果（近乎全部 active 时最坏 O(n²)，已披露）；active 前缀符合字节预算；bootstrap 结果分类（draft/discard/stale/unavailable） |
 | `tests/client/draft.spec.ts` / `draft-store.spec.ts` | Session 绑定的请求构造（A 的 ops 不会为 B 构造请求）；binding 卸载/重挂载后草稿存活；重试复用 mutation id；冲突 rebase；陈旧异步结果不能覆盖新的 draft/source/lifecycle；bootstrap 不抢占 section |
-| `tests/client/preview.spec.ts` | 投影后的 draft 行（add/edit/accept/progress/supersede/purge）；渲染器一致性与 pending 排除 |
+| `tests/client/preview.spec.ts` | 投影后的 draft 行（add/edit/accept/progress/supersede/purge）；渲染器一致性与 pending 排除；prompt 预算的 Apply 准入（缩短、增长、预算内三种渲染） |
 | `tests/verify/compaction-checks.spec.ts` | compaction checker fixture：system prompt 污染、charter_read 调用但不匹配、压缩后快照丢失、摘要泄漏 warning、紧凑 standing 投影一致 |
 
 ## 3. 跨版本矩阵
@@ -97,11 +98,17 @@ npm run build
 
 | 版本 | typecheck | build | Vitest | remote smoke | client smoke |
 | --- | --- | --- | --- | --- | --- |
-| `0.1.7-rc.2` | 通过 | 通过 | 153/153 | 通过（无 resources 警告） | 通过 |
-| `0.2.0-rc.1` | 通过 | 通过 | 153/153 | 通过（无 resources 警告） | 通过 |
-| `0.2.0-rc.2` | 通过 | 通过 | 153/153 | 通过（无 resources 警告） | 通过 |
-| `0.2.1-rc.1` | 通过 | 通过 | 153/153 | 通过 | 通过 |
-| `0.2.1-rc.2` | 通过 | 通过 | 153/153 | 通过 | 通过 |
+| `0.1.7-rc.2` | 通过 | 通过 | 157/157 | 通过（无 resources 警告） | 通过 |
+| `0.2.0-rc.1` | 通过 | 通过 | 157/157 | 通过（无 resources 警告） | 通过 |
+| `0.2.0-rc.2` | 通过 | 通过 | 157/157 | 通过（无 resources 警告） | 通过 |
+| `0.2.1-rc.1` | 通过 | 通过 | 157/157 | 通过 | 通过 |
+| `0.2.1-rc.2` | 通过 | 通过 | 157/157 | 通过 | 通过 |
+
+最终 `0.1.0-rc.1` 树在 2026-10-22 重新跑过：每个版本均为 17 个测试文件 / 157 个测试，且 build 内含 remote/client
+smoke 断言。
+
+这个五版本矩阵是**本地证据**：版本目录和驱动脚本位于被 git 忽略的 `.tmp/`，公开 CI 不会复现它。CI 覆盖已提交
+的门禁（`npm run check` + `npm run smoke:package`），运行于 Node `22.19.0` 与 Node `24`。
 
 `0.1.7-rc.2` 和 `0.2.0` 的 remote smoke 输出：
 
@@ -217,7 +224,7 @@ profile 手工确认。
   `resourceScopes` 保持未设置，缺 principal 的调用不会被降级到 owner fallback。
 - **草稿 lifecycle 与内存边界**：草稿携带 Host 提供的 Session lifecycle 指纹；lifecycle 变化时清空暂存、
   编辑器和历史草案；已释放草稿按有界 LRU 回收，长时间浏览不会无界增长。
-- **共享文本校验**：Host 归一化和客户端编辑器都使用 `inspectUserText()`（` ` / 孤立 surrogate 在暂存阶段
+- **共享文本校验**：Host 归一化和客户端编辑器都使用 `inspectUserText()`（`\u0000` / 孤立 surrogate 在暂存阶段
   就被拒绝并给出本地化反馈），历史候选在 Apply 前使用同一校验。
 - **pending 与 active 分离**：active UI 计数和 Overview 卡片只包含 `accepted + current`；pending proposal
   仍以独立行可见；重连时显示非阻塞提示，说明暂时只读并展示最近一次确认状态。
@@ -260,6 +267,11 @@ profile 手工确认。
 - **Watch/stream generation 竞态**：unsubscribe 只有在仍持有捕获的 listener Set 时才删除 Map 条目（已 dispose
   的 generation 不能误删同 ID 新 watch）；同 live stream 的重复 attach 是 no-op，旧 stream 的 `replace`/`update`
   帧按 attach generation 丢弃。
+- **待生效 attach 的取消**：上一个 stream 仍在 dispose 时调用 `attach(B)`，随后在新 attach 取得 remote 之前
+  调用 `detach(B)`：待生效 generation 被取消，dispose 迟到完成也不会再创建 `B` stream，source 保持 detached
+  （测试见 `tests/client/store.spec.ts`）。
+- **Prompt 预算的 Apply 门禁**：Pane 的 Apply 与 Host 准入使用同一条分步规则：渲染后的 prompt 仍超限但严格
+  缩短时允许提交；仍超限或增长时保持禁用；单测覆盖缩短、增长和预算内三种渲染。
 - **保存锁与导出围栏**：Apply/bootstrap 保存期间 Rebase 被禁用并拒绝；bootstrap 抽取按 source 实例 +
   connection generation 围栏；脏 draft 不会被 idle TTL/LRU 删除；编辑器允许 objective/同 ID item 已超预算时的
   分步缩短。

@@ -566,7 +566,7 @@ uninstall smoke; fault injection and side-by-side domain migration remain open.
 
 Current evidence:
 
-- 153 tests across 17 core, host, client, and verification-helper test files;
+- 157 tests across 17 core, host, client, and verification-helper test files;
 - Typecheck, build, and tests pass on DSH `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-rc.1`, and
   `0.2.1-rc.2`;
 - Real profile install/boot on `0.1.7-rc.2` and `0.2.0-rc.2`;
@@ -655,7 +655,8 @@ paths, URLs, and command arguments are sensitive and do not enter ordinary logs 
    but the wire payload is unchanged in this round.
 
 2. Final ordering of `order:130` against every target Profile runtime context.
-3. Whether every compaction path clears all retained runtime snapshots.
+3. Whether every compaction path clears all retained runtime snapshots (the recorded real-model compaction E2E
+   PASS in verification §8.4 covers the main path).
 4. Whether fork initialization listeners precede the first prompt assembly on every entry point.
 5. Real sample distribution for the 8 KiB prompt and 512 KiB record budgets.
 6. Domain migration entry for incompatible upgrades.

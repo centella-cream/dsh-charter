@@ -43,17 +43,15 @@ dsh plugin --profile web add ./dsh-charter-0.1.0-rc.1.tgz
 Desktop 若支持本地插件导入，可在 Plugins 页面安装同一个 tarball；否则通过 Desktop profile 自己的包管理器
 安装（`dsh plugin --profile desktop` 会被 Electron app 拒绝）。发布前 profile 依赖是本地 `file:` 路径。
 
-### 2.3 发布后 — Web profile 按版本安装
+### 2.3 发布后 — Web profile 按版本或预发布 tag 安装
 
 ```bash
-dsh plugin --profile web add dsh-charter@0.1.0-rc.1
+dsh plugin --profile web add dsh-charter@0.1.0-rc.1   # 精确版本：可复现
+dsh plugin --profile web add dsh-charter@next         # 最新预发布
 ```
 
-固定明确版本可以让 profile 可复现。需要更新到最新发布：
-
-```bash
-dsh plugin --profile web add dsh-charter@latest
-```
+`0.1.0-rc.1` 发布在 `next` dist-tag 下，而不是 `latest`：只有在稳定版发布之后才使用 `@latest`，否则 npm 会
+解析到上一个稳定版，或在首次稳定发布前安装失败。固定明确版本可以让 profile 可复现。
 
 重启 `dsh web`，或让 HMR 重新组合 profile，然后刷新页面。profile 的 `package.json` 会增加依赖和 bundle
 选择：

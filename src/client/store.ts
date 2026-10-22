@@ -51,6 +51,8 @@ export class CharterSessionSource implements CharterSource {
   private stream: RemoteStream<CharterFrame> | undefined
   private snapshotStream: RemoteSnapshotStream<CharterSnapshotFrame, CharterChangedFrame> | undefined
   private remote: CharterRemote | undefined
+  /** Attach that has been requested but does not own the stream yet (an earlier dispose is pending). */
+  private pendingRemote: CharterRemote | undefined
   private attachGeneration = 0
   private connection = 0
   private readonly connectionListeners = new Set<() => void>()
@@ -125,9 +127,13 @@ export class CharterSessionSource implements CharterSource {
     // generation first would make that healthy stream's callbacks look stale.
     if (this.remote === remote && this.snapshotStream !== undefined) return
     const generation = ++this.attachGeneration
+    // Record the requested remote before the dispose resolves: a detach that
+    // arrives while this attach is pending must be able to cancel it.
+    this.pendingRemote = remote
     this.bumpConnection()
     void this.stop().then(() => {
       if (generation !== this.attachGeneration) return
+      this.pendingRemote = undefined
       this.remote = remote
       this.publish({ ...this.state, status: 'connecting', error: null })
       const stream = this.ctx.remote.$stream<CharterFrame>({
@@ -169,14 +175,21 @@ export class CharterSessionSource implements CharterSource {
       snapshots.start()
     }).catch(error => {
       if (generation !== this.attachGeneration) return
+      this.pendingRemote = undefined
       this.publish({ ...this.state, status: 'error', error: messageOf(error) })
     })
   }
 
   detach(remote: CharterRemote): void {
-    if (this.remote !== remote) return
+    // A detach can cancel an attach that is still waiting for the previous
+    // stream to dispose, before that attach owns `this.remote`.
+    const cancelsPending = this.pendingRemote === remote
+    if (this.remote !== remote && !cancelsPending) return
     const generation = ++this.attachGeneration
     this.bumpConnection()
+    this.pendingRemote = undefined
+    // The cancelled pending attach would have owned this remote after dispose;
+    // without it the source is detached, so no older remote may leak through.
     this.remote = undefined
     void this.stop().finally(() => {
       // A later attach owns the state after this detach.
@@ -189,6 +202,7 @@ export class CharterSessionSource implements CharterSource {
     this.attachGeneration += 1
     this.bumpConnection()
     this.remote = undefined
+    this.pendingRemote = undefined
     await this.stop()
     this.listeners.clear()
     this.connectionListeners.clear()
