@@ -26,6 +26,55 @@ export function compactStandingItem(item) {
 }
 
 /**
+ * Parse the `arguments` payload of a `tool/call` event into the requested
+ * presentation view. A missing/empty argument object means the tool default
+ * (`standing`); an explicit non-standing view such as `all` is not valid
+ * evidence for the compaction check.
+ *
+ * @param {string | object | undefined | null} rawArguments
+ * @returns {string | undefined}
+ */
+export function charterReadArgumentsView(rawArguments) {
+  if (rawArguments === undefined || rawArguments === null || rawArguments === '') return undefined
+  let parsed = rawArguments
+  if (typeof parsed === 'string') {
+    try {
+      parsed = JSON.parse(parsed)
+    } catch {
+      return 'invalid-arguments'
+    }
+  }
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return undefined
+  const view = parsed.view
+  return typeof view === 'string' ? view : undefined
+}
+
+/**
+ * Authored evidence for one charter_read result: the tool call that produced it
+ * must itself be authenticated, ordered after the compaction and the latest
+ * runtime-context snapshot, and must request the default/standing view from a
+ * non-error result.
+ *
+ * @param {{
+ *   callSeq: number | undefined,
+ *   resultSeq: number | undefined,
+ *   compactionSeq: number | undefined,
+ *   runtimeSeq: number | undefined,
+ *   argumentsView: string | undefined,
+ *   isError: boolean | undefined,
+ * }} evidence
+ */
+export function isValidCharterReadEvidence(evidence) {
+  if (!Number.isFinite(evidence.callSeq) || !Number.isFinite(evidence.resultSeq)) return false
+  if (evidence.resultSeq <= evidence.callSeq) return false
+  if (evidence.isError === true) return false
+  if (evidence.argumentsView !== undefined && evidence.argumentsView !== 'standing') return false
+  if (evidence.compactionSeq !== undefined && !(evidence.callSeq > evidence.compactionSeq)) return false
+  if (evidence.runtimeSeq !== undefined && !(evidence.callSeq > evidence.runtimeSeq)) return false
+  return true
+}
+
+/**
  * Keep only charter_read results that were recorded after the latest
  * compaction. A read from before the compaction cannot prove what the
  * post-compaction request carried, so it is not evidence for the PASS.

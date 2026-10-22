@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
+  charterReadArgumentsView,
   compactStandingItem,
   evaluateCompactionEvidence,
+  isValidCharterReadEvidence,
   postCompactionCharterReads,
 } from '../../scripts/verify/compaction-checks.mjs'
 
@@ -12,6 +14,66 @@ const pass = {
   charterReadStanding: true,
   checkpointLeaksCharter: false,
 }
+
+describe('authenticated charter_read evidence', () => {
+  it('rejects a call recorded before the latest compaction even when its result is after it', () => {
+    expect(isValidCharterReadEvidence({
+      callSeq: 90,
+      resultSeq: 130,
+      compactionSeq: 120,
+      runtimeSeq: 80,
+      argumentsView: 'standing',
+      isError: false,
+    })).toBe(false)
+  })
+
+  it('accepts a call with missing arguments (default standing view)', () => {
+    expect(isValidCharterReadEvidence({
+      callSeq: 130,
+      resultSeq: 140,
+      compactionSeq: 120,
+      runtimeSeq: 110,
+      argumentsView: undefined,
+      isError: false,
+    })).toBe(true)
+  })
+
+  it('rejects an explicit non-standing view and error results', () => {
+    const base = {
+      callSeq: 130,
+      resultSeq: 140,
+      compactionSeq: 120,
+      runtimeSeq: 110,
+      isError: false,
+    }
+    expect(isValidCharterReadEvidence({ ...base, argumentsView: 'all' })).toBe(false)
+    expect(isValidCharterReadEvidence({ ...base, argumentsView: 'standing' })).toBe(true)
+    expect(isValidCharterReadEvidence({ ...base, argumentsView: 'standing', isError: true })).toBe(false)
+  })
+
+  it('rejects calls not ordered after the runtime-context snapshot or the result', () => {
+    const base = {
+      resultSeq: 140,
+      compactionSeq: 120,
+      runtimeSeq: 110,
+      argumentsView: 'standing',
+      isError: false,
+    }
+    expect(isValidCharterReadEvidence({ ...base, callSeq: 115 })).toBe(false)
+    expect(isValidCharterReadEvidence({ ...base, callSeq: 130, resultSeq: 125 })).toBe(false)
+    expect(isValidCharterReadEvidence({ ...base, callSeq: 130 })).toBe(true)
+  })
+
+  it('parses the requested view from call arguments', () => {
+    expect(charterReadArgumentsView(undefined)).toBeUndefined()
+    expect(charterReadArgumentsView('')).toBeUndefined()
+    expect(charterReadArgumentsView({})).toBeUndefined()
+    expect(charterReadArgumentsView('{"view":"standing"}')).toBe('standing')
+    expect(charterReadArgumentsView({ view: 'standing' })).toBe('standing')
+    expect(charterReadArgumentsView('{"view":"all"}')).toBe('all')
+    expect(charterReadArgumentsView('not-json')).toBe('invalid-arguments')
+  })
+})
 
 describe('compaction checker success criteria', () => {
   it('passes only when compaction survived and all required evidence is true', () => {

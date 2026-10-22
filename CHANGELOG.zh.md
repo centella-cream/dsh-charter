@@ -39,7 +39,7 @@
 - 新浏览器 client 可以兼容仍在运行旧 Host 的 view snapshot（旧 Host 仍带 active 条数字段），避免 host/client
   revision 不一致时「会话契约」白屏；新的 pending 导入语义仍需要完整重启 Host 才生效。
 - 已针对 DSH `0.2.1-rc.2` 验证，无需代码改动；现有 peer range 和兼容层已覆盖该 release candidate。
-- 161 个测试，覆盖内核、Host 组合、fork、幂等、配额、prompt 边界、Remote stream、历史抽取、客户端 tab
+- 167 个测试，覆盖内核、Host 组合、fork、幂等、配额、prompt 边界、Remote stream、历史抽取、客户端 tab
   排序和装饰器兼容。已在 DSH `0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-rc.1`、`0.2.1-rc.2` 上验证。
   真实 Web UI 在 `0.2.0-rc.2` 上验证了标签顺序、中英文切换、目标/约束编辑、预览、Apply 和刷新持久化。
 
@@ -59,9 +59,8 @@
   分页或显式响应 cap 是后续工作，本轮不做。
 - 活跃客户端草稿不受额外字节上限约束（受 UI 输入限制）；idle TTL/LRU 约束的是已释放草稿，而不是当前挂载的
   编辑器/bootstrap 面板持有的文本。
-- 当前树是 `0.1.0-rc.1` 预发布，必须使用 `npm publish --tag next` 发布；稳定 `latest` 还需要公开仓库链接
-  以及重启后对已安装 profile 的复核。公开 GitHub 仓库尚未创建，因此 `package.json` 中的 `repository`、
-  `homepage`、`bugs` 在仓库创建并可访问前故意留空。
+- 当前树是 `0.1.0-rc.1` 预发布，使用非 latest 的 `npm publish --tag next` 发布；稳定 `latest` 还需要重启后
+  对已安装 profile 的复核。发布状态前置项（仓库元数据、tag 顺序、CI 门禁）只记录在 `docs/releasing.zh.md`。
 - 压缩后重新物化依赖 DSH 的 runtime-context projection 契约；真实模型端到端 PASS 已记录在验证记录 8.4
   （2026-10-22）。
 - 浏览器交互在 `0.2.0-rc.2` 上验证；0.1.7/0.2.1 仅通过 typecheck/build/tests，未逐版重复交互流程。
@@ -179,3 +178,14 @@
   已验证产物 → tag → 发布。
 - `package-smoke` 的措辞与实际检查一致（packed `core` import + root/remote export/文件存在性）；Host/Remote
   运行时 import 继续由工作区 build smoke 覆盖。
+- compaction checker 的 `charter_read` 证据必须认证 tool call：优先用 top-level `sourceEventSeqs` 解析唯一 call
+  （legacy 用 callId），且 call 必须晚于最近一次 compaction **与** runtime-context 快照、使用默认/standing
+  view、结果为非 error 且晚于 call；fixture 覆盖每种拒绝路径。
+- `engines.dsh` 与 peer ranges 收紧为同样五个精确已验证版本；并说明未来 `0.2.x` 在验证并扩展兼容矩阵前不在
+  覆盖范围内。
+- bootstrap planner 在增量字节核算前用 `inspectUserText` 归一草案文本，CRLF/NFD 候选仍走 O(1) 路径；新增
+  2,000-4,000 个 CRLF/NFD 候选的覆盖。
+- purge 后解除关联的后继标记为派生暂存行（`unstageTarget: null`），面板不会提供无法移除任何操作的 Unstage
+  按钮。
+- 可变发布状态措辞只保留在 `docs/releasing.zh.md`，不进入不可变 tarball 文档；仓库/CI/tag 前置项、
+  禁止临时 tag 规则、以及 final tag 前必须刷新文档的要求都记录在发布清单中。

@@ -286,7 +286,7 @@ npm run verify:compaction # manual real-model compaction check (not part of chec
 ```
 
 The test suite covers the pure core, real Host composition, storage-domain behavior, Remote framing,
-history extraction, client state, and factory-bundle registration. Current matrix: **161 tests on DSH `0.1.7-rc.2`, `0.2.0-rc.1`/`rc.2`, and `0.2.1-rc.1`/`rc.2`**. See the [verification record](docs/verification.md) for commands and evidence.
+history extraction, client state, and factory-bundle registration. Current matrix: **167 tests on DSH `0.1.7-rc.2`, `0.2.0-rc.1`/`rc.2`, and `0.2.1-rc.1`/`rc.2`**. See the [verification record](docs/verification.md) for commands and evidence.
 
 ## Acknowledgements
 
@@ -326,10 +326,10 @@ compaction acceptance **PASS is recorded on 2026-10-22** on an anonymized evalua
 ~228k tokens shadowed, revision-1 charter survived with matching digest — see verification §8.4). The release is
 distributed as a verified local tarball built from this tree and, once the maintainer publishes it, through the
 `next` dist-tag on npm. One manual check recorded in §8.4 is required before a stable `latest` release: restart
-the Desktop app and reopen the Charter tab once to confirm the installed bundle/tool ABI. CI is configured to
-pack and smoke-test the installable artifact once the public repository exists; the local gates in
-verification §2 are the evidence. External publishing prerequisites and the exact release order are tracked in
-[docs/releasing.md](docs/releasing.md).
+the Desktop app and reopen the Charter tab once to confirm the installed bundle/tool ABI. CI
+(`.github/workflows/ci.yml`) packs and smoke-tests the installable artifact on Node `22.19.0` and `24`; the local
+gate evidence is recorded in verification §2. Release-state prerequisites, tag ordering, and the exact publish
+flow live in [docs/releasing.md](docs/releasing.md).
 
 ## License
 

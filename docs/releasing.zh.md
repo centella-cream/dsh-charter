@@ -7,15 +7,28 @@ CI，再构建已验证产物，然后打 tag，最后发布。已推送的 tag 
 
 ## 1. 外部前置条件 — 公开仓库准备
 
-截至本次提交，公开 GitHub 仓库尚不存在、当前 checkout 没有 `git remote`、`package.json` 的 `repository`、
-`homepage`、`bugs` 故意留空，且尚未 push/publish。先准备仓库：
+发布状态是动态的，只有这份清单记录它。撰写本文时公开 GitHub 仓库可能尚不存在、`package.json` 的
+`repository`、`homepage`、`bugs` 仍故意留空、也尚未 push/publish。开始前必须**删除暂存 RC 期间创建的临时
+本地发布 tag**——在仓库元数据和公开 CI 就位前创建的 tag 不能保留：
+
+```bash
+git tag -d v0.1.0-rc.1   # 仅当它存在；它从未被推送（确认远端没有同名 tag）
+git remote -v            # 应为空，或尚不包含该仓库
+```
+
+如需内部追溯，可使用只在本地存在的标记 tag（例如 `v0.1.0-rc.1-build`）；它绝不推送，也不是发布 tag。
+
+先准备仓库：
 
 1. 创建公开仓库（owner/name 由维护者确定）并添加为 `origin`；
 2. 把 `package.json` 的 `repository`、`homepage`、`bugs` 恢复为该 URL，并提交该元数据修改；
-3. 只推送 `main`，此时不要推 tag（`git push origin main`；不要用 `--follow-tags`）；
-4. 等待 `.github/workflows/ci.yml` 在该 commit 上为绿色（Node 22.19.0 与 24 矩阵）。
+3. 更新所有发生变化的可变发布状态描述（仓库元数据、公开 CI 状态、发布前置项），重跑 `npm run check` 与
+   `npm run smoke:package`，并把文档刷新并入同一个元数据/CI状态/文档更新 commit；
+4. 只推送 `main`，此时不要推 tag（`git push origin main`；不要用 `--follow-tags`）；
+5. 等待 `.github/workflows/ci.yml` 在该 commit 上为绿色（Node 22.19.0 与 24 矩阵）。
 
-tag 在后续（§4）的最终已验证 commit 上创建；在验证前推 tag 会让发布产物依赖未经门禁的树。
+tag 在后续（§4）的最终已验证 commit 上创建，并且只有在 digest commit 已进入 `main`、公开 CI 在该 commit 上
+通过之后才创建；在验证前推 tag 会让发布产物依赖未经门禁的树。
 
 ## 2. 发布前检查
 
@@ -46,7 +59,7 @@ client bundle（Host/Remote 运行时 import 由工作区 build smoke 覆盖）�
 
 ## 4. 构建已验证产物、打 tag、推送、发布
 
-在最终已验证 commit（元数据已恢复、CI 绿色、所有门禁通过）上：
+在最终已验证 commit（元数据已恢复、文档已刷新、CI 绿色、所有门禁通过）上：
 
 ```bash
 npm pack
@@ -55,7 +68,16 @@ mkdir -p dist && mv dsh-charter-0.1.0-rc.1.tgz dist/
 ```
 
 把同一 digest 写入仓库根部 tracked 的 `SHA256SUMS`。根部文件刻意不在 npm `files` 白名单内，因此提交它不会改变
-打包产物的字节；请在创建 tag 之前提交该文件。`dist/` 不进 git，也永远不提交 tarball。
+打包产物的字节。提交后**再次推送 `main`**，让这个最终 digest commit 进入主干，并等待公开 CI 在该 commit 上
+通过：
+
+```bash
+git push origin main
+# 等待该确切 commit 的公开 CI 通过
+```
+
+绝不能在尚未推送、或公开 CI 未通过的 commit 上创建发布 tag（不要制造只在 tag 上可达的 commit）。`dist/`
+不进 git，也永远不提交 tarball。
 
 用该 tarball 在全新 profile 中安装并验证：
 
@@ -68,8 +90,8 @@ DSH_HOME=/tmp/dsh-charter-release-home \
   dsh --profile release-smoke --no-open --port 19399
 ```
 
-打开打印的 URL，新建 Session，检查会话契约 tab 和中英文切换。现在在最终 commit 上创建 annotated tag 并只推送
-一次：
+打开打印的 URL，新建 Session，检查会话契约 tab 和中英文切换。只有当最终 digest commit 已推送到 `main` 且
+公开 CI 在该 commit 上通过之后，才在这个确切 commit 上创建 annotated tag 并只推送一次：
 
 ```bash
 git tag -a v0.1.0-rc.1 -m "dsh-charter 0.1.0-rc.1"
@@ -77,8 +99,8 @@ git push origin v0.1.0-rc.1
 ```
 
 已推送的 tag 绝不移动；tag 有误时提升版本号，而不是移动 tag。从该 tag 创建 GitHub release，并附加**已经构建
-并验证过**的 `dist/dsh-charter-0.1.0-rc.1.tgz` 和 `dist/SHA256SUMS` —— 打 tag 之后不要再运行 `npm pack`。
-用非 latest dist-tag 发布该确切文件：
+并验证过**的 `dist/dsh-charter-0.1.0-rc.1.tgz` 和 `dist/SHA256SUMS` —— 打 tag 之后不要再运行 `npm pack`，
+直接发布已构建好的文件：
 
 ```bash
 npm publish dist/dsh-charter-0.1.0-rc.1.tgz --access public --tag next

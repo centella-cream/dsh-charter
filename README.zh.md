@@ -263,7 +263,7 @@ npm run verify:compaction # 手工真实模型 compaction 校验（不在 check 
 ```
 
 测试覆盖纯内核、真实 Host 组合、storage domain、Remote framing、历史抽取、客户端状态和 factory bundle
-注册。当前矩阵：**DSH `0.1.7-rc.2`、`0.2.0-rc.1`/`rc.2`、`0.2.1-rc.1`/`rc.2` × 161 个测试全部通过**。命令与证据见[验证记录](docs/verification.zh.md)。
+注册。当前矩阵：**DSH `0.1.7-rc.2`、`0.2.0-rc.1`/`rc.2`、`0.2.1-rc.1`/`rc.2` × 167 个测试全部通过**。命令与证据见[验证记录](docs/verification.zh.md)。
 
 ## 致谢
 
@@ -300,9 +300,9 @@ Pre-1.0。DSH 插件 ABI 仍在演进；项目对上述版本做兼容验证，�
 预发布：真实模型 compaction 验收 **PASS 已于 2026-10-22 记录**（一个匿名评估会话；326 条消息 / 约 228k
 tokens 被压缩，revision 1 契约携带匹配 digest 存活——见验证记录第 8.4 节）。发布产物是从本树构建并验证过的
 本地 tarball；维护者发布后也会通过 npm 的 `next` dist-tag 提供。发布稳定 `latest` 前还有一项记录在 8.4 节的人工
-检查：重启 Desktop app 后重新打开会话契约 tab 一次，确认已安装的 bundle/tool ABI。CI 已配置在公开仓库出现后
-打包并 smoke 测试可安装产物；当前证据是验证记录第 2 节的本地门禁。外部发布前置条件和确切发布顺序见
-[docs/releasing.zh.md](docs/releasing.zh.md)。
+检查：重启 Desktop app 后重新打开会话契约 tab 一次，确认已安装的 bundle/tool ABI。CI
+（`.github/workflows/ci.yml`）在 Node `22.19.0` 与 `24` 上打包并 smoke 测试可安装产物；本地门禁证据记录在验证
+记录第 2 节。发布状态前置项、tag 顺序和确切的发布流程见 [docs/releasing.zh.md](docs/releasing.zh.md)。
 
 ## 许可证
 

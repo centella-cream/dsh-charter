@@ -331,6 +331,7 @@ function ItemRow({
     && ((item.review === 'rejected' && item.lifecycle === 'current')
       || (item.lifecycle === 'archived' && item.review === 'accepted')
       || terminalHead)
+  const unstageTarget = item.unstageTarget === null ? null : item.unstageTarget ?? item.id
   const menuLabel = t('item.actionsAria', { text: shortText(item.text) })
   const canMutate = editable && !item.staged
   const hasMenu = canMutate && (current || purgeable)
@@ -402,12 +403,12 @@ function ItemRow({
         </div>
       </div>
       <div className="charter-item__actions">
-        {item.staged && (
+        {item.staged && unstageTarget !== null && (
           <ActionButton
             ariaLabel={`${menuLabel}: ${t('item.unstage')}`}
             disabled={!editable}
             onClick={() => {
-              onUnstage(item.id)
+              onUnstage(unstageTarget)
               focusRow()
             }}
           >

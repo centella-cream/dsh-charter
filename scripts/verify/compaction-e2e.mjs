@@ -37,7 +37,13 @@ import { createHash } from 'node:crypto'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import { compactStandingItem, evaluateCompactionEvidence, postCompactionCharterReads } from './compaction-checks.mjs'
+import {
+  charterReadArgumentsView,
+  compactStandingItem,
+  evaluateCompactionEvidence,
+  isValidCharterReadEvidence,
+  postCompactionCharterReads,
+} from './compaction-checks.mjs'
 
 const CHARTER_CONTEXT_NAME = 'charter:standing'
 const CHARTER_PROMPT_PREFIX = 'Current user-authored session charter.'
@@ -249,39 +255,103 @@ function main() {
     }))
   const latestHeader = toolHeaders.at(-1)
 
-  const toolNames = new Map(
-    events
-      .filter(event => event.type === 'tool/call')
-      .map(event => [event.data?.callId, event.data?.name]),
-  )
+  const toolCalls = events
+    .filter(event => event.type === 'tool/call')
+    .map(event => ({
+      seq: event.seq,
+      callId: event.data?.callId,
+      name: event.data?.name,
+      arguments: event.data?.arguments,
+    }))
+  const toolCallsByCallId = new Map(toolCalls.map(call => [call.callId, call]))
+  const toolCallsBySeq = new Map(toolCalls.map(call => [call.seq, call]))
+  const charterReadCalls = toolCalls.filter(call => call.name === 'charter_read')
   const standingItems = current.items
     .filter(item => item.review === 'accepted' && item.lifecycle === 'current')
     .map(item => compactStandingItem(item))
+  // Each tool result is paired with the tool call that produced it. Modern
+  // transcripts expose top-level `sourceEventSeqs` (the source event seqs), so
+  // the unique charter_read call is authenticated from those; legacy
+  // transcripts without that field fall back to the message toolCallId.
   const charterReadResults = events
-    .filter(event => event.type === 'tool/result'
-      && toolNames.get(event.data?.message?.toolCallId ?? event.data?.toolCallId) === 'charter_read')
+    .filter(event => event.type === 'tool/result')
     .map(event => {
-      const text = messageText(event.data.message?.content)
+      const data = event.data ?? {}
+      const message = data.message ?? {}
+      const sourceEventSeqs = Array.isArray(event.sourceEventSeqs)
+        ? event.sourceEventSeqs
+        : Array.isArray(data.sourceEventSeqs)
+          ? data.sourceEventSeqs
+          : undefined
+      let call
+      let resolution
+      if (sourceEventSeqs !== undefined) {
+        const matches = sourceEventSeqs
+          .map(seq => toolCallsBySeq.get(seq))
+          .filter(candidate => candidate?.name === 'charter_read')
+        call = matches.length === 1 ? matches[0] : undefined
+        resolution = matches.length === 1
+          ? 'sourceEventSeqs'
+          : matches.length === 0 ? 'sourceEventSeqs-no-charter-read' : 'sourceEventSeqs-ambiguous'
+      } else {
+        const callId = message.toolCallId ?? data.toolCallId
+        const candidate = toolCallsByCallId.get(callId)
+        call = candidate?.name === 'charter_read' ? candidate : undefined
+        resolution = call === undefined ? 'callId-no-charter-read' : 'callId'
+      }
+      if (call === undefined) return undefined
+      const base = {
+        seq: event.seq,
+        callSeq: call.seq,
+        callId: call.callId,
+        resolution,
+        argumentsView: charterReadArgumentsView(call.arguments),
+        isError: message.isError === true,
+      }
+      const text = messageText(message.content)
       try {
         const view = JSON.parse(text)
         if (view === null || typeof view !== 'object' || !Array.isArray(view.items)) {
-          return { seq: event.seq, invalid: true }
+          return { ...base, invalid: true }
         }
         return {
-          seq: event.seq,
+          ...base,
           invalid: false,
           revision: view.revision,
           objective: view.objective,
           items: view.items,
         }
       } catch {
-        return { seq: event.seq, invalid: true }
+        return { ...base, invalid: true }
       }
     })
-  // Only reads after the latest compaction can witness the post-compaction
-  // state; a read from before it is not evidence for the PASS.
+    .filter(result => result !== undefined)
+  const latestRuntimeSeq = latestRuntime?.seq
+  const postCompactionCalls = latestCompaction === undefined
+    ? charterReadCalls
+    : charterReadCalls.filter(call => call.seq > latestCompaction.seq)
   const postCompactionReads = postCompactionCharterReads(charterReadResults, latestCompaction?.seq)
-  const latestCharterRead = postCompactionReads.at(-1)
+  // Only an authenticated post-compaction call (ordered after the compaction
+  // and the latest runtime-context snapshot, default/standing view, non-error
+  // result) counts as evidence. A result alone is not enough.
+  const authenticatedReads = charterReadResults.filter(result => isValidCharterReadEvidence({
+    callSeq: result.callSeq,
+    resultSeq: result.seq,
+    compactionSeq: latestCompaction?.seq,
+    runtimeSeq: latestRuntimeSeq,
+    argumentsView: result.argumentsView,
+    isError: result.isError,
+  }))
+  const matchedReads = charterReady
+    ? authenticatedReads.filter(result =>
+        result.invalid === false
+        && result.revision === current.revision
+        && result.objective === (current.objective?.current?.text ?? null)
+        && JSON.stringify(result.items.map(item => compactStandingItem(item)))
+          === JSON.stringify(standingItems))
+    : []
+  const latestCharterRead = authenticatedReads.at(-1)
+  const latestMatchedRead = matchedReads.at(-1)
 
   const promptSnapshots = events
     .filter(event => event.type === 'system/message')
@@ -302,15 +372,8 @@ function main() {
     ? !promptSnapshots.some(text => text.includes(CHARTER_PROMPT_PREFIX)
       || systemPromptSignals.some(signal => text.includes(signal)))
     : undefined
-  const charterReadCalled = postCompactionReads.length > 0
-  const charterReadStanding = charterReady && postCompactionReads.some(result =>
-    result.invalid === false
-    && result.revision === current.revision
-    && result.objective === (current.objective?.current?.text ?? null)
-    && JSON.stringify(result.items.map(item => compactStandingItem(item)))
-      === JSON.stringify(standingItems))
-    ? true
-    : undefined
+  const charterReadCalled = postCompactionCalls.length > 0
+  const charterReadStanding = charterReady && matchedReads.length > 0 ? true : undefined
 
   const injected = latestRuntime?.charterText !== undefined
   const digestMatch = injected
@@ -367,6 +430,7 @@ function main() {
     charterReadTool: latestHeader?.tools.includes('charter_read') ?? false,
     charterRead: latestCharterRead ?? null,
     postCompactionCharterReads: postCompactionReads.length,
+    authenticatedCharterReads: authenticatedReads.length,
     systemPromptClean,
     charterReadCalled,
     verification,
@@ -434,16 +498,18 @@ function main() {
     if (charterReady) {
       verdict(systemPromptClean, 'system prompt carries no charter body',
         systemPromptClean ? undefined : 'a system-prompt snapshot contains the charter text')
-      verdict(charterReadStanding, 'post-compaction charter_read standing view matches the storage revision/objective',
+      verdict(charterReadStanding, 'authenticated post-compaction charter_read standing view matches the storage revision/objective',
         charterReadStanding === true
           ? undefined
           : latestCompaction === undefined
             ? 'run /compact, then call charter_read to record post-compaction evidence'
             : !charterReadCalled
-              ? 'call charter_read after the latest compaction; no post-compaction read is recorded'
-              : latestCharterRead === undefined || latestCharterRead.invalid === true
-                ? 'no valid post-compaction charter_read result in this transcript yet'
-                : `latest post-compaction read is revision ${latestCharterRead.revision} (${latestCharterRead.items?.length ?? 0} standing items); re-read after the final revision`)
+              ? 'call charter_read after the latest compaction; no post-compaction call is recorded'
+              : latestCharterRead === undefined
+                ? 'no authenticated post-compaction charter_read result: its unique call (via sourceEventSeqs/callId) must follow the compaction and the latest runtime-context snapshot, request standing/default, and return a non-error result'
+                : latestMatchedRead === undefined
+                  ? `latest authenticated read is revision ${latestCharterRead.revision} (${latestCharterRead.items?.length ?? 0} standing items); re-read after the final revision`
+                  : undefined)
     }
     if (charterReady && latestCompaction !== undefined && charterPredatesCompaction === false) {
       verdict(undefined, 'charter survives compaction',

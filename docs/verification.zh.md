@@ -2,7 +2,7 @@
 
 [English](verification.md) | 中文
 
-验证日期：2026-10-20；第二、三轮发布就绪评审后复跑：2026-10-21；`0.1.0-rc.1` tag 与 tracked 产物 digest 的
+验证日期：2026-10-20；第二、三轮发布就绪评审后复跑：2026-10-21；本地 `0.1.0-rc.1` RC 构建与 tracked 产物 digest 的
 最终树复跑：2026-10-22。
 环境：macOS，Node `v22.23.1`，npm `12.0.2`，pnpm `12.3.4`；当前 Desktop 运行时 DSH `0.2.0-rc.2`。
 本地开发依赖基线：DSH `0.2.1-rc.2`。
@@ -14,7 +14,7 @@
 | 验证项 | 结果 |
 | --- | --- |
 | TypeScript 严格类型检查（5 个 DSH 版本） | 通过 |
-| Vitest（5 个本地可用版本 × 161 tests） | 通过 |
+| Vitest（5 个本地可用版本 × 167 tests） | 通过 |
 | Host ESM 构建 + 浏览器单文件 bundle | 通过 |
 | Remote 装饰器/资源 smoke | 通过（0.1.7/0.2.0 按预期无资源声明） |
 | 浏览器 factory bundle 物化与 `apply` smoke | 通过 |
@@ -28,7 +28,7 @@
 | Session 级客户端草稿 | 通过：单测覆盖 binding 卸载/重挂载后草稿存活、重试复用 mutation id、冲突 rebase、bootstrap 不抢占 section；见 4.5 |
 | 运行期 schema 重新校验 | 通过：mount 后把记录改成非法 schema，只有该 Session 不可用且原始记录保留；见 4.6 |
 | 打包产物可安装性 | 通过：本地 `npm run smoke:package`（tarball 内容、exports/文件、packed `core` import、client bundle；Host/Remote 运行时 import 由工作区 build smoke 覆盖）；见第 2 节 |
-| Compaction checker 退出条件 | 通过：fixture 覆盖成功、system prompt 污染、必需的压缩后匹配 `charter_read`（缺失/不匹配都失败，压缩前读取按 seq 忽略）、快照丢失、摘要泄漏 warning；见 4.7 |
+| Compaction checker 退出条件 | 通过：fixture 覆盖成功、system prompt 污染、必需的压缩后匹配 `charter_read`（其 call 经 `sourceEventSeqs`/callId 认证，且必须在 compaction 与 runtime 快照之后；缺失、不匹配、压缩前、非 standing、error 都失败）、快照丢失、摘要泄漏 warning；见 4.7 |
 | 陈旧异步草稿结果 | 通过：edit/bootstrap 结果按 source/generation/请求身份围栏；空草稿和 idle 草稿会回收；见 4.7 |
 | 真实模型 + compaction 端到端 | **2026-10-22 实测 PASS**（一个匿名评估会话）：326 条历史消息 / 约 228k tokens 被压缩，revision 1 会话契约存活，压缩后快照与 `charter_read` 均验证（见 8.4） |
 
@@ -43,7 +43,7 @@ npm test
 
 - typecheck 通过；
 - build 通过；
-- 17 个测试文件、161 个测试全部通过（来自 `npm test`，即 build 后运行 `vitest run`）；
+- 17 个测试文件、167 个测试全部通过（来自 `npm test`，即 build 后运行 `vitest run`）；
 - `remote-smoke` 断言 `watch,bootstrap,edit`、stream mode 和 Session resource；
 - `client-smoke` 断言单文件 factory bundle、外部依赖白名单、不引用 Node-only `Buffer`、`apply` 注册
   tab/pane/Remote contribution。
@@ -51,8 +51,8 @@ npm test
   把 tarball 安装到一个**空 consumer 项目**（只使用其声明依赖），再加载 packed `dsh-charter/core` 入口与
   client bundle。
 
-CI 已配置在公开仓库存在后对 Node `22.19.0` 与 Node `24` 运行 `npm run check` 和 `npm run smoke:package`。
-本文档记录的本地门禁运行于 Node `v22.23.1`；仓库尚无 remote，因此 CI 本身尚未实际运行。
+CI（`.github/workflows/ci.yml`）对 Node `22.19.0` 与 Node `24` 运行 `npm run check` 和
+`npm run smoke:package`；本文档记录的本地门禁运行于 Node `v22.23.1`。
 
 关键测试文件：
 
@@ -73,7 +73,7 @@ CI 已配置在公开仓库存在后对 Node `22.19.0` 与 Node `24` 运行 `npm
 | `tests/client/bootstrap-plan.spec.ts` | 溢出候选仍在一个 plan 中；O(1) 增量字节核算，覆盖 3,000 个全 active 候选与 invariant/deliverable 混合用例；逐候选结果；最终精确渲染校验；bootstrap 结果分类（draft/discard/stale/unavailable） |
 | `tests/client/draft.spec.ts` / `draft-store.spec.ts` | Session 绑定的请求构造（A 的 ops 不会为 B 构造请求）；binding 卸载/重挂载后草稿存活；重试复用 mutation id；冲突 rebase；陈旧异步结果不能覆盖新的 draft/source/lifecycle；bootstrap 不抢占 section |
 | `tests/client/preview.spec.ts` | 投影后的 draft 行（add/edit/accept/progress/supersede/purge）；purge 预览会解除后继的 supersedes 关联；渲染器一致性与 pending 排除；prompt 预算的 Apply 准入（缩短、同字节、增长、预算内四种渲染） |
-| `tests/verify/compaction-checks.spec.ts` | compaction checker fixture：system prompt 污染、必需的压缩后匹配 `charter_read`（缺失与不匹配都失败）、压缩前读取被忽略、压缩后快照丢失、摘要泄漏 warning、紧凑 standing 投影一致 |
+| `tests/verify/compaction-checks.spec.ts` | compaction checker fixture：system prompt 污染；必需的压缩后匹配 `charter_read`，覆盖 call 认证（`sourceEventSeqs`/callId）、默认/standing view、非 error 结果、压缩前与 call-before-runtime 拒绝；压缩后快照丢失；摘要泄漏 warning；紧凑 standing 投影一致 |
 
 ## 3. 跨版本矩阵
 
@@ -99,17 +99,18 @@ npm run build
 
 | 版本 | typecheck | build | Vitest | remote smoke | client smoke |
 | --- | --- | --- | --- | --- | --- |
-| `0.1.7-rc.2` | 通过 | 通过 | 161/161 | 通过（无 resources 警告） | 通过 |
-| `0.2.0-rc.1` | 通过 | 通过 | 161/161 | 通过（无 resources 警告） | 通过 |
-| `0.2.0-rc.2` | 通过 | 通过 | 161/161 | 通过（无 resources 警告） | 通过 |
-| `0.2.1-rc.1` | 通过 | 通过 | 161/161 | 通过 | 通过 |
-| `0.2.1-rc.2` | 通过 | 通过 | 161/161 | 通过 | 通过 |
+| `0.1.7-rc.2` | 通过 | 通过 | 167/167 | 通过（无 resources 警告） | 通过 |
+| `0.2.0-rc.1` | 通过 | 通过 | 167/167 | 通过（无 resources 警告） | 通过 |
+| `0.2.0-rc.2` | 通过 | 通过 | 167/167 | 通过（无 resources 警告） | 通过 |
+| `0.2.1-rc.1` | 通过 | 通过 | 167/167 | 通过 | 通过 |
+| `0.2.1-rc.2` | 通过 | 通过 | 167/167 | 通过 | 通过 |
 
-最终 `0.1.0-rc.1` 树在 2026-10-22 重新跑过：每个版本均为 17 个测试文件 / 161 个测试，且 build 内含 remote/client
+最终 `0.1.0-rc.1` 树在 2026-10-22 重新跑过：每个版本均为 17 个测试文件 / 167 个测试，且 build 内含 remote/client
 smoke 断言。
 
-这个五版本矩阵是**本地证据**：版本目录和驱动脚本位于被 git 忽略的 `.tmp/`，公开 CI 不会复现它。CI 配置为在
-Node `22.19.0` 与 Node `24` 上覆盖已提交的门禁（`npm run check` + `npm run smoke:package`），仓库存在后才会实际运行。
+这个五版本矩阵是**本地证据**：版本目录和驱动脚本位于被 git 忽略的 `.tmp/`，公开 CI 不会复现它。CI
+（`.github/workflows/ci.yml`）在 Node `22.19.0` 与 Node `24` 上运行已提交的门禁（`npm run check` +
+`npm run smoke:package`）。
 
 `0.1.7-rc.2` 和 `0.2.0` 的 remote smoke 输出：
 
@@ -238,15 +239,17 @@ UI 的自动草案面板依赖客户端 `useEffect` 和 Remote bootstrap；8.4 �
   历史草案 idle 阶段使用独立的“尚未加载草案”文案。
 - **打包产物门禁**：本地 `npm run smoke:package` 打包 tarball 并校验必需文件、所有 `exports` 目标、无工作区泄漏、
   packed `core` import 和 packed client bundle；Host/Remote 运行时 import 需要 Host peer 依赖图，由工作区
-  `remote-smoke` / `client-smoke` 覆盖，不在空 consumer 中执行。CI 配置为在仓库存在后运行同一门禁。
+  `remote-smoke` / `client-smoke` 覆盖，不在空 consumer 中执行。CI 运行同一门禁（`.github/workflows/ci.yml`）。
 
 ### 4.7 Checker 退出条件、草稿异步围栏与在线修复
 
 - **Compaction checker（fixture）**：`tests/verify/compaction-checks.spec.ts` 覆盖精确成功条件：正常通过、
-  system prompt 污染、**必需的**压缩后匹配 `charter_read` standing 结果（缺失与不匹配都失败；压缩前读取按
-  seq 忽略）、压缩后快照丢失、摘要泄漏 warning。transcript reader 构造与 Host 相同的紧凑 standing 投影
-  （`kind`/`text`/`verification`/`progress`），所有必需证据都参与退出码；只有 WAIT/BLOCKED 状态会在评估前
-  短路。
+  system prompt 污染、**必需的**压缩后匹配 `charter_read` standing 结果——其唯一 tool call 必须被认证
+  （优先 top-level `sourceEventSeqs`，legacy 用 callId），且严格位于最近一次 compaction 与 runtime-context
+  快照之后；`arguments.view` 必须缺省/standing，结果为非 error 且晚于 call。缺失、不匹配、压缩前、非
+  standing、error 都失败；另覆盖压缩后快照丢失与摘要泄漏 warning。transcript reader 构造与 Host 相同的紧凑
+  standing 投影（`kind`/`text`/`verification`/`progress`），所有必需证据都参与退出码；只有 WAIT/BLOCKED 状态
+  会在评估前短路。
 - **草稿异步围栏**：edit 和 bootstrap Apply 捕获 `asyncGeneration`、source 实例及其单调 connection epoch、
   lifecycle 和请求 ops 身份；已销毁 source 或 detach/reattach 周期的迟到结果不能清除或覆盖新草稿。source 失效
   保留 mutation id 以便幂等重试，attach/detach/retry 都会使在途结果失效。
@@ -594,9 +597,13 @@ npm run verify:compaction -- --session <id> --json # 其他 Session / 机器可�
 3. 该快照包含 `charter:standing`，文本与 `promptText` 字节一致，SHA-256 等于 `promptDigest`；
 4. 没有任何 system-prompt 快照包含会话契约前缀、正文、目标或较长的条目文本；
 5. **必需**：transcript 中**位于最近一次 compaction 之后**的 `charter_read` standing 结果等于 Host 的紧凑
-   standing 投影（`kind`/`text`/`verification`/`progress`），而不只是 revision/objective；按事件 seq 忽略压缩
-   前读取，缺失或不匹配都会让 PASS 失败；旧版 debug 形状的 tool result（额外 id/review/lifecycle 字段）会先
-   归一到同一投影，因此未重启的 Host 仍可给出可比的 working-set 证据；
+   standing 投影（`kind`/`text`/`verification`/`progress`），而不只是 revision/objective。产生该结果的
+   **tool call 本身必须被认证**：用 result 的 top-level `sourceEventSeqs` 解析出唯一的 `charter_read` call
+   （legacy transcript 没有该字段时才回退 `toolCallId`）；call seq 必须晚于最近一次 compaction **和**最近一次
+   runtime-context 快照，`arguments.view` 必须缺省/`standing`（显式 `all` 被拒绝），result 必须非 error 且晚于
+   call。结果缺失、call 未认证/不匹配、压缩前读取、`all` 读取、error 结果都会让 PASS 失败；旧版 debug 形状的
+   tool result（额外 id/review/lifecycle 字段）会先归一到同一投影，因此未重启的 Host 仍可给出可比的
+   working-set 证据；
 6. 压缩之后的压缩摘要没有夹带渲染正文（这是 warning：它会削弱证明，而不是静默通过）。
 
 真实 profile 中的操作步骤：
@@ -605,13 +612,13 @@ npm run verify:compaction -- --session <id> --json # 其他 Session / 机器可�
    让 runtime context 落进 transcript；
 2. 运行 `npm run verify:compaction`：预期 `charter established`、注入、digest、system-prompt 检查通过，
    compaction 步骤为 `WAIT`；
-3. 在同一 Session 执行 `/compact`，发送一条消息，然后让模型调用一次 `charter_read`，留下匹配的压缩后
-   standing 结果；
+3. 在同一 Session 执行 `/compact`，发送一条消息，然后让模型调用一次 `charter_read`（默认/standing view、
+   非 error），留下经认证的压缩后 standing 结果；
 4. 再次运行命令：预期 `PASS`，并输出 compaction seq、压缩后快照 seq、压缩后 `charter_read` seq 和 digest。
 
 检查器只会 fail closed 为 `BLOCKED`（还没有契约）或 `WAIT`（压缩后还没有新请求）；一旦存在压缩后请求，
-`survivesCompaction`、system prompt 洁净、以及匹配的压缩后 `charter_read` standing 结果都会参与退出码，
-缺失或不匹配的 read 都是 FAIL。摘要泄漏记录为 warning 而不是静默通过。`tests/verify/compaction-checks.spec.ts` 用 fixture 覆盖这些通过/失败
+`survivesCompaction`、system prompt 洁净、以及经认证且匹配的压缩后 `charter_read` standing 结果都会参与退出
+码，缺失、未认证或不匹配的 read 都是 FAIL。摘要泄漏记录为 warning 而不是静默通过。`tests/verify/compaction-checks.spec.ts` 用 fixture 覆盖这些通过/失败
 组合，不依赖真实模型。它绝不把 checkpoint 摘要当作“存活”证据。
 
 ### 8.3 平台依据
@@ -627,8 +634,9 @@ replacement/compaction 遮蔽后清空 retained，下一次请求重新生成；
 随后 `/compact` 以 compaction seq **31801**（source `cmd-635e3d77-2`）完成，压缩 326 条消息（约 228,181
 tokens）。压缩后第一次请求产生 runtime-context 快照 seq **31810**，包含
 `sections [sandbox:policy, approval:policy, charter:standing]`，5,081 B 会话契约的字节/digest 与 storage 一致；
-随后 `charter_read`（result seq **31825**，在 compaction 之后）返回相同 revision/objective/working set。完整
-checker 输出：
+随后 `charter_read`（call seq **31824**，经 top-level `sourceEventSeqs` 认证；位于 compaction seq 31801 与
+runtime 快照 seq 31810 之后；`view: standing`；非 error）以 result seq **31825** 返回相同
+revision/objective/working set。完整 checker 输出：
 
 ```text
 $ npm run verify:compaction -- --session "$SESSION_ID" \
@@ -638,7 +646,7 @@ $ npm run verify:compaction -- --session "$SESSION_ID" \
   PASS  latest runtime context carries charter:standing
   PASS  injected text matches storage authority and promptDigest
   PASS  system prompt carries no charter body
-  PASS  post-compaction charter_read standing view matches the storage revision/objective
+  PASS  authenticated post-compaction charter_read standing view matches the storage revision/objective
   PASS  charter survives compaction — snapshot seq 31810 > compaction seq 31801
   PASS  compaction summary does not carry the charter text
 result: PASS
@@ -647,21 +655,22 @@ result: PASS
 注：运行中的 Desktop 进程加载的是重启前的 Host bundle，所以它的 `charter_read` 结果仍带 legacy debug 字段；
 checker 已将这些字段归一到当前紧凑投影。要让 UI/tool ABI 与磁盘上的当前包完全一致，仍需完全重启 Desktop app。
 
-当前树复检：更严格的 checker（必需最近一次 compaction 之后匹配的 `charter_read` standing 结果）已针对这份已记录
-的 transcript 重跑，仍然返回 `PASS`；匹配的 read result seq 为 **31825**，位于 compaction seq 31801 之后。
+当前树复检：更严格的 checker（要求 `charter_read` 的 call 经认证、且晚于最近一次 compaction 与 runtime-context
+快照并匹配 storage）已针对这份已记录的 transcript 重跑，仍然返回 `PASS`；唯一 call 为 seq **31824**、result
+seq **31825**，位于 compaction seq 31801 与 runtime 快照 seq 31810 之后。
 
 本轮预发布的证据时间线：
 
 - 真实模型实测：2026-10-22，运行于 Desktop/Web runtime DSH `0.2.0-rc.2`（`dsh` CLI `0.2.0-rc.2`）。这次
   运行发生在上述完整重启 Desktop **之前**；当时仍在运行的进程加载的是重启前的 Host bundle，因此
   `charter_read` 结果带有 legacy debug 字段。
-- 本次收敛记录的通过门禁源码 commit：`b0076f2a2a55ca1a9771b2dc974fe7082c76f2d5`；tagged tree 额外添加
-  本证据记录、最终文档润色和 tracked digest 文件。该收敛树通过 `npm run check`（typecheck + build + 17 个测试文件 /
-  161 个测试）、`npm run smoke:package` 以及本地五版本矩阵（每个版本 17 个文件 / 161 个测试）。
-- 随发布产物的 digest：仓库根部 tracked 的 `SHA256SUMS`（由 release commit 保持最新，该 commit 只更新此文件）
-  固定从 tagged tree 构建的 `dsh-charter-0.1.0-rc.1.tgz` digest；`dist/SHA256SUMS` 携带相同值。
-  annotated tag message 记录 release commit 和随发布 digest，`git rev-parse v0.1.0-rc.1^{commit}` 可解析
-  release commit。
+- 本次本地 RC 构建的 build commit：与 tracked 产物 digest 一起记录在最终证据 commit 中；该 commit 只额外添加
+  本证据记录和 tracked digest 文件。该构建树通过 `npm run check`（typecheck + build + 17 个测试文件 / 167 个
+  测试）、`npm run smoke:package` 以及本地五版本矩阵（每个版本 17 个文件 / 167 个测试）。
+- 随发布产物的 digest：仓库根部 tracked 的 `SHA256SUMS`（由最终证据 commit 刷新，该 commit 只更新此文件）固定
+  从构建树构建的 `dsh-charter-0.1.0-rc.1.tgz` digest；`dist/SHA256SUMS` 携带相同值。**本次本地构建不创建发布
+  tag**：临时的本地 tag 已删除，最终的 annotated `v0.1.0-rc.1` 只在发布时、基于已完成元数据/文档/CI 门禁的
+  commit 创建（见 docs/releasing.zh.md）。
 - 剩余手工检查：重启 Desktop 后重新打开会话契约 tab 一次，确认当前 bundle/tool ABI——这次重启后复核**不在**
   上述实测记录中，且只在发布稳定 `latest` 前必需，不影响以 `next` 发布本预发布。
 

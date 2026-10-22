@@ -60,8 +60,12 @@ export function buildBootstrapPlan(
   objective: string,
   items: readonly BootstrapDraftItem[],
 ): BootstrapPlan {
-  const objectiveOp: CharterOp | null = view.objective === null && objective.trim().length > 0
-    ? { type: 'objective.initialize', text: objective.trim() }
+  // Normalize with the same function the Host uses for admission, so the
+  // incremental byte accounting below matches `previewPrompt` exactly even for
+  // CRLF or decomposed Unicode input.
+  const normalizedObjective = inspectUserText(objective).value
+  const objectiveOp: CharterOp | null = view.objective === null && normalizedObjective.length > 0
+    ? { type: 'objective.initialize', text: normalizedObjective }
     : null
   const baseOps: CharterOp[] = objectiveOp === null ? [] : [objectiveOp]
   const base = projectView(view, baseOps)
@@ -106,8 +110,9 @@ export function buildBootstrapPlan(
   let pendingDeliverables = 0
 
   for (const item of items) {
-    if (!item.selected || item.text.trim().length === 0) continue
-    const text = item.text.trim()
+    if (!item.selected) continue
+    const text = inspectUserText(item.text).value
+    if (text.length === 0) continue
     const isInvariant = item.kind === 'invariant'
     const token = isInvariant
       ? encodePromptText(text)
@@ -168,8 +173,9 @@ function exactBootstrapPlan(
   let pendingInvariants = 0
   let pendingDeliverables = 0
   for (const item of items) {
-    if (!item.selected || item.text.trim().length === 0) continue
-    const text = item.text.trim()
+    if (!item.selected) continue
+    const text = inspectUserText(item.text).value
+    if (text.length === 0) continue
     const activeOp: CharterOp = item.kind === 'invariant'
       ? { type: 'item.add', item: { clientRef: `bootstrap-${item.id}`, kind: 'invariant', text, order } }
       : {
