@@ -194,7 +194,13 @@ export class CharterSessionSource implements CharterSource {
   private publishIfNewer(view: CharterView): void {
     if (view.sessionId !== this.sessionId) return
     const current = this.state.view
-    if (current !== null && view.revision < current.revision) {
+    const lifecycleChanged = current !== null
+      && current.lifecycle !== undefined
+      && view.lifecycle !== undefined
+      && current.lifecycle !== view.lifecycle
+    // A new lifecycle is authoritative regardless of revision: its revision
+    // counter restarts at 0, so revision-only monotonic filtering would drop it.
+    if (current !== null && !lifecycleChanged && view.revision < current.revision) {
       // A `ready` snapshot must never roll back an accepted revision. An
       // authoritative availability demotion (for example the record becoming
       // unreadable) must still reach the Pane; `initializing` frames from a
@@ -202,6 +208,7 @@ export class CharterSessionSource implements CharterSource {
       if (view.status !== 'unavailable') return
     }
     if (current !== null
+      && !lifecycleChanged
       && view.revision === current.revision
       && view.status === current.status
       && view.promptDigest === current.promptDigest

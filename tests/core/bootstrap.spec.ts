@@ -128,6 +128,17 @@ describe('bootstrapFromEvents', () => {
     expect(extraction?.source.summarySeq).toBe(1)
   })
 
+  it('rejects invalid shadowed-token metadata instead of forwarding it to the Remote', () => {
+    const text = '## Primary Request and Intent\n- Original: "Objective for metadata."\n'
+    expect(bootstrapFromEvents([
+      { type: 'compaction/summary', seq: 1, time: 1, data: { summary: [{ type: 'text', text }], shadowedTokenCount: -1 } },
+    ], limits)).toBeUndefined()
+    const valid = bootstrapFromEvents([
+      { type: 'compaction/summary', seq: 1, time: 1, data: { summary: [{ type: 'text', text }], shadowedTokenCount: 12 } },
+    ], limits)
+    expect(valid?.source.shadowedTokens).toBe(12)
+  })
+
   it('skips malformed and empty summaries', () => {
     const extraction = bootstrapFromEvents([
       { type: 'compaction/summary', seq: 1, time: 1, data: { summary: [] } },

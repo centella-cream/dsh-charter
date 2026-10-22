@@ -88,6 +88,8 @@ export interface CharterToolView {
   readonly items: readonly CharterToolItem[]
   /** Number of historical items omitted from an `all` view (debug cap). */
   readonly truncated: number
+  /** `all` only: the objective alone exceeds the tool-response envelope. */
+  readonly objectiveTruncated?: boolean
 }
 
 export type CharterEditResult =
@@ -111,7 +113,7 @@ export interface CharterEditInput {
   readonly actor: CharterActor
 }
 
-export type CharterListener = (view: CharterView) => void
+export type CharterListener = (view: CharterView | null) => void
 
 export interface CharterReadOptions {
   readonly view: 'standing' | 'all'

@@ -198,17 +198,24 @@ export function assertSnapshotAdmission(
     throw charterError('QUOTA_EXCEEDED', `charter exceeds ${limits.maxPendingItems} pending items`)
   }
   const nextObjective = next.objective?.current.text
-  if (nextObjective !== undefined && utf8Bytes(nextObjective) > limits.maxObjectiveBytes) {
-    const unchanged = previous?.objective?.current.text === nextObjective
-    if (!unchanged) {
-      throw charterError('QUOTA_EXCEEDED', `the objective exceeds ${limits.maxObjectiveBytes} UTF-8 bytes`)
+  if (nextObjective !== undefined) {
+    const nextObjectiveBytes = utf8Bytes(nextObjective)
+    const previousObjective = previous?.objective?.current.text
+    if (nextObjectiveBytes > limits.maxObjectiveBytes) {
+      const unchanged = previousObjective === nextObjective
+      const shrunk = previousObjective !== undefined
+        && nextObjectiveBytes < utf8Bytes(previousObjective)
+      if (!unchanged && !shrunk) {
+        throw charterError('QUOTA_EXCEEDED', `the objective exceeds ${limits.maxObjectiveBytes} UTF-8 bytes`)
+      }
     }
   }
   const previousItems = new Map(previous?.items.map(item => [item.id, item]))
   for (const item of next.items) {
-    if (utf8Bytes(item.text) <= limits.maxItemBytes) continue
+    const nextItemBytes = utf8Bytes(item.text)
+    if (nextItemBytes <= limits.maxItemBytes) continue
     const before = previousItems.get(item.id)
-    if (before !== undefined && before.text === item.text) continue
+    if (before !== undefined && (before.text === item.text || nextItemBytes < utf8Bytes(before.text))) continue
     throw charterError('QUOTA_EXCEEDED', `an item exceeds ${limits.maxItemBytes} UTF-8 bytes`)
   }
   if (overLimitGrowth(

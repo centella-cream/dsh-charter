@@ -9,7 +9,7 @@ export function defineCharterReadTool(charter: CharterService): ToolDefinition {
       + 'Use the standing view for the complete current objective, active invariants, and active deliverables; '
       + 'use all only when historical or inactive charter entries are needed. '
       + 'standing has no fixed byte cap; a maximum-size charter can produce a large response. '
-      + 'all is a bounded debugging projection with full item metadata and chain/source fields; the page and its result envelope stay within 64 items / 32 KiB, and omitted items are reported in truncated.',
+      + 'all is a bounded debugging projection with full item metadata and chain/source fields; the page and its result envelope stay within 64 items / 32 KiB, omitted items are reported in truncated, and an objective that alone cannot fit is omitted with objectiveTruncated: true.',
     parameters: {
       view: {
         type: 'string',
@@ -29,6 +29,7 @@ export function defineCharterReadTool(charter: CharterService): ToolDefinition {
           },
           items: { type: 'json', required: true },
           truncated: { type: 'integer', required: true },
+          objectiveTruncated: { type: 'boolean' },
         },
       },
       render: (_args, value) => [{
@@ -46,6 +47,7 @@ export function defineCharterReadTool(charter: CharterService): ToolDefinition {
         objective: value.objective,
         items: value.items.map(item => ({ ...item })),
         truncated: value.truncated,
+        ...(value.objectiveTruncated === true ? { objectiveTruncated: true } : {}),
       }
     },
   })

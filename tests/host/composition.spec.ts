@@ -11,6 +11,7 @@ import * as StorageJson from '@deepseek-ai/dsh-storage-json'
 import SystemPrompt, { renderContextSnapshot, renderPrompt } from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 import { CharterService } from '../../src/host/service.js'
+import { watchCharter } from '../../src/remote/watch.js'
 import type { CharterEditRequest } from '../../src/core/schemas.js'
 
 const contexts: Context[] = []
@@ -592,6 +593,30 @@ describe('dsh-charter host composition', () => {
     expect(Buffer.byteLength(JSON.stringify(all), 'utf8')).toBeLessThanOrEqual(32 * 1_024)
   })
 
+  it('omits an oversized objective from the all view instead of exceeding its envelope', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-all-objective-'))
+    roots.push(root)
+    const ctx = await mount(root, { maxObjectiveBytes: 40_000, maxPromptBytes: 60_000 })
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('all-objective'), {
+      meta: { cwd: root, createdAt: 1_700_000_000_900 },
+    })
+    await waitForReady(service, session)
+    const text = 'x'.repeat(39_000)
+    const result = await service.edit({
+      sessionId: session.id,
+      mutationId: 'all-objective-set',
+      baseRevision: 0,
+      ops: [{ type: 'objective.initialize', text }],
+    })
+    expect(result).toMatchObject({ ok: true })
+    const all = service.readForModel(session, 'all')
+    expect(all).toMatchObject({ objective: null, objectiveTruncated: true })
+    expect(Buffer.byteLength(JSON.stringify(all), 'utf8')).toBeLessThanOrEqual(32 * 1_024)
+    // Standing is the complete working set and still carries the objective.
+    expect(service.readForModel(session, 'standing').objective).toHaveLength(39_000)
+  })
+
   it('bounds the all view by the final tool envelope, not item JSON alone', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-charter-read-envelope-'))
     roots.push(root)
@@ -631,6 +656,74 @@ describe('dsh-charter host composition', () => {
     const all = service.readForModel(session, 'all')
     expect(all.truncated).toBeGreaterThan(0)
     expect(Buffer.byteLength(JSON.stringify(all), 'utf8')).toBeLessThanOrEqual(32 * 1_024)
+  })
+
+  it('allows stepwise shrinking of an over-budget objective and item', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-step-shrink-'))
+    roots.push(root)
+    const first = await mount(root)
+    const firstService = first.charter as CharterService
+    const sessionId = SessionId('step-shrink')
+    const session = first.sessions.create(sessionId, {
+      meta: { cwd: root, createdAt: 1_700_000_000_930 },
+    })
+    await waitForReady(firstService, session)
+    const added = await firstService.edit(addInvariant(session.id, 0, 'shrink-item', 'abcdefghijklmnopqrst'))
+    if (!added.ok) throw new Error('add failed')
+    const objective = await firstService.edit({
+      sessionId: session.id,
+      mutationId: 'shrink-objective',
+      baseRevision: 1,
+      ops: [{ type: 'objective.initialize', text: 'abcdefghijklmnopqrst' }],
+    })
+    if (!objective.ok) throw new Error('objective failed')
+    await first.fiber.dispose()
+    contexts.splice(contexts.indexOf(first), 1)
+
+    const second = await mount(root, { maxObjectiveBytes: 4, maxItemBytes: 4 })
+    const secondService = second.charter as CharterService
+    const again = second.sessions.create(sessionId, {
+      meta: { cwd: root, createdAt: 1_700_000_000_930 },
+    })
+    await waitForReady(secondService, again)
+    expect(secondService.view(again).overBudget).toBe(true)
+
+    const shortenedObjective = await secondService.edit({
+      sessionId: again.id,
+      mutationId: 'shrink-objective-step',
+      baseRevision: 2,
+      ops: [{ type: 'objective.redirect', text: '1234' }],
+    })
+    expect(shortenedObjective).toMatchObject({ ok: true })
+    const shortenedItem = await secondService.edit({
+      sessionId: again.id,
+      mutationId: 'shrink-item-step',
+      baseRevision: 3,
+      ops: [{ type: 'item.edit', itemId: added.ids['shrink-item']!, text: '5678' }],
+    })
+    expect(shortenedItem).toMatchObject({ ok: true })
+    expect(secondService.view(again).overBudget).toBe(false)
+  })
+
+  it('closes an open watch when its Session is disposed', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-watch-close-'))
+    roots.push(root)
+    const ctx = await mount(root)
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('watch-close'), {
+      meta: { cwd: root, createdAt: 1_700_000_000_800 },
+    })
+    await waitForReady(service, session)
+    const controller = new AbortController()
+    const iterator = watchCharter({
+      read: () => service.view(session),
+      subscribe: listener => service.subscribe(session.id, listener),
+    }, controller.signal)
+    await iterator.next()
+    // This is the path the `session/disposed` listener invokes; a live watch
+    // must be woken instead of remaining on the queue forever.
+    ;(service as unknown as { closeListeners: (id: SessionId) => void }).closeListeners(session.id)
+    expect(await iterator.next()).toEqual({ done: true, value: undefined })
   })
 
   it('marks records over the current count limits as over budget', async () => {
@@ -692,7 +785,7 @@ describe('dsh-charter host composition', () => {
     expect(stored.message).toContain('read-only')
 
     const views: Awaited<ReturnType<CharterService['view']>>[] = []
-    const unsubscribe = secondService.subscribe(SessionId('stored'), view => views.push(view))
+    const unsubscribe = secondService.subscribe(SessionId('stored'), view => { if (view !== null) views.push(view) })
     const live = second.sessions.create(SessionId('stored'), {
       meta: { cwd: root, createdAt: 1_700_000_000_090 },
     })
@@ -732,7 +825,7 @@ describe('dsh-charter host composition', () => {
     expect(service.view(child).status).toBe('unavailable')
 
     const published: string[] = []
-    const unsubscribe = service.subscribe(child.id, view => published.push(view.status))
+    const unsubscribe = service.subscribe(child.id, view => { if (view !== null) published.push(view.status) })
     const parent = ctx.sessions.create(parentId, {
       meta: { cwd: root, createdAt: 1_700_000_000_009 },
     })

@@ -183,7 +183,7 @@ export class CharterService extends Service {
     }, { global: true })
 
     this.ctx.on('session/disposed', session => {
-      this.listeners.delete(session.id)
+      this.closeListeners(session.id)
       this.waitingForParent.delete(session.id)
       this.unavailable.delete(session.id)
       this.invalidRecords.delete(session.id)
@@ -267,7 +267,7 @@ export class CharterService extends Service {
         this.initializationControllers.clear()
         this.initializationOwners.clear()
         this.waitingForParent.clear()
-        this.listeners.clear()
+        for (const sessionId of [...this.listeners.keys()]) this.closeListeners(sessionId)
         await domain.close()
         this.sessionsTable = undefined
       }, 'charter.domain')
@@ -710,6 +710,15 @@ export class CharterService extends Service {
     // tool envelope (revision/objective/items/truncated), not only item JSON.
     const maxItems = 64
     const maxEnvelopeBytes = 32 * 1_024
+    const emptyEnvelopeBytes = Buffer.byteLength(
+      JSON.stringify({ revision: record.current.revision, objective, items: [], truncated: relevant.length }),
+      'utf8',
+    )
+    // A profile may raise maxObjectiveBytes above the debug envelope. Never
+    // return an unfittable envelope: omit the objective and report the
+    // truncation explicitly.
+    const objectiveTruncated = emptyEnvelopeBytes > maxEnvelopeBytes
+    const boundedObjective = objectiveTruncated ? null : objective
     const toToolItem = (item: typeof relevant[number]): CharterToolItem => ({
       id: item.id,
       kind: item.kind,
@@ -731,7 +740,7 @@ export class CharterService extends Service {
     const envelopeBytes = (items: readonly CharterToolItem[]): number => Buffer.byteLength(
       JSON.stringify({
         revision: record.current.revision,
-        objective,
+        objective: boundedObjective,
         items,
         truncated: relevant.length - items.length,
       }),
@@ -745,9 +754,10 @@ export class CharterService extends Service {
     }
     return {
       revision: record.current.revision,
-      objective,
+      objective: boundedObjective,
       items: page,
       truncated: relevant.length - page.length,
+      ...(objectiveTruncated ? { objectiveTruncated: true } : {}),
     }
   }
 
@@ -869,6 +879,20 @@ export class CharterService extends Service {
     return () => {
       listeners?.delete(listener)
       if (listeners?.size === 0) this.listeners.delete(sessionId)
+    }
+  }
+
+  /** Close existing watchers so no generator waits forever after a Session dies. */
+  private closeListeners(sessionId: SessionIdType): void {
+    const listeners = this.listeners.get(sessionId)
+    if (listeners === undefined) return
+    this.listeners.delete(sessionId)
+    for (const listener of [...listeners]) {
+      try {
+        listener(null)
+      } catch (error) {
+        this.ctx.logger.warn(`charter: listener close for ${sessionId} failed: ${describeError(error)}`)
+      }
     }
   }
 

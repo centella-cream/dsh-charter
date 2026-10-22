@@ -33,7 +33,7 @@ const compactionSummaryDataSchema = z.object({
     type: z.string(),
     text: z.string(),
   }).passthrough()).min(1),
-  shadowedTokenCount: z.number().optional(),
+  shadowedTokenCount: z.number().int().nonnegative().optional(),
 }).passthrough()
 
 const SECTION = /^#{1,6}\s+(.+?)\s*$/

@@ -372,7 +372,8 @@ function ItemRow({
       <div className="charter-item__actions">
         {item.staged && (
           <ActionButton
-            ariaLabel={`${menuLabel}: ${item.synthetic ? t('item.unstage') : t('item.unstage')}`}
+            ariaLabel={`${menuLabel}: ${t('item.unstage')}`}
+            disabled={!editable}
             onClick={() => onUnstage(item.id)}
           >
             {t('item.unstage')}
@@ -625,7 +626,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
 
   const online = state.status === 'ready'
   const revisionConflict = baseRevision !== null && view.revision !== baseRevision
-  const editable = view.status === 'ready' && !saving && online && editor === null && state.status === 'ready'
+  const editable = view.status === 'ready' && !saving && !bootstrapSaving && online && editor === null && state.status === 'ready'
   const previewBytes = utf8Bytes(preview)
   const contextOver = previewBytes > view.limits.maxPromptBytes
   const budgetPercent = Math.min(100, Math.round((previewBytes / view.limits.maxPromptBytes) * 100))
@@ -1200,8 +1201,8 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                     </span>
                     <div className="charter-bootstrap__summary">
                       <StatusTag tone="info">{t('bootstrap.summary', { active: bootstrapPlan.active, pending: bootstrapPlan.pending })}</StatusTag>
-                      <ActionButton onClick={() => draft.setAllBootstrapSelected(true)}>{t('bootstrap.selectAll')}</ActionButton>
-                      <ActionButton onClick={() => draft.setAllBootstrapSelected(false)}>{t('bootstrap.selectNone')}</ActionButton>
+                      <ActionButton disabled={bootstrapSaving} onClick={() => draft.setAllBootstrapSelected(true)}>{t('bootstrap.selectAll')}</ActionButton>
+                      <ActionButton disabled={bootstrapSaving} onClick={() => draft.setAllBootstrapSelected(false)}>{t('bootstrap.selectNone')}</ActionButton>
                     </div>
                     {view.objective === null && (
                       <label className="charter-bootstrap__field">
@@ -1209,6 +1210,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                         <textarea
                           value={bootstrapObjective}
                           rows={2}
+                          disabled={bootstrapSaving}
                           aria-label={t('bootstrap.objective')}
                           onChange={event => draft.setBootstrapObjective(event.target.value)}
                         />
@@ -1235,6 +1237,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                                 <input
                                   type="checkbox"
                                   checked={item.selected}
+                                  disabled={bootstrapSaving}
                                   aria-label={t('bootstrap.includeAria', { index: index + 1 })}
                                   onChange={event => draft.updateBootstrapItem(item.id, { selected: event.target.checked })}
                                 />
@@ -1242,6 +1245,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                                   <textarea
                                     value={item.text}
                                     rows={2}
+                                    disabled={bootstrapSaving}
                                     aria-label={t('bootstrap.editAria', { index: index + 1 })}
                                     onChange={event => draft.updateBootstrapItem(item.id, { text: event.target.value })}
                                   />
