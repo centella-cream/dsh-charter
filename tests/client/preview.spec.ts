@@ -83,16 +83,28 @@ describe('projected draft view', () => {
     expect(prompt).not.toContain('Pending')
   })
 
-  it('detaches a successor when the previewed purge removes its superseded predecessor', () => {
-    const projected = projectView(view(), [
-      { type: 'item.add', item: { clientRef: 'a', kind: 'invariant', text: 'A', order: 1 } },
-      { type: 'item.supersede', itemId: 'draft:a', replacement: { clientRef: 'b', kind: 'invariant', text: 'B', order: 2 } },
-      { type: 'item.purge', itemId: 'draft:a', confirmed: true },
-    ])
+  it('detaches a successor and marks it as a derived row when the previewed purge removes its predecessor', () => {
+    const ops = [
+      { type: 'item.add' as const, item: { clientRef: 'a', kind: 'invariant' as const, text: 'A', order: 1 } },
+      {
+        type: 'item.supersede' as const,
+        itemId: 'draft:a',
+        replacement: { clientRef: 'b', kind: 'invariant' as const, text: 'B', order: 2 },
+      },
+      { type: 'item.purge' as const, itemId: 'draft:a', confirmed: true as const },
+    ]
+    const projected = projectView(view(), ops)
     expect(projected.items).toHaveLength(1)
     const successor = projected.items[0]!
-    expect(successor).toMatchObject({ text: 'B', lifecycle: 'current', staged: true })
+    expect(successor).toMatchObject({ text: 'B', lifecycle: 'current', staged: true, unstageTarget: null })
     expect(successor.supersedes).toBeUndefined()
+    // No staged op targets the derived successor, so Unstage would be dead.
+    expect(ops.some(op => 'itemId' in op && op.itemId === successor.id)).toBe(false)
+    // Directly staged rows keep the default target (undefined means item.id).
+    const directlyStaged = projectView(view(), ops.filter(op => op.type !== 'item.purge'))
+    const replacement = directlyStaged.items.find(item => item.text === 'B')
+    expect(replacement?.staged).toBe(true)
+    expect(replacement?.unstageTarget).toBeUndefined()
   })
 })
 

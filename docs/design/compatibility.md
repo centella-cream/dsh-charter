@@ -14,26 +14,25 @@ This document answers three questions:
 
 | DSH version | Status | Verification |
 | --- | --- | --- |
-| `0.1.7-rc.2` | Supported (minimum) | typecheck, build, 161 tests, remote/client smoke, real profile install and startup |
-| `0.2.0-rc.1` | Supported | typecheck, build, 161 tests, remote/client smoke |
+| `0.1.7-rc.2` | Supported (minimum) | typecheck, build, 167 tests, remote/client smoke, real profile install and startup |
+| `0.2.0-rc.1` | Supported | typecheck, build, 167 tests, remote/client smoke |
 | `0.2.0-rc.2` | Supported | same + real profile install/startup, boot graph, bundle HTTP |
-| `0.2.1-rc.1` | Supported | typecheck, build, 161 tests, remote/client smoke |
+| `0.2.1-rc.1` | Supported | typecheck, build, 167 tests, remote/client smoke |
 | `0.2.1-rc.2` | Supported (primary development baseline) | same |
 | `0.1.5-rc.1` / `0.1.5-rc.2` / `0.1.5-rc.3` | Not supported | contract differences too large; see section 4 |
 | `0.1.6-alpha.x` | Not supported | same generation as 0.1.5; not individually verified |
 | `0.2.2-rc.x` | Not declared | peer range does not cover this prerelease; add after verification |
 | `0.3.x` | Not declared | major upgrade requires re-verification |
 
-The DSH peer range in `package.json` is:
+The DSH peer ranges and `engines.dsh` in `package.json` are exactly the five verified versions:
 
 ```text
->=0.1.7-rc.2 <0.2.0-0 || >=0.2.0-rc.1 <0.3.0-0 || >=0.2.1-rc.1 <0.3.0-0
+0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2
 ```
 
-This is required by semver prerelease semantics: `>=0.2.0-rc.1 <0.3.0` alone does not match `0.2.1-rc.2`
-because the range has no prerelease comparator for the `0.2.1` tuple. Likewise 0.1.7 needs its own comparator.
-Add a new clause after verifying each new minor prerelease. `0.1.7-rc.1` is excluded; the minimum is
-`0.1.7-rc.2`.
+Exact versions are intentional: a broad range would claim DSH prereleases that the project has not tested.
+Extend the list only after running the version matrix for the new version, and keep the peer ranges and
+`engines.dsh` in sync. `0.1.7-rc.1` is excluded; the minimum is `0.1.7-rc.2`.
 
 ## 2. Version differences
 
@@ -114,7 +113,8 @@ the [verification record](../verification.md).
 
 ## 6. Upgrade policy
 
-- New `0.2.x` stable: peer range already covers it; run 161 tests + profile smoke once.
+- New `0.2.x` stable: **not covered yet** — add the exact version to the peer ranges and `engines.dsh`, run the
+  full version matrix, 167 tests, and profile smoke, then update this matrix; do not claim it before verification.
 - New `0.2.x` prerelease: extend the peer range, then run the version matrix; do not claim compatibility
   without verification.
 - `0.2.1` introduces resource authorization and is the minimum security recommendation.

@@ -3,7 +3,7 @@
 English | [中文](verification.zh.md)
 
 Verification date: 2026-10-20; re-run after the second and third readiness reviews: 2026-10-21; final-tree rerun
-for the `0.1.0-rc.1` tag and tracked artifact digest: 2026-10-22.
+for the local `0.1.0-rc.1` RC build and tracked artifact digest: 2026-10-22.
 Environment: macOS, Node `v22.23.1`, npm `12.0.2`, pnpm `12.3.4`; current Desktop runtime DSH `0.2.0-rc.2`.
 Local development dependency baseline: DSH `0.2.1-rc.2`.
 
@@ -15,7 +15,7 @@ HTML live under `.tmp/` and are excluded from the published package.
 | Item | Result |
 | --- | --- |
 | Strict TypeScript check (5 DSH versions) | Pass |
-| Vitest (5 locally available versions × 161 tests) | Pass |
+| Vitest (5 locally available versions × 167 tests) | Pass |
 | Host ESM build + browser single-file bundle | Pass |
 | Remote decorator/resource smoke | Pass (0.1.7/0.2.0 have no resource declaration, as expected) |
 | Browser factory-bundle materialization and `apply` smoke | Pass |
@@ -29,7 +29,7 @@ HTML live under `.tmp/` and are excluded from the published package.
 | Session-owned client drafts | Pass: unit tests cover draft survival across bindings, retry mutation-id reuse, conflict rebase, and bootstrap section ownership; section 4.5 |
 | Runtime schema revalidation | Pass: a record mutated to an invalid schema after mount isolates only its Session and is preserved; section 4.6 |
 | Packed artifact installability | Pass: local `npm run smoke:package` (tarball contents, exports/files, packed `core` import, client bundle; Host/Remote runtime imports are covered by the workspace build smoke); section 2 |
-| Compaction checker exit criteria | Pass: fixture tests cover success, dirty system prompt, a required matching post-compaction `charter_read` (missing/mismatched fail, pre-compaction reads ignored), lost snapshot, and leak warning; section 4.7 |
+| Compaction checker exit criteria | Pass: fixture tests cover success, dirty system prompt, a required matching post-compaction `charter_read` whose call is authenticated via `sourceEventSeqs`/callId and ordered after the compaction and runtime snapshot (missing, mismatched, pre-compaction, non-standing, and error cases fail), lost snapshot, and leak warning; section 4.7 |
 | Stale async draft results | Pass: edit/bootstrap results are fenced by source/generation/request identity; empty and idle drafts are reclaimed; section 4.7 |
 | Real model + compaction end-to-end | **PASS recorded 2026-10-22** on an anonymized evaluation Session: 326 shadowed messages / ~228k tokens, revision-1 charter survived, post-compaction snapshot + `charter_read` verified (section 8.4) |
 
@@ -44,7 +44,7 @@ Results:
 
 - typecheck passes;
 - build passes;
-- 17 test files, 161 tests pass (from `npm test`, which builds and then runs `vitest run`);
+- 17 test files, 167 tests pass (from `npm test`, which builds and then runs `vitest run`);
 - `remote-smoke` asserts `watch,bootstrap,edit`, stream mode, and Session resource;
 - `client-smoke` asserts the single-file factory bundle, external-dependency allowlist, no Node-only `Buffer`
   reference, and `apply` registering the tab/pane/Remote contribution;
@@ -52,9 +52,8 @@ Results:
   leaked workspace files, installs the tarball into an **empty consumer project** with only its declared
   dependencies, and loads the packed `dsh-charter/core` entry plus the client bundle.
 
-CI is configured to run `npm run check` and `npm run smoke:package` on every push/PR for Node `22.19.0` and
-Node `24` once the public repository exists. The local gates recorded in this document ran on Node `v22.23.1`;
-the repository has no remote yet, so CI itself has not run.
+CI (`.github/workflows/ci.yml`) runs `npm run check` and `npm run smoke:package` for Node `22.19.0` and
+Node `24`; the local gates recorded in this document ran on Node `v22.23.1`.
 
 Key test files:
 
@@ -75,7 +74,7 @@ Key test files:
 | `tests/client/bootstrap-plan.spec.ts` | overflow candidates stay in one plan; O(1) incremental byte accounting with a 3,000 all-active case and a mixed invariant/deliverable case; per-candidate outcomes; exact-render verification; bootstrap outcome classifier (draft/discard/stale/unavailable) |
 | `tests/client/draft.spec.ts` / `tests/client/draft-store.spec.ts` | Session-scoped request guard (Session A ops never build a request for Session B); draft survival across binding unmount/remount; idempotent retry mutation-id reuse; conflict rebase; stale async results cannot overwrite a newer draft/source/lifecycle; bootstrap does not steal the section |
 | `tests/client/preview.spec.ts` | projected draft rows for add/edit/accept/progress/supersede/purge; purge detaches the successor's supersedes link; renderer parity and pending exclusion; prompt-budget Apply admission (shrinking, same-size, growing, and within-budget renders) |
-| `tests/verify/compaction-checks.spec.ts` | compaction checker fixtures: dirty system prompt, required matching post-compaction `charter_read` (missing and mismatched both fail), pre-compaction reads ignored, lost post-compaction snapshot, leak warning, and exact compact standing projection |
+| `tests/verify/compaction-checks.spec.ts` | compaction checker fixtures: dirty system prompt; required matching post-compaction `charter_read` with authenticated call ordering (`sourceEventSeqs`/callId), default/standing view, non-error result, pre-compaction and call-before-runtime rejection; lost post-compaction snapshot; leak warning; exact compact standing projection |
 
 ## 3. Cross-version matrix
 
@@ -102,18 +101,18 @@ Results:
 
 | Version | typecheck | build | Vitest | remote smoke | client smoke |
 | --- | --- | --- | --- | --- | --- |
-| `0.1.7-rc.2` | Pass | Pass | 161/161 | Pass (no-resources warning) | Pass |
-| `0.2.0-rc.1` | Pass | Pass | 161/161 | Pass (no-resources warning) | Pass |
-| `0.2.0-rc.2` | Pass | Pass | 161/161 | Pass (no-resources warning) | Pass |
-| `0.2.1-rc.1` | Pass | Pass | 161/161 | Pass | Pass |
-| `0.2.1-rc.2` | Pass | Pass | 161/161 | Pass | Pass |
+| `0.1.7-rc.2` | Pass | Pass | 167/167 | Pass (no-resources warning) | Pass |
+| `0.2.0-rc.1` | Pass | Pass | 167/167 | Pass (no-resources warning) | Pass |
+| `0.2.0-rc.2` | Pass | Pass | 167/167 | Pass (no-resources warning) | Pass |
+| `0.2.1-rc.1` | Pass | Pass | 167/167 | Pass | Pass |
+| `0.2.1-rc.2` | Pass | Pass | 167/167 | Pass | Pass |
 
-Re-run on the final `0.1.0-rc.1` tree on 2026-10-22: each version reports 17 test files / 161 tests, and build
+Re-run on the final `0.1.0-rc.1` tree on 2026-10-22: each version reports 17 test files / 167 tests, and build
 includes the remote/client smoke assertions.
 
 This five-version matrix is **local evidence**: its version directories and driver script live in the gitignored
-`.tmp/`, so the public CI does not reproduce it. CI is configured to cover the committed gates
-(`npm run check` + `npm run smoke:package`) on Node `22.19.0` and Node `24` once the repository exists.
+`.tmp/`, so the public CI does not reproduce it. CI (`.github/workflows/ci.yml`) runs the committed gates
+(`npm run check` + `npm run smoke:package`) on Node `22.19.0` and Node `24`.
 
 `0.1.7-rc.2` and `0.2.0` remote smoke prints:
 
@@ -259,16 +258,18 @@ The fourth readiness review targeted failure paths that only appear after startu
 - **Packaged artifact gate.** The local `npm run smoke:package` gate packs the tarball and verifies required
   files, every `exports` target, no workspace leakage, the packed `core` import, and the packed client bundle;
   Host/Remote runtime imports need the Host peer graph and are covered by the workspace `remote-smoke` /
-  `client-smoke`, not by the empty consumer. CI is configured to run the same gate once the repository exists.
+  `client-smoke`, not by the empty consumer. CI runs the same gate (`.github/workflows/ci.yml`).
 
 ### 4.7 Checker exit criteria, draft async fencing, and online repair
 
 - **Compaction checker (fixtures).** `tests/verify/compaction-checks.spec.ts` exercises the exact success criteria:
-  a clean pass, a dirty system prompt, a **required** matching `charter_read` standing result recorded after the
-  latest compaction (missing and mismatched both fail; pre-compaction reads are ignored by seq), a lost
-  post-compaction snapshot, and a leaking-summary warning. The transcript reader builds the same compact standing
-  projection as the Host (`kind`/`text`/`verification`/`progress`) and all required evidence participates in the
-  exit code; only a WAIT/BLOCKED state short-circuits before evaluation.
+  a clean pass, a dirty system prompt, and a **required** matching `charter_read` standing result whose unique
+  tool call is authenticated (top-level `sourceEventSeqs`, legacy callId fallback) and ordered after the latest
+  compaction and runtime-context snapshot, with the default/standing view and a non-error result (missing,
+  mismatched, pre-compaction, non-standing, and error cases fail), a lost post-compaction snapshot, and a
+  leaking-summary warning. The transcript reader builds the same compact standing projection as the Host
+  (`kind`/`text`/`verification`/`progress`) and all required evidence participates in the exit code; only a
+  WAIT/BLOCKED state short-circuits before evaluation.
 - **Draft async fencing.** Edit and bootstrap Apply capture `asyncGeneration`, the source instance and its monotonic
   connection epoch, lifecycle, and request ops identity; a late result from a destroyed source or from a
   detach/reattach cycle cannot clear or overwrite a newer draft. Source invalidation preserves the mutation id for
@@ -648,10 +649,14 @@ The command reads the Session transcript and the charter storage record, then re
 4. no system-prompt snapshot contains the charter prefix, body, objective, or a long item text;
 5. a `charter_read` standing result **recorded after the latest compaction** is **required** and equals the
    Host's compact standing projection (`kind`/`text`/`verification`/`progress`) for the current revision, not only
-   revision/objective; reads from before the compaction are ignored by event seq, and a missing or mismatched
-   post-compaction read fails the PASS. A legacy debug-shaped tool result (extra id/review/lifecycle fields) is
-   normalized to the same projection, so a Host that has not been restarted after a package update still yields
-   comparable working-set evidence;
+   revision/objective. The producing **tool call itself must be authenticated**: it is resolved from the result's
+   top-level `sourceEventSeqs` (one unique `charter_read` call) or, for legacy transcripts without that field, by
+   `toolCallId`; the call seq must follow the latest compaction **and** the latest runtime-context snapshot, its
+   `arguments.view` must be absent/default/`standing` (an explicit `all` is rejected), and the result must be a
+   non-error and later than its call. A missing result, an unauthenticated/mismatched call, a pre-compaction read,
+   an `all` read, or an error result all fail the PASS. A legacy debug-shaped tool result (extra
+   id/review/lifecycle fields) is normalized to the same projection, so a Host that has not been restarted after a
+   package update still yields comparable working-set evidence;
 6. a compaction summary after the compaction does not carry the rendered body (a warning: it would weaken the
    proof, not silently pass it).
 
@@ -661,16 +666,16 @@ Procedure in a real profile:
    manually), then send one message so the runtime context is persisted in the transcript;
 2. run `npm run verify:compaction`: expect `charter established`, injection, digest, and system-prompt checks to
    pass, with the compaction step in `WAIT`;
-3. run `/compact` in the same Session, send one message, then have the model call `charter_read` once so a
-   matching post-compaction standing result exists;
+3. run `/compact` in the same Session, send one message, then have the model call `charter_read` once
+   (default/standing view, no error) so an authenticated post-compaction result exists;
 4. run the command again: expect `PASS` with the compaction seq, post-compaction snapshot seq, post-compaction
    `charter_read` seq, and digest.
 
 The checker fails closed as `BLOCKED` (no charter yet) or `WAIT` (no post-compaction request yet); once a
-post-compaction request exists, `survivesCompaction`, a clean system prompt, and a matching post-compaction
-`charter_read` standing result all participate in the exit code, so a missing or mismatched read is a FAIL. A
-leaking summary is a recorded warning, not a silent pass. `tests/verify/compaction-checks.spec.ts` exercises
-these success/failure fixtures without a live model.
+post-compaction request exists, `survivesCompaction`, a clean system prompt, and an authenticated matching
+post-compaction `charter_read` standing result all participate in the exit code, so a missing, unauthenticated, or
+mismatched read is a FAIL. A leaking summary is a recorded warning, not a silent pass.
+`tests/verify/compaction-checks.spec.ts` exercises these success/failure fixtures without a live model.
 
 ### 8.3 Platform basis
 
@@ -686,8 +691,10 @@ draft from its previous compaction summary was reviewed and applied as **revisio
 `promptDigest sha256:4dd9e615…`). `/compact` then completed as compaction seq **31801** (source
 `cmd-635e3d77-2`), shadowing 326 messages (~228,181 tokens). The next request after compaction persisted
 runtime-context snapshot seq **31810**, carrying `sections [sandbox:policy, approval:policy, charter:standing]`
-with a 5,081 B charter whose bytes/digest match storage; a subsequent `charter_read` call (result seq **31825**,
-after the compaction) returned the same revision/objective/working set. Full checker output:
+with a 5,081 B charter whose bytes/digest match storage; a subsequent `charter_read` call (call seq **31824**,
+authenticated via top-level `sourceEventSeqs`; after compaction seq 31801 and runtime snapshot seq 31810;
+`view: standing`; non-error) returned the same revision/objective/working set as result seq **31825**. Full
+checker output:
 
 ```text
 $ npm run verify:compaction -- --session "$SESSION_ID" \
@@ -697,7 +704,7 @@ $ npm run verify:compaction -- --session "$SESSION_ID" \
   PASS  latest runtime context carries charter:standing
   PASS  injected text matches storage authority and promptDigest
   PASS  system prompt carries no charter body
-  PASS  post-compaction charter_read standing view matches the storage revision/objective
+  PASS  authenticated post-compaction charter_read standing view matches the storage revision/objective
   PASS  charter survives compaction — snapshot seq 31810 > compaction seq 31801
   PASS  compaction summary does not carry the charter text
 result: PASS
@@ -707,23 +714,25 @@ Note: the running Desktop process had loaded a pre-restart Host bundle, so its `
 carried legacy debug fields; the checker normalized them to the current compact projection. Restarting the
 Desktop app is still required to load the current package in memory for UI/tool ABI parity.
 
-Re-check on the current tree: the stricter checker (a required matching `charter_read` standing result recorded
-after the latest compaction) was re-run against this recorded transcript and still returns `PASS`; the matching
-read result is seq **31825**, after compaction seq 31801.
+Re-check on the current tree: the stricter checker (a required matching `charter_read` standing result whose
+call is authenticated and ordered after the latest compaction and runtime-context snapshot) was re-run against
+this recorded transcript and still returns `PASS`; the unique call is seq **31824** with result seq **31825**,
+after compaction seq 31801 and runtime snapshot seq 31810.
 
 Evidence timeline for this pre-release:
 
 - Recorded real-model run: 2026-10-22 on the Desktop/Web runtime DSH `0.2.0-rc.2` (`dsh` CLI `0.2.0-rc.2`).
   The run happened **before** the full Desktop restart described above; the process that served it was still
   running the pre-restart Host bundle, which is why the `charter_read` result carried legacy debug fields.
-- Gated source commit for this convergence record: `b0076f2a2a55ca1a9771b2dc974fe7082c76f2d5`; the tagged tree
-  adds this evidence record, the final documentation polish, and the tracked digest file. Gates on the convergence tree: `npm run check`
-  (typecheck + build + 17 test files / 161 tests), `npm run smoke:package`, and the local five-version matrix
-  (17 files / 161 tests on every version).
-- Shipped artifact digest: the tracked repository-root `SHA256SUMS` (kept current by the release commit, which
-  updates only that file) pins the digest of `dsh-charter-0.1.0-rc.1.tgz` built from the tagged tree;
-  `dist/SHA256SUMS` carries the same value. The annotated tag message records the release commit and the shipped
-  digest, and `git rev-parse v0.1.0-rc.1^{commit}` resolves the release commit.
+- Local build commit for this local RC build: recorded together with the tracked artifact digest in the final
+  evidence commit; this commit adds only this evidence record and the tracked digest file. Gates on the build
+  tree: `npm run check` (typecheck + build + 17 test files / 167 tests), `npm run smoke:package`, and the local
+  five-version matrix (17 files / 167 tests on every version).
+- Shipped artifact digest: the tracked repository-root `SHA256SUMS` (refreshed by the final evidence commit,
+  which updates only that file) pins the digest of `dsh-charter-0.1.0-rc.1.tgz` built from the build tree;
+  `dist/SHA256SUMS` carries the same value. **No release tag exists for this local build**: the provisional local
+  tag was deleted, and the final annotated `v0.1.0-rc.1` tag is created only at publish time on the
+  metadata/documentation/CI-gated commit (docs/releasing.md).
 - Remaining manual check: restart the Desktop app and reopen the Charter tab once to confirm the current
   bundle/tool ABI — this post-restart re-check is **not** part of the recording above and is required before a
   stable `latest` release, not before publishing this pre-release under `next`.

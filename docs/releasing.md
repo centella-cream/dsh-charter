@@ -8,17 +8,32 @@ move a tag that has already been pushed and never re-pack the archive after tagg
 
 ## 1. External prerequisite — public repository setup
 
-At the time of this commit the public GitHub repository does not exist yet, this checkout has no `git remote`,
-`package.json` `repository`, `homepage`, and `bugs` are intentionally absent, and nothing has been pushed or
-published. Prepare the repository first:
+Release state is dynamic; this checklist is the only place that records it. At the time of writing the public
+GitHub repository may not exist yet, `package.json` `repository`, `homepage`, and `bugs` are intentionally absent,
+and nothing may have been pushed or published. Before starting, **delete any provisional local release tag**
+created while staging the RC — a tag created before repository metadata and public CI must not survive:
+
+```bash
+git tag -d v0.1.0-rc.1   # only if it exists; it was never pushed (confirm: no matching remote tag)
+git remote -v            # must be empty or must not contain this repository yet
+```
+
+A local-only marker such as `v0.1.0-rc.1-build` may be used for internal traceability; it is never pushed and is
+not the release tag.
+
+Prepare the repository first:
 
 1. create the public repository (owner/name agreed by the maintainer) and add it as `origin`;
 2. restore `repository`, `homepage`, and `bugs` in `package.json` to that URL and commit the metadata change;
-3. push `main` only — do not push tags yet (`git push origin main`; do not use `--follow-tags`);
-4. wait for the public CI in `.github/workflows/ci.yml` to be green on that commit (Node 22.19.0 and 24 matrix).
+3. update every mutable release-state statement that changed (repository metadata, public CI status, release
+   prerequisites), rerun `npm run check` and `npm run smoke:package`, and commit the documentation refresh in the
+   same metadata/CI-status/documentation-update commit;
+4. push `main` only — do not push tags yet (`git push origin main`; do not use `--follow-tags`);
+5. wait for the public CI in `.github/workflows/ci.yml` to be green on that commit (Node 22.19.0 and 24 matrix).
 
-The tag is created later, on the final verified commit (§4); pushing it before verification would make the release
-archive depend on a tree that has not been gated.
+The tag is created later, on the final verified commit (§4), only after the digest commit is on `main` and green
+in public CI; pushing it before verification would make the release archive depend on a tree that has not been
+gated.
 
 ## 2. Preconditions
 
@@ -51,7 +66,7 @@ after the final package update, restart it once and reopen the Charter tab befor
 
 ## 4. Build the verified artifact, tag, push, publish
 
-On the final verified commit (metadata restored, CI green, all gates passing):
+On the final verified commit (metadata restored, documentation refreshed, CI green, all gates passing):
 
 ```bash
 npm pack
@@ -60,8 +75,16 @@ mkdir -p dist && mv dsh-charter-0.1.0-rc.1.tgz dist/
 ```
 
 Write the same digest into the tracked repository-root `SHA256SUMS`. The root file is intentionally outside the
-npm `files` whitelist, so committing it does not change the packed archive bytes; commit it before creating the
-tag. `dist/` is gitignored and is never committed.
+npm `files` whitelist, so committing it does not change the packed archive bytes. Commit it, then **push `main`
+again** with that final digest commit and wait for public CI to be green on it:
+
+```bash
+git push origin main
+# wait for the public CI run on this exact commit to pass
+```
+
+Never create the release tag on a commit that is not reachable from the pushed, CI-green `main` (no
+tag-only/unpushed commits). `dist/` is gitignored and is never committed.
 
 Install that exact tarball into a fresh profile and verify it:
 
@@ -74,8 +97,9 @@ DSH_HOME=/tmp/dsh-charter-release-home \
   dsh --profile release-smoke --no-open --port 19399
 ```
 
-Open the printed URL, start a Session, and check the Charter tab and English/Chinese switching. Now create the
-final annotated tag on this final commit and push it once:
+Open the printed URL, start a Session, and check the Charter tab and English/Chinese switching. Only now — with
+the final digest commit pushed to `main` and public CI green on it — create the final annotated tag on that exact
+commit and push it once:
 
 ```bash
 git tag -a v0.1.0-rc.1 -m "dsh-charter 0.1.0-rc.1"
@@ -84,7 +108,7 @@ git push origin v0.1.0-rc.1
 
 Never move a pushed tag; if the tag is wrong, bump the version instead. Create the GitHub release from that tag
 and attach the **already-built and verified** `dist/dsh-charter-0.1.0-rc.1.tgz` plus `dist/SHA256SUMS` — do not
-run `npm pack` again after tagging. Publish that exact file with a non-latest dist-tag:
+run `npm pack` again after tagging, and publish the already-built file directly:
 
 ```bash
 npm publish dist/dsh-charter-0.1.0-rc.1.tgz --access public --tag next

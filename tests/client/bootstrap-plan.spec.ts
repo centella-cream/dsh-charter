@@ -170,6 +170,37 @@ describe('bootstrap outcome', () => {
     expect(utf8Bytes(previewPrompt(view, plan.ops))).toBeLessThanOrEqual(view.limits.maxPromptBytes)
   })
 
+  it('normalizes CRLF and NFD candidates before incremental accounting', () => {
+    const view = emptyView(64 * 1_024 * 1_024)
+    const crlfItems = Array.from({ length: 2_000 }, (_, index) => ({
+      id: `crlf-${index}`,
+      kind: 'invariant' as const,
+      text: `Constraint ${String(index)} ${'x'.repeat(30)}\r\nsecond line`,
+      selected: true,
+    }))
+    const crlfPlan = buildBootstrapPlan(view, 'Ship \r\n the charter', crlfItems)
+    expect(crlfPlan.active).toBe(2_000)
+    expect(crlfPlan.pending).toBe(0)
+    const firstCrlf = crlfPlan.ops.find(op => op.type === 'item.add')
+    expect(firstCrlf?.type).toBe('item.add')
+    if (firstCrlf?.type === 'item.add') expect(firstCrlf.item.text).not.toContain('\r')
+    expect(utf8Bytes(previewPrompt(view, crlfPlan.ops))).toBeLessThanOrEqual(view.limits.maxPromptBytes)
+
+    const nfdItems = Array.from({ length: 2_000 }, (_, index) => ({
+      id: `nfd-${index}`,
+      kind: 'invariant' as const,
+      text: `Cafe\u0301 ${String(index)} ${'y'.repeat(30)}`,
+      selected: true,
+    }))
+    const nfdPlan = buildBootstrapPlan(view, '', nfdItems)
+    expect(nfdPlan.active).toBe(2_000)
+    expect(nfdPlan.pending).toBe(0)
+    const firstNfd = nfdPlan.ops.find(op => op.type === 'item.add')
+    expect(firstNfd?.type).toBe('item.add')
+    if (firstNfd?.type === 'item.add') expect(firstNfd.item.text.startsWith('Caf\u00e9')).toBe(true)
+    expect(utf8Bytes(previewPrompt(view, nfdPlan.ops))).toBeLessThanOrEqual(view.limits.maxPromptBytes)
+  })
+
   it('plans mixed deliverable and invariant candidates with the same acceptance as the exact renderer', () => {
     const view = emptyView(2_400)
     const items = Array.from({ length: 60 }, (_, index) => ({

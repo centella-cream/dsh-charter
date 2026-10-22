@@ -14,6 +14,12 @@ export interface ProjectedItem extends PromptItem {
   readonly supersededBy?: string
   /** Some staged operation targets this row (including a staged new item). */
   readonly staged: boolean
+  /**
+   * Id that `Unstage` should remove. `undefined` means the default `item.id`;
+   * `null` marks a derived staged row (for example a purge-detached successor)
+   * that has no directly removable operation, so the UI must not offer Unstage.
+   */
+  readonly unstageTarget?: string | null
   /** Created by the current draft; has no persisted id yet. */
   readonly synthetic: boolean
   readonly progress?: DeliverableProgress
@@ -220,12 +226,14 @@ export function projectView(view: CharterView, ops: readonly CharterOp[]): Proje
         items.delete(op.itemId)
         // Match the Host's purge semantics: removing a superseded predecessor
         // detaches its successor's `supersedes` back-link instead of leaving a
-        // dangling reference in the projected view.
+        // dangling reference in the projected view. The detached successor is
+        // a derived staged row: no staged op targets its own id, so it must
+        // not expose an Unstage button that cannot remove anything.
         if (purged !== undefined) {
           for (const [id, candidate] of items) {
             if (candidate.supersedes !== purged.id) continue
             const { supersedes: _detached, ...detached } = candidate
-            items.set(id, { ...detached, staged: true })
+            items.set(id, { ...detached, staged: true, unstageTarget: null })
           }
         }
         break

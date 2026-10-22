@@ -14,25 +14,24 @@
 
 | DSH 版本 | 状态 | 验证内容 |
 | --- | --- | --- |
-| `0.1.7-rc.2` | 支持（最低版本） | typecheck、build、161 tests、remote/client smoke、真实 profile 安装与启动 |
-| `0.2.0-rc.1` | 支持 | typecheck、build、161 tests、remote/client smoke |
+| `0.1.7-rc.2` | 支持（最低版本） | typecheck、build、167 tests、remote/client smoke、真实 profile 安装与启动 |
+| `0.2.0-rc.1` | 支持 | typecheck、build、167 tests、remote/client smoke |
 | `0.2.0-rc.2` | 支持 | 同上 + 真实 profile 安装与启动、boot graph、bundle HTTP |
-| `0.2.1-rc.1` | 支持 | typecheck、build、161 tests、remote/client smoke |
+| `0.2.1-rc.1` | 支持 | typecheck、build、167 tests、remote/client smoke |
 | `0.2.1-rc.2` | 支持（主开发基线） | 同上 |
 | `0.1.5-rc.1` / `0.1.5-rc.2` / `0.1.5-rc.3` | 不支持 | 契约差异过大，见第 4 节 |
 | `0.1.6-alpha.x` | 不支持 | 与 0.1.5 同代，未逐一验证 |
 | `0.2.2-rc.x` | 未声明 | peer range 未覆盖该 prerelease；验证后再加入 |
 | `0.3.x` | 未声明 | 大版本升级需要重新核验 |
 
-`package.json` 的 DSH peer 范围为：
+`package.json` 的 DSH peer 范围与 `engines.dsh` 就是已验证的五个精确版本：
 
 ```text
->=0.1.7-rc.2 <0.2.0-0 || >=0.2.0-rc.1 <0.3.0-0 || >=0.2.1-rc.1 <0.3.0-0
+0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2
 ```
 
-这是 semver prerelease 语义的要求：只写 `>=0.2.0-rc.1 <0.3.0` 不会匹配 `0.2.1-rc.2`，因为范围里没有
-`0.2.1` 这一 tuple 的 prerelease comparator；同理 0.1.7 需要单独的 comparator。每次验证新的 minor
-prerelease 后再追加一段。`0.1.7-rc.1` 不在范围内；最低支持版本是 `0.1.7-rc.2`。
+使用精确版本是刻意的：宽范围会声明尚未测试的 DSH prerelease。只有在跑过该版本的版本矩阵之后才扩展这个
+列表，并保持 peer ranges 与 `engines.dsh` 一致。`0.1.7-rc.1` 不在范围内；最低支持版本是 `0.1.7-rc.2`。
 
 ## 2. 版本差异
 
@@ -107,7 +106,8 @@ boot graph 与客户端 bundle HTTP。结果和复现命令见[验证记录](../
 
 ## 6. 升级策略
 
-- 新的 `0.2.x` stable 版本：peer range 已覆盖，建议跑一次 161 tests + profile smoke。
+- 新的 `0.2.x` stable 版本：**尚未覆盖**——先把精确版本加入 peer ranges 与 `engines.dsh`，跑完整版本矩阵、
+  167 tests 和 profile smoke，再更新本矩阵；验证前不要宣称兼容。
 - 新的 `0.2.x` prerelease：先补 peer range，再跑版本矩阵；不要未经验证就宣称兼容。
 - `0.2.1` 引入了资源授权，是安全边界上的最小推荐版本。
 - `0.3.0` 及以上：重新核验 Remote、storage domain、prompt context、conversation view slot 和 client module loader 五组契约。

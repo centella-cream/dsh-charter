@@ -49,7 +49,7 @@ Initial MVP.
   restart is still required for the new pending-import semantics.
 - Verified against DSH `0.2.1-rc.2` with no code changes required; the existing peer range and compatibility layer
   cover the release candidate.
-- 161 tests across core, host composition, fork, idempotency, quota, prompt boundary, Remote stream, history
+- 167 tests across core, host composition, fork, idempotency, quota, prompt boundary, Remote stream, history
   extraction, client reordering, compatibility, and decorator compatibility. Verified on DSH `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`,
   `0.2.1-rc.1`, and `0.2.1-rc.2`. The actual Web UI was exercised on `0.2.0-rc.2`: tab order, Chinese/English
   switching, objective and invariant editing, preview, Apply, and reload persistence.
@@ -72,10 +72,9 @@ Initial MVP.
   produce a large tool result. Paging or an explicit response cap is a follow-up, not part of this round.
 - Active client drafts are not byte-capped beyond their UI inputs; the idle TTL/LRU bounds released drafts, not
   text held by a currently mounted editor/bootstrap sheet.
-- This tree is the `0.1.0-rc.1` pre-release and must be published with `npm publish --tag next`; a stable `latest`
-  release additionally requires the public repository links and a post-restart confirmation of the installed
-  profile. No public GitHub repository exists yet, so `repository`, `homepage`, and `bugs` are intentionally absent
-  from `package.json` until the repository is created and reachable.
+- This tree is the `0.1.0-rc.1` pre-release and is published with a non-latest `npm publish --tag next`; a stable
+  `latest` release additionally requires a post-restart confirmation of the installed profile. Release-state
+  prerequisites (repository metadata, tag ordering, CI gating) are tracked only in `docs/releasing.md`.
 - Compaction rematerialization depends on the DSH runtime-context projection contract; the real-model
   end-to-end PASS is recorded in verification §8.4 (2026-10-22).
 - Browser interaction was verified on `0.2.0-rc.2`; 0.1.7/0.2.1 were verified by typecheck/build/tests, not by
@@ -233,3 +232,15 @@ Initial MVP.
   and document the correct release order: repository metadata, CI, verified artifact, tag, then publish.
 - Make `package-smoke` wording match what the empty consumer actually checks (packed `core` import plus
   root/remote export/file presence); Host/Remote runtime imports stay covered by the workspace build smokes.
+- Authenticate the compaction checker's `charter_read` evidence by resolving the unique tool call (top-level
+  `sourceEventSeqs`, legacy callId fallback) and requiring the call to follow the latest compaction **and**
+  runtime-context snapshot, with the default/standing view and a non-error, later result; fixture tests cover
+  every rejection path.
+- Tighten `engines.dsh` to the same five exact verified versions as the peer ranges, and document that future
+  `0.2.x` releases are not covered until the compatibility matrix is extended after verification.
+- Normalize reviewed draft text with `inspectUserText` before the bootstrap planner's incremental byte accounting
+  so CRLF/NFD candidates stay on the O(1) path; add 2,000-4,000 candidate CRLF/NFD coverage.
+- Mark a purge-detached successor as a derived staged row (`unstageTarget: null`) so the pane never offers an
+  Unstage action that cannot remove any staged operation.
+- Keep mutable release-state wording out of the immutable tarball docs; repository/CI/tag prerequisites, the
+  no-provisional-tag rule, and the required docs refresh before the final tag live only in `docs/releasing.md`.
