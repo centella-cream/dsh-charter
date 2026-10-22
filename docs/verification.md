@@ -14,7 +14,7 @@ HTML live under `.tmp/` and are excluded from the published package.
 | Item | Result |
 | --- | --- |
 | Strict TypeScript check (5 DSH versions) | Pass |
-| Vitest (5 locally available versions × 133 tests) | Pass |
+| Vitest (5 locally available versions × 144 tests) | Pass |
 | Host ESM build + browser single-file bundle | Pass |
 | Remote decorator/resource smoke | Pass (0.1.7/0.2.0 have no resource declaration, as expected) |
 | Browser factory-bundle materialization and `apply` smoke | Pass |
@@ -43,13 +43,13 @@ Results:
 
 - typecheck passes;
 - build passes;
-- 17 test files, 133 tests pass;
+- 17 test files, 144 tests pass;
 - `remote-smoke` asserts `watch,bootstrap,edit`, stream mode, and Session resource;
 - `client-smoke` asserts the single-file factory bundle, external-dependency allowlist, no Node-only `Buffer`
   reference, and `apply` registering the tab/pane/Remote contribution;
-- `smoke:package` builds, packs the tarball, verifies required files and every `exports` target, rejects leaked
-  workspace files, imports the packed Host entry against the real dependency tree, and loads the packed client
-  bundle.
+- `smoke:package` builds, packs the tarball, verifies required files/modes and every `exports` target, rejects
+  leaked workspace files, installs the tarball into an **empty consumer project** with only its declared
+  dependencies, and loads the packed `dsh-charter/core` entry plus the client bundle.
 
 CI runs `npm run check` and `npm run smoke:package` on every push/PR, so a green build now also means the
 installable artifact was checked.
@@ -70,7 +70,7 @@ Key test files:
 | `tests/host/actor.spec.ts` | principal-aware policy: modern missing-principal denial, legacy-only owner fallback, non-owner recording, generation-aware `resolveRemoteActor` |
 | `tests/host/remote.spec.ts` | Remote descriptor, wire schema, legacy Host view snapshot, zero pending limit |
 | `tests/client/store.spec.ts` | accept committed view immediately, ignore stale/duplicate revisions, monotonic opening snapshot, authoritative availability demotion, attach retry, shared source lease/ref count, stale-lease no-op, foreign-Session stream frames ignored |
-| `tests/client/bootstrap-plan.spec.ts` | overflow candidates stay in one plan; one-pass planning with per-candidate outcomes; active prefix fits the byte budget; bootstrap outcome classifier (draft/discard/stale/unavailable) |
+| `tests/client/bootstrap-plan.spec.ts` | overflow candidates stay in one plan; single planning pass with per-candidate outcomes; dense all-active case; active prefix fits the byte budget; bootstrap outcome classifier (draft/discard/stale/unavailable) |
 | `tests/client/draft.spec.ts` / `tests/client/draft-store.spec.ts` | Session-scoped request guard (Session A ops never build a request for Session B); draft survival across binding unmount/remount; idempotent retry mutation-id reuse; conflict rebase; stale async results cannot overwrite a newer draft/source/lifecycle; bootstrap does not steal the section |
 | `tests/client/preview.spec.ts` | projected draft rows for add/edit/accept/progress/supersede/purge; renderer parity and pending exclusion |
 | `tests/verify/compaction-checks.spec.ts` | compaction checker fixtures: dirty system prompt, called-but-mismatched `charter_read`, lost post-compaction snapshot, leak warning, and exact compact standing projection |
@@ -100,11 +100,11 @@ Results:
 
 | Version | typecheck | build | Vitest | remote smoke | client smoke |
 | --- | --- | --- | --- | --- | --- |
-| `0.1.7-rc.2` | Pass | Pass | 133/133 | Pass (no-resources warning) | Pass |
-| `0.2.0-rc.1` | Pass | Pass | 133/133 | Pass (no-resources warning) | Pass |
-| `0.2.0-rc.2` | Pass | Pass | 133/133 | Pass (no-resources warning) | Pass |
-| `0.2.1-rc.1` | Pass | Pass | 133/133 | Pass | Pass |
-| `0.2.1-rc.2` | Pass | Pass | 133/133 | Pass | Pass |
+| `0.1.7-rc.2` | Pass | Pass | 144/144 | Pass (no-resources warning) | Pass |
+| `0.2.0-rc.1` | Pass | Pass | 144/144 | Pass (no-resources warning) | Pass |
+| `0.2.0-rc.2` | Pass | Pass | 144/144 | Pass (no-resources warning) | Pass |
+| `0.2.1-rc.1` | Pass | Pass | 144/144 | Pass | Pass |
+| `0.2.1-rc.2` | Pass | Pass | 144/144 | Pass | Pass |
 
 `0.1.7-rc.2` and `0.2.0` remote smoke prints:
 
@@ -259,6 +259,29 @@ The fourth readiness review targeted failure paths that only appear after startu
   the Session becomes editable again without a Host restart; a still-invalid document remains isolated and its raw
   bytes are preserved.
 
+Additional round-out coverage:
+
+- **Session disposal.** `session/disposed` now closes every open watch subscription (listeners receive `null`),
+  so a blocked `charter watch` generator ends instead of waiting on a queue whose listener was removed; a
+  dispose/close fixture covers this path.
+- **Lifecycle replacement.** Host frame deduplication compares `lifecycle`, and the client accepts a new
+  lifecycle even when its revision restarts at 0 or its digest repeats; a same-ID new lifecycle therefore reaches
+  the Pane and clears the old draft.
+- **Saving locks.** Unstage is rejected (and disabled) while an Apply is in flight; all bootstrap objective,
+  candidate, checkbox, and select-all controls are disabled while the save request runs, and setters reject edits.
+- **History draft retention.** `isEmpty` treats a reviewed bootstrap draft as dirty, so the lease-release cleanup
+  no longer deletes it on a Chat/Charter switch.
+- **Stepwise shrinking.** An already over-budget objective or item may be shortened even while it is still over
+  the limit; tests shorten objective and item in two steps and leave `overBudget` in the end.
+- **Oversized objective in `all`.** If the objective alone cannot fit the 32 KiB debug envelope, the `all` view
+  returns `objective: null` with `objectiveTruncated: true` instead of exceeding the response cap; standing still
+  carries the complete objective.
+- **Bootstrap metadata.** `shadowedTokenCount` is validated as a non-negative integer on the Host side too, so
+  negative values are skipped before they can reach the strict Remote codec.
+- **Consumer install.** `smoke:package` now performs a real empty-project install using only the tarball and its
+  declared dependencies, checks public file modes, and loads the packed Runtime entry; it no longer symlinks the
+  workspace `node_modules`.
+
 ## 5. Browser bundle verification
 
 The DSH Web module loader requires:
@@ -318,7 +341,7 @@ The generated `profiles/smoke/package.json` contains `@deepseek-ai/dsh-base` and
 npm pack --pack-destination .tmp/smoke
 env -u DSH_PROFILE -u DSH_PROFILE_DIR -u DSH_SESSION_ID -u DSH_WEB_URL \
   DSH_HOME="$PWD/.tmp/smoke/home" \
-  dsh plugin --profile smoke add "$PWD/.tmp/smoke/dsh-charter-0.1.0.tgz"
+  dsh plugin --profile smoke add "$PWD/.tmp/smoke/dsh-charter-0.1.0-rc.1.tgz"
 ```
 
 Install succeeds; the profile `bundles` gains `dsh-charter`; DSH compatibility accepts the peer range.
@@ -388,7 +411,7 @@ dsh plugin --profile smoke remove dsh-charter
 Profile `bundles` returns to `dsh-base` + `dsh-web-app`; restarting `dsh web` still returns 200 and the boot
 graph contains zero `"id":"dsh-charter"` entries. Uninstall does not break profile startup.
 
-Finally reinstall from `dist/dsh-charter-0.1.0.tgz` and start once: `/` returns 200, the boot graph contains the
+Finally reinstall from `dist/dsh-charter-0.1.0-rc.1.tgz` and start once: `/` returns 200, the boot graph contains the
 `inject`/`external` entries, and the client entry returns 200 with the inline CSS marker
 `data-plugin-css="dsh-charter/charter.css"`.
 
@@ -409,7 +432,7 @@ Create an isolated profile and install the tarball:
 DSH_HOME="$PWD/.tmp/smoke017/home" .tmp/dsh017/node_modules/.bin/dsh \
   --profile smoke017b --from-default-profile web --dump-config > /dev/null
 DSH_HOME="$PWD/.tmp/smoke017/home" .tmp/dsh017/node_modules/.bin/dsh \
-  plugin --profile smoke017b add "$PWD/dist/dsh-charter-0.1.0.tgz"
+  plugin --profile smoke017b add "$PWD/dist/dsh-charter-0.1.0-rc.1.tgz"
 ```
 
 The first attempt with an older tarball was rejected because its peer range only covered 0.2.x. After adding

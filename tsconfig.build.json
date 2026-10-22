@@ -5,7 +5,7 @@
     "allowImportingTsExtensions": true,
     "rewriteRelativeImportExtensions": true,
     "declaration": true,
-    "declarationMap": true,
+    "declarationMap": false,
     "sourceMap": true,
     "incremental": true,
     "tsBuildInfoFile": ".build-ts/tsconfig.tsbuildinfo",

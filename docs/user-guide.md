@@ -40,7 +40,7 @@ For a Web or Desktop profile the plugin registers:
 npm install
 npm run build
 npm pack
-dsh plugin --profile web add ./dsh-charter-0.1.0.tgz
+dsh plugin --profile web add ./dsh-charter-0.1.0-rc.1.tgz
 ```
 
 For Desktop, use the Plugins page if local import is available; otherwise install the tarball through the Desktop
@@ -50,7 +50,7 @@ is a local `file:` path until the package is published.
 ### 2.3 After release — Web profile by version
 
 ```bash
-dsh plugin --profile web add dsh-charter@0.1.0
+dsh plugin --profile web add dsh-charter@0.1.0-rc.1
 ```
 
 Pin a version for reproducible profiles. To update to the newest release:
@@ -64,7 +64,7 @@ dependency and bundle selection:
 
 ```json
 {
-  "dependencies": { "dsh-charter": "0.1.0" },
+  "dependencies": { "dsh-charter": "0.1.0-rc.1" },
   "dsh": { "profile": { "bundles": ["...", "dsh-charter"] } }
 }
 ```
@@ -297,8 +297,9 @@ After uninstalling:
 - open Sessions still resume and continue normally;
 - reinstalling reads the same record for the same Session.
 
-To delete data permanently, Purge through the UI before uninstalling, or remove the `dsh_charter_v1` domain
-after verifying the path.
+UI Purge is **per-item only**: it cannot remove the objective, the record identity/revision, or a whole Session
+record. To delete charter data permanently, stop DSH and remove the corresponding `dsh_charter_v1` domain
+record (or the whole profile storage directory) after verifying the path.
 
 ## 9. Development
 

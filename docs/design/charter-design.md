@@ -237,7 +237,9 @@ automatically verify; a failed verification does not automatically archive.
    deleted.
 8. On plugin unload, new edits are blocked, in-flight writes are awaited, listeners and domain are released.
 
-Records are validated one by one at the service boundary, and every runtime read and write path re-parses the
+Session disposal closes every open watch subscription (listeners receive `null` and the stream generator exits),
+so a same-id recreated Session starts from a fresh stream rather than a detached listener. Records are validated
+one by one at the service boundary, and every runtime read and write path re-parses the
 stored document with the strict schema (`recordFor`, read-only views, parent/fork reads, and the
 `table.update` transform). The domain keeps raw per-record documents, so a corrupt or forward-skewed record
 marks only that Session unavailable; it never prevents the domain from opening for every other Session, is
@@ -366,10 +368,13 @@ ctx.slots.register({
 - A blank Session hides the View tab bar; the tab appears once the Session starts.
 - The pane scrolls in the main content area; its footer actions sit at the end of the content.
 
-Dynamic reordering remounts the pane body. The draft store survives this remount (and Chat/Charter switches),
-because drafts are owned per Session and only the source lease is released; if a new lifecycle is observed, the
-draft is reset. The released-draft map is bounded by an LRU, and client/Host share one text-inspection function so
-control characters and unpaired surrogates are rejected before Apply.
+A lifecycle change is authoritative on both sides: Host frame dedupe compares `lifecycle`, and the client accepts
+it even if the new revision restarts at 0. While an Apply/bootstrap request is in flight, mutating draft controls
+are locked; a reviewed history draft counts as dirty and survives tab switches. Dynamic reordering remounts the
+pane body, but the draft store survives this remount (and Chat/Charter switches) because drafts are owned per
+Session and only the source lease is released; if a new lifecycle is observed, the draft is reset. The
+released-draft map is bounded by an LRU, and client/Host share one text-inspection function so control characters
+and unpaired surrogates are rejected before Apply.
 
 ### 9.2 MVP page
 
@@ -502,6 +507,11 @@ is rejected as a whole.
 
 **Choosing defaults.** 8 KiB of charter-contribution context is roughly 2k tokens; the objective can be 4 KiB and an item 1 KiB. These are deliberately larger than the original MVP values while still bounded. They are defaults, not universal optima: profiles can raise them when a team's charter is longer, at the cost of extra prompt bytes per request.
 
+**Stepwise shrinking.** An already over-budget objective or item may be shortened even while it is still above its
+limit; admission compares against the previous text (and the same item id) so a tightened budget can converge over
+several edits. The `all` tool view omits an objective that alone cannot fit its 32 KiB envelope and reports
+`objectiveTruncated: true`.
+
 **Budget changes and degradation.** Structural validation is independent of admission policy. `overBudget`
 covers byte budgets, item counts, and history/mutation count limits. Lowering a limit after records exist marks
 the view `overBudget` instead of corrupt: the charter is not injected, the UI explains
@@ -556,7 +566,7 @@ uninstall smoke; fault injection and side-by-side domain migration remain open.
 
 Current evidence:
 
-- 133 tests across 17 core, host, client, and verification-helper test files;
+- 144 tests across 17 core, host, client, and verification-helper test files;
 - Typecheck, build, and tests pass on DSH `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-rc.1`, and
   `0.2.1-rc.2`;
 - Real profile install/boot on `0.1.7-rc.2` and `0.2.0-rc.2`;

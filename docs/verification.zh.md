@@ -13,7 +13,7 @@
 | 验证项 | 结果 |
 | --- | --- |
 | TypeScript 严格类型检查（5 个 DSH 版本） | 通过 |
-| Vitest（5 个本地可用版本 × 133 tests） | 通过 |
+| Vitest（5 个本地可用版本 × 144 tests） | 通过 |
 | Host ESM 构建 + 浏览器单文件 bundle | 通过 |
 | Remote 装饰器/资源 smoke | 通过（0.1.7/0.2.0 按预期无资源声明） |
 | 浏览器 factory bundle 物化与 `apply` smoke | 通过 |
@@ -42,12 +42,13 @@ npm test
 
 - typecheck 通过；
 - build 通过；
-- 17 个测试文件、133 个测试全部通过；
+- 17 个测试文件、144 个测试全部通过；
 - `remote-smoke` 断言 `watch,bootstrap,edit`、stream mode 和 Session resource；
 - `client-smoke` 断言单文件 factory bundle、外部依赖白名单、不引用 Node-only `Buffer`、`apply` 注册
   tab/pane/Remote contribution。
-- `smoke:package` 构建并打包 tarball、校验必需文件和所有 `exports` 目标、拒绝泄漏的工作区文件、用真实依赖树
-  导入 packed Host 入口，并检查 packed client bundle。
+- `smoke:package` 构建并打包 tarball、校验必需文件和文件 mode 以及所有 `exports` 目标、拒绝泄漏的工作区文件，
+  把 tarball 安装到一个**空 consumer 项目**（只使用其声明依赖），再加载 packed `dsh-charter/core` 入口与
+  client bundle。
 
 CI 在每次 push/PR 上运行 `npm run check` 和 `npm run smoke:package`，绿色构建现在同时代表可安装产物已验证。
 
@@ -67,7 +68,7 @@ CI 在每次 push/PR 上运行 `npm run check` 和 `npm run smoke:package`，绿
 | `tests/host/actor.spec.ts` | principal 感知策略：现代运行时缺失 principal 拒绝、仅旧版 owner 回退、非 owner 记录、按版本选择的 `resolveRemoteActor` |
 | `tests/host/remote.spec.ts` | Remote 描述符、wire schema、旧 Host view snapshot、零 pending 上限 |
 | `tests/client/store.spec.ts` | 提交后立即接受 view、忽略陈旧/重复 revision、opening snapshot 单调、权威不可用降级、attach 重试、共享 source lease/引用计数、旧 lease no-op、忽略其他 Session 的 stream 帧 |
-| `tests/client/bootstrap-plan.spec.ts` | 溢出候选仍在一个 plan 中；active 前缀符合字节预算；bootstrap 结果分类（draft/discard/stale/unavailable） |
+| `tests/client/bootstrap-plan.spec.ts` | 溢出候选仍在一个 plan 中；单遍规划与逐候选结果（近乎全部 active 时最坏 O(n²)，已披露）；active 前缀符合字节预算；bootstrap 结果分类（draft/discard/stale/unavailable） |
 | `tests/client/draft.spec.ts` / `draft-store.spec.ts` | Session 绑定的请求构造（A 的 ops 不会为 B 构造请求）；binding 卸载/重挂载后草稿存活；重试复用 mutation id；冲突 rebase；陈旧异步结果不能覆盖新的 draft/source/lifecycle；bootstrap 不抢占 section |
 | `tests/client/preview.spec.ts` | 投影后的 draft 行（add/edit/accept/progress/supersede/purge）；渲染器一致性与 pending 排除 |
 | `tests/verify/compaction-checks.spec.ts` | compaction checker fixture：system prompt 污染、charter_read 调用但不匹配、压缩后快照丢失、摘要泄漏 warning、紧凑 standing 投影一致 |
@@ -96,11 +97,11 @@ npm run build
 
 | 版本 | typecheck | build | Vitest | remote smoke | client smoke |
 | --- | --- | --- | --- | --- | --- |
-| `0.1.7-rc.2` | 通过 | 通过 | 133/133 | 通过（无 resources 警告） | 通过 |
-| `0.2.0-rc.1` | 通过 | 通过 | 133/133 | 通过（无 resources 警告） | 通过 |
-| `0.2.0-rc.2` | 通过 | 通过 | 133/133 | 通过（无 resources 警告） | 通过 |
-| `0.2.1-rc.1` | 通过 | 通过 | 133/133 | 通过 | 通过 |
-| `0.2.1-rc.2` | 通过 | 通过 | 133/133 | 通过 | 通过 |
+| `0.1.7-rc.2` | 通过 | 通过 | 144/144 | 通过（无 resources 警告） | 通过 |
+| `0.2.0-rc.1` | 通过 | 通过 | 144/144 | 通过（无 resources 警告） | 通过 |
+| `0.2.0-rc.2` | 通过 | 通过 | 144/144 | 通过（无 resources 警告） | 通过 |
+| `0.2.1-rc.1` | 通过 | 通过 | 144/144 | 通过 | 通过 |
+| `0.2.1-rc.2` | 通过 | 通过 | 144/144 | 通过 | 通过 |
 
 `0.1.7-rc.2` 和 `0.2.0` 的 remote smoke 输出：
 
@@ -239,6 +240,24 @@ profile 手工确认。
 - **在线修复**：运行期损坏记录就地修复后，下一次 view/初始化会重新解析，Session 无需重启 Host 即恢复可编辑；
   仍不合法的文档保持隔离且原始字节保留。
 
+补充覆盖：
+
+- **Session dispose**：`session/disposed` 现在会关闭所有打开的 watch 订阅（listener 收到 `null`），阻塞中的
+  `charter watch` generator 会结束，而不是等待一个 listener 已被删除的队列；fixture 覆盖 dispose/close 路径。
+- **Lifecycle replacement**：Host 帧去重会比较 `lifecycle`，Client 即使新 lifecycle 的 revision 从 0 重新开始或
+  digest 重复也会接受；同 ID 新 lifecycle 能到达 Pane 并清理旧 draft。
+- **保存锁**：Apply 在途时 Unstage 被拒绝（按钮禁用）；bootstrap 的目标、候选、checkbox、全选在保存期间全部
+  禁用，setter 也会拒绝修改。
+- **历史草案保留**：`isEmpty` 把已审阅的 bootstrap draft 视为 dirty，lease release 清理不再在 Chat/Charter
+  切换时删除它。
+- **分步缩短**：已超预算的 objective/item 即使仍超限也允许继续缩短；测试分两步缩短 objective 与 item，最终
+  离开 `overBudget`。
+- **`all` 中的超大 objective**：如果 objective 本身无法放入 32 KiB debug envelope，`all` 返回
+  `objective: null` + `objectiveTruncated: true`，不再突破响应上限；standing 仍携带完整 objective。
+- **Bootstrap 元数据**：`shadowedTokenCount` 在 Host 侧也校验为非负整数，负值会在进入严格 Remote codec 前被跳过。
+- **消费者安装**：`smoke:package` 现在在空项目中做真实安装（只依赖 tarball 与声明依赖），检查公开文件 mode，
+  并加载 packed Runtime 入口；不再软链工作区 `node_modules`。
+
 ## 5. 浏览器 bundle 验证
 
 DSH 的 Web module loader 要求 plugin bundle 是：
@@ -294,7 +313,7 @@ env -u DSH_PROFILE -u DSH_PROFILE_DIR -u DSH_SESSION_ID -u DSH_WEB_URL \
 npm pack --pack-destination .tmp/smoke
 env -u DSH_PROFILE -u DSH_PROFILE_DIR -u DSH_SESSION_ID -u DSH_WEB_URL \
   DSH_HOME="$PWD/.tmp/smoke/home" \
-  dsh plugin --profile smoke add "$PWD/.tmp/smoke/dsh-charter-0.1.0.tgz"
+  dsh plugin --profile smoke add "$PWD/.tmp/smoke/dsh-charter-0.1.0-rc.1.tgz"
 ```
 
 结果：安装成功，profile 的 `bundles` 追加 `dsh-charter`。DSH 的兼容检查接受 peer range。
@@ -364,7 +383,7 @@ dsh plugin --profile smoke remove dsh-charter
 profile 的 `bundles` 恢复为 `dsh-base` + `dsh-web-app`；重新启动 `dsh web` 仍返回 200，boot graph 中
 `"id":"dsh-charter"` 出现 0 次。卸载不会破坏 profile 启动。
 
-最后从 `dist/dsh-charter-0.1.0.tgz` 重新安装并启动一次，`/` 返回 200，boot graph 仍包含
+最后从 `dist/dsh-charter-0.1.0-rc.1.tgz` 重新安装并启动一次，`/` 返回 200，boot graph 仍包含
 `dsh-charter` 的 `inject`/`external`，客户端入口返回 200 且包含内联 CSS 标记
 `data-plugin-css="dsh-charter/charter.css"`。
 
@@ -380,13 +399,13 @@ pnpm add --store-dir ../pnpm-store --config.dangerously-allow-all-builds=true @d
 ./node_modules/.bin/dsh --version   # 0.1.7-rc.2
 ```
 
-创建隔离 profile 并安装 `dist/dsh-charter-0.1.0.tgz`：
+创建隔离 profile 并安装 `dist/dsh-charter-0.1.0-rc.1.tgz`：
 
 ```bash
 DSH_HOME="$PWD/.tmp/smoke017/home" .tmp/dsh017/node_modules/.bin/dsh \
   --profile smoke017b --from-default-profile web --dump-config > /dev/null
 DSH_HOME="$PWD/.tmp/smoke017/home" .tmp/dsh017/node_modules/.bin/dsh \
-  plugin --profile smoke017b add "$PWD/dist/dsh-charter-0.1.0.tgz"
+  plugin --profile smoke017b add "$PWD/dist/dsh-charter-0.1.0-rc.1.tgz"
 ```
 
 第一次使用旧 tarball 时，DSH 明确拒绝安装，并列出只覆盖 0.2.x 的 peer range；把 0.1.7-rc.2 加入
