@@ -48,7 +48,7 @@ Initial MVP.
   restart is still required for the new pending-import semantics.
 - Verified against DSH `0.2.1-rc.2` with no code changes required; the existing peer range and compatibility layer
   cover the release candidate.
-- 153 tests across core, host composition, fork, idempotency, quota, prompt boundary, Remote stream, history
+- 157 tests across core, host composition, fork, idempotency, quota, prompt boundary, Remote stream, history
   extraction, client reordering, compatibility, and decorator compatibility. Verified on DSH `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`,
   `0.2.1-rc.1`, and `0.2.1-rc.2`. The actual Web UI was exercised on `0.2.0-rc.2`: tab order, Chinese/English
   switching, objective and invariant editing, preview, Apply, and reload persistence.
@@ -72,8 +72,9 @@ Initial MVP.
 - Active client drafts are not byte-capped beyond their UI inputs; the idle TTL/LRU bounds released drafts, not
   text held by a currently mounted editor/bootstrap sheet.
 - This tree is the `0.1.0-rc.1` pre-release and must be published with `npm publish --tag next`; a stable `latest`
-  release requires the real-model compaction PASS. No public GitHub repository exists yet, so `repository`,
-  `homepage`, and `bugs` are intentionally absent from `package.json` until the repository is created and reachable.
+  release additionally requires the public repository links and a post-restart confirmation of the installed
+  profile. No public GitHub repository exists yet, so `repository`, `homepage`, and `bugs` are intentionally absent
+  from `package.json` until the repository is created and reachable.
 - Compaction rematerialization depends on the DSH runtime-context projection contract; the real-model
   end-to-end PASS is recorded in verification §8.4 (2026-10-22).
 - Browser interaction was verified on `0.2.0-rc.2`; 0.1.7/0.2.1 were verified by typecheck/build/tests, not by
@@ -88,6 +89,9 @@ Initial MVP.
   Map entry of a same-id replacement watch (the entry is removed only when it still owns the captured Set).
 - Fix attach/stream generation races: duplicate attach of the live stream is a true no-op, and `replace`/`update`
   frames from a replaced stream generation are ignored before they can touch state or reset a draft lifecycle.
+- Track a pending Remote attach as a cancellable state: a detach that arrives before the previous stream finishes
+  disposing cancels the pending generation, so the cancelled attach can never start its stream late; the source
+  reports itself detached instead.
 - Disable and reject Rebase while an Apply or bootstrap save is in flight, preserving the mutation attempt for an
   unknown-outcome retry; bind bootstrap extraction results to the source instance/connection generation so a
   reconnected Host cannot inject a stale proposal.
@@ -108,6 +112,8 @@ Initial MVP.
   dirty in the lease-release cleanup.
 - Admit stepwise shrinking of an already over-budget objective or item even while it is still above the limit, so
   a tightened budget can converge without rejecting every intermediate edit.
+- Gate the Apply button by the same prompt-budget rule as Host admission: an over-budget rendered prompt is
+  accepted while it is shrinking, and stays blocked only when it would remain over budget or grow.
 - Keep the `all` tool envelope bounded even when `maxObjectiveBytes` exceeds it: omit the objective with
   `objectiveTruncated: true` instead of returning an oversized response; validate `shadowedTokenCount` as a
   non-negative integer before the Remote codec sees it.

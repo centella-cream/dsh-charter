@@ -28,6 +28,8 @@ import {
   pendingItems,
   previewPrompt,
   projectView,
+  promptBudgetAdmission,
+  utf8Bytes,
   type ProjectedItem,
 } from './preview.js'
 import { buildBootstrapPlan, firstDraftTextIssue, type BootstrapPlan } from './bootstrap-plan.js'
@@ -53,10 +55,6 @@ const EMPTY_PLAN: BootstrapPlan = {
   pendingInvariants: 0,
   pendingDeliverables: 0,
   outcomes: {},
-}
-
-function utf8Bytes(value: string): number {
-  return new TextEncoder().encode(value).byteLength
 }
 
 function formatBytes(t: CharterText, bytes: number): string {
@@ -633,8 +631,10 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   const online = state.status === 'ready'
   const revisionConflict = baseRevision !== null && view.revision !== baseRevision
   const editable = view.status === 'ready' && !saving && !bootstrapSaving && online && editor === null && state.status === 'ready'
-  const previewBytes = utf8Bytes(preview)
-  const contextOver = previewBytes > view.limits.maxPromptBytes
+  const promptBudget = promptBudgetAdmission(view.promptText, preview, view.limits.maxPromptBytes)
+  const previewBytes = promptBudget.previewBytes
+  const contextOver = promptBudget.over
+  const contextBlocksApply = promptBudget.blocksApply
   const budgetPercent = Math.min(100, Math.round((previewBytes / view.limits.maxPromptBytes) * 100))
   const message = feedbackText(feedback, t)
   const messageDetail = feedbackDetail(feedback)
@@ -769,8 +769,13 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
           </div>
         )}
         {contextOver && (
-          <div className="charter-notice charter-notice--danger" role="alert">
-            {t('budget.contextOver', { limit: formatBytes(t, view.limits.maxPromptBytes) })}
+          <div
+            className={`charter-notice${contextBlocksApply ? ' charter-notice--danger' : ' charter-notice--warning'}`}
+            role="alert"
+          >
+            {contextBlocksApply
+              ? t('budget.contextOver', { limit: formatBytes(t, view.limits.maxPromptBytes) })
+              : t('budget.shrinking')}
           </div>
         )}
 
@@ -822,7 +827,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                     </ActionButton>
                     <ActionButton
                       variant="primary"
-                      disabled={ops.length === 0 || !editable || revisionConflict || contextOver || disconnected}
+                      disabled={ops.length === 0 || !editable || revisionConflict || contextBlocksApply || disconnected}
                       onClick={applyDraft}
                       busy={saving}
                     >

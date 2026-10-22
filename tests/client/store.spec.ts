@@ -135,6 +135,27 @@ describe('client charter source', () => {
     await controller.dispose()
   })
 
+  it('cancels a pending attach when its detach arrives before the dispose resolves', async () => {
+    const source = new CharterSessionSource(streamContext(), SessionId('session-pending-detach'))
+    const oldRemote = {} as never
+    const newRemote = {} as never
+    source.attach(oldRemote)
+    await tick()
+    const streams = mockClass.instances.length
+    expect(streams).toBeGreaterThan(0)
+    const oldStream = mockClass.instances.at(-1)
+    if (oldStream === undefined) throw new Error('no stream')
+    // The old stream is still disposing, so this attach cannot own the remote yet.
+    source.attach(newRemote)
+    // Cancelling the pending attach must prevent its stream from ever starting.
+    source.detach(newRemote)
+    oldStream.resolveDispose()
+    await tick()
+    expect(mockClass.instances.length).toBe(streams)
+    expect(source.getSnapshot()).toMatchObject({ status: 'error', view: null })
+    await source.dispose()
+  })
+
   it('shares one source between view bindings and disposes it only after the last lease', async () => {
     const controller = new CharterClientController({} as never)
     const sessionId = SessionId('session-release')

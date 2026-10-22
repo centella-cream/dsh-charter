@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type { CharterView } from '../../src/host/types.js'
-import { activeItems, itemCounts, pendingItems, previewPrompt, projectView } from '../../src/client/preview.js'
+import {
+  activeItems,
+  itemCounts,
+  pendingItems,
+  previewPrompt,
+  projectView,
+  promptBudgetAdmission,
+} from '../../src/client/preview.js'
 
 const sessionId = SessionId('preview-session')
 
@@ -74,5 +81,26 @@ describe('projected draft view', () => {
     expect(payload.invariants).toEqual(['Invariant'])
     expect(payload.deliverables).toEqual([{ text: 'Deliverable', progress: 'not-started' }])
     expect(prompt).not.toContain('Pending')
+  })
+})
+
+describe('prompt budget admission', () => {
+  it('allows Apply when an over-budget prompt shrinks stepwise', () => {
+    const admission = promptBudgetAdmission('x'.repeat(200), 'x'.repeat(150), 100)
+    expect(admission).toMatchObject({ over: true, shrinking: true, blocksApply: false })
+    expect(admission.currentBytes).toBe(200)
+    expect(admission.previewBytes).toBe(150)
+  })
+
+  it('blocks Apply when a prompt grows past or stays above the budget', () => {
+    const growing = promptBudgetAdmission('x'.repeat(90), 'x'.repeat(150), 100)
+    expect(growing).toMatchObject({ over: true, shrinking: false, blocksApply: true })
+    const stuck = promptBudgetAdmission('x'.repeat(150), 'x'.repeat(150), 100)
+    expect(stuck).toMatchObject({ over: true, shrinking: false, blocksApply: true })
+  })
+
+  it('allows Apply for a prompt within the budget', () => {
+    const admission = promptBudgetAdmission('x'.repeat(10), 'x'.repeat(90), 100)
+    expect(admission).toMatchObject({ over: false, shrinking: false, blocksApply: false })
   })
 })

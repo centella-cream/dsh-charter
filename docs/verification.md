@@ -14,7 +14,7 @@ HTML live under `.tmp/` and are excluded from the published package.
 | Item | Result |
 | --- | --- |
 | Strict TypeScript check (5 DSH versions) | Pass |
-| Vitest (5 locally available versions × 153 tests) | Pass |
+| Vitest (5 locally available versions × 157 tests) | Pass |
 | Host ESM build + browser single-file bundle | Pass |
 | Remote decorator/resource smoke | Pass (0.1.7/0.2.0 have no resource declaration, as expected) |
 | Browser factory-bundle materialization and `apply` smoke | Pass |
@@ -43,7 +43,7 @@ Results:
 
 - typecheck passes;
 - build passes;
-- 17 test files, 153 tests pass;
+- 17 test files, 157 tests pass (from `npm test`, which builds and then runs `vitest run`);
 - `remote-smoke` asserts `watch,bootstrap,edit`, stream mode, and Session resource;
 - `client-smoke` asserts the single-file factory bundle, external-dependency allowlist, no Node-only `Buffer`
   reference, and `apply` registering the tab/pane/Remote contribution;
@@ -51,8 +51,8 @@ Results:
   leaked workspace files, installs the tarball into an **empty consumer project** with only its declared
   dependencies, and loads the packed `dsh-charter/core` entry plus the client bundle.
 
-CI runs `npm run check` and `npm run smoke:package` on every push/PR, so a green build now also means the
-installable artifact was checked.
+CI runs `npm run check` and `npm run smoke:package` on every push/PR for Node `22.19.0` and Node `24`, so a green
+build now also means the installable artifact was checked on the minimum supported and current LTS runtimes.
 
 Key test files:
 
@@ -69,10 +69,10 @@ Key test files:
 | `tests/host/watch.spec.ts` | opening snapshot, race, dedupe, abort, decorator compatibility, resource-scope capability detection |
 | `tests/host/actor.spec.ts` | principal-aware policy: modern missing-principal denial, legacy-only owner fallback, non-owner recording, generation-aware `resolveRemoteActor` |
 | `tests/host/remote.spec.ts` | Remote descriptor, wire schema, legacy Host view snapshot, zero pending limit |
-| `tests/client/store.spec.ts` | accept committed view immediately, ignore stale/duplicate revisions, monotonic opening snapshot, authoritative availability demotion, attach retry, shared source lease/ref count, stale-lease no-op, foreign-Session stream frames ignored |
+| `tests/client/store.spec.ts` | accept committed view immediately, ignore stale/duplicate revisions, monotonic opening snapshot, authoritative availability demotion, attach retry, pending-attach cancellation before its stream starts, shared source lease/ref count, stale-lease no-op, foreign-Session stream frames ignored |
 | `tests/client/bootstrap-plan.spec.ts` | overflow candidates stay in one plan; single planning pass with per-candidate outcomes; dense all-active case; active prefix fits the byte budget; bootstrap outcome classifier (draft/discard/stale/unavailable) |
 | `tests/client/draft.spec.ts` / `tests/client/draft-store.spec.ts` | Session-scoped request guard (Session A ops never build a request for Session B); draft survival across binding unmount/remount; idempotent retry mutation-id reuse; conflict rebase; stale async results cannot overwrite a newer draft/source/lifecycle; bootstrap does not steal the section |
-| `tests/client/preview.spec.ts` | projected draft rows for add/edit/accept/progress/supersede/purge; renderer parity and pending exclusion |
+| `tests/client/preview.spec.ts` | projected draft rows for add/edit/accept/progress/supersede/purge; renderer parity and pending exclusion; prompt-budget Apply admission (shrinking, growing, and within-budget renders) |
 | `tests/verify/compaction-checks.spec.ts` | compaction checker fixtures: dirty system prompt, called-but-mismatched `charter_read`, lost post-compaction snapshot, leak warning, and exact compact standing projection |
 
 ## 3. Cross-version matrix
@@ -100,11 +100,18 @@ Results:
 
 | Version | typecheck | build | Vitest | remote smoke | client smoke |
 | --- | --- | --- | --- | --- | --- |
-| `0.1.7-rc.2` | Pass | Pass | 153/153 | Pass (no-resources warning) | Pass |
-| `0.2.0-rc.1` | Pass | Pass | 153/153 | Pass (no-resources warning) | Pass |
-| `0.2.0-rc.2` | Pass | Pass | 153/153 | Pass (no-resources warning) | Pass |
-| `0.2.1-rc.1` | Pass | Pass | 153/153 | Pass | Pass |
-| `0.2.1-rc.2` | Pass | Pass | 153/153 | Pass | Pass |
+| `0.1.7-rc.2` | Pass | Pass | 157/157 | Pass (no-resources warning) | Pass |
+| `0.2.0-rc.1` | Pass | Pass | 157/157 | Pass (no-resources warning) | Pass |
+| `0.2.0-rc.2` | Pass | Pass | 157/157 | Pass (no-resources warning) | Pass |
+| `0.2.1-rc.1` | Pass | Pass | 157/157 | Pass | Pass |
+| `0.2.1-rc.2` | Pass | Pass | 157/157 | Pass | Pass |
+
+Re-run on the final `0.1.0-rc.1` tree on 2026-10-22: each version reports 17 test files / 157 tests, and build
+includes the remote/client smoke assertions.
+
+This five-version matrix is **local evidence**: its version directories and driver script live in the gitignored
+`.tmp/`, so the public CI does not reproduce it. CI covers the committed gates (`npm run check` +
+`npm run smoke:package`) on Node `22.19.0` and Node `24`.
 
 `0.1.7-rc.2` and `0.2.0` remote smoke prints:
 
@@ -232,7 +239,7 @@ The fourth readiness review targeted failure paths that only appear after startu
   staged work/editors/history when it changes; released drafts are evicted by a bounded LRU so long browsing
   cannot grow the map without limit.
 - **Shared text validation.** `inspectUserText()` is used by both Host normalization and the client editor
-  (` ` / unpaired surrogate are rejected at stage time with localized feedback) and by reviewed history
+  (`\u0000` / unpaired surrogate are rejected at stage time with localized feedback) and by reviewed history
   candidates before Apply.
 - **Pending vs active.** Active UI counts and Overview cards only include `accepted + current`; pending
   proposals remain visible as their own rows, and the reconnect banner explains the temporary read-only state.
@@ -284,6 +291,12 @@ Additional round-out coverage:
 - **Watch/stream generation races.** The service's unsubscribe removes a Map entry only when it still owns the
   captured listener Set (a disposed generation cannot delete a same-id replacement watch); duplicate attach of a
   live stream is a no-op, and old stream `replace`/`update` frames are dropped by their attach generation.
+- **Pending attach cancellation.** `attach(B)` while the previous stream is still disposing, then `detach(B)`
+  before the new attach owns the remote: the pending generation is cancelled, so the late resolution never creates
+  the `B` stream and the source reports itself detached (test in `tests/client/store.spec.ts`).
+- **Prompt-budget Apply gate.** The Pane's Apply button now uses the same stepwise rule as Host admission: an
+  over-budget rendered prompt is admitted while it strictly shrinks, and remains blocked while it stays over budget
+  or grows; unit tests cover shrinking, growing, and within-budget renders.
 - **Saving locks and export guards.** Rebase is disabled/rejected while Apply or bootstrap saving runs; bootstrap
   extraction is fenced by source instance + connection generation; dirty drafts are never removed by idle TTL or
   LRU; the editor accepts a stepwise over-budget shrink for objective and same-id item edits.

@@ -30,6 +30,51 @@ function normalize(value: string): string {
   return value.replace(/\r\n?/gu, '\n').normalize('NFC').trim()
 }
 
+/** UTF-8 byte length, the unit every charter budget is expressed in. */
+export function utf8Bytes(value: string): number {
+  return new TextEncoder().encode(value).byteLength
+}
+
+/** Prompt-budget admission for the currently staged draft. */
+export interface PromptBudgetAdmission {
+  /** Bytes of the committed prompt currently in effect. */
+  readonly currentBytes: number
+  /** Bytes of the prompt the staged operations would publish. */
+  readonly previewBytes: number
+  /** The staged prompt is over the configured prompt budget. */
+  readonly over: boolean
+  /** The staged prompt is strictly smaller than the committed one. */
+  readonly shrinking: boolean
+  /** Apply must stay disabled: the staged prompt is over budget and not shrinking. */
+  readonly blocksApply: boolean
+}
+
+/**
+ * Decide whether the Apply button must stay disabled by the prompt budget.
+ *
+ * The Host admits an already over-budget prompt only when the edit shrinks it
+ * (stepwise convergence); content that stays over budget or grows must be
+ * trimmed before Apply. This mirrors `overLimitGrowth` in the Host admission
+ * policy and keeps the Pane's button state on the same rule.
+ */
+export function promptBudgetAdmission(
+  currentPrompt: string,
+  previewPrompt: string,
+  maxPromptBytes: number,
+): PromptBudgetAdmission {
+  const currentBytes = utf8Bytes(currentPrompt)
+  const previewBytes = utf8Bytes(previewPrompt)
+  const over = previewBytes > maxPromptBytes
+  const shrinking = previewBytes < currentBytes
+  return {
+    currentBytes,
+    previewBytes,
+    over,
+    shrinking,
+    blocksApply: over && !shrinking,
+  }
+}
+
 function fromItem(item: CharterItem): ProjectedItem {
   return {
     id: item.id,
