@@ -697,16 +697,16 @@ Evidence timeline for this pre-release:
 - Recorded real-model run: 2026-10-22 on the Desktop/Web runtime DSH `0.2.0-rc.2` (`dsh` CLI `0.2.0-rc.2`).
   The run happened **before** the full Desktop restart described above; the process that served it was still
   running the pre-restart Host bundle, which is why the `charter_read` result carried legacy debug fields.
-- Source commit recorded here: `fe48f69c1fdaa15d85b4be456b7894a656755add`. Gates on that tree: `npm run check`
-  (typecheck + build + 17 test files / 157 tests), `npm run smoke:package`, and the local five-version matrix
-  (17 files / 157 tests on every version).
-- Archive built from that source commit: `dsh-charter-0.1.0-rc.1.tgz`, SHA-256
-  `085e5a56f668991b2dc28caa5036299849ef8388e762bdbe085fa2c3062f2dbf`.
-- Tag `v0.1.0-rc.1` points at the docs-only commit that adds this evidence paragraph. Because this record is
-  itself packed into the tarball, an archive rebuilt from the tagged tree has a different digest; the released
-  artifact digest is pinned in `dist/SHA256SUMS` (gitignored, attached to the GitHub release).
+- Gated source commit for this convergence record: `2210bf95ef1cc281c6737a2f79a59e01a8ec7072`. Gates on that
+  tree: `npm run check` (typecheck + build + 17 test files / 157 tests), `npm run smoke:package`, and the local
+  five-version matrix (17 files / 157 tests on every version).
+- Shipped artifact digest: the tracked repository-root `SHA256SUMS` (added by the release commit, which adds only
+  that file on top of this record) pins the digest of `dsh-charter-0.1.0-rc.1.tgz` built from the tagged tree;
+  `dist/SHA256SUMS` carries the same value. The annotated tag message records the release commit and the shipped
+  digest, and `git rev-parse v0.1.0-rc.1^{commit}` resolves the release commit.
 - Remaining manual check: restart the Desktop app and reopen the Charter tab once to confirm the current
-  bundle/tool ABI — this post-restart re-check is **not** part of the recording above.
+  bundle/tool ABI — this post-restart re-check is **not** part of the recording above and is required before a
+  stable `latest` release, not before publishing this pre-release under `next`.
 
 ## 9. Unsupported verification
 
