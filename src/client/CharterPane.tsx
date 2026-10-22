@@ -229,6 +229,7 @@ function TextEditor({
   onSave,
   onCancel,
   maxBytes,
+  previousBytes,
   t,
 }: {
   readonly value: string
@@ -239,10 +240,13 @@ function TextEditor({
   readonly onSave: () => void
   readonly onCancel: () => void
   readonly maxBytes: number
+  readonly previousBytes?: number | undefined
   readonly t: CharterText
 }) {
   const bytes = utf8Bytes(value)
-  const over = bytes > maxBytes
+  const shrinking = previousBytes !== undefined && bytes < previousBytes
+  const over = bytes > maxBytes && !shrinking
+  const overButShrinking = bytes > maxBytes && shrinking
   const save = (): void => {
     if (!over && value.trim().length > 0) onSave()
   }
@@ -285,9 +289,11 @@ function TextEditor({
       )}
       <div className="charter-editor__actions">
         <span className={over ? 'charter-budget is-over' : 'charter-budget'}>
-          {over
-            ? t('budget.editorOver', { limit: formatBytes(t, maxBytes) })
-            : `${formatBytes(t, bytes)} / ${formatBytes(t, maxBytes)}`}
+          {overButShrinking
+            ? t('budget.shrinking')
+            : over
+              ? t('budget.editorOver', { limit: formatBytes(t, maxBytes) })
+              : `${formatBytes(t, bytes)} / ${formatBytes(t, maxBytes)}`}
         </span>
         <ActionButton variant="outline" disabled={over || value.trim().length === 0} onClick={save}>
           {t('editor.stage')}
@@ -755,6 +761,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
             <span>{t('notice.conflict', { from: baseRevision ?? 0, to: view.revision })}</span>
             <ActionButton
               variant="outline"
+              disabled={saving || bootstrapSaving}
               onClick={() => draft.rebase(view)}
             >
               {t('conflict.rebase', { revision: view.revision })}
@@ -1012,6 +1019,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                         onSave={() => draft.saveEditor(view)}
                         onCancel={() => draft.closeEditor()}
                         maxBytes={view.limits.maxObjectiveBytes}
+                        previousBytes={utf8Bytes(projectedObjective?.current.text ?? '')}
                         t={t}
                       />
                     </div>
@@ -1073,6 +1081,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                       onSave={() => draft.saveEditor(view)}
                       onCancel={() => draft.closeEditor()}
                       maxBytes={view.limits.maxItemBytes}
+                      previousBytes={editor.kind === 'edit' ? utf8Bytes(editor.item.text) : undefined}
                       t={t}
                     />
                   </div>
@@ -1130,6 +1139,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                       onSave={() => draft.saveEditor(view)}
                       onCancel={() => draft.closeEditor()}
                       maxBytes={view.limits.maxItemBytes}
+                      previousBytes={editor.kind === 'edit' ? utf8Bytes(editor.item.text) : undefined}
                       t={t}
                     />
                   </div>

@@ -129,6 +129,69 @@ describe('per-Session draft ownership', () => {
     expect(draft.getSnapshot().feedback).toEqual({ kind: 'editorInvalid', issue: 'surrogate' })
   })
 
+  it('does not rebase while the Apply request is in flight', async () => {
+    let release: ((value: CharterEditResult) => void) | undefined
+    const pending = new Promise<CharterEditResult>(resolve => { release = resolve })
+    const fake = source({ edit: () => pending })
+    const draft = new CharterDraft(sessionId, () => fake)
+    draft.bindLifecycle('life-rebase')
+    draft.stage(view(0), {
+      type: 'item.add',
+      item: { clientRef: 'rebase-1', kind: 'invariant', text: 'Keep attempt', order: 0 },
+    })
+    const applied = draft.applyDraft(view(0))
+    await new Promise(resolve => setTimeout(resolve, 0))
+    draft.rebase(view(9))
+    expect(draft.getSnapshot().baseRevision).toBe(0)
+    release!({ ok: true, replayed: false, committedRevision: 1, ids: {}, view: view(1) })
+    await applied
+    expect(draft.getSnapshot()).toMatchObject({ saving: false, ops: [] })
+  })
+
+  it('allows a stepwise shrink of an over-budget objective editor', () => {
+    const base = view(0)
+    const shrinkable = {
+      ...base,
+      objective: {
+        original: { text: '1234567890', setAtRevision: 0 },
+        current: { text: '1234567890', setAtRevision: 0 },
+      },
+      limits: { ...base.limits, maxObjectiveBytes: 4 },
+    }
+    const draft = new CharterDraft(sessionId, () => undefined)
+    draft.openEditor({ kind: 'objective' }, shrinkable)
+    draft.setEditorText('12345678')
+    draft.saveEditor(shrinkable)
+    expect(draft.getSnapshot().ops).toEqual([expect.objectContaining({ type: 'objective.redirect', text: '12345678' })])
+  })
+
+  it('ignores a bootstrap extraction result from an older connection', async () => {
+    let release: ((value: CharterBootstrapResult) => void) | undefined
+    const pending = new Promise<CharterBootstrapResult>(resolve => { release = resolve })
+    let epoch = 0
+    const fake = source({ edit: async () => ({ ok: false, code: 'UNAVAILABLE', message: 'unused' }), bootstrap: () => pending })
+    Object.defineProperty(fake, 'connectionGeneration', { get: () => epoch })
+    const draft = new CharterDraft(sessionId, () => fake)
+    draft.bindLifecycle('life-bootstrap-connection')
+    draft.ensureBootstrap(view(0), true)
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(draft.getSnapshot().bootstrapPhase).toBe('checking')
+    epoch = 1
+    draft.invalidateSource()
+    release!({
+      available: true,
+      proposal: {
+        objective: 'Stale proposal',
+        invariants: ['Do not apply'],
+        deliverables: [],
+        source: { summarySeq: 1, at: 1 },
+      },
+    })
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(draft.getSnapshot().bootstrapPhase).toBe('failed')
+    expect(draft.getSnapshot().bootstrap).toBeNull()
+  })
+
   it('rejects Unstage while the Apply request is in flight', async () => {
     let release: ((value: CharterEditResult) => void) | undefined
     const pending = new Promise<CharterEditResult>(resolve => { release = resolve })
@@ -350,7 +413,7 @@ describe('per-Session draft ownership', () => {
   })
 
   it('does not steal the current section when a draft arrives while editing', async () => {
-    const fake = new CharterDraft(sessionId, () => source({
+    const fakeSource = source({
       edit: async () => ({ ok: false, code: 'UNAVAILABLE', message: 'unused' }),
       bootstrap: async () => ({
         available: true,
@@ -361,7 +424,8 @@ describe('per-Session draft ownership', () => {
           source: { summarySeq: 1, at: 1 },
         },
       }),
-    }))
+    })
+    const fake = new CharterDraft(sessionId, () => fakeSource)
     fake.openEditor({ kind: 'objective' }, view(0))
     fake.setEditorText('typing')
     fake.setSection('objective')

@@ -173,7 +173,7 @@ describe('client charter source', () => {
     await controller.dispose()
   })
 
-  it('evicts the least recently used released draft when the map grows', async () => {
+  it('keeps dirty released drafts even when the map exceeds its LRU target', async () => {
     const controller = new CharterClientController({} as never)
     const stage = (lease: ReturnType<typeof controller.acquire>, index: number) => {
       lease.draft.stage(view(0), {
@@ -191,9 +191,82 @@ describe('client charter source', () => {
       lease.release()
     }
     const again = controller.acquire(SessionId('session-draft-0'))
-    expect(again.draft).not.toBe(firstDraft)
+    expect(again.draft).toBe(firstDraft)
     again.release()
     await controller.dispose()
+  })
+
+  it('does not idle-evict a dirty released draft', async () => {
+    vi.useFakeTimers()
+    try {
+      vi.setSystemTime(new Date(1_000_000))
+      const controller = new CharterClientController({} as never)
+      const lease = controller.acquire(SessionId('session-idle-draft'))
+      lease.draft.stage(view(0), {
+        type: 'item.add',
+        item: { clientRef: 'idle-1', kind: 'invariant', text: 'Keep me', order: 0 },
+      })
+      lease.release()
+      vi.setSystemTime(new Date(1_000_000 + 31 * 60 * 1_000))
+      const other = controller.acquire(SessionId('session-idle-other'))
+      other.release()
+      const again = controller.acquire(SessionId('session-idle-draft'))
+      expect(again.draft).toBe(lease.draft)
+      again.release()
+      await controller.dispose()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('does not bump the generation for a duplicate attach of the live stream', async () => {
+    const source = new CharterSessionSource(streamContext(), SessionId('session-duplicate-attach'))
+    const remote = {} as never
+    source.attach(remote)
+    await tick()
+    const generation = source.connectionGeneration
+    source.attach(remote)
+    await tick()
+    expect(source.connectionGeneration).toBe(generation)
+    mockClass.instances.at(-1)?.resolveDispose()
+    await source.dispose()
+  })
+
+  it('ignores frames that arrive from a replaced stream generation', async () => {
+    const source = new CharterSessionSource(streamContext(), SessionId('session-stale-frame'))
+    const remote = {} as never
+    source.attach(remote)
+    await tick()
+    const stale = mockClass.instances.at(-1)
+    if (stale === undefined) throw new Error('no stream')
+    source.detach(remote)
+    await tick()
+    stale.options.replace({ value: view(9, 'stale') })
+    stale.options.update({ value: view(9, 'stale') })
+    expect(source.getSnapshot().view?.revision).not.toBe(9)
+    stale.resolveDispose()
+    await source.dispose()
+  })
+
+  it('accepts the first lifecycle frame even when it arrives at a lower revision', () => {
+    const source = new CharterSessionSource({} as never, SessionId('session-lifecycle-intro'))
+    source.accept({ ...view(10, 'old', 'session-lifecycle-intro') })
+    source.accept({ ...view(0, 'new', 'session-lifecycle-intro'), lifecycle: 'life-intro' })
+    expect(source.getSnapshot().view).toMatchObject({ revision: 0, lifecycle: 'life-intro' })
+  })
+
+  it('does not dedupe a same-revision snapshot whose limits or over-budget flag changed', () => {
+    const source = new CharterSessionSource({} as never, SessionId('session-config-frame'))
+    source.accept(view(1, 'same', 'session-config-frame'))
+    source.accept({
+      ...view(1, 'same', 'session-config-frame'),
+      overBudget: true,
+      limits: { ...view(1, 'same', 'session-config-frame').limits, maxPromptBytes: 4_096 },
+    })
+    expect(source.getSnapshot().view).toMatchObject({
+      overBudget: true,
+      limits: { maxPromptBytes: 4_096 },
+    })
   })
 
   it('cannot release a newer acquire cycle through a stale binding', async () => {

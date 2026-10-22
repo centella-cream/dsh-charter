@@ -877,8 +877,13 @@ export class CharterService extends Service {
     }
     listeners.add(listener)
     return () => {
-      listeners?.delete(listener)
-      if (listeners?.size === 0) this.listeners.delete(sessionId)
+      // The subscription's Set may have been closed and replaced by a
+      // same-id lifecycle while this generator was still unwinding. Never
+      // delete the map entry unless it is still the Set this closure owns.
+      const current = this.listeners.get(sessionId)
+      if (current !== listeners) return
+      listeners.delete(listener)
+      if (listeners.size === 0) this.listeners.delete(sessionId)
     }
   }
 
