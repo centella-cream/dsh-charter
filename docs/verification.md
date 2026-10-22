@@ -53,8 +53,8 @@ Results:
   dependencies, and loads the packed `dsh-charter/core` entry plus the client bundle.
 
 CI is configured to run `npm run check` and `npm run smoke:package` on every push/PR for Node `22.19.0` and
-Node `24`. The repository has no remote yet, so CI has not run; the local runs recorded in this document are the
-evidence, and the installed artifact was checked on the minimum supported and current LTS runtimes locally.
+Node `24` once the public repository exists. The local gates recorded in this document ran on Node `v22.23.1`;
+the repository has no remote yet, so CI itself has not run.
 
 Key test files:
 
@@ -584,11 +584,12 @@ Chinese and English:
 Screenshots: [Chinese light](assets/charter-pane.png), [English light](assets/charter-pane.en.png),
 [dark](assets/charter-pane.dark.png), [narrow](assets/charter-pane.narrow.png).
 
-Budget behavior beyond the parser split is enforced in the client: over-limit fields are marked, the draft
-preview is rendered through the same prompt renderer, and Apply is disabled while an item, the objective, the
-selected draft, or the projected context exceeds its budget. The automated coverage for the split/whole-objective
-policy is in `tests/core/bootstrap.spec.ts`; the over-limit UI itself was not driven through a browser in this
-round.
+Budget behavior beyond the parser split is enforced in the client: over-limit fields are marked, the draft preview
+is rendered through the same prompt renderer, and Apply is blocked only when the rendered prompt would grow and
+remain over budget; shrinking or unchanged over-budget renders are admitted. Field editors likewise admit a
+strictly shrinking objective or same-id item even while it is over its limit. The automated coverage for the
+split/whole-objective policy is in `tests/core/bootstrap.spec.ts`; the over-limit UI itself was not driven through
+a browser in this round.
 
 ### 7.6 Notes
 

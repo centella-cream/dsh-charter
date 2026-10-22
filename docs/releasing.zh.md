@@ -53,7 +53,8 @@ DSH_HOME=/tmp/dsh-charter-release-home \
 真实模型 compaction 验收是手工步骤：应用会话契约、执行 `/compact`、发送一条消息，然后运行
 `npm run verify:compaction -- --session <id> --home <DSH_HOME>`，并把 `PASS` 证据记录到验证记录第 8 节。
 这项检查需要模型，永远不属于 `npm run check`。记录中的 `PASS` 已代表 compaction 韧性声明被接受；如果提供该
-证据的 Desktop 进程在最后一次包更新后没有重启，发布前重启一次并重新打开会话契约 tab（见 8.4）。
+证据的 Desktop 进程在最后一次包更新后没有重启，发布稳定 `latest` 前重启一次并重新打开会话契约 tab（本次
+`next` 预发布不需要；见 8.4）。
 
 ## 4. 打 tag 与发布
 
@@ -66,10 +67,9 @@ mkdir -p dist && mv dsh-charter-0.1.0-rc.1.tgz dist/
 
 在 tagged tree 上打包，保证产物与已提交源码一致。把产物 digest 同时写入 `dist/SHA256SUMS` 和仓库根部
 tracked 的 `SHA256SUMS`（根部文件刻意不在 npm `files` 白名单内，因此不会改变打包产物）。提交根部文件后，再把
-`v0.1.0-rc.1` tag 移到新的 HEAD。验证记录 8.4 记录通过门禁的 source commit 以及由该 commit 构建的产物
-digest；如果 tagged tree 只额外添加了证据记录，重建产物的 digest 会不同，以 tracked 根部 `SHA256SUMS` 和
-`dist/SHA256SUMS` 中的值为准。`dist/` 不进 git；把 `.tgz` 和 `SHA256SUMS` 附到 GitHub release，但不要提交
-tarball。
+`v0.1.0-rc.1` tag 移到新的 HEAD。验证记录 8.4 记录通过门禁的 source commit，并指向 tracked 的随发布产物
+digest；tracked 根部 `SHA256SUMS` 与 `dist/SHA256SUMS` 固定从 tagged tree 构建的产物。`dist/` 不进 git；把
+`.tgz` 和 `SHA256SUMS` 附到 GitHub release，但不要提交 tarball。
 
 1. 创建 GitHub release，附加 `.tgz`、`SHA256SUMS` 和简短亮点；
 2. 用非 latest dist-tag 发布预发布版本：
