@@ -13,8 +13,8 @@
 - [调研记录](../research/charter-research.zh.md)
 
 实现状态：MVP Host、纯内核、JSON storage 组合、Remote contract 和主对话页标签页 Client 已完成实现并通过版本矩阵
-验证。当前 `npm run typecheck`、`npm test`、`npm run build` 均通过（121 个测试）；同一源码在 DSH
-`0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-rc.1`、`0.2.1-rc.2` 上分别通过 typecheck、build 和 121 个测试。
+验证。当前 `npm run typecheck`、`npm test`、`npm run build` 均通过（131 个测试，17 个测试文件）；同一源码在 DSH
+`0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-rc.1`、`0.2.1-rc.2` 上分别通过 typecheck、build 和 131 个测试。
 真实 profile 的 tarball 安装、配置组合、Web 启动、boot graph 和客户端 bundle HTTP 已通过；DSH `0.2.0-rc.2`
 Web profile 上已用真实 Chrome 验证「对话」「轨迹」「会话契约」标签顺序、目标编辑、预览、Apply 和刷新持久化。
 完整 compaction 端到端仍需在目标 profile 手工执行。兼容边界与降级见
@@ -1002,7 +1002,9 @@ scripts/
    [兼容矩阵](compatibility.zh.md)；
 6. 不兼容 domain 升级的运维入口；
 7. 是否需要法律级永久审计；若需要，应独立立项，不能把有界 history 冒充永久审计；
-8. DSH `0.1.7-rc.2` / `0.2.0` 无 `@Remote.resources`，per-Peer 资源授权只能从 0.2.1 起提供；这些版本仅适用于可信单操作者环境。
+8. DSH `0.1.7-rc.2` / `0.2.0` 无 `@Remote.resources`，per-Peer 资源授权只能从 0.2.1 起提供；这些版本仅适用于可信单操作者环境；
+9. `charter_read` 的 `standing` 是完整工作集、没有固定字节上限；最大规模契约可能产生较大的 tool result，
+   分页或显式响应 cap 是后续工作。
 
 ## 18. 决策状态
 

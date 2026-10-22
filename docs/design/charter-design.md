@@ -556,7 +556,7 @@ uninstall smoke; fault injection and side-by-side domain migration remain open.
 
 Current evidence:
 
-- 121 tests across 16 core, host, and client test files;
+- 131 tests across 17 core, host, client, and verification-helper test files;
 - Typecheck, build, and tests pass on DSH `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-rc.1`, and
   `0.2.1-rc.2`;
 - Real profile install/boot on `0.1.7-rc.2` and `0.2.0-rc.2`;
@@ -651,6 +651,8 @@ paths, URLs, and command arguments are sensitive and do not enter ordinary logs 
 6. Domain migration entry for incompatible upgrades.
 7. Whether a legal-grade permanent audit is needed; it would be a separate project, not a bounded history.
 8. DSH 0.1.7/0.2.0 have no per-Peer resource authorization.
+9. `charter_read` `standing` is the complete working set with no fixed byte cap; a maximum-size charter can
+   produce a large tool result. Paging or an explicit response cap is a follow-up.
 
 ## 17. Decision status
 

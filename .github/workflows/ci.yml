@@ -18,5 +18,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # Real-model compaction is a manual release gate, never a CI step:
+      #   npm run verify:compaction -- --session <id> --home <DSH_HOME>
       - run: npm run check
       - run: npm run smoke:package

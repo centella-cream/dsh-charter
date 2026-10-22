@@ -22,7 +22,8 @@ npm pack
 
 `npm run check` must pass typecheck, build, Remote smoke, client smoke, and the full Vitest suite;
 `npm run smoke:package` additionally packs the tarball and verifies its required files, every `exports` target,
-the packed Host import, and the packed client bundle. CI runs both.
+the packed Host import, and the packed client bundle. CI runs both. The compaction checker has fixture tests for
+its success/failure exit criteria, but the real-model run remains the manual gate described below.
 
 Install the packed tarball into a fresh profile and verify:
 

@@ -241,8 +241,9 @@ bundle。否则使用上面的本地 tarball 路径。
 
 - 用户正文永远不进入 system-role 消息。
 - 模型没有会话契约写能力；`charter_read` 只读。`standing` 以紧凑形式返回完整的当前工作集（受 record 配额
-  约束，省略仅供调试的 id/review/lifecycle，避免元数据撑大工具结果）；`all` 调试页最多 64 条 / 32 KiB，
-  并在 `truncated` 中报告省略数量。
+  约束，省略仅供调试的 id/review/lifecycle，避免元数据撑大工具结果）；`all` 调试页最多 64 条 / 32 KiB
+  （按最终 envelope 计算），并在 `truncated` 中报告省略数量。`standing` 没有固定字节上限，最大规模的
+  会话契约可能产生较大的 tool result；对 standing 分页已列为后续工作。
 - Actor 策略：`owner` 可执行所有编辑（含永久清除）；`user` 可做普通编辑但不能 purge；`host` 在 Remote
   edit 路径上被拒绝。记录绑定 `createdAt`、`cwd`、`parentSession`；同一 Session id 的不同 lifecycle 会被拒绝。
 - 普通日志只记录稳定 id、kind、revision 和错误码，不记录用户正文。
@@ -260,7 +261,7 @@ npm run verify:compaction # 手工真实模型 compaction 校验（不在 check 
 ```
 
 测试覆盖纯内核、真实 Host 组合、storage domain、Remote framing、历史抽取、客户端状态和 factory bundle
-注册。当前矩阵：**DSH `0.1.7-rc.2`、`0.2.0-rc.1`/`rc.2`、`0.2.1-rc.1`/`rc.2` × 121 个测试全部通过**。命令与证据见[验证记录](docs/verification.zh.md)。
+注册。当前矩阵：**DSH `0.1.7-rc.2`、`0.2.0-rc.1`/`rc.2`、`0.2.1-rc.1`/`rc.2` × 131 个测试全部通过**。命令与证据见[验证记录](docs/verification.zh.md)。
 
 ## 致谢
 

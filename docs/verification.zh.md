@@ -13,7 +13,7 @@
 | 验证项 | 结果 |
 | --- | --- |
 | TypeScript 严格类型检查（5 个 DSH 版本） | 通过 |
-| Vitest（5 个本地可用版本 × 121 tests） | 通过 |
+| Vitest（5 个本地可用版本 × 131 tests） | 通过 |
 | Host ESM 构建 + 浏览器单文件 bundle | 通过 |
 | Remote 装饰器/资源 smoke | 通过（0.1.7/0.2.0 按预期无资源声明） |
 | 浏览器 factory bundle 物化与 `apply` smoke | 通过 |
@@ -27,6 +27,8 @@
 | Session 级客户端草稿 | 通过：单测覆盖 binding 卸载/重挂载后草稿存活、重试复用 mutation id、冲突 rebase、bootstrap 不抢占 section；见 4.5 |
 | 运行期 schema 重新校验 | 通过：mount 后把记录改成非法 schema，只有该 Session 不可用且原始记录保留；见 4.6 |
 | 打包产物可安装性 | 通过：CI 运行 `smoke:package`（tarball 内容、exports、packed Host import、client bundle）；见第 2 节 |
+| Compaction checker 退出条件 | 通过：fixture 覆盖成功、system prompt 污染、charter_read 不匹配、快照丢失、摘要泄漏 warning；见 4.7 |
+| 陈旧异步草稿结果 | 通过：edit/bootstrap 结果按 source/generation/请求身份围栏；空草稿和 idle 草稿会回收；见 4.7 |
 | 真实模型 + compaction 端到端 | **校验命令已就绪，实测待执行**（`npm run verify:compaction`，见第 8 节） |
 
 ## 2. 本地基线
@@ -40,7 +42,7 @@ npm test
 
 - typecheck 通过；
 - build 通过；
-- 16 个测试文件、121 个测试全部通过；
+- 17 个测试文件、131 个测试全部通过；
 - `remote-smoke` 断言 `watch,bootstrap,edit`、stream mode 和 Session resource；
 - `client-smoke` 断言单文件 factory bundle、外部依赖白名单、不引用 Node-only `Buffer`、`apply` 注册
   tab/pane/Remote contribution。
@@ -66,9 +68,9 @@ CI 在每次 push/PR 上运行 `npm run check` 和 `npm run smoke:package`，绿
 | `tests/host/remote.spec.ts` | Remote 描述符、wire schema、旧 Host view snapshot、零 pending 上限 |
 | `tests/client/store.spec.ts` | 提交后立即接受 view、忽略陈旧/重复 revision、opening snapshot 单调、权威不可用降级、attach 重试、共享 source lease/引用计数、旧 lease no-op、忽略其他 Session 的 stream 帧 |
 | `tests/client/bootstrap-plan.spec.ts` | 溢出候选仍在一个 plan 中；active 前缀符合字节预算；bootstrap 结果分类（draft/discard/stale/unavailable） |
-| `tests/client/draft.spec.ts` / `draft-store.spec.ts` | Session 绑定的请求构造；binding 卸载/重挂载后草稿存活；重试复用 mutation id；冲突 rebase；bootstrap 不抢占 section |
+| `tests/client/draft.spec.ts` / `draft-store.spec.ts` | Session 绑定的请求构造（A 的 ops 不会为 B 构造请求）；binding 卸载/重挂载后草稿存活；重试复用 mutation id；冲突 rebase；陈旧异步结果不能覆盖新的 draft/source/lifecycle；bootstrap 不抢占 section |
 | `tests/client/preview.spec.ts` | 投影后的 draft 行（add/edit/accept/progress/supersede/purge）；渲染器一致性与 pending 排除 |
-| `tests/client/draft.spec.ts` | 暂存草稿绑定其 Session；Session A 的 ops 不会为 Session B 构造请求 |
+| `tests/verify/compaction-checks.spec.ts` | compaction checker fixture：system prompt 污染、charter_read 调用但不匹配、压缩后快照丢失、摘要泄漏 warning、紧凑 standing 投影一致 |
 
 ## 3. 跨版本矩阵
 
@@ -94,11 +96,11 @@ npm run build
 
 | 版本 | typecheck | build | Vitest | remote smoke | client smoke |
 | --- | --- | --- | --- | --- | --- |
-| `0.1.7-rc.2` | 通过 | 通过 | 121/121 | 通过（无 resources 警告） | 通过 |
-| `0.2.0-rc.1` | 通过 | 通过 | 121/121 | 通过（无 resources 警告） | 通过 |
-| `0.2.0-rc.2` | 通过 | 通过 | 121/121 | 通过（无 resources 警告） | 通过 |
-| `0.2.1-rc.1` | 通过 | 通过 | 121/121 | 通过 | 通过 |
-| `0.2.1-rc.2` | 通过 | 通过 | 121/121 | 通过 | 通过 |
+| `0.1.7-rc.2` | 通过 | 通过 | 131/131 | 通过（无 resources 警告） | 通过 |
+| `0.2.0-rc.1` | 通过 | 通过 | 131/131 | 通过（无 resources 警告） | 通过 |
+| `0.2.0-rc.2` | 通过 | 通过 | 131/131 | 通过（无 resources 警告） | 通过 |
+| `0.2.1-rc.1` | 通过 | 通过 | 131/131 | 通过 | 通过 |
+| `0.2.1-rc.2` | 通过 | 通过 | 131/131 | 通过 | 通过 |
 
 `0.1.7-rc.2` 和 `0.2.0` 的 remote smoke 输出：
 
@@ -222,6 +224,19 @@ profile 手工确认。
   上限按最终 tool envelope 测量（用 30 条大归档条目测试）；`overBudget` 也反映调低的 history/mutation 数量上限。
 - **打包产物门禁**：CI 打包 tarball 并校验必需文件、所有 `exports` 目标、无工作区泄漏、packed Host import 和
   packed client bundle（`npm run smoke:package`）。
+
+### 4.7 Checker 退出条件、草稿异步围栏与在线修复
+
+- **Compaction checker（fixture）**：`tests/verify/compaction-checks.spec.ts` 覆盖精确成功条件：正常通过、
+  system prompt 污染、调用了 `charter_read` 但 standing 不匹配、压缩后快照丢失、摘要泄漏 warning。transcript
+  reader 现在构造与 Host 相同的紧凑 standing 投影（`kind`/`text`/`verification`/`progress`），所有必需证据
+  都参与退出码；只有 WAIT/BLOCKED 状态会在评估前短路。
+- **草稿异步围栏**：edit 和 bootstrap Apply 捕获 `asyncGeneration`、source 实例、lifecycle 和请求身份；已销毁
+  source 的迟到结果不能清除或覆盖新草稿。source 失效保留 mutation id 以便幂等重试，新 source 会使在途结果失效。
+- **草稿回收**：最后一个 lease 释放后立即丢弃空草稿；已释放草稿有 idle TTL 和 LRU 上限，切换标签不会无界保留
+  文本，同时活跃工作仍会保留。
+- **在线修复**：运行期损坏记录就地修复后，下一次 view/初始化会重新解析，Session 无需重启 Host 即恢复可编辑；
+  仍不合法的文档保持隔离且原始字节保留。
 
 ## 5. 浏览器 bundle 验证
 
@@ -525,8 +540,8 @@ npm run verify:compaction -- --session <id> --json # 其他 Session / 机器可�
 2. 最新 runtime-context 快照位于该 compaction 之后；
 3. 该快照包含 `charter:standing`，文本与 `promptText` 字节一致，SHA-256 等于 `promptDigest`；
 4. 没有任何 system-prompt 快照包含会话契约前缀、正文、目标或较长的条目文本；
-5. transcript 中的 `charter_read` standing 结果等于当前 revision 的完整 standing 投影（不只是
-   revision/objective）；
+5. transcript 中的 `charter_read` standing 结果等于 Host 的紧凑 standing 投影（`kind`/`text`/
+   `verification`/`progress`），而不只是 revision/objective；
 6. 压缩之后的压缩摘要没有夹带渲染正文（这是 warning：它会削弱证明，而不是静默通过）。
 
 真实 profile 中的操作步骤：
@@ -538,8 +553,10 @@ npm run verify:compaction -- --session <id> --json # 其他 Session / 机器可�
 3. 在同一 Session 执行 `/compact`，然后发送一条消息；
 4. 再次运行命令：预期 `PASS`，并输出 compaction seq、压缩后快照 seq 和 digest。
 
-检查器只会 fail closed 为 `BLOCKED`（还没有契约）或 `WAIT`（压缩后还没有新请求）；它绝不把 checkpoint
-摘要当作“存活”证据。
+检查器只会 fail closed 为 `BLOCKED`（还没有契约）或 `WAIT`（压缩后还没有新请求）；一旦存在压缩后请求，
+`survivesCompaction`、system prompt 洁净、以及“调用了 charter_read 但 standing 不匹配”都会参与退出码；
+摘要泄漏记录为 warning 而不是静默通过。`tests/verify/compaction-checks.spec.ts` 用 fixture 覆盖这些通过/失败
+组合，不依赖真实模型。它绝不把 checkpoint 摘要当作“存活”证据。
 
 ### 8.3 平台依据
 

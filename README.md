@@ -263,8 +263,9 @@ environment.
 - User-authored text never enters a system-role message.
 - The model has no charter write capability; `charter_read` is read-only. Its `standing` view returns the complete
   current working set (bounded by record quotas) in a compact form that omits debug-only ids/review/lifecycle, so
-  metadata cannot inflate the tool result; the `all` debug page is capped at 64 items / 32 KiB and reports omitted
-  items.
+  metadata cannot inflate the tool result; there is no fixed byte cap on `standing`, so a maximum-size charter can
+  produce a large tool result. The `all` debug page is capped at 64 items / 32 KiB (final envelope) and reports
+  omitted items; paging `standing` is a documented follow-up.
 - Actor policy: `owner` may perform all edits including purge; `user` may perform ordinary edits but not purge;
   `host` is rejected on the Remote edit path. Records are bound to `createdAt`, `cwd`, and `parentSession`;
   reusing a Session id across lifecycles is rejected.
@@ -283,7 +284,7 @@ npm run verify:compaction # manual real-model compaction check (not part of chec
 ```
 
 The test suite covers the pure core, real Host composition, storage-domain behavior, Remote framing,
-history extraction, client state, and factory-bundle registration. Current matrix: **121 tests on DSH `0.1.7-rc.2`, `0.2.0-rc.1`/`rc.2`, and `0.2.1-rc.1`/`rc.2`**. See the [verification record](docs/verification.md) for commands and evidence.
+history extraction, client state, and factory-bundle registration. Current matrix: **131 tests on DSH `0.1.7-rc.2`, `0.2.0-rc.1`/`rc.2`, and `0.2.1-rc.1`/`rc.2`**. See the [verification record](docs/verification.md) for commands and evidence.
 
 ## Acknowledgements
 

@@ -14,7 +14,7 @@ HTML live under `.tmp/` and are excluded from the published package.
 | Item | Result |
 | --- | --- |
 | Strict TypeScript check (5 DSH versions) | Pass |
-| Vitest (5 locally available versions × 121 tests) | Pass |
+| Vitest (5 locally available versions × 131 tests) | Pass |
 | Host ESM build + browser single-file bundle | Pass |
 | Remote decorator/resource smoke | Pass (0.1.7/0.2.0 have no resource declaration, as expected) |
 | Browser factory-bundle materialization and `apply` smoke | Pass |
@@ -28,6 +28,8 @@ HTML live under `.tmp/` and are excluded from the published package.
 | Session-owned client drafts | Pass: unit tests cover draft survival across bindings, retry mutation-id reuse, conflict rebase, and bootstrap section ownership; section 4.5 |
 | Runtime schema revalidation | Pass: a record mutated to an invalid schema after mount isolates only its Session and is preserved; section 4.6 |
 | Packed artifact installability | Pass: CI runs `smoke:package` (tarball contents, exports, packed Host import, client bundle); section 2 |
+| Compaction checker exit criteria | Pass: fixture tests cover success, dirty system prompt, mismatched charter_read, lost snapshot, and leak warning; section 4.7 |
+| Stale async draft results | Pass: edit/bootstrap results are fenced by source/generation/request identity; empty and idle drafts are reclaimed; section 4.7 |
 | Real model + compaction end-to-end | **Procedure + checker ready; live run pending** (`npm run verify:compaction`, section 8) |
 
 ## 2. Local baseline
@@ -41,7 +43,7 @@ Results:
 
 - typecheck passes;
 - build passes;
-- 16 test files, 121 tests pass;
+- 17 test files, 131 tests pass;
 - `remote-smoke` asserts `watch,bootstrap,edit`, stream mode, and Session resource;
 - `client-smoke` asserts the single-file factory bundle, external-dependency allowlist, no Node-only `Buffer`
   reference, and `apply` registering the tab/pane/Remote contribution;
@@ -69,9 +71,9 @@ Key test files:
 | `tests/host/remote.spec.ts` | Remote descriptor, wire schema, legacy Host view snapshot, zero pending limit |
 | `tests/client/store.spec.ts` | accept committed view immediately, ignore stale/duplicate revisions, monotonic opening snapshot, authoritative availability demotion, attach retry, shared source lease/ref count, stale-lease no-op, foreign-Session stream frames ignored |
 | `tests/client/bootstrap-plan.spec.ts` | overflow candidates stay in one plan; one-pass planning with per-candidate outcomes; active prefix fits the byte budget; bootstrap outcome classifier (draft/discard/stale/unavailable) |
-| `tests/client/draft.spec.ts` / `tests/client/draft-store.spec.ts` | Session-scoped request guard; draft survival across binding unmount/remount; idempotent retry mutation-id reuse; conflict rebase; bootstrap does not steal the section |
+| `tests/client/draft.spec.ts` / `tests/client/draft-store.spec.ts` | Session-scoped request guard (Session A ops never build a request for Session B); draft survival across binding unmount/remount; idempotent retry mutation-id reuse; conflict rebase; stale async results cannot overwrite a newer draft/source/lifecycle; bootstrap does not steal the section |
 | `tests/client/preview.spec.ts` | projected draft rows for add/edit/accept/progress/supersede/purge; renderer parity and pending exclusion |
-| `tests/client/draft.spec.ts` | a staged draft is bound to its Session; Session A ops never build a request for Session B |
+| `tests/verify/compaction-checks.spec.ts` | compaction checker fixtures: dirty system prompt, called-but-mismatched `charter_read`, lost post-compaction snapshot, leak warning, and exact compact standing projection |
 
 ## 3. Cross-version matrix
 
@@ -98,11 +100,11 @@ Results:
 
 | Version | typecheck | build | Vitest | remote smoke | client smoke |
 | --- | --- | --- | --- | --- | --- |
-| `0.1.7-rc.2` | Pass | Pass | 121/121 | Pass (no-resources warning) | Pass |
-| `0.2.0-rc.1` | Pass | Pass | 121/121 | Pass (no-resources warning) | Pass |
-| `0.2.0-rc.2` | Pass | Pass | 121/121 | Pass (no-resources warning) | Pass |
-| `0.2.1-rc.1` | Pass | Pass | 121/121 | Pass | Pass |
-| `0.2.1-rc.2` | Pass | Pass | 121/121 | Pass | Pass |
+| `0.1.7-rc.2` | Pass | Pass | 131/131 | Pass (no-resources warning) | Pass |
+| `0.2.0-rc.1` | Pass | Pass | 131/131 | Pass (no-resources warning) | Pass |
+| `0.2.0-rc.2` | Pass | Pass | 131/131 | Pass (no-resources warning) | Pass |
+| `0.2.1-rc.1` | Pass | Pass | 131/131 | Pass | Pass |
+| `0.2.1-rc.2` | Pass | Pass | 131/131 | Pass | Pass |
 
 `0.1.7-rc.2` and `0.2.0` remote smoke prints:
 
@@ -239,6 +241,22 @@ The fourth readiness review targeted failure paths that only appear after startu
   30 large archived items). `overBudget` also reflects lowered history/mutation count limits.
 - **Packaged artifact gate.** CI packs the tarball and verifies required files, every `exports` target, no
   workspace leakage, the packed Host import, and the packed client bundle via `npm run smoke:package`.
+
+### 4.7 Checker exit criteria, draft async fencing, and online repair
+
+- **Compaction checker (fixtures).** `tests/verify/compaction-checks.spec.ts` exercises the exact success criteria:
+  a clean pass, a dirty system prompt, a called-but-mismatched `charter_read` standing result, a lost
+  post-compaction snapshot, and a leaking-summary warning. The transcript reader now builds the same compact
+  standing projection as the Host (`kind`/`text`/`verification`/`progress`) and all required evidence participates
+  in the exit code; only a WAIT/BLOCKED state short-circuits before evaluation.
+- **Draft async fencing.** Edit and bootstrap Apply capture `asyncGeneration`, the source instance, lifecycle, and
+  request identity; a late result from a destroyed source cannot clear or overwrite a newer draft. Source
+  invalidation preserves the mutation id for an idempotent retry, and a new source invalidates in-flight results.
+- **Draft reclamation.** The last lease release drops an empty draft immediately; released drafts have an idle TTL
+  and an LRU bound, so tab switching does not retain unbounded text while active work survives.
+- **Online repair.** After a runtime-invalid record is repaired in place, the next view/initialize re-parses it and
+  the Session becomes editable again without a Host restart; a still-invalid document remains isolated and its raw
+  bytes are preserved.
 
 ## 5. Browser bundle verification
 
@@ -563,8 +581,8 @@ The command reads the Session transcript and the charter storage record, then re
 3. that snapshot contains `charter:standing`, its text is byte-identical to `promptText`, and its SHA-256 equals
    `promptDigest`;
 4. no system-prompt snapshot contains the charter prefix, body, objective, or a long item text;
-5. a `charter_read` standing result in the transcript equals the full projected standing items for the current
-   revision (not only revision/objective);
+5. a `charter_read` standing result in the transcript equals the Host's compact standing projection
+   (`kind`/`text`/`verification`/`progress`) for the current revision, not only revision/objective;
 6. a compaction summary after the compaction does not carry the rendered body (a warning: it would weaken the
    proof, not silently pass it).
 
@@ -577,8 +595,11 @@ Procedure in a real profile:
 3. run `/compact` in the same Session, then send one message;
 4. run the command again: expect `PASS` with the compaction seq, post-compaction snapshot seq, and digest.
 
-The checker fails closed as `BLOCKED` (no charter yet) or `WAIT` (no post-compaction request yet); it never
-treats a checkpoint summary as proof of survival.
+The checker fails closed as `BLOCKED` (no charter yet) or `WAIT` (no post-compaction request yet); once a
+post-compaction request exists, `survivesCompaction`, a clean system prompt, and a called-but-mismatched
+`charter_read` standing result all participate in the exit code. A leaking summary is a recorded warning, not a
+silent pass. `tests/verify/compaction-checks.spec.ts` exercises these success/failure fixtures without a live
+model.
 
 ### 8.3 Platform basis
 
