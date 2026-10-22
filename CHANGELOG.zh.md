@@ -4,7 +4,7 @@
 
 记录 `dsh-charter` 的重要变更。DSH 插件 ABI 仍在演进，项目保持 pre-1.0 版本线。
 
-## 0.1.0-rc.1 — 未发布
+## 0.1.0-rc.1 — 2026-10-22
 
 首个 MVP。
 
@@ -30,8 +30,8 @@
 - 完整的会话契约标签页与面板中英文界面，由 `dsh-client-locale` 和 DSH 当前语言驱动；计数、状态、按钮、
   占位符和错误码文案均包含在内。
 - 主对话页 `conversation.view` 的会话契约标签页（中文「会话契约」/ English「Charter」），支持草稿暂存、
-  冲突保留、预览、归档/恢复、替代、待确认审阅（历史草案溢出；模型提议入口预留）、清除确认、进度和验证操作。标签跟随 Chat/Trajectory，
-  并动态排到后续注册的插件标签之后。
+  冲突保留、预览、归档/恢复、替代、待审审阅（历史草案溢出；模型提议入口预留）、清除确认、进度和验证操作。标签
+  以稳定的高 order（1000）只注册一次，排在 Chat/Trajectory 和常见插件标签之后，不会重新注册。
 - 按 Session 授权的 Remote stream 和 edit 端点。
 - DSH 0.1.7-rc.2 / 0.2.0 兼容层（`@Remote` 资源回退、prompt-context 扩展字段、actor 回退），以及针对旧版
   prompt 变量插值器的转义。
@@ -39,7 +39,7 @@
 - 新浏览器 client 可以兼容仍在运行旧 Host 的 view snapshot（旧 Host 仍带 active 条数字段），避免 host/client
   revision 不一致时「会话契约」白屏；新的 pending 导入语义仍需要完整重启 Host 才生效。
 - 已针对 DSH `0.2.1-rc.2` 验证，无需代码改动；现有 peer range 和兼容层已覆盖该 release candidate。
-- 157 个测试，覆盖内核、Host 组合、fork、幂等、配额、prompt 边界、Remote stream、历史抽取、客户端 tab
+- 161 个测试，覆盖内核、Host 组合、fork、幂等、配额、prompt 边界、Remote stream、历史抽取、客户端 tab
   排序和装饰器兼容。已在 DSH `0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-rc.1`、`0.2.1-rc.2` 上验证。
   真实 Web UI 在 `0.2.0-rc.2` 上验证了标签顺序、中英文切换、目标/约束编辑、预览、Apply 和刷新持久化。
 
@@ -103,8 +103,9 @@
   上限；`shadowedTokenCount` 在进入 Remote codec 前校验为非负整数。
 - 在证据比较前，把旧版 debug 形状的 `charter_read` tool result（未重启 Host 返回的额外
   id/review/lifecycle 字段）归一到当前紧凑 standing 投影；并在验证记录 8.4 记录真实模型 compaction PASS。
-- compaction checker 的所有成功条件都参与退出码：按 Host 的紧凑 standing 投影比较，system prompt 被污染或
-  调用了 `charter_read` 但 standing 不匹配都会失败；摘要泄漏记为 warning；fixture 覆盖每种组合。
+- compaction checker 的所有成功条件都参与退出码：按 Host 的紧凑 standing 投影比较，system prompt 被污染会失败，
+  并且现在**必需**一个位于最近一次 compaction 之后、与当前 revision/objective 匹配的 `charter_read` standing
+  结果（压缩后读取缺失或不匹配都是 FAIL；压缩前的读取按 seq 忽略）；摘要泄漏记为 warning；fixture 覆盖每种组合。
 - edit/bootstrap 的异步 Apply 结果按 draft generation、source connection epoch、source 实例、lifecycle 和请求
   身份围栏：已销毁 source 或 detach/reattach 周期的迟到结果不能清除或覆盖新草稿；source 失效时保留 mutation id，
   通过新 source 重试仍幂等。
@@ -165,3 +166,16 @@
   单位、计数、验证来源和预览标签全部本地化。
 - 加固 `npm run verify:compaction`：校验 storage record 结构、支持 `--store`、比较完整的 `charter_read`
   standing 投影、检查多个 system-prompt 泄漏信号；并在文档中明确它是手工检查（自动门禁不运行模型）。
+- 会话契约 Conversation View 改为以稳定 order 1000 只注册一次，不再随 slot 变化重新注册：两个都想“永远最后”的
+  插件不会互相无限重排，bundle 也不再查询或订阅 slot roster。
+- 收紧所有 DSH peer 依赖范围到已测试兼容矩阵中的五个版本
+  （`0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2`）。
+- bootstrap 规划改为与精确渲染一致的 O(1) 增量字节核算（objective token + 拼接的 invariant/deliverable
+  token）；完整渲染保留为校验/回退，并新增 3,000 个全 active 候选的测试。
+- 条目操作菜单改为普通 `<details>` disclosure（不声明 `menu`/`menuitem` ARIA 契约），purge 确认按钮自动聚焦、
+  取消后焦点回到 summary，行内操作后键盘焦点留在条目行。
+- 预览中清除被替代的前任时同步解除后继的 `supersedes` 关联，与 Host purge 语义一致。
+- 安装文档改为渠道中性（不可变 tarball 不再声明 registry 不可用），并记录正确的发布顺序：仓库元数据 → CI →
+  已验证产物 → tag → 发布。
+- `package-smoke` 的措辞与实际检查一致（packed `core` import + root/remote export/文件存在性）；Host/Remote
+  运行时 import 继续由工作区 build smoke 覆盖。

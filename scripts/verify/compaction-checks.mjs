@@ -26,11 +26,23 @@ export function compactStandingItem(item) {
 }
 
 /**
+ * Keep only charter_read results that were recorded after the latest
+ * compaction. A read from before the compaction cannot prove what the
+ * post-compaction request carried, so it is not evidence for the PASS.
+ *
+ * @param {readonly { seq: number }[]} results
+ * @param {number | undefined} latestCompactionSeq
+ */
+export function postCompactionCharterReads(results, latestCompactionSeq) {
+  if (latestCompactionSeq === undefined) return [...results]
+  return results.filter(result => typeof result.seq === 'number' && result.seq > latestCompactionSeq)
+}
+
+/**
  * @param {{
  *   charterReady: boolean | undefined,
  *   survivesCompaction: boolean | undefined,
  *   systemPromptClean: boolean | undefined,
- *   charterReadCalled: boolean,
  *   charterReadStanding: boolean | undefined,
  *   checkpointLeaksCharter: boolean | undefined,
  * }} evidence
@@ -47,8 +59,14 @@ export function evaluateCompactionEvidence(evidence) {
     if (evidence.systemPromptClean !== true) {
       failures.push('a system-role prompt snapshot carries the charter body')
     }
-    if (evidence.charterReadCalled && evidence.charterReadStanding !== true) {
-      failures.push('charter_read was called but its standing result does not match the current revision/objective')
+    // Required: a matching charter_read standing result recorded after the
+    // latest compaction. The post-compaction transcript is the only place that
+    // can show the tool read the current revision together with the surviving
+    // request; a missing read is a failure, not an informational note.
+    if (evidence.charterReadStanding !== true) {
+      failures.push(
+        'a post-compaction charter_read standing result is required and must match the current revision/objective',
+      )
     }
   }
   if (evidence.checkpointLeaksCharter === true) {

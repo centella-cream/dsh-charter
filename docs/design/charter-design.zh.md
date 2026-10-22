@@ -13,8 +13,8 @@
 - [调研记录](../research/charter-research.zh.md)
 
 实现状态：MVP Host、纯内核、JSON storage 组合、Remote contract 和主对话页标签页 Client 已完成实现并通过版本矩阵
-验证。当前 `npm run typecheck`、`npm test`、`npm run build` 均通过（157 个测试，17 个测试文件）；同一源码在 DSH
-`0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-rc.1`、`0.2.1-rc.2` 上分别通过 typecheck、build 和 157 个测试。
+验证。当前 `npm run typecheck`、`npm test`、`npm run build` 均通过（161 个测试，17 个测试文件）；同一源码在 DSH
+`0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-rc.1`、`0.2.1-rc.2` 上分别通过 typecheck、build 和 161 个测试。
 真实 profile 的 tarball 安装、配置组合、Web 启动、boot graph 和客户端 bundle HTTP 已通过；DSH `0.2.0-rc.2`
 Web profile 上已用真实 Chrome 验证「对话」「轨迹」「会话契约」标签顺序、目标编辑、预览、Apply 和刷新持久化。
 真实模型 compaction 端到端已于 **2026-10-22 在真实 Session 上记录 PASS**（见验证记录 8.4）；剩余发布前置项是
@@ -557,16 +557,17 @@ ctx.slots.register({
 ```
 
 - Chat 使用 order 0，Trajectory 10，其他插件常用 20/30；
-- 主对话页 tab bar 按 slot 注册顺序渲染，单靠数值 `order` 不能保证排在已有插件之后；
-- 因此同时订阅 `conversation.view`：若本插件的 entry 不是最后一个，就 dispose 后重新注册，使其
-  顺延到当前所有 tab 之后；其他插件后续注册时也会再次顺延；
+- 本插件以稳定的高 order（`CHARTER_VIEW_ORDER = 1000`）只注册一次，因此自然排在这些 tab 之后；它不订阅
+  slot roster、也不重新注册，所以两个都想“永远最后”的插件不会互相无限重排；使用更高 order（例如 2000）的
+  插件只会排在会话契约之后；
 - 标签名和面板全部文案走 `dsh-client-locale` 的同一 namespace：中文「会话契约」，英文「Charter」；计数、状态、
   按钮、占位符、错误码说明均随当前 DSH 语言切换；
 - 空白 Session 隐藏 View tab bar；开始会话后显示；
 - 若 Session 由另一个 DSH 进程持有、尚未在当前 Web 进程加载，`watch` 返回 stored record 的只读 view 与说明，
   并在 Session 变为 live 后通过 `publish()` 自动升级为可编辑；不把原始 "not live" 错误直接抛给 UI；
 - 标签页正文使用主内容区滚动，底部操作栏不再固定在视口底部，而是位于内容末尾；
-- 动态重注册会重建正文组件；草稿按 Session 所有权保存在 store 中，切换 Chat/Charter 或重挂载不会丢失，只有
+- 重挂载正文组件（切标签、view 重建）不会丢失草稿：草稿按 Session 所有权保存在 store 中，切换 Chat/Charter
+  或重挂载不会丢失，只有
   lifecycle 变化才会重置。已释放草稿按有界 LRU 回收；客户端与 Host 共用文本检查函数，控制字符和孤立 surrogate
   在 Apply 前即被拒绝。
 
@@ -836,7 +837,7 @@ src/
     store.ts          RemoteSnapshotStream 客户端状态、连接重试、source lease
     draft.ts          草稿请求构造
     draft-store.ts    per-Session 草稿所有权（暂存/编辑器/历史草案/反馈）
-    bootstrap-plan.ts 历史草案单遍规划与结果分类（逐候选渲染；近乎全部 active 时最坏 O(n²)）
+    bootstrap-plan.ts 历史草案 O(1) 增量字节核算与结果分类（精确渲染仅作校验/回退）
     preview.ts        投影草稿视图 + 共享渲染器
     CharterPane.tsx   主对话页标签页面板
     locales.ts        中英文 UI 字典
@@ -882,7 +883,7 @@ scripts/
 - retained 快照被 compaction replacement 遮蔽后同值重建；
 - Gateway Session resource 授权；
 - RemoteSnapshotStream 每代 opening snapshot；
-- Conversation View tab 注册、locale 文案与动态顺延；
+- Conversation View tab 注册（稳定高 order，只注册一次）、locale 文案；
 - resume、fork、unload。
 
 任一关键契约不成立时先改设计，不进入 M1。

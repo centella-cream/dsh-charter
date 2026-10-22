@@ -438,24 +438,29 @@ function ItemRow({
         )}
         {hasMenu && (
           <details className="charter-item__menu" ref={menuRef}>
-            <summary className="charter-button charter-button--ghost" aria-label={menuLabel} aria-haspopup="menu">
+            {/*
+              A plain disclosure: the summary toggles the menu, and its normal
+              buttons are reachable with Tab. No `menu`/`menuitem` roles are
+              claimed because the widget does not implement menu-button arrow
+              navigation or roving focus.
+            */}
+            <summary className="charter-button charter-button--ghost" aria-label={menuLabel}>
               {t('item.actions')}
             </summary>
-            <div className="charter-item__menulist" role="menu">
+            <div className="charter-item__menulist">
               {current && item.review === 'accepted' && (
                 <>
-                  <button type="button" role="menuitem" onClick={() => openInEditor(() => onEdit(item))}>
+                  <button type="button" onClick={() => openInEditor(() => onEdit(item))}>
                     {t('item.edit')}
                   </button>
                   {item.supersedes === undefined && (
-                    <button type="button" role="menuitem" onClick={() => openInEditor(() => onSupersede(item))}>
+                    <button type="button" onClick={() => openInEditor(() => onSupersede(item))}>
                       {t('item.replace')}
                     </button>
                   )}
                   {item.supersedes === undefined && (
                     <button
                       type="button"
-                      role="menuitem"
                       onClick={() => queueFromMenu({ type: 'item.archive', itemId: item.id })}
                     >
                       {t('item.archive')}
@@ -463,7 +468,6 @@ function ItemRow({
                   )}
                   <button
                     type="button"
-                    role="menuitem"
                     onClick={() => queueFromMenu({
                       type: 'item.verification.set',
                       itemId: item.id,
@@ -477,7 +481,6 @@ function ItemRow({
               {item.lifecycle === 'archived' && item.review === 'accepted' && (
                 <button
                   type="button"
-                  role="menuitem"
                   onClick={() => queueFromMenu({ type: 'item.restore', itemId: item.id })}
                 >
                   {t('item.restore')}
@@ -488,7 +491,7 @@ function ItemRow({
                     <>
                       <button
                         type="button"
-                        role="menuitem"
+                        autoFocus
                         onClick={() => {
                           setConfirmPurge(false)
                           queueFromMenu({ type: 'item.purge', itemId: item.id, confirmed: true })
@@ -498,7 +501,6 @@ function ItemRow({
                       </button>
                       <button
                         type="button"
-                        role="menuitem"
                         onClick={() => {
                           setConfirmPurge(false)
                           focusRow()
@@ -511,7 +513,6 @@ function ItemRow({
                 : (
                     <button
                       type="button"
-                      role="menuitem"
                       onClick={() => setConfirmPurge(true)}
                     >
                       {t('item.purge')}

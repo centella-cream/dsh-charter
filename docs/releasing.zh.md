@@ -2,19 +2,20 @@
 
 [English](releasing.md) | 中文
 
-这份清单用于让 GitHub/npm 发布可复现，并避免发布过期的 client bundle。
+这份清单用于让 GitHub/npm 发布可复现，并避免发布过期的 client bundle。顺序是刻意设计的：先仓库元数据与
+CI，再构建已验证产物，然后打 tag，最后发布。已推送的 tag 绝不移动，打 tag 后绝不重新打包。
 
-## 1. 外部前置条件 — 剩余发布阻塞
+## 1. 外部前置条件 — 公开仓库准备
 
-公开 GitHub 仓库尚不存在，当前 checkout 没有 `git remote`，`package.json` 的 `repository`、`homepage`、`bugs`
-故意留空。先创建并推送仓库：
+截至本次提交，公开 GitHub 仓库尚不存在、当前 checkout 没有 `git remote`、`package.json` 的 `repository`、
+`homepage`、`bugs` 故意留空，且尚未 push/publish。先准备仓库：
 
-1. 创建公开仓库（owner/name 由维护者确定）；
-2. `git remote add origin <url>` 并 `git push -u origin main --follow-tags`（同时推送 `v0.1.0-rc.1` tag）；
-3. 把 `package.json` 的 `repository`、`homepage`、`bugs` 恢复为该 URL 并提交；
-4. 确认 `.github/workflows/ci.yml` 在推送的 commit 上为绿色（Node 22.19.0 与 24 矩阵）。
+1. 创建公开仓库（owner/name 由维护者确定）并添加为 `origin`；
+2. 把 `package.json` 的 `repository`、`homepage`、`bugs` 恢复为该 URL，并提交该元数据修改；
+3. 只推送 `main`，此时不要推 tag（`git push origin main`；不要用 `--follow-tags`）；
+4. 等待 `.github/workflows/ci.yml` 在该 commit 上为绿色（Node 22.19.0 与 24 矩阵）。
 
-完成这些步骤之后才应运行 `npm publish --tag next`。README 的仓库链接同样依赖该前置条件。
+tag 在后续（§4）的最终已验证 commit 上创建；在验证前推 tag 会让发布产物依赖未经门禁的树。
 
 ## 2. 发布前检查
 
@@ -32,23 +33,10 @@ npm run smoke:package
 ```
 
 `npm run check` 必须通过 typecheck、build、Remote smoke、client smoke 和完整 Vitest；
-`npm run smoke:package` 另外会打包 tarball 并校验必需文件、所有 `exports` 目标、packed Host import 和 packed
-client bundle。CI 配置为在公开仓库存在后同时运行两者。已记录的真实模型 compaction `PASS`（验证记录 8.4）就是 compaction 韧性声明的
-验收证据；下面的手工命令保留用于在目标 profile 重新跑一次。
-
-用一个全新 profile 安装 tarball 并验证：
-
-```bash
-npm pack
-DSH_HOME=/tmp/dsh-charter-release-home \
-  dsh --profile release-smoke --from-default-profile web --dump-config >/dev/null
-DSH_HOME=/tmp/dsh-charter-release-home \
-  dsh plugin --profile release-smoke add ./dsh-charter-0.1.0-rc.1.tgz
-DSH_HOME=/tmp/dsh-charter-release-home \
-  dsh --profile release-smoke --no-open --port 19399
-```
-
-打开打印的 URL，新建 Session，检查会话契约 tab 和中英文切换。
+`npm run smoke:package` 另外会打包 tarball 并校验必需文件、所有 `exports` 目标、packed `core` import 和 packed
+client bundle（Host/Remote 运行时 import 由工作区 build smoke 覆盖）。CI 在推送的元数据 commit 上同时运行两者。
+已记录的真实模型 compaction `PASS`（验证记录 8.4）就是 compaction 韧性声明的验收证据；下面的手工命令保留
+用于在目标 profile 重新跑一次。
 
 真实模型 compaction 验收是手工步骤：应用会话契约、执行 `/compact`、发送一条消息，然后运行
 `npm run verify:compaction -- --session <id> --home <DSH_HOME>`，并把 `PASS` 证据记录到验证记录第 8 节。
@@ -56,32 +44,51 @@ DSH_HOME=/tmp/dsh-charter-release-home \
 证据的 Desktop 进程在最后一次包更新后没有重启，发布稳定 `latest` 前重启一次并重新打开会话契约 tab（本次
 `next` 预发布不需要；见 8.4）。
 
-## 4. 打 tag 与发布
+## 4. 构建已验证产物、打 tag、推送、发布
+
+在最终已验证 commit（元数据已恢复、CI 绿色、所有门禁通过）上：
 
 ```bash
-git tag -a v0.1.0-rc.1 -m "dsh-charter 0.1.0-rc.1"
 npm pack
 mkdir -p dist && mv dsh-charter-0.1.0-rc.1.tgz dist/
 (cd dist && shasum -a 256 dsh-charter-0.1.0-rc.1.tgz > SHA256SUMS)
 ```
 
-在 tagged tree 上打包，保证产物与已提交源码一致。把产物 digest 同时写入 `dist/SHA256SUMS` 和仓库根部
-tracked 的 `SHA256SUMS`（根部文件刻意不在 npm `files` 白名单内，因此不会改变打包产物）。提交根部文件后，再把
-`v0.1.0-rc.1` tag 移到新的 HEAD。验证记录 8.4 记录通过门禁的 source commit，并指向 tracked 的随发布产物
-digest；tracked 根部 `SHA256SUMS` 与 `dist/SHA256SUMS` 固定从 tagged tree 构建的产物。`dist/` 不进 git；把
-`.tgz` 和 `SHA256SUMS` 附到 GitHub release，但不要提交 tarball。
+把同一 digest 写入仓库根部 tracked 的 `SHA256SUMS`。根部文件刻意不在 npm `files` 白名单内，因此提交它不会改变
+打包产物的字节；请在创建 tag 之前提交该文件。`dist/` 不进 git，也永远不提交 tarball。
 
-1. 创建 GitHub release，附加 `.tgz`、`SHA256SUMS` 和简短亮点；
-2. 用非 latest dist-tag 发布预发布版本：
+用该 tarball 在全新 profile 中安装并验证：
 
 ```bash
-npm publish --access public --tag next
+DSH_HOME=/tmp/dsh-charter-release-home \
+  dsh --profile release-smoke --from-default-profile web --dump-config >/dev/null
+DSH_HOME=/tmp/dsh-charter-release-home \
+  dsh plugin --profile release-smoke add dist/dsh-charter-0.1.0-rc.1.tgz
+DSH_HOME=/tmp/dsh-charter-release-home \
+  dsh --profile release-smoke --no-open --port 19399
 ```
 
-只有在公开仓库链接就位、验证记录 8.4 的重启后复核已记录，且 tagged tree 上 `npm run check`/`smoke:package`
-通过后，才发布稳定 `latest` 版本。在此之前 `dsh-charter@latest` 不存在：请安装 `@0.1.0-rc.1` 或 `@next`。
+打开打印的 URL，新建 Session，检查会话契约 tab 和中英文切换。现在在最终 commit 上创建 annotated tag 并只推送
+一次：
 
-不要发布 API key、profile 数据或包含私人内容的本地截图。
+```bash
+git tag -a v0.1.0-rc.1 -m "dsh-charter 0.1.0-rc.1"
+git push origin v0.1.0-rc.1
+```
+
+已推送的 tag 绝不移动；tag 有误时提升版本号，而不是移动 tag。从该 tag 创建 GitHub release，并附加**已经构建
+并验证过**的 `dist/dsh-charter-0.1.0-rc.1.tgz` 和 `dist/SHA256SUMS` —— 打 tag 之后不要再运行 `npm pack`。
+用非 latest dist-tag 发布该确切文件：
+
+```bash
+npm publish dist/dsh-charter-0.1.0-rc.1.tgz --access public --tag next
+```
+
+验证记录 8.4 记录通过门禁的 source commit，并指向 tracked 的随发布产物 digest；tracked 根部 `SHA256SUMS` 与
+`dist/SHA256SUMS` 固定从 tagged tree 构建的产物。
+
+只有在公开仓库链接就位、验证记录 8.4 的重启后复核已记录，且 tagged tree 上 `npm run check`/`smoke:package`
+通过后，才发布稳定 `latest` 版本。不要发布 API key、profile 数据或包含私人内容的本地截图。
 
 ## 5. 发布后
 

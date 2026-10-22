@@ -23,9 +23,8 @@ For a Web or Desktop profile the plugin registers:
 
 ## 2. Install
 
-> **Current status: pre-release.** The registry package and Desktop catalog entry do not exist yet. The only
-> installable artifact today is a maintainer-built local tarball; the versioned and Desktop Plugins paths become
-> available after the first public pre-release.
+> **Install channels.** Once the maintainer publishes the `next` dist-tag, install by exact version or tag; if the
+> tag is not listed in your registry yet, use the verified local tarball built from this checkout.
 
 ### 2.1 Requirements
 
@@ -35,7 +34,7 @@ For a Web or Desktop profile the plugin registers:
 - Node.js **`^22.19.0 || >=24.0.0`**.
 - A Web or Desktop profile.
 
-### 2.2 Current pre-release — local tarball
+### 2.2 Verified local tarball (pre-release fallback)
 
 ```bash
 npm install
@@ -45,19 +44,19 @@ dsh plugin --profile web add ./dsh-charter-0.1.0-rc.1.tgz
 ```
 
 For Desktop, use the Plugins page if local import is available; otherwise install the tarball through the Desktop
-profile's own package manager (`dsh plugin --profile desktop` is refused by the Electron app). The profile dependency
-is a local `file:` path until the package is published.
+profile's own package manager (`dsh plugin --profile desktop` is refused by the Electron app). The profile
+dependency is a local `file:` path.
 
-### 2.3 After the first public pre-release — Web profile by version or tag
+### 2.3 Registry install (after the `next` publish) — Web profile by version or tag
 
 ```bash
 dsh plugin --profile web add dsh-charter@0.1.0-rc.1   # exact version: reproducible
 dsh plugin --profile web add dsh-charter@next         # newest pre-release
 ```
 
-When the first public pre-release ships, `0.1.0-rc.1` will be published under the `next` dist-tag, not `latest`;
-use `@latest` only after a stable release exists. Until that publication these registry commands do not resolve:
-build and install the local tarball above. Pin an explicit version for reproducible profiles.
+After the maintainer publishes the `next` dist-tag, `0.1.0-rc.1` is available under `next`, not `latest`; use
+`@latest` only after a stable release exists. If the tag is not listed yet, build and install the verified local
+tarball above. Pin an explicit version for reproducible profiles.
 
 Restart `dsh web`, or let profile HMR recompose, then refresh the page. The profile's `package.json` gains the
 dependency and bundle selection:
@@ -72,7 +71,7 @@ dependency and bundle selection:
 pnpm may warn about missing `@deepseek-ai/dsh-*` peers. The DSH runtime supplies those packages; do not install
 them into the profile. Trust DSH's peer compatibility check.
 
-### 2.4 After the first public pre-release — Desktop Plugins
+### 2.4 Registry channel — Desktop Plugins
 
 If your Desktop build exposes the public catalog and the package is published there, open **Desktop → Plugins**,
 search for **`dsh-charter`**, and click **Install**. When already installed, click **Update**; Desktop owns the
@@ -104,7 +103,8 @@ summary keep the normal empty state.
 
 1. Open a started Session. The header shows Chat, Trajectory, then Charter. If Charter is missing, confirm the
    profile boot graph contains `dsh-charter/client.js` and that the Session is not blank (a blank Session hides
-   the View tab bar). The Charter tab is dynamically placed after every other plugin tab.
+   the View tab bar). The Charter tab is registered once at a stable high order, so it follows Chat, Trajectory, and
+   common plugin tabs without re-registering itself.
 2. Use the left section navigation: **Overview / Objective / Invariants / Deliverables / History draft /
    Context**. History is always available: it shows the current bootstrap phase and offers **Check again**.
    Narrow windows turn this navigation into a horizontal tab strip.

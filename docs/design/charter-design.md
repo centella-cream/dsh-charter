@@ -359,10 +359,10 @@ ctx.slots.register({
 ```
 
 - Chat uses order 0, Trajectory 10, and other plugins commonly use 20/30.
-- The tab bar renders slot registration order; numeric `order` alone does not guarantee placement after later
-  plugins.
-- The client subscribes to `conversation.view` and re-registers when its entry is not last. This appends the
-  Charter tab after every existing and later-registered plugin tab without duplicating it.
+- The client registers the Charter tab exactly once at a stable high order (`CHARTER_VIEW_ORDER = 1000`), so it
+  follows those tabs. It never re-registers or subscribes to the slot roster, so two plugins that both want to
+  stay "last" cannot reorder each other forever; a plugin with a higher order (for example 2000) simply follows
+  Charter.
 - Labels are supplied by `dsh-client-locale`: `会话契约` in Chinese, `Charter` in English. All pane strings use the
   same namespace, so the whole panel follows the active DSH language.
 - A blank Session hides the View tab bar; the tab appears once the Session starts.
@@ -370,8 +370,8 @@ ctx.slots.register({
 
 A lifecycle change is authoritative on both sides: Host frame dedupe compares `lifecycle`, and the client accepts
 it even if the new revision restarts at 0. While an Apply/bootstrap request is in flight, mutating draft controls
-are locked; a reviewed history draft counts as dirty and survives tab switches. Dynamic reordering remounts the
-pane body, but the draft store survives this remount (and Chat/Charter switches) because drafts are owned per
+are locked; a reviewed history draft counts as dirty and survives tab switches. Remounting the pane body (tab
+switches, view re-creation) does not lose the draft store because drafts are owned per
 Session and only the source lease is released; if a new lifecycle is observed, the draft is reset. The
 released-draft map is bounded by an LRU, and client/Host share one text-inspection function so control characters
 and unpaired surrogates are rejected before Apply.
@@ -566,7 +566,7 @@ uninstall smoke; fault injection and side-by-side domain migration remain open.
 
 Current evidence:
 
-- 157 tests across 17 core, host, client, and verification-helper test files;
+- 161 tests across 17 core, host, client, and verification-helper test files;
 - Typecheck, build, and tests pass on DSH `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-rc.1`, and
   `0.2.1-rc.2`;
 - Real profile install/boot on `0.1.7-rc.2` and `0.2.0-rc.2`;

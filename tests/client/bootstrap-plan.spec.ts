@@ -159,4 +159,31 @@ describe('bootstrap outcome', () => {
       .toBeLessThanOrEqual(10 * 1_024 * 1_024)
   })
 
+  it('plans thousands of all-active candidates with incremental byte accounting', () => {
+    const view = emptyView(64 * 1_024 * 1_024)
+    const items = candidates(3_000)
+    const plan = buildBootstrapPlan(view, '', items)
+    expect(plan.active).toBe(3_000)
+    expect(plan.pending).toBe(0)
+    expect(plan.ops).toHaveLength(3_000)
+    expect(Object.values(plan.outcomes).every(outcome => outcome === 'active')).toBe(true)
+    expect(utf8Bytes(previewPrompt(view, plan.ops))).toBeLessThanOrEqual(view.limits.maxPromptBytes)
+  })
+
+  it('plans mixed deliverable and invariant candidates with the same acceptance as the exact renderer', () => {
+    const view = emptyView(2_400)
+    const items = Array.from({ length: 60 }, (_, index) => ({
+      id: `mixed-${index}`,
+      kind: index % 2 === 0 ? 'invariant' as const : 'deliverable' as const,
+      text: `Candidate ${String(index)} ${'y'.repeat(12)}`,
+      selected: true,
+    }))
+    const plan = buildBootstrapPlan(view, 'Ship the charter redesign', items)
+    expect(plan.active + plan.pending).toBe(60)
+    expect(utf8Bytes(previewPrompt(view, plan.ops))).toBeLessThanOrEqual(view.limits.maxPromptBytes)
+    expect(plan.ops.filter(op => op.type === 'item.propose')).toHaveLength(plan.pending)
+    const activeDeliverables = plan.ops.filter(op => op.type === 'item.add' && op.item.kind === 'deliverable')
+    expect(activeDeliverables.length).toBeLessThanOrEqual(30)
+  })
+
 })

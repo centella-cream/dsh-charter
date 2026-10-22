@@ -5,7 +5,7 @@ English | [中文](CHANGELOG.zh.md)
 All notable changes to `dsh-charter` are recorded here. The project follows a pre-1.0 version line while the
 DSH plugin ABI is still moving.
 
-## 0.1.0-rc.1 — Unreleased
+## 0.1.0-rc.1 — 2026-10-22
 
 Initial MVP.
 
@@ -33,7 +33,8 @@ Initial MVP.
   active DSH language, including counts, statuses, buttons, placeholders, and error-code messages.
 - Conversation-view Charter tab (中文「会话契约」/ English 「Charter」) with draft staging, conflict preservation,
   preview, archive/restore, supersede, pending review (history overflow; model proposal entry reserved), purge confirmation, progress, and verification
-  controls. The tab follows Chat and Trajectory and dynamically moves after any later-registered plugin tab.
+  controls. The tab is registered once at a stable high order (1000) and follows Chat, Trajectory, and common
+  plugin tabs without ever re-registering itself.
 - Session-scoped Remote stream and edit endpoints.
 - Compatibility layer for DSH 0.1.7-rc.2 / 0.2.0 (`@Remote` resource fallback, prompt-context extra fields,
   actor fallback) and prompt-variable escaping for their interpolator.
@@ -48,7 +49,7 @@ Initial MVP.
   restart is still required for the new pending-import semantics.
 - Verified against DSH `0.2.1-rc.2` with no code changes required; the existing peer range and compatibility layer
   cover the release candidate.
-- 157 tests across core, host composition, fork, idempotency, quota, prompt boundary, Remote stream, history
+- 161 tests across core, host composition, fork, idempotency, quota, prompt boundary, Remote stream, history
   extraction, client reordering, compatibility, and decorator compatibility. Verified on DSH `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`,
   `0.2.1-rc.1`, and `0.2.1-rc.2`. The actual Web UI was exercised on `0.2.0-rc.2`: tab order, Chinese/English
   switching, objective and invariant editing, preview, Apply, and reload persistence.
@@ -128,9 +129,11 @@ Initial MVP.
 - Normalize a legacy debug-shaped `charter_read` tool result (extra id/review/lifecycle fields from a Host that
   has not been restarted after a package update) to the current compact standing projection before evidence
   comparison, and record the real-model compaction PASS in verification §8.4.
-- Make every compaction-checker success criterion participate in the exit code: the checker now compares the
-  Host's compact standing projection, fails on a dirty system prompt or a called-but-mismatched `charter_read`
-  standing result, and records a leaking summary as a warning; fixture tests cover each combination.
+- Make every compaction-checker success criterion participate in the exit code: the checker compares the Host's
+  compact standing projection, fails on a dirty system prompt, and now **requires** a matching `charter_read`
+  standing result recorded after the latest compaction (a missing or mismatched post-compaction read fails; reads
+  before the compaction are ignored by seq); a leaking summary is a recorded warning, and fixture tests cover
+  each combination.
 - Fence edit and bootstrap Apply results by draft generation, source connection epoch, source instance, lifecycle,
   and request identity, so a late response from a destroyed source or a detach/reattach cycle cannot clear or
   overwrite a newer draft; source invalidation keeps the mutation id for an idempotent retry through the replacement
@@ -214,3 +217,19 @@ Initial MVP.
 - Harden `npm run verify:compaction`: validate the storage record shape, accept `--store`, compare the full
   `charter_read` standing projection, and check multiple system-prompt leak signals. Document it as a manual
   check (the automated gate never runs a model).
+- Register the Charter conversation view exactly once at the stable order 1000 instead of re-registering on every
+  slot change: two plugins that both try to stay "last" can no longer reorder each other forever, and the bundle
+  neither queries nor subscribes to the slot roster.
+- Tighten every DSH peer dependency range to the five versions in the tested compatibility matrix
+  (`0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2`).
+- Replace the quadratic bootstrap-plan measurement with exact O(1) incremental byte accounting (objective token
+  plus joined invariant/deliverable tokens); the full renderer stays as verification/fallback, and a
+  3,000-candidate all-active plan is covered by tests.
+- Use a plain `<details>` disclosure for the item action menu (no `menu`/`menuitem` ARIA contract), autofocus the
+  purge confirmation, return focus to the summary on cancel, and keep keyboard focus on the row after actions.
+- Detach a successor's `supersedes` link in the draft preview when its purged predecessor is removed, matching
+  the Host purge semantics.
+- Keep install documentation channel-neutral (the immutable tarball does not claim the registry is unavailable)
+  and document the correct release order: repository metadata, CI, verified artifact, tag, then publish.
+- Make `package-smoke` wording match what the empty consumer actually checks (packed `core` import plus
+  root/remote export/file presence); Host/Remote runtime imports stay covered by the workspace build smokes.

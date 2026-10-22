@@ -15,7 +15,7 @@ HTML live under `.tmp/` and are excluded from the published package.
 | Item | Result |
 | --- | --- |
 | Strict TypeScript check (5 DSH versions) | Pass |
-| Vitest (5 locally available versions × 157 tests) | Pass |
+| Vitest (5 locally available versions × 161 tests) | Pass |
 | Host ESM build + browser single-file bundle | Pass |
 | Remote decorator/resource smoke | Pass (0.1.7/0.2.0 have no resource declaration, as expected) |
 | Browser factory-bundle materialization and `apply` smoke | Pass |
@@ -28,8 +28,8 @@ HTML live under `.tmp/` and are excluded from the published package.
 | Budget degradation and convergence | Pass: lowered budgets become `overBudget`, injection stops, shrinking edits converge; non-viable config is clamped; section 4.5 |
 | Session-owned client drafts | Pass: unit tests cover draft survival across bindings, retry mutation-id reuse, conflict rebase, and bootstrap section ownership; section 4.5 |
 | Runtime schema revalidation | Pass: a record mutated to an invalid schema after mount isolates only its Session and is preserved; section 4.6 |
-| Packed artifact installability | Pass: local `npm run smoke:package` (tarball contents, exports, packed Host import, client bundle); section 2 |
-| Compaction checker exit criteria | Pass: fixture tests cover success, dirty system prompt, mismatched charter_read, lost snapshot, and leak warning; section 4.7 |
+| Packed artifact installability | Pass: local `npm run smoke:package` (tarball contents, exports/files, packed `core` import, client bundle; Host/Remote runtime imports are covered by the workspace build smoke); section 2 |
+| Compaction checker exit criteria | Pass: fixture tests cover success, dirty system prompt, a required matching post-compaction `charter_read` (missing/mismatched fail, pre-compaction reads ignored), lost snapshot, and leak warning; section 4.7 |
 | Stale async draft results | Pass: edit/bootstrap results are fenced by source/generation/request identity; empty and idle drafts are reclaimed; section 4.7 |
 | Real model + compaction end-to-end | **PASS recorded 2026-10-22** on an anonymized evaluation Session: 326 shadowed messages / ~228k tokens, revision-1 charter survived, post-compaction snapshot + `charter_read` verified (section 8.4) |
 
@@ -44,7 +44,7 @@ Results:
 
 - typecheck passes;
 - build passes;
-- 17 test files, 157 tests pass (from `npm test`, which builds and then runs `vitest run`);
+- 17 test files, 161 tests pass (from `npm test`, which builds and then runs `vitest run`);
 - `remote-smoke` asserts `watch,bootstrap,edit`, stream mode, and Session resource;
 - `client-smoke` asserts the single-file factory bundle, external-dependency allowlist, no Node-only `Buffer`
   reference, and `apply` registering the tab/pane/Remote contribution;
@@ -72,10 +72,10 @@ Key test files:
 | `tests/host/actor.spec.ts` | principal-aware policy: modern missing-principal denial, legacy-only owner fallback, non-owner recording, generation-aware `resolveRemoteActor` |
 | `tests/host/remote.spec.ts` | Remote descriptor, wire schema, legacy Host view snapshot, zero pending limit |
 | `tests/client/store.spec.ts` | accept committed view immediately, ignore stale/duplicate revisions, monotonic opening snapshot, authoritative availability demotion, attach retry, pending-attach cancellation before its stream starts, shared source lease/ref count, stale-lease no-op, foreign-Session stream frames ignored |
-| `tests/client/bootstrap-plan.spec.ts` | overflow candidates stay in one plan; single planning pass with per-candidate outcomes; dense all-active case; active prefix fits the byte budget; bootstrap outcome classifier (draft/discard/stale/unavailable) |
+| `tests/client/bootstrap-plan.spec.ts` | overflow candidates stay in one plan; O(1) incremental byte accounting with a 3,000 all-active case and a mixed invariant/deliverable case; per-candidate outcomes; exact-render verification; bootstrap outcome classifier (draft/discard/stale/unavailable) |
 | `tests/client/draft.spec.ts` / `tests/client/draft-store.spec.ts` | Session-scoped request guard (Session A ops never build a request for Session B); draft survival across binding unmount/remount; idempotent retry mutation-id reuse; conflict rebase; stale async results cannot overwrite a newer draft/source/lifecycle; bootstrap does not steal the section |
-| `tests/client/preview.spec.ts` | projected draft rows for add/edit/accept/progress/supersede/purge; renderer parity and pending exclusion; prompt-budget Apply admission (shrinking, same-size, growing, and within-budget renders) |
-| `tests/verify/compaction-checks.spec.ts` | compaction checker fixtures: dirty system prompt, called-but-mismatched `charter_read`, lost post-compaction snapshot, leak warning, and exact compact standing projection |
+| `tests/client/preview.spec.ts` | projected draft rows for add/edit/accept/progress/supersede/purge; purge detaches the successor's supersedes link; renderer parity and pending exclusion; prompt-budget Apply admission (shrinking, same-size, growing, and within-budget renders) |
+| `tests/verify/compaction-checks.spec.ts` | compaction checker fixtures: dirty system prompt, required matching post-compaction `charter_read` (missing and mismatched both fail), pre-compaction reads ignored, lost post-compaction snapshot, leak warning, and exact compact standing projection |
 
 ## 3. Cross-version matrix
 
@@ -102,13 +102,13 @@ Results:
 
 | Version | typecheck | build | Vitest | remote smoke | client smoke |
 | --- | --- | --- | --- | --- | --- |
-| `0.1.7-rc.2` | Pass | Pass | 157/157 | Pass (no-resources warning) | Pass |
-| `0.2.0-rc.1` | Pass | Pass | 157/157 | Pass (no-resources warning) | Pass |
-| `0.2.0-rc.2` | Pass | Pass | 157/157 | Pass (no-resources warning) | Pass |
-| `0.2.1-rc.1` | Pass | Pass | 157/157 | Pass | Pass |
-| `0.2.1-rc.2` | Pass | Pass | 157/157 | Pass | Pass |
+| `0.1.7-rc.2` | Pass | Pass | 161/161 | Pass (no-resources warning) | Pass |
+| `0.2.0-rc.1` | Pass | Pass | 161/161 | Pass (no-resources warning) | Pass |
+| `0.2.0-rc.2` | Pass | Pass | 161/161 | Pass (no-resources warning) | Pass |
+| `0.2.1-rc.1` | Pass | Pass | 161/161 | Pass | Pass |
+| `0.2.1-rc.2` | Pass | Pass | 161/161 | Pass | Pass |
 
-Re-run on the final `0.1.0-rc.1` tree on 2026-10-22: each version reports 17 test files / 157 tests, and build
+Re-run on the final `0.1.0-rc.1` tree on 2026-10-22: each version reports 17 test files / 161 tests, and build
 includes the remote/client smoke assertions.
 
 This five-version matrix is **local evidence**: its version directories and driver script live in the gitignored
@@ -223,8 +223,9 @@ only static review:
 - **Client ownership.** Unit tests cover: a draft survives unmount/remount; an unknown-outcome retry reuses the
   mutation id; a conflict rebase mints a fresh id; a bootstrap response never steals the section while an editor
   is open; projected items render the staged state before Apply.
-- **Planning scale.** The one-pass bootstrap planner is tested with 2,000 candidates and reports per-candidate
-  active/pending outcomes; a final exact render verifies the budget.
+- **Planning scale.** The bootstrap planner uses O(1) incremental byte accounting that mirrors the exact prompt
+  renderer: it is tested with 2,000 mixed candidates and 3,000 all-active candidates, reports per-candidate
+  active/pending outcomes, and keeps a final exact render as verification/fallback for the budget.
 
 ### 4.6 Runtime integrity, permission fail-closed, and client state boundaries
 
@@ -250,20 +251,24 @@ The fourth readiness review targeted failure paths that only appear after startu
   30 large archived items). `overBudget` also reflects lowered history/mutation count limits.
 - **Accessibility and alert hygiene.** At most one over-budget alert renders (blocking staged draft > stored
   over-budget record > admitted over-budget render) with one remedy; `status`/`alert` roles wrap only message
-  text so action buttons are never nested in a live region; the item action menu is a native disclosure with
-  `aria-haspopup`, focus returns to the row after actions, and replacement/verification reasons are visible text
-  instead of title attributes; the idle history phase has a dedicated no-draft message.
+  text so action buttons are never nested in a live region; the item action menu is a plain `<details>`
+  disclosure with normal buttons (no menu-button ARIA contract), purge confirmation autofocuses its confirm
+  button, cancellation returns focus to the summary, and focus never falls to `<body>` after row actions.
+  Replacement/verification reasons are visible text instead of title attributes; the idle history phase has a
+  dedicated no-draft message.
 - **Packaged artifact gate.** The local `npm run smoke:package` gate packs the tarball and verifies required
-  files, every `exports` target, no workspace leakage, the packed Host import, and the packed client bundle;
-  CI is configured to run the same gate once the repository exists.
+  files, every `exports` target, no workspace leakage, the packed `core` import, and the packed client bundle;
+  Host/Remote runtime imports need the Host peer graph and are covered by the workspace `remote-smoke` /
+  `client-smoke`, not by the empty consumer. CI is configured to run the same gate once the repository exists.
 
 ### 4.7 Checker exit criteria, draft async fencing, and online repair
 
 - **Compaction checker (fixtures).** `tests/verify/compaction-checks.spec.ts` exercises the exact success criteria:
-  a clean pass, a dirty system prompt, a called-but-mismatched `charter_read` standing result, a lost
-  post-compaction snapshot, and a leaking-summary warning. The transcript reader now builds the same compact
-  standing projection as the Host (`kind`/`text`/`verification`/`progress`) and all required evidence participates
-  in the exit code; only a WAIT/BLOCKED state short-circuits before evaluation.
+  a clean pass, a dirty system prompt, a **required** matching `charter_read` standing result recorded after the
+  latest compaction (missing and mismatched both fail; pre-compaction reads are ignored by seq), a lost
+  post-compaction snapshot, and a leaking-summary warning. The transcript reader builds the same compact standing
+  projection as the Host (`kind`/`text`/`verification`/`progress`) and all required evidence participates in the
+  exit code; only a WAIT/BLOCKED state short-circuits before evaluation.
 - **Draft async fencing.** Edit and bootstrap Apply capture `asyncGeneration`, the source instance and its monotonic
   connection epoch, lifecycle, and request ops identity; a late result from a destroyed source or from a
   detach/reattach cycle cannot clear or overwrite a newer draft. Source invalidation preserves the mutation id for
@@ -294,8 +299,8 @@ Additional round-out coverage:
 - **Bootstrap metadata.** `shadowedTokenCount` is validated as a non-negative integer on the Host side too, so
   negative values are skipped before they can reach the strict Remote codec.
 - **Consumer install.** `smoke:package` now performs a real empty-project install using only the tarball and its
-  declared dependencies, checks public file modes, and loads the packed Runtime entry; it no longer symlinks the
-  workspace `node_modules`.
+  declared dependencies, checks public file modes, and loads the packed `core` entry (root/Remote runtime imports
+  are covered by the workspace build smoke); it no longer symlinks the workspace `node_modules`.
 - **Watch/stream generation races.** The service's unsubscribe removes a Map entry only when it still owns the
   captured listener Set (a disposed generation cannot delete a same-id replacement watch); duplicate attach of a
   live stream is a no-op, and old stream `replace`/`update` frames are dropped by their attach generation.
@@ -343,9 +348,11 @@ Results:
 - `registration.id === 'dsh-charter'`;
 - the factory requests only allowlisted modules;
 - exports `apply` and `inject`;
-- `apply` registers the `conversation.view` `charter` entry, pane component, and Remote contribution;
-- with existing tabs chat 0 / trajectory 10 / context 20, `charter` is last;
-- after a simulated later `fleet` tab, `charter` re-registers last and does not duplicate;
+- `apply` registers exactly one `conversation.view` `charter` entry, pane component, and Remote contribution;
+- with existing tabs chat 0 / trajectory 10 / context 20, `charter` registers once at the stable order 1000 and is
+  last;
+- a simulated later `fleet` tab and a higher-order `future-plugin` tab neither duplicate nor reorder `charter`,
+  and the bundle neither queries nor subscribes to the slot roster;
 - Chinese label is `会话契约`; English label is `Charter`.
 
 The pane's full dictionary is typed against `LocaleNamespaceMap`; TypeScript rejects a missing key in either
@@ -481,7 +488,8 @@ Results: `/` returns 200; the boot graph contains `dsh-charter` `inject` and
 
 After adding the `conversation.view` tab, a new profile `smoke017c` installed the final tarball: the boot graph
 `inject` contains `@deepseek-ai/dsh-client-locale` and `@deepseek-ai/dsh-client-ui-conversation`, the client
-bundle contains dynamic reordering (`ensureLast`), and `/` plus the client entry both return 200.
+bundle registers the view once at stable order 1000 (no `ensureLast` loop), and `/` plus the client entry both
+return 200.
 
 ## 7. Browser UI (0.2.0-rc.2 Web profile)
 
@@ -513,8 +521,8 @@ Chat    Trajectory    Charter
 - after installing `dsh-context@0.73.3`, the actual order becomes
   `Chat / Trajectory / Context / Fleet / Charter`, with Charter still last;
 - Chinese label is `会话契约`; English label is `Charter`; both come from `dsh-client-locale`;
-- `client-smoke` also simulates a later tab: the plugin disposes and re-registers to become last again with no
-  duplicate entry;
+- `client-smoke` registers a later tab and a higher-order tab: the single Charter registration keeps its stable
+  order with no duplicate entry, roster query, or slot subscription;
 - a blank Session hides the View tab bar; it appears after the first message.
 
 Screenshots: [Chinese pane](assets/charter-pane.png), [English pane](assets/charter-pane.en.png).
@@ -638,10 +646,12 @@ The command reads the Session transcript and the charter storage record, then re
 3. that snapshot contains `charter:standing`, its text is byte-identical to `promptText`, and its SHA-256 equals
    `promptDigest`;
 4. no system-prompt snapshot contains the charter prefix, body, objective, or a long item text;
-5. a `charter_read` standing result in the transcript equals the Host's compact standing projection
-   (`kind`/`text`/`verification`/`progress`) for the current revision, not only revision/objective; a legacy
-   debug-shaped tool result (extra id/review/lifecycle fields) is normalized to the same projection, so a Host
-   that has not been restarted after a package update still yields comparable working-set evidence;
+5. a `charter_read` standing result **recorded after the latest compaction** is **required** and equals the
+   Host's compact standing projection (`kind`/`text`/`verification`/`progress`) for the current revision, not only
+   revision/objective; reads from before the compaction are ignored by event seq, and a missing or mismatched
+   post-compaction read fails the PASS. A legacy debug-shaped tool result (extra id/review/lifecycle fields) is
+   normalized to the same projection, so a Host that has not been restarted after a package update still yields
+   comparable working-set evidence;
 6. a compaction summary after the compaction does not carry the rendered body (a warning: it would weaken the
    proof, not silently pass it).
 
@@ -649,16 +659,18 @@ Procedure in a real profile:
 
 1. open the Charter tab in the target Session, review the history draft, click Apply (or set an objective
    manually), then send one message so the runtime context is persisted in the transcript;
-2. run `npm run verify:compaction`: expect `charter established`, injection, digest, system-prompt, and
-   `charter_read` checks to pass, with the compaction step in `WAIT`;
-3. run `/compact` in the same Session, then send one message;
-4. run the command again: expect `PASS` with the compaction seq, post-compaction snapshot seq, and digest.
+2. run `npm run verify:compaction`: expect `charter established`, injection, digest, and system-prompt checks to
+   pass, with the compaction step in `WAIT`;
+3. run `/compact` in the same Session, send one message, then have the model call `charter_read` once so a
+   matching post-compaction standing result exists;
+4. run the command again: expect `PASS` with the compaction seq, post-compaction snapshot seq, post-compaction
+   `charter_read` seq, and digest.
 
 The checker fails closed as `BLOCKED` (no charter yet) or `WAIT` (no post-compaction request yet); once a
-post-compaction request exists, `survivesCompaction`, a clean system prompt, and a called-but-mismatched
-`charter_read` standing result all participate in the exit code. A leaking summary is a recorded warning, not a
-silent pass. `tests/verify/compaction-checks.spec.ts` exercises these success/failure fixtures without a live
-model.
+post-compaction request exists, `survivesCompaction`, a clean system prompt, and a matching post-compaction
+`charter_read` standing result all participate in the exit code, so a missing or mismatched read is a FAIL. A
+leaking summary is a recorded warning, not a silent pass. `tests/verify/compaction-checks.spec.ts` exercises
+these success/failure fixtures without a live model.
 
 ### 8.3 Platform basis
 
@@ -674,8 +686,8 @@ draft from its previous compaction summary was reviewed and applied as **revisio
 `promptDigest sha256:4dd9e615…`). `/compact` then completed as compaction seq **31801** (source
 `cmd-635e3d77-2`), shadowing 326 messages (~228,181 tokens). The next request after compaction persisted
 runtime-context snapshot seq **31810**, carrying `sections [sandbox:policy, approval:policy, charter:standing]`
-with a 5,081 B charter whose bytes/digest match storage; a subsequent `charter_read` call returned the same
-revision/objective/working set. Full checker output:
+with a 5,081 B charter whose bytes/digest match storage; a subsequent `charter_read` call (result seq **31825**,
+after the compaction) returned the same revision/objective/working set. Full checker output:
 
 ```text
 $ npm run verify:compaction -- --session "$SESSION_ID" \
@@ -685,7 +697,7 @@ $ npm run verify:compaction -- --session "$SESSION_ID" \
   PASS  latest runtime context carries charter:standing
   PASS  injected text matches storage authority and promptDigest
   PASS  system prompt carries no charter body
-  PASS  charter_read standing view matches the storage revision/objective
+  PASS  post-compaction charter_read standing view matches the storage revision/objective
   PASS  charter survives compaction — snapshot seq 31810 > compaction seq 31801
   PASS  compaction summary does not carry the charter text
 result: PASS
@@ -695,6 +707,10 @@ Note: the running Desktop process had loaded a pre-restart Host bundle, so its `
 carried legacy debug fields; the checker normalized them to the current compact projection. Restarting the
 Desktop app is still required to load the current package in memory for UI/tool ABI parity.
 
+Re-check on the current tree: the stricter checker (a required matching `charter_read` standing result recorded
+after the latest compaction) was re-run against this recorded transcript and still returns `PASS`; the matching
+read result is seq **31825**, after compaction seq 31801.
+
 Evidence timeline for this pre-release:
 
 - Recorded real-model run: 2026-10-22 on the Desktop/Web runtime DSH `0.2.0-rc.2` (`dsh` CLI `0.2.0-rc.2`).
@@ -702,8 +718,8 @@ Evidence timeline for this pre-release:
   running the pre-restart Host bundle, which is why the `charter_read` result carried legacy debug fields.
 - Gated source commit for this convergence record: `2210bf95ef1cc281c6737a2f79a59e01a8ec7072`; the tagged tree
   adds only the refreshed demo-only screenshots, this evidence record, and the tracked digest file. Gates on the
-  convergence tree: `npm run check` (typecheck + build + 17 test files / 157 tests), `npm run smoke:package`, and
-  the local five-version matrix (17 files / 157 tests on every version).
+  convergence tree: `npm run check` (typecheck + build + 17 test files / 161 tests), `npm run smoke:package`, and
+  the local five-version matrix (17 files / 161 tests on every version).
 - Shipped artifact digest: the tracked repository-root `SHA256SUMS` (kept current by the release commit, which
   updates only that file) pins the digest of `dsh-charter-0.1.0-rc.1.tgz` built from the tagged tree;
   `dist/SHA256SUMS` carries the same value. The annotated tag message records the release commit and the shipped

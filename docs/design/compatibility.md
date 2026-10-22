@@ -14,10 +14,10 @@ This document answers three questions:
 
 | DSH version | Status | Verification |
 | --- | --- | --- |
-| `0.1.7-rc.2` | Supported (minimum) | typecheck, build, 157 tests, remote/client smoke, real profile install and startup |
-| `0.2.0-rc.1` | Supported | typecheck, build, 157 tests, remote/client smoke |
+| `0.1.7-rc.2` | Supported (minimum) | typecheck, build, 161 tests, remote/client smoke, real profile install and startup |
+| `0.2.0-rc.1` | Supported | typecheck, build, 161 tests, remote/client smoke |
 | `0.2.0-rc.2` | Supported | same + real profile install/startup, boot graph, bundle HTTP |
-| `0.2.1-rc.1` | Supported | typecheck, build, 157 tests, remote/client smoke |
+| `0.2.1-rc.1` | Supported | typecheck, build, 161 tests, remote/client smoke |
 | `0.2.1-rc.2` | Supported (primary development baseline) | same |
 | `0.1.5-rc.1` / `0.1.5-rc.2` / `0.1.5-rc.3` | Not supported | contract differences too large; see section 4 |
 | `0.1.6-alpha.x` | Not supported | same generation as 0.1.5; not individually verified |
@@ -47,7 +47,7 @@ Add a new clause after verifying each new minor prerelease. `0.1.7-rc.1` is excl
 | `PromptContext.required` | Absent | Supported | Still pass the field (old versions ignore it) |
 | prompt-context interpolation | Always runs | `interpolate:false` disables it | Encode the first of each `{` run as `\u007b`; no version sees `{{name}}` |
 | `RemoteStream` / `RemoteStreamHandle` | Exported | Exported | Used directly |
-| `conversation.view` tab slot | Same shape | Same shape | No difference; placement follows slot registration order, and the plugin re-registers to stay last |
+| `conversation.view` tab slot | Same shape | Same shape | No difference; the plugin registers once at a stable high order (1000) and never re-registers |
 | `agent/created` payload | Has `source`/`signal` | Has `source`/`signal` | Used directly |
 | storage-domain single-record `update()` | Same | Same | Used directly |
 | Session projection / compaction | Same semantics | Same semantics | Rely on host re-materialization |
@@ -114,7 +114,7 @@ the [verification record](../verification.md).
 
 ## 6. Upgrade policy
 
-- New `0.2.x` stable: peer range already covers it; run 157 tests + profile smoke once.
+- New `0.2.x` stable: peer range already covers it; run 161 tests + profile smoke once.
 - New `0.2.x` prerelease: extend the peer range, then run the version matrix; do not claim compatibility
   without verification.
 - `0.2.1` introduces resource authorization and is the minimum security recommendation.

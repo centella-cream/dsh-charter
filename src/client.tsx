@@ -14,74 +14,31 @@ import { CHARTER_LOCALE, CHARTER_LOCALE_NS } from './client/locales.js'
 export const inject = ['remote', 'slots', 'locale']
 
 const CHARTER_VIEW_ID = 'charter'
-const CHARTER_VIEW_ORDER_STEP = 10
-
 /**
- * Append after every Conversation View already registered.
+ * Stable high order for the Charter conversation view.
  *
- * Chat uses order 0, Trajectory 10, and installed plugins commonly use 20/30.
- * Reading the live slot roster keeps this tab after them without reserving a
- * permanent magic number; a tab registered later can still follow it.
+ * Chat uses order 0 and Trajectory 10; common plugin tabs use 20/30. A fixed
+ * high order naturally follows them without ever re-registering the view, so
+ * two plugins that both try to stay "last" cannot reorder each other forever.
  */
-function nextViewOrder(ctx: ClientContext): number {
-  let order = 0
-  for (const entry of ctx.slots.entries('conversation.view')) {
-    if (entry.options.id === CHARTER_VIEW_ID) continue
-    const candidate = entry.options.order
-    if (typeof candidate === 'number' && Number.isFinite(candidate)) {
-      order = Math.max(order, candidate)
-    }
-  }
-  return order + CHARTER_VIEW_ORDER_STEP
-}
+export const CHARTER_VIEW_ORDER = 1000
 
 export function apply(ctx: ClientContext): void {
   const controller = new CharterClientController(ctx)
   const t = ctx.locale.bind(CHARTER_LOCALE_NS)
 
   ctx.effect(() => ctx.locale.register(CHARTER_LOCALE_NS, CHARTER_LOCALE), 'dsh-charter: locale')
-  ctx.effect(() => {
-    let disposed = false
-    let adjusting = false
-    let disposeView: (() => void) | undefined
-
-    const registerView = (): void => {
-      disposeView = ctx.slots.inject('conversation.view', () => ctx.slots.register({
-        name: 'conversation.view',
-        id: CHARTER_VIEW_ID,
-        order: nextViewOrder(ctx),
-        locale: CHARTER_LOCALE_NS,
-        label: () => t('tab'),
-        inject: sessionId => {
-          const lease = controller.acquire(sessionId)
-          return { source: lease.source, draft: lease.draft, release: lease.release }
-        },
-      }, CharterPane))
-    }
-
-    const ensureLast = (): void => {
-      if (disposed || adjusting) return
-      const entries = ctx.slots.entries('conversation.view')
-      const index = entries.findIndex(entry => entry.options.id === CHARTER_VIEW_ID)
-      if (index !== -1 && index === entries.length - 1) return
-      adjusting = true
-      try {
-        disposeView?.()
-        disposeView = undefined
-        registerView()
-      } finally {
-        adjusting = false
-      }
-    }
-
-    ensureLast()
-    const disposeSubscription = ctx.slots.subscribe('conversation.view', ensureLast)
-    return () => {
-      disposed = true
-      disposeSubscription()
-      disposeView?.()
-    }
-  }, 'dsh-charter: conversation view')
+  ctx.effect(() => ctx.slots.inject('conversation.view', () => ctx.slots.register({
+    name: 'conversation.view',
+    id: CHARTER_VIEW_ID,
+    order: CHARTER_VIEW_ORDER,
+    locale: CHARTER_LOCALE_NS,
+    label: () => t('tab'),
+    inject: sessionId => {
+      const lease = controller.acquire(sessionId)
+      return { source: lease.source, draft: lease.draft, release: lease.release }
+    },
+  }, CharterPane)), 'dsh-charter: conversation view')
 
   ctx.effect(async () => {
     let cancelled = false

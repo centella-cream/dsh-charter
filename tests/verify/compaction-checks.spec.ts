@@ -2,13 +2,13 @@ import { describe, expect, it } from 'vitest'
 import {
   compactStandingItem,
   evaluateCompactionEvidence,
+  postCompactionCharterReads,
 } from '../../scripts/verify/compaction-checks.mjs'
 
 const pass = {
   charterReady: true,
   survivesCompaction: true,
   systemPromptClean: true,
-  charterReadCalled: true,
   charterReadStanding: true,
   checkpointLeaksCharter: false,
 }
@@ -24,16 +24,29 @@ describe('compaction checker success criteria', () => {
     expect(result.failures).toContain('a system-role prompt snapshot carries the charter body')
   })
 
-  it('fails a called-but-mismatched charter_read standing result', () => {
-    const result = evaluateCompactionEvidence({ ...pass, charterReadStanding: false })
-    expect(result.ok).toBe(false)
-    expect(result.failures.some(message => message.includes('charter_read'))).toBe(true)
-    // No charter_read call in the transcript is not a failure by itself.
-    expect(evaluateCompactionEvidence({
-      ...pass,
-      charterReadCalled: false,
-      charterReadStanding: undefined,
-    }).ok).toBe(true)
+  it('requires a matching post-compaction charter_read standing result', () => {
+    const mismatched = evaluateCompactionEvidence({ ...pass, charterReadStanding: false })
+    expect(mismatched.ok).toBe(false)
+    expect(mismatched.failures.some(message => message.includes('charter_read'))).toBe(true)
+    // No post-compaction charter_read call at all is a failure, not a note.
+    const absent = evaluateCompactionEvidence({ ...pass, charterReadStanding: undefined })
+    expect(absent.ok).toBe(false)
+    expect(absent.failures.some(message => message.includes('post-compaction charter_read'))).toBe(true)
+    // A matching result after the latest compaction passes.
+    expect(evaluateCompactionEvidence({ ...pass, charterReadStanding: true }).ok).toBe(true)
+  })
+
+  it('ignores charter_read results recorded before the latest compaction', () => {
+    const results = [
+      { seq: 50, invalid: false },
+      { seq: 90, invalid: false },
+      { seq: 130, invalid: false },
+    ]
+    expect(postCompactionCharterReads(results, 120).map(result => result.seq)).toEqual([130])
+    // Only pre-compaction reads: no evidence after the compaction.
+    expect(postCompactionCharterReads(results.slice(0, 2), 120)).toEqual([])
+    // No compaction recorded yet: every read is eligible.
+    expect(postCompactionCharterReads(results, undefined)).toHaveLength(3)
   })
 
   it('fails when the post-compaction snapshot lost the charter', () => {

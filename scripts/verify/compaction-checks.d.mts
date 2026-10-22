@@ -9,7 +9,6 @@ export interface CompactionEvidence {
   readonly charterReady: boolean | undefined
   readonly survivesCompaction: boolean | undefined
   readonly systemPromptClean: boolean | undefined
-  readonly charterReadCalled: boolean
   readonly charterReadStanding: boolean | undefined
   readonly checkpointLeaksCharter: boolean | undefined
 }
@@ -27,5 +26,10 @@ export function compactStandingItem(item: {
   readonly progress?: string | null | undefined
   readonly [key: string]: unknown
 }): CompactStandingItem
+
+export function postCompactionCharterReads<T extends { readonly seq: number }>(
+  results: readonly T[],
+  latestCompactionSeq: number | undefined,
+): T[]
 
 export function evaluateCompactionEvidence(evidence: CompactionEvidence): CompactionEvaluation
