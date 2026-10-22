@@ -39,7 +39,7 @@
 - 新浏览器 client 可以兼容仍在运行旧 Host 的 view snapshot（旧 Host 仍带 active 条数字段），避免 host/client
   revision 不一致时「会话契约」白屏；新的 pending 导入语义仍需要完整重启 Host 才生效。
 - 已针对 DSH `0.2.1-rc.2` 验证，无需代码改动；现有 peer range 和兼容层已覆盖该 release candidate。
-- 121 个测试，覆盖内核、Host 组合、fork、幂等、配额、prompt 边界、Remote stream、历史抽取、客户端 tab
+- 131 个测试，覆盖内核、Host 组合、fork、幂等、配额、prompt 边界、Remote stream、历史抽取、客户端 tab
   排序和装饰器兼容。已在 DSH `0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-rc.1`、`0.2.1-rc.2` 上验证。
   真实 Web UI 在 `0.2.0-rc.2` 上验证了标签顺序、中英文切换、目标/约束编辑、预览、Apply 和刷新持久化。
 
@@ -55,6 +55,10 @@
 ### 已知限制
 
 - 最大规模的会话契约仍会在 watch/edit 帧中携带完整条目集合；把历史拆成可分页的 Remote 端点是后续工作。
+- `charter_read` 的 `standing` 是完整工作集，没有固定字节上限；最大规模的会话契约可能产生较大的 tool result。
+  分页或显式响应 cap 是后续工作，本轮不做。
+- 活跃客户端草稿不受额外字节上限约束（受 UI 输入限制）；idle TTL/LRU 约束的是已释放草稿，而不是当前挂载的
+  编辑器/bootstrap 面板持有的文本。
 - 压缩后重新物化依赖 DSH 的 runtime-context projection 契约；完整 compaction 端到端仍需要真实模型会话。
 - 浏览器交互在 `0.2.0-rc.2` 上验证；0.1.7/0.2.1 仅通过 typecheck/build/tests，未逐版重复交互流程。
 - 默认配额尚未用生产样本校准。
@@ -62,6 +66,12 @@
 
 ### 修复
 
+- compaction checker 的所有成功条件都参与退出码：按 Host 的紧凑 standing 投影比较，system prompt 被污染或
+  调用了 `charter_read` 但 standing 不匹配都会失败；摘要泄漏记为 warning；fixture 覆盖每种组合。
+- edit/bootstrap 的异步 Apply 结果按 draft generation、source 实例、lifecycle 和请求身份围栏：已销毁 source
+  的迟到结果不能清除或覆盖新草稿；source 失效时保留 mutation id，通过新 source 重试仍幂等。
+- 最后一个 lease 释放后立即清理空 draft，并加 idle TTL 与 released-draft 上限；运行期损坏记录被就地修复后，
+  下一次访问/初始化会重新解析并恢复，无需重启 Host；仍不合法的文档保持隔离且绝不被覆盖。
 - 在 service 和 `commitRecord()` 两层执行 actor 策略：拒绝 `host` 编辑；`user` 可普通编辑但不能 `item.purge`；
   `owner` 可 purge；被拒绝的调用不改变 storage、revision 或已发布 view。
 - 在核心操作层拒绝 purge active accepted 或 pending item；只有 archived、rejected 或替代链条目可清除。

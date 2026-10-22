@@ -238,7 +238,7 @@ Web 进程可以只读显示另一个进程中 live 的 Session 的已存会话�
 | 插件更新后会话契约面板白屏 | 浏览器 bundle 与 Host bundle 来自不同 revision（尤其手动安装 profile 后） | 完全重启 `dsh web` / DeepSeek Harness，让新 Host 加载；只刷新浏览器可能不会重启 Host |
 | `unavailable` + lifecycle mismatch | 同 id 的 Session 换了 lifecycle | 不读取旧记录；新 Session 使用新记录 |
 | 面板提示 Session 不在当前 Host / 只读 | 该 Session 属于另一个 DSH 进程（例如 Desktop），尚未在 Web 进程加载 | 在 Web 中新建会话或发送消息使其变为 live；标签页会自动升级为可编辑 |
-| `unavailable` + inconsistent record | 存储记录被外部篡改或派生 digest 不一致 | 停止编辑，检查 storage；修复前不注入 |
+| `unavailable` + inconsistent record | 存储记录被外部篡改或派生 digest 不一致 | 非法期间不注入；修复原始记录后，下一次 view/初始化会重新解析并恢复，无需重启 Host；仍不合法的文档保持隔离且不被覆盖 |
 | Apply 返回 `REVISION_CONFLICT` | 期间有别的提交 | 草稿保留，丢弃后基于最新 revision 重新编辑 |
 | Apply 返回 `QUOTA_EXCEEDED` | 超过 prompt、单条或存储/单批上限 | 检查高亮字段；减少候选或调高对应上限。active 条数没有单独上限 |
 | `charter_read` 返回 `UNAVAILABLE` | 插件存储未就绪或记录不可用 | 会话仍可正常使用；修复后重试 |

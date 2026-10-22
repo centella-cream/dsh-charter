@@ -23,6 +23,7 @@ npm pack
 `npm run check` 必须通过 typecheck、build、Remote smoke、client smoke 和完整 Vitest；
 `npm run smoke:package` 另外会打包 tarball 并校验必需文件、所有 `exports` 目标、packed Host import 和 packed
 client bundle。CI 同时运行两者。
+compaction checker 已用 fixture 测试覆盖成功/失败退出条件，但真实模型运行仍是下文的手工门禁。
 
 用一个全新 profile 安装 tarball 并验证：
 

@@ -48,7 +48,7 @@ Initial MVP.
   restart is still required for the new pending-import semantics.
 - Verified against DSH `0.2.1-rc.2` with no code changes required; the existing peer range and compatibility layer
   cover the release candidate.
-- 121 tests across core, host composition, fork, idempotency, quota, prompt boundary, Remote stream, history
+- 131 tests across core, host composition, fork, idempotency, quota, prompt boundary, Remote stream, history
   extraction, client reordering, compatibility, and decorator compatibility. Verified on DSH `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`,
   `0.2.1-rc.1`, and `0.2.1-rc.2`. The actual Web UI was exercised on `0.2.0-rc.2`: tab order, Chinese/English
   switching, objective and invariant editing, preview, Apply, and reload persistence.
@@ -67,6 +67,10 @@ Initial MVP.
 
 - Watch/edit frames still carry the full item set for a maximum-size charter; splitting history into a paged
   Remote endpoint is a follow-up rather than part of this round.
+- `charter_read` `standing` is the complete working set and has no fixed byte cap: a maximum-size charter can
+  produce a large tool result. Paging or an explicit response cap is a follow-up, not part of this round.
+- Active client drafts are not byte-capped beyond their UI inputs; the idle TTL/LRU bounds released drafts, not
+  text held by a currently mounted editor/bootstrap sheet.
 - Compaction rematerialization depends on the DSH runtime-context projection contract; the full compaction
   end-to-end still needs a real model session.
 - Browser interaction was verified on `0.2.0-rc.2`; 0.1.7/0.2.1 were verified by typecheck/build/tests, not by
@@ -77,6 +81,15 @@ Initial MVP.
 
 ### Fixed
 
+- Make every compaction-checker success criterion participate in the exit code: the checker now compares the
+  Host's compact standing projection, fails on a dirty system prompt or a called-but-mismatched `charter_read`
+  standing result, and records a leaking summary as a warning; fixture tests cover each combination.
+- Fence edit and bootstrap Apply results by draft generation, source instance, lifecycle, and request identity, so
+  a late response from a destroyed source cannot clear or overwrite a newer draft; source invalidation keeps the
+  mutation id for an idempotent retry through the replacement source.
+- Drop empty drafts immediately on the last lease release, apply an idle TTL, and bound released drafts; a
+  runtime-invalid record that is repaired in place is re-parsed on the next access and recovers without a Host
+  restart, while a still-invalid document stays isolated and is never overwritten.
 - Enforce actor policy at the service and `commitRecord()` boundaries: `host` edits are rejected, `user` may make
   ordinary edits but not `item.purge`, and `owner` may purge; forbidden calls do not change storage, revision, or
   published views.

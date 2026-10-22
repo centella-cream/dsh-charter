@@ -257,7 +257,7 @@ shorten operations are admitted until the record fits again. The record ceiling 
 | Charter pane is blank after a plugin update | Browser bundle and Host bundle are from different revisions (especially after a manual profile install) | Fully restart `dsh web` / DeepSeek Harness so the new Host loads; refreshing only the browser may not restart it |
 | `unavailable` + lifecycle mismatch | Same id, different Session lifecycle | Old record is not read; the new Session uses a new record |
 | Pane says the Session is not live / read-only | The Session belongs to another DSH process (for example Desktop) and is not loaded in this Web process | Create or start a Session in Web; the tab upgrades to editable automatically |
-| `unavailable` + inconsistent record | Record tampered with or derived digest mismatch | Stop editing, inspect storage; no injection until repaired |
+| `unavailable` + inconsistent record | Record tampered with or derived digest mismatch | No injection while invalid. After repairing the raw record, the next view/initialize re-parses it and the Session recovers without a Host restart; a still-invalid document stays isolated and is never overwritten |
 | Apply returns `REVISION_CONFLICT` | Another commit happened first | Draft is preserved; discard and re-stage against the latest revision |
 | Apply returns `QUOTA_EXCEEDED` | Prompt, per-item, or storage/batch limit exceeded | Check the highlighted field; reduce candidates or raise the relevant limit. Active item counts are not capped |
 | `charter_read` returns `UNAVAILABLE` | Storage not ready or record unavailable | The Session remains usable; retry after repair |
