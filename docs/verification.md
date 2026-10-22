@@ -756,7 +756,7 @@ Evidence timeline for this pre-release:
 - Recorded real-model run: 2026-10-22 on the Desktop/Web runtime DSH `0.2.0-rc.2` (`dsh` CLI `0.2.0-rc.2`).
   The run happened **before** the full Desktop restart described above; the process that served it was still
   running the pre-restart Host bundle, which is why the `charter_read` result carried legacy debug fields.
-- Local build commit for this local RC build: `a88387690294e4ba7791fbec894d8a628691bdb6`; the final evidence commit adds only this evidence record and
+- Local build commit for this local RC build: `3705c51c2bf09ef32f76c00f8099569aa9a380d0`; the final evidence commit adds only this evidence record and
   the tracked digest file. Gates on the build tree: `npm run check` (typecheck + build + 17 test files / 167
   tests), `npm run smoke:package`, and the local five-version matrix (17 files / 187 tests on every version).
 - Shipped artifact digest: the tracked repository-root `SHA256SUMS` (refreshed by the final evidence commit,

@@ -690,7 +690,7 @@ seq **31825**，位于 compaction seq 31801 与 runtime 快照 seq 31810 之后�
 - 真实模型实测：2026-10-22，运行于 Desktop/Web runtime DSH `0.2.0-rc.2`（`dsh` CLI `0.2.0-rc.2`）。这次
   运行发生在上述完整重启 Desktop **之前**；当时仍在运行的进程加载的是重启前的 Host bundle，因此
   `charter_read` 结果带有 legacy debug 字段。
-- 本次本地 RC 构建的 build commit：`a88387690294e4ba7791fbec894d8a628691bdb6`；最终证据 commit 只额外添加本证据记录和 tracked digest 文件。该
+- 本次本地 RC 构建的 build commit：`3705c51c2bf09ef32f76c00f8099569aa9a380d0`；最终证据 commit 只额外添加本证据记录和 tracked digest 文件。该
   构建树通过 `npm run check`（typecheck + build + 17 个测试文件 / 187 个测试）、`npm run smoke:package` 以及
   本地五版本矩阵（每个版本 17 个文件 / 187 个测试）。
 - 随发布产物的 digest：仓库根部 tracked 的 `SHA256SUMS`（由最终证据 commit 刷新，该 commit 只更新此文件）固定
