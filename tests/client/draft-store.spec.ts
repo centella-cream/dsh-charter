@@ -63,13 +63,14 @@ describe('per-Session draft ownership', () => {
   it('reuses the same mutation id when retrying an unknown-outcome request', async () => {
     const requests: CharterEditRequest[] = []
     let fail = true
-    const draft = new CharterDraft(sessionId, () => source({
+    const fake = source({
       edit: async request => {
         requests.push(request)
         if (fail) throw new Error('connection lost')
         return { ok: true, replayed: false, committedRevision: 1, ids: {}, view: view(1) }
       },
-    }))
+    })
+    const draft = new CharterDraft(sessionId, () => fake)
     draft.stage(view(0), {
       type: 'item.add',
       item: { clientRef: 'draft-3', kind: 'invariant', text: 'Retry me', order: 0 },
@@ -86,7 +87,7 @@ describe('per-Session draft ownership', () => {
 
   it('mints a fresh mutation id for a rebase after a revision conflict', async () => {
     const mutationIds: string[] = []
-    const draft = new CharterDraft(sessionId, () => source({
+    const fake = source({
       edit: async request => {
         mutationIds.push(request.mutationId)
         return {
@@ -97,7 +98,8 @@ describe('per-Session draft ownership', () => {
           view: view(2),
         }
       },
-    }))
+    })
+    const draft = new CharterDraft(sessionId, () => fake)
     draft.stage(view(0), {
       type: 'item.add',
       item: { clientRef: 'draft-4', kind: 'invariant', text: 'Rebase me', order: 0 },
@@ -125,6 +127,93 @@ describe('per-Session draft ownership', () => {
     draft.setEditorText('bad\uD800text')
     draft.saveEditor(view(0))
     expect(draft.getSnapshot().feedback).toEqual({ kind: 'editorInvalid', issue: 'surrogate' })
+  })
+
+  it('ignores an Apply result after its source was replaced', async () => {
+    let release: ((value: CharterEditResult) => void) | undefined
+    const pending = new Promise<CharterEditResult>(resolve => { release = resolve })
+    const mutations: string[] = []
+    const fake = source({ edit: request => { mutations.push(request.mutationId); return pending } })
+    const draft = new CharterDraft(sessionId, () => fake)
+    draft.bindLifecycle('life-a')
+    draft.stage(view(0), {
+      type: 'item.add',
+      item: { clientRef: 'guard-1', kind: 'invariant', text: 'Guarded', order: 0 },
+    })
+    const applied = draft.applyDraft(view(0))
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(draft.getSnapshot().saving).toBe(true)
+    draft.invalidateSource()
+    release!({ ok: true, replayed: false, committedRevision: 1, ids: {}, view: view(1) })
+    await applied
+    // The old request cannot clear or overwrite the preserved draft; the retry
+    // keeps the same mutation id.
+    expect(draft.getSnapshot()).toMatchObject({
+      saving: false,
+      ops: [expect.objectContaining({ type: 'item.add' })],
+      feedback: { kind: 'connection' },
+    })
+    // Retrying through the new source replays the same mutation id.
+    await draft.applyDraft(view(0))
+    expect(mutations[1]).toBe(mutations[0])
+    expect(draft.getSnapshot().ops).toHaveLength(0)
+  })
+
+  it('ignores an Apply result after the lifecycle was reset', async () => {
+    let release: ((value: CharterEditResult) => void) | undefined
+    const pending = new Promise<CharterEditResult>(resolve => { release = resolve })
+    const fake = source({ edit: () => pending })
+    const draft = new CharterDraft(sessionId, () => fake)
+    draft.bindLifecycle('life-a')
+    draft.stage(view(0), {
+      type: 'item.add',
+      item: { clientRef: 'guard-2', kind: 'invariant', text: 'Old life', order: 0 },
+    })
+    const applied = draft.applyDraft(view(0))
+    await new Promise(resolve => setTimeout(resolve, 0))
+    draft.bindLifecycle('life-b')
+    release!({ ok: true, replayed: false, committedRevision: 1, ids: {}, view: view(1) })
+    await applied
+    expect(draft.getSnapshot()).toMatchObject({
+      lifecycle: 'life-b',
+      saving: false,
+      ops: [],
+      feedback: null,
+    })
+  })
+
+  it('ignores a bootstrap Apply result after its source was replaced', async () => {
+    let release: ((value: CharterEditResult) => void) | undefined
+    const pending = new Promise<CharterEditResult>(resolve => { release = resolve })
+    const fake = source({
+      edit: () => pending,
+      bootstrap: async () => ({
+        available: true,
+        proposal: {
+          objective: 'Draft objective',
+          invariants: ['Keep it'],
+          deliverables: [],
+          source: { summarySeq: 1, at: 1 },
+        },
+      }),
+    })
+    const draft = new CharterDraft(sessionId, () => fake)
+    draft.bindLifecycle('life-a')
+    draft.ensureBootstrap(view(0), true)
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(draft.getSnapshot().bootstrapPhase).toBe('draft')
+    const applied = draft.applyBootstrap(view(0))
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(draft.getSnapshot().bootstrapSaving).toBe(true)
+    draft.invalidateSource()
+    release!({ ok: true, replayed: false, committedRevision: 1, ids: {}, view: view(1) })
+    await applied
+    expect(draft.getSnapshot()).toMatchObject({
+      bootstrapSaving: false,
+      bootstrapPhase: 'draft',
+      bootstrapProblem: { kind: 'save-failed', code: 'UNAVAILABLE' },
+    })
+    expect(draft.getSnapshot().bootstrap).not.toBeNull()
   })
 
   it('resets staged work when the Session lifecycle changes', () => {

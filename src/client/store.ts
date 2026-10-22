@@ -228,7 +228,9 @@ export class CharterClientController {
   private remote: CharterRemote | undefined
   private readonly sources = new Map<SessionId, SourceEntry>()
   private readonly drafts = new Map<SessionId, CharterDraft>()
+  private readonly draftTouched = new Map<SessionId, number>()
   private static readonly MAX_DRAFTS = 16
+  private static readonly DRAFT_IDLE_MS = 30 * 60 * 1000
 
   constructor(private readonly ctx: ClientContext) {}
 
@@ -237,7 +239,21 @@ export class CharterClientController {
    * the least recently used draft with no active view lease is disposed when
    * more Sessions are visited.
    */
+  private collectIdleDrafts(): void {
+    const now = Date.now()
+    for (const [id, draft] of [...this.drafts.entries()]) {
+      if ((this.sources.get(id)?.refs ?? 0) > 0) continue
+      const touched = this.draftTouched.get(id) ?? 0
+      if (now - touched < CharterClientController.DRAFT_IDLE_MS) continue
+      this.drafts.delete(id)
+      this.draftTouched.delete(id)
+      draft.dispose()
+    }
+  }
+
   draftFor(sessionId: SessionId): CharterDraft {
+    this.collectIdleDrafts()
+    this.draftTouched.set(sessionId, Date.now())
     const existing = this.drafts.get(sessionId)
     if (existing !== undefined) {
       this.drafts.delete(sessionId)
@@ -266,6 +282,9 @@ export class CharterClientController {
   acquire(sessionId: SessionId): CharterViewLease {
     let entry = this.sources.get(sessionId)
     if (entry === undefined) {
+      // A new source instance invalidates in-flight results from the previous
+      // one, while preserving staged content for an idempotent retry.
+      this.drafts.get(sessionId)?.invalidateSource()
       entry = { source: new CharterSessionSource(this.ctx, sessionId), refs: 0 }
       this.sources.set(sessionId, entry)
       if (this.remote !== undefined) entry.source.attach(this.remote)
@@ -286,6 +305,15 @@ export class CharterClientController {
         current.refs -= 1
         if (current.refs > 0) return
         this.sources.delete(sessionId)
+        const draft = this.drafts.get(sessionId)
+        if (draft !== undefined) {
+          draft.invalidateSource()
+          if (draft.isEmpty) {
+            this.drafts.delete(sessionId)
+            this.draftTouched.delete(sessionId)
+            draft.dispose()
+          }
+        }
         void current.source.dispose()
       },
     }

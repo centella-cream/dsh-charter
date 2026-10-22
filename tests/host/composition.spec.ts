@@ -811,7 +811,8 @@ describe('dsh-charter host composition', () => {
         put: (id: string, value: unknown) => Promise<void>
       }
     }).sessionsTable
-    const stored = structuredClone(table.get(bad.id)) as { recordSchemaVersion: number }
+    const validStored = structuredClone(table.get(bad.id))
+    const stored = structuredClone(validStored) as { recordSchemaVersion: number }
     stored.recordSchemaVersion = 2
     await table.put(bad.id, stored)
 
@@ -821,6 +822,15 @@ describe('dsh-charter host composition', () => {
     expect(service.view(good).promptText).toContain('Still works')
     expect(await service.edit(addInvariant(bad.id, 1, 'runtime-3', 'Blocked')))
       .toMatchObject({ ok: false, code: 'UNAVAILABLE' })
+
+    // Repairing the raw document is picked up on the next access; no Host
+    // restart is needed and the Session becomes editable again.
+    await table.put(bad.id, validStored)
+    expect(service.view(bad).status).toBe('ready')
+    expect(service.promptText(bad)).toContain('Will be invalidated')
+    expect(await service.edit(addInvariant(bad.id, 1, 'runtime-repair', 'Recovered')))
+      .toMatchObject({ ok: true })
+    expect(service.view(bad).promptText).toContain('Recovered')
   })
 
   it('treats lowered budgets as over-budget state instead of corruption and lets edits shrink it', async () => {

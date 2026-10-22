@@ -143,13 +143,32 @@ describe('client charter source', () => {
     await controller.dispose()
   })
 
+  it('drops an empty draft as soon as its last lease is released', async () => {
+    const controller = new CharterClientController({} as never)
+    const first = controller.acquire(SessionId('session-empty-draft'))
+    const firstDraft = first.draft
+    first.release()
+    const again = controller.acquire(SessionId('session-empty-draft'))
+    expect(again.draft).not.toBe(firstDraft)
+    again.release()
+    await controller.dispose()
+  })
+
   it('evicts the least recently used released draft when the map grows', async () => {
     const controller = new CharterClientController({} as never)
+    const stage = (lease: ReturnType<typeof controller.acquire>, index: number) => {
+      lease.draft.stage(view(0), {
+        type: 'item.add',
+        item: { clientRef: `lru-${index}`, kind: 'invariant', text: `draft ${index}`, order: 0 },
+      })
+    }
     const first = controller.acquire(SessionId('session-draft-0'))
+    stage(first, 0)
     const firstDraft = first.draft
     first.release()
     for (let index = 1; index <= 16; index += 1) {
       const lease = controller.acquire(SessionId(`session-draft-${index}`))
+      stage(lease, index)
       lease.release()
     }
     const again = controller.acquire(SessionId('session-draft-0'))

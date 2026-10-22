@@ -186,6 +186,7 @@ export class CharterService extends Service {
       this.listeners.delete(session.id)
       this.waitingForParent.delete(session.id)
       this.unavailable.delete(session.id)
+      this.invalidRecords.delete(session.id)
       this.initializationControllers.get(session.id)?.abort(
         new Error('Session disposed during Charter initialization'),
       )
@@ -363,8 +364,8 @@ export class CharterService extends Service {
   ): Promise<void> {
     signal?.throwIfAborted()
     if (this.ctx.sessions.get(session.id) !== session) return
-    // Preserve the raw schema-invalid document instead of overwriting it.
-    if (this.invalidRecords.has(session.id)) return
+    // Re-parse every attempt: an operator may repair the raw document while the
+    // Host is running. A still-invalid document stays isolated and preserved.
     const table = this.requireTable()
     if (session.header.parentSession !== undefined) {
       if (session.header.parentSession === session.id) {
@@ -442,11 +443,16 @@ export class CharterService extends Service {
       this.ctx.logger.error(`charter: ${sessionId}: ${message}`)
       return undefined
     }
+    if (this.invalidRecords.delete(sessionId)) {
+      const message = this.unavailable.get(sessionId)
+      if (message?.startsWith('Stored charter cannot be read by this version') === true) {
+        this.unavailable.delete(sessionId)
+      }
+    }
     return parsed.data
   }
 
   private recordFor(session: Session): CharterRecord | undefined {
-    if (this.invalidRecords.has(session.id)) return undefined
     const stored = this.sessionsTable?.get(session.id)
     if (stored === undefined) return undefined
     const record = this.parseStoredRecord(session.id, stored)
@@ -534,12 +540,6 @@ export class CharterService extends Service {
   viewById(sessionId: SessionIdType): CharterView {
     const session = this.ctx.sessions.get(sessionId)
     if (session !== undefined) return this.view(session)
-    if (this.invalidRecords.has(sessionId)) {
-      return this.unavailableView(
-        sessionId,
-        this.unavailable.get(sessionId) ?? 'Stored charter cannot be read by this version',
-      )
-    }
 
     const failure = this.globalFailure
       ?? (this.sessionsTable === undefined ? 'Charter storage is not ready' : undefined)
@@ -639,14 +639,6 @@ export class CharterService extends Service {
   view(session: Session): CharterView {
     if (this.globalFailure !== undefined) {
       return this.unavailableView(session.id, this.globalFailure, 0, lifecycleFingerprint(identityOf(session)))
-    }
-    if (this.invalidRecords.has(session.id)) {
-      return this.unavailableView(
-        session.id,
-        this.unavailable.get(session.id) ?? 'Stored charter cannot be read by this version',
-        0,
-        lifecycleFingerprint(identityOf(session)),
-      )
     }
     const record = this.recordFor(session)
     const recordFailure = this.unavailable.get(session.id)
