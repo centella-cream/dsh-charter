@@ -560,7 +560,9 @@ translated.
 
 ### 7.5 Redesigned UI and budget verification
 
-The screenshots in this section were regenerated against the final `0.1.0-rc.1` build (2026-10-22): the pane shows the
+The screenshots in this section were regenerated against the final `0.1.0-rc.1` build (2026-10-22) from an isolated
+demo-only profile whose sidebar contains a single synthetic `Create a UI test session` session and no private
+workspace or Session titles: the pane shows the
 advisory-context disclaimer, an always-available **History draft** section, the record ceiling in **Context**,
 projected draft rows, and per-row action menus.
 
@@ -697,11 +699,12 @@ Evidence timeline for this pre-release:
 - Recorded real-model run: 2026-10-22 on the Desktop/Web runtime DSH `0.2.0-rc.2` (`dsh` CLI `0.2.0-rc.2`).
   The run happened **before** the full Desktop restart described above; the process that served it was still
   running the pre-restart Host bundle, which is why the `charter_read` result carried legacy debug fields.
-- Gated source commit for this convergence record: `2210bf95ef1cc281c6737a2f79a59e01a8ec7072`. Gates on that
-  tree: `npm run check` (typecheck + build + 17 test files / 157 tests), `npm run smoke:package`, and the local
-  five-version matrix (17 files / 157 tests on every version).
-- Shipped artifact digest: the tracked repository-root `SHA256SUMS` (added by the release commit, which adds only
-  that file on top of this record) pins the digest of `dsh-charter-0.1.0-rc.1.tgz` built from the tagged tree;
+- Gated source commit for this convergence record: `2210bf95ef1cc281c6737a2f79a59e01a8ec7072`; the tagged tree
+  adds only the refreshed demo-only screenshots, this evidence record, and the tracked digest file. Gates on the
+  convergence tree: `npm run check` (typecheck + build + 17 test files / 157 tests), `npm run smoke:package`, and
+  the local five-version matrix (17 files / 157 tests on every version).
+- Shipped artifact digest: the tracked repository-root `SHA256SUMS` (kept current by the release commit, which
+  updates only that file) pins the digest of `dsh-charter-0.1.0-rc.1.tgz` built from the tagged tree;
   `dist/SHA256SUMS` carries the same value. The annotated tag message records the release commit and the shipped
   digest, and `git rev-parse v0.1.0-rc.1^{commit}` resolves the release commit.
 - Remaining manual check: restart the Desktop app and reopen the Charter tab once to confirm the current

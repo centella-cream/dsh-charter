@@ -524,7 +524,9 @@ DSH_HOME="$PWD/.tmp/webview/home" dsh --profile charterweb2 --no-open --port 193
 
 ### 7.5 重设计 UI 与预算验证
 
-本节截图已用最终 `0.1.0-rc.1` 构建（2026-10-22）重新生成：面板包含声明性上下文提示、始终可用的**历史草案** section、
+本节截图已用最终 `0.1.0-rc.1` 构建（2026-10-22）在一个隔离的纯 demo profile 上重新生成（侧栏只有一个合成的
+`Create a UI test session` session，不含任何真实 workspace 或 Session 标题）：面板包含声明性上下文提示、始终可用的
+**历史草案** section、
 **上下文** 中的 record 上限、投影后的草稿行，以及逐行操作菜单。
 
 重设计后的面板在同一个 Web profile、1440×757 下验证了明暗主题和中英文：
@@ -642,11 +644,11 @@ checker 已将这些字段归一到当前紧凑投影。要让 UI/tool ABI 与�
 - 真实模型实测：2026-10-22，运行于 Desktop/Web runtime DSH `0.2.0-rc.2`（`dsh` CLI `0.2.0-rc.2`）。这次
   运行发生在上述完整重启 Desktop **之前**；当时仍在运行的进程加载的是重启前的 Host bundle，因此
   `charter_read` 结果带有 legacy debug 字段。
-- 本次收敛记录的通过门禁源码 commit：`2210bf95ef1cc281c6737a2f79a59e01a8ec7072`。该树通过
-  `npm run check`（typecheck + build + 17 个测试文件 / 157 个测试）、`npm run smoke:package` 以及本地
-  五版本矩阵（每个版本 17 个文件 / 157 个测试）。
-- 随发布产物的 digest：仓库根部 tracked 的 `SHA256SUMS`（由 release commit 添加，该 commit 仅在本记录之上
-  添加此文件）固定从 tagged tree 构建的 `dsh-charter-0.1.0-rc.1.tgz` digest；`dist/SHA256SUMS` 携带相同值。
+- 本次收敛记录的通过门禁源码 commit：`2210bf95ef1cc281c6737a2f79a59e01a8ec7072`；tagged tree 只额外添加
+  重新生成的纯 demo 截图、本证据记录和 tracked digest 文件。该收敛树通过 `npm run check`（typecheck + build +
+  17 个测试文件 / 157 个测试）、`npm run smoke:package` 以及本地五版本矩阵（每个版本 17 个文件 / 157 个测试）。
+- 随发布产物的 digest：仓库根部 tracked 的 `SHA256SUMS`（由 release commit 保持最新，该 commit 只更新此文件）
+  固定从 tagged tree 构建的 `dsh-charter-0.1.0-rc.1.tgz` digest；`dist/SHA256SUMS` 携带相同值。
   annotated tag message 记录 release commit 和随发布 digest，`git rev-parse v0.1.0-rc.1^{commit}` 可解析
   release commit。
 - 剩余手工检查：重启 Desktop 后重新打开会话契约 tab 一次，确认当前 bundle/tool ABI——这次重启后复核**不在**
