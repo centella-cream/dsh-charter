@@ -238,7 +238,9 @@ Raise the budgets in the profile when your charter needs more room.
 Budgets are admission policy, not record validity. If a profile lowers a limit after records exist, the
 affected Session shows an **over-budget** state: its view remains readable, the Host does not inject the
 charter into the prompt, and the Pane explains the state. Adding content is rejected, while archive, purge, and
-shorten operations are admitted until the record fits again. The record ceiling is shown in **Context**.
+shorten operations are admitted until the record fits again. The editor compares against the previous value, so
+an objective or same-id item may be submitted while still above the limit as long as it strictly shrinks. The
+record ceiling is shown in **Context**.
 
 ## 5. Data and privacy
 
@@ -260,7 +262,7 @@ shorten operations are admitted until the record fits again. The record ceiling 
 | `unavailable` + schema-invalid record | Unknown fields, wrong version/shape, or truncated JSON in storage | No injection. After repairing the raw document, the next view/initialize re-parses it and the Session recovers without a Host restart; a still-invalid document stays isolated and is never overwritten |
 | `unavailable` + semantic corruption | Derived digest/history/state inconsistency inside an otherwise schema-valid record | Reparse cannot repair this. Inspect storage and repair the record manually, then restart the Host if the in-memory Session still holds the bad revision; no injection in the meantime |
 | `unavailable` + lifecycle mismatch | Same Session id with a different `createdAt`/`cwd`/parent identity | This is not corruption and must not be overwritten. The old record is not read; the new lifecycle gets its own record |
-| Apply returns `REVISION_CONFLICT` | Another commit happened first | Draft is preserved; discard and re-stage against the latest revision |
+| Apply returns `REVISION_CONFLICT` | Another commit happened first | Draft is preserved; use **Apply draft to revision N** to re-target the same ops at the latest revision. An unknown-outcome retry keeps the same mutation id, so it cannot duplicate items |
 | Apply returns `QUOTA_EXCEEDED` | Prompt, per-item, or storage/batch limit exceeded | Check the highlighted field; reduce candidates or raise the relevant limit. Active item counts are not capped |
 | `charter_read` returns `UNAVAILABLE` | Storage not ready or record unavailable | The Session remains usable; retry after repair |
 | No Charter tab | Client bundle not loaded/injected, or blank Session | Check `dsh --profile web --dump-config` for `charter`; send a message to start the Session; refresh |

@@ -13,7 +13,7 @@
 | 验证项 | 结果 |
 | --- | --- |
 | TypeScript 严格类型检查（5 个 DSH 版本） | 通过 |
-| Vitest（5 个本地可用版本 × 144 tests） | 通过 |
+| Vitest（5 个本地可用版本 × 153 tests） | 通过 |
 | Host ESM 构建 + 浏览器单文件 bundle | 通过 |
 | Remote 装饰器/资源 smoke | 通过（0.1.7/0.2.0 按预期无资源声明） |
 | 浏览器 factory bundle 物化与 `apply` smoke | 通过 |
@@ -42,7 +42,7 @@ npm test
 
 - typecheck 通过；
 - build 通过；
-- 17 个测试文件、144 个测试全部通过；
+- 17 个测试文件、153 个测试全部通过；
 - `remote-smoke` 断言 `watch,bootstrap,edit`、stream mode 和 Session resource；
 - `client-smoke` 断言单文件 factory bundle、外部依赖白名单、不引用 Node-only `Buffer`、`apply` 注册
   tab/pane/Remote contribution。
@@ -97,11 +97,11 @@ npm run build
 
 | 版本 | typecheck | build | Vitest | remote smoke | client smoke |
 | --- | --- | --- | --- | --- | --- |
-| `0.1.7-rc.2` | 通过 | 通过 | 144/144 | 通过（无 resources 警告） | 通过 |
-| `0.2.0-rc.1` | 通过 | 通过 | 144/144 | 通过（无 resources 警告） | 通过 |
-| `0.2.0-rc.2` | 通过 | 通过 | 144/144 | 通过（无 resources 警告） | 通过 |
-| `0.2.1-rc.1` | 通过 | 通过 | 144/144 | 通过 | 通过 |
-| `0.2.1-rc.2` | 通过 | 通过 | 144/144 | 通过 | 通过 |
+| `0.1.7-rc.2` | 通过 | 通过 | 153/153 | 通过（无 resources 警告） | 通过 |
+| `0.2.0-rc.1` | 通过 | 通过 | 153/153 | 通过（无 resources 警告） | 通过 |
+| `0.2.0-rc.2` | 通过 | 通过 | 153/153 | 通过（无 resources 警告） | 通过 |
+| `0.2.1-rc.1` | 通过 | 通过 | 153/153 | 通过 | 通过 |
+| `0.2.1-rc.2` | 通过 | 通过 | 153/153 | 通过 | 通过 |
 
 `0.1.7-rc.2` 和 `0.2.0` 的 remote smoke 输出：
 
@@ -257,6 +257,14 @@ profile 手工确认。
 - **Bootstrap 元数据**：`shadowedTokenCount` 在 Host 侧也校验为非负整数，负值会在进入严格 Remote codec 前被跳过。
 - **消费者安装**：`smoke:package` 现在在空项目中做真实安装（只依赖 tarball 与声明依赖），检查公开文件 mode，
   并加载 packed Runtime 入口；不再软链工作区 `node_modules`。
+- **Watch/stream generation 竞态**：unsubscribe 只有在仍持有捕获的 listener Set 时才删除 Map 条目（已 dispose
+  的 generation 不能误删同 ID 新 watch）；同 live stream 的重复 attach 是 no-op，旧 stream 的 `replace`/`update`
+  帧按 attach generation 丢弃。
+- **保存锁与导出围栏**：Apply/bootstrap 保存期间 Rebase 被禁用并拒绝；bootstrap 抽取按 source 实例 +
+  connection generation 围栏；脏 draft 不会被 idle TTL/LRU 删除；编辑器允许 objective/同 ID item 已超预算时的
+  分步缩短。
+- **配置帧送达**：重连时首次出现的 lifecycle fingerprint 即使 revision 更低也接受；Client 去重比较
+  `overBudget` 与全部 limits，预算收紧后的快照能到达 Pane。
 
 ## 5. 浏览器 bundle 验证
 
@@ -529,8 +537,8 @@ prompt renderer 计算草案预览，并在条目/目标/所选草案/投影上�
 
 ## 8. 真实 compaction 端到端
 
-状态：**2026-10-22 已在真实 DSH Session 上记录 PASS**（`session-45c509c6-ab85-45a8-99e9-adb4079a3192`，
-`infcode-eval-service`）：`/compact` 压缩 326 条消息（约 228k tokens），下一次请求携带字节一致且 digest 匹配的
+状态：**2026-10-22 已在真实 DSH Session 上记录 PASS**（`session-45c509c6…`，
+`an internal eval workspace`）：`/compact` 压缩 326 条消息（约 228k tokens），下一次请求携带字节一致且 digest 匹配的
 `charter:standing` 快照。`npm run check` 不调用模型，因此不会执行这项检查；证据见 8.4。
 
 ### 8.1 已经证明的部分
@@ -588,7 +596,7 @@ replacement/compaction 遮蔽后清空 retained，下一次请求重新生成；
 
 ### 8.4 真实模型实测记录（2026-10-22）
 
-目标：`session-45c509c6-ab85-45a8-99e9-adb4079a3192`（workspace `infcode-eval-service`）。先审阅并应用其上一轮
+目标：`session-45c509c6…`（workspace `an internal eval workspace`）。先审阅并应用其上一轮
 压缩摘要生成的历史草案，成为 **revision 1**（13 条 active 条目，5,081 B，`promptDigest sha256:4dd9e615…`）。
 随后 `/compact` 以 compaction seq **31801**（source `cmd-635e3d77-2`）完成，压缩 326 条消息（约 228,181
 tokens）。压缩后第一次请求产生 runtime-context 快照 seq **31810**，包含
@@ -596,9 +604,9 @@ tokens）。压缩后第一次请求产生 runtime-context 快照 seq **31810**�
 随后 `charter_read` 返回相同 revision/objective/working set。完整 checker 输出：
 
 ```text
-$ npm run verify:compaction -- --session session-45c509c6-ab85-45a8-99e9-adb4079a3192 \
-    --home /Users/ryanzhang/.dsh \
-    --store /Users/ryanzhang/.dsh/storages/dsh_charter_v1/sessions/session-45c509c6-ab85-45a8-99e9-adb4079a3192.json
+$ npm run verify:compaction -- --session "$SESSION_ID" \
+    --home "$DSH_HOME" \
+    --store "$DSH_HOME/storages/dsh_charter_v1/sessions/$SESSION_ID.json"
   PASS  charter established
   PASS  latest runtime context carries charter:standing
   PASS  injected text matches storage authority and promptDigest

@@ -219,8 +219,8 @@ Web 进程可以只读显示另一个进程中 live 的 Session 的已存会话�
 ### 4.2 超预算记录
 
 预算是准入策略，不是记录有效性。若记录已存在后调低上限，受影响的 Session 显示 **over-budget** 状态：视图
-仍可读取，Host 不把会话契约注入 prompt，面板解释原因。增加内容会被拒绝，而归档、清除、缩短等操作会被允许，
-直到记录回到预算内。**上下文** 中会显示 record 上限。
+仍可读取，Host 不把会话契约注入 prompt，面板解释原因。增加内容会被拒绝，而归档、清除、缩短等操作会被允许，直到记录回到预算内。编辑器按旧值比较：objective 或
+同 ID item 只要严格变短，即使仍超过上限也可以提交。**上下文** 中会显示 record 上限。
 
 ## 5. 数据与隐私
 
@@ -241,7 +241,7 @@ Web 进程可以只读显示另一个进程中 live 的 Session 的已存会话�
 | `unavailable` + schema-invalid record | 存储中出现未知字段、错误版本/结构或截断 JSON | 非法期间不注入；修复原始文档后，下一次 view/初始化会重新解析并恢复，无需重启 Host；仍不合法的文档保持隔离且不被覆盖 |
 | `unavailable` + semantic corruption | schema 合法但记录内部的派生 digest/history/state 不一致 | 重新解析无法修复。检查 storage 并人工修复记录；若内存中的 Session 仍持有坏 revision，需重启 Host；修复前不注入 |
 | `unavailable` + lifecycle mismatch | 同一 Session id 的 `createdAt`/`cwd`/父 Session 身份不同 | 这不是数据损坏，也不应被覆盖；旧记录不会被读取，新 lifecycle 使用自己的记录 |
-| Apply 返回 `REVISION_CONFLICT` | 期间有别的提交 | 草稿保留，丢弃后基于最新 revision 重新编辑 |
+| Apply 返回 `REVISION_CONFLICT` | 期间有别的提交 | 草稿保留；使用**将草稿应用到修订 N**把同一批 ops 重新指向最新 revision。未知结果的重试保留 mutation id，不会重复创建条目 |
 | Apply 返回 `QUOTA_EXCEEDED` | 超过 prompt、单条或存储/单批上限 | 检查高亮字段；减少候选或调高对应上限。active 条数没有单独上限 |
 | `charter_read` 返回 `UNAVAILABLE` | 插件存储未就绪或记录不可用 | 会话仍可正常使用；修复后重试 |
 | 会话头部没有「会话契约」 | 客户端 bundle 未加载/未注入，或当前是空白 Session | 检查 `dsh --profile web --dump-config` 中是否有 `charter` 行；先发送一条消息开始会话；刷新页面 |

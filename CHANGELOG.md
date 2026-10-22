@@ -48,7 +48,7 @@ Initial MVP.
   restart is still required for the new pending-import semantics.
 - Verified against DSH `0.2.1-rc.2` with no code changes required; the existing peer range and compatibility layer
   cover the release candidate.
-- 144 tests across core, host composition, fork, idempotency, quota, prompt boundary, Remote stream, history
+- 153 tests across core, host composition, fork, idempotency, quota, prompt boundary, Remote stream, history
   extraction, client reordering, compatibility, and decorator compatibility. Verified on DSH `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`,
   `0.2.1-rc.1`, and `0.2.1-rc.2`. The actual Web UI was exercised on `0.2.0-rc.2`: tab order, Chinese/English
   switching, objective and invariant editing, preview, Apply, and reload persistence.
@@ -84,6 +84,19 @@ Initial MVP.
 
 ### Fixed
 
+- Make watch unsubscribe instance-safe: a disposed generation's late unsubscribe can no longer delete the
+  Map entry of a same-id replacement watch (the entry is removed only when it still owns the captured Set).
+- Fix attach/stream generation races: duplicate attach of the live stream is a true no-op, and `replace`/`update`
+  frames from a replaced stream generation are ignored before they can touch state or reset a draft lifecycle.
+- Disable and reject Rebase while an Apply or bootstrap save is in flight, preserving the mutation attempt for an
+  unknown-outcome retry; bind bootstrap extraction results to the source instance/connection generation so a
+  reconnected Host cannot inject a stale proposal.
+- Never silently evict dirty drafts: the idle TTL and LRU capacity target only empty drafts, and capacity eviction
+  also clears the draft timestamp; staged ops, editor text, and reviewed history drafts survive tab/Session churn.
+- Let the editor submit a stepwise shrink of an already over-budget objective/same-id item, matching Host
+  admission, while new or growing content still requires the hard limit.
+- Accept the first lifecycle fingerprint on reconnect even at a lower revision, and include `overBudget` plus all
+  limits in client frame deduplication so a tightened-config snapshot is delivered.
 - Close every open watch subscription when its Session is disposed (listeners receive `null` and the generator
   exits), so a recreated Session is not stuck behind a listener removed from the service map; Host frame dedupe
   and client acceptance now compare the lifecycle, and a new lifecycle whose revision restarts at 0 is accepted.
