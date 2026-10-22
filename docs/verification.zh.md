@@ -13,7 +13,7 @@
 | 验证项 | 结果 |
 | --- | --- |
 | TypeScript 严格类型检查（5 个 DSH 版本） | 通过 |
-| Vitest（5 个本地可用版本 × 131 tests） | 通过 |
+| Vitest（5 个本地可用版本 × 133 tests） | 通过 |
 | Host ESM 构建 + 浏览器单文件 bundle | 通过 |
 | Remote 装饰器/资源 smoke | 通过（0.1.7/0.2.0 按预期无资源声明） |
 | 浏览器 factory bundle 物化与 `apply` smoke | 通过 |
@@ -42,7 +42,7 @@ npm test
 
 - typecheck 通过；
 - build 通过；
-- 17 个测试文件、131 个测试全部通过；
+- 17 个测试文件、133 个测试全部通过；
 - `remote-smoke` 断言 `watch,bootstrap,edit`、stream mode 和 Session resource；
 - `client-smoke` 断言单文件 factory bundle、外部依赖白名单、不引用 Node-only `Buffer`、`apply` 注册
   tab/pane/Remote contribution。
@@ -96,11 +96,11 @@ npm run build
 
 | 版本 | typecheck | build | Vitest | remote smoke | client smoke |
 | --- | --- | --- | --- | --- | --- |
-| `0.1.7-rc.2` | 通过 | 通过 | 131/131 | 通过（无 resources 警告） | 通过 |
-| `0.2.0-rc.1` | 通过 | 通过 | 131/131 | 通过（无 resources 警告） | 通过 |
-| `0.2.0-rc.2` | 通过 | 通过 | 131/131 | 通过（无 resources 警告） | 通过 |
-| `0.2.1-rc.1` | 通过 | 通过 | 131/131 | 通过 | 通过 |
-| `0.2.1-rc.2` | 通过 | 通过 | 131/131 | 通过 | 通过 |
+| `0.1.7-rc.2` | 通过 | 通过 | 133/133 | 通过（无 resources 警告） | 通过 |
+| `0.2.0-rc.1` | 通过 | 通过 | 133/133 | 通过（无 resources 警告） | 通过 |
+| `0.2.0-rc.2` | 通过 | 通过 | 133/133 | 通过（无 resources 警告） | 通过 |
+| `0.2.1-rc.1` | 通过 | 通过 | 133/133 | 通过 | 通过 |
+| `0.2.1-rc.2` | 通过 | 通过 | 133/133 | 通过 | 通过 |
 
 `0.1.7-rc.2` 和 `0.2.0` 的 remote smoke 输出：
 
@@ -231,8 +231,9 @@ profile 手工确认。
   system prompt 污染、调用了 `charter_read` 但 standing 不匹配、压缩后快照丢失、摘要泄漏 warning。transcript
   reader 现在构造与 Host 相同的紧凑 standing 投影（`kind`/`text`/`verification`/`progress`），所有必需证据
   都参与退出码；只有 WAIT/BLOCKED 状态会在评估前短路。
-- **草稿异步围栏**：edit 和 bootstrap Apply 捕获 `asyncGeneration`、source 实例、lifecycle 和请求身份；已销毁
-  source 的迟到结果不能清除或覆盖新草稿。source 失效保留 mutation id 以便幂等重试，新 source 会使在途结果失效。
+- **草稿异步围栏**：edit 和 bootstrap Apply 捕获 `asyncGeneration`、source 实例及其单调 connection epoch、
+  lifecycle 和请求 ops 身份；已销毁 source 或 detach/reattach 周期的迟到结果不能清除或覆盖新草稿。source 失效
+  保留 mutation id 以便幂等重试，attach/detach/retry 都会使在途结果失效。
 - **草稿回收**：最后一个 lease 释放后立即丢弃空草稿；已释放草稿有 idle TTL 和 LRU 上限，切换标签不会无界保留
   文本，同时活跃工作仍会保留。
 - **在线修复**：运行期损坏记录就地修复后，下一次 view/初始化会重新解析，Session 无需重启 Host 即恢复可编辑；

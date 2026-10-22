@@ -14,7 +14,7 @@ HTML live under `.tmp/` and are excluded from the published package.
 | Item | Result |
 | --- | --- |
 | Strict TypeScript check (5 DSH versions) | Pass |
-| Vitest (5 locally available versions × 131 tests) | Pass |
+| Vitest (5 locally available versions × 133 tests) | Pass |
 | Host ESM build + browser single-file bundle | Pass |
 | Remote decorator/resource smoke | Pass (0.1.7/0.2.0 have no resource declaration, as expected) |
 | Browser factory-bundle materialization and `apply` smoke | Pass |
@@ -43,7 +43,7 @@ Results:
 
 - typecheck passes;
 - build passes;
-- 17 test files, 131 tests pass;
+- 17 test files, 133 tests pass;
 - `remote-smoke` asserts `watch,bootstrap,edit`, stream mode, and Session resource;
 - `client-smoke` asserts the single-file factory bundle, external-dependency allowlist, no Node-only `Buffer`
   reference, and `apply` registering the tab/pane/Remote contribution;
@@ -100,11 +100,11 @@ Results:
 
 | Version | typecheck | build | Vitest | remote smoke | client smoke |
 | --- | --- | --- | --- | --- | --- |
-| `0.1.7-rc.2` | Pass | Pass | 131/131 | Pass (no-resources warning) | Pass |
-| `0.2.0-rc.1` | Pass | Pass | 131/131 | Pass (no-resources warning) | Pass |
-| `0.2.0-rc.2` | Pass | Pass | 131/131 | Pass (no-resources warning) | Pass |
-| `0.2.1-rc.1` | Pass | Pass | 131/131 | Pass | Pass |
-| `0.2.1-rc.2` | Pass | Pass | 131/131 | Pass | Pass |
+| `0.1.7-rc.2` | Pass | Pass | 133/133 | Pass (no-resources warning) | Pass |
+| `0.2.0-rc.1` | Pass | Pass | 133/133 | Pass (no-resources warning) | Pass |
+| `0.2.0-rc.2` | Pass | Pass | 133/133 | Pass (no-resources warning) | Pass |
+| `0.2.1-rc.1` | Pass | Pass | 133/133 | Pass | Pass |
+| `0.2.1-rc.2` | Pass | Pass | 133/133 | Pass | Pass |
 
 `0.1.7-rc.2` and `0.2.0` remote smoke prints:
 
@@ -249,9 +249,10 @@ The fourth readiness review targeted failure paths that only appear after startu
   post-compaction snapshot, and a leaking-summary warning. The transcript reader now builds the same compact
   standing projection as the Host (`kind`/`text`/`verification`/`progress`) and all required evidence participates
   in the exit code; only a WAIT/BLOCKED state short-circuits before evaluation.
-- **Draft async fencing.** Edit and bootstrap Apply capture `asyncGeneration`, the source instance, lifecycle, and
-  request identity; a late result from a destroyed source cannot clear or overwrite a newer draft. Source
-  invalidation preserves the mutation id for an idempotent retry, and a new source invalidates in-flight results.
+- **Draft async fencing.** Edit and bootstrap Apply capture `asyncGeneration`, the source instance and its monotonic
+  connection epoch, lifecycle, and request ops identity; a late result from a destroyed source or from a
+  detach/reattach cycle cannot clear or overwrite a newer draft. Source invalidation preserves the mutation id for
+  an idempotent retry, and attach/detach/retry each invalidate in-flight results.
 - **Draft reclamation.** The last lease release drops an empty draft immediately; released drafts have an idle TTL
   and an LRU bound, so tab switching does not retain unbounded text while active work survives.
 - **Online repair.** After a runtime-invalid record is repaired in place, the next view/initialize re-parses it and

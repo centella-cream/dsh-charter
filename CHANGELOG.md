@@ -48,7 +48,7 @@ Initial MVP.
   restart is still required for the new pending-import semantics.
 - Verified against DSH `0.2.1-rc.2` with no code changes required; the existing peer range and compatibility layer
   cover the release candidate.
-- 131 tests across core, host composition, fork, idempotency, quota, prompt boundary, Remote stream, history
+- 133 tests across core, host composition, fork, idempotency, quota, prompt boundary, Remote stream, history
   extraction, client reordering, compatibility, and decorator compatibility. Verified on DSH `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`,
   `0.2.1-rc.1`, and `0.2.1-rc.2`. The actual Web UI was exercised on `0.2.0-rc.2`: tab order, Chinese/English
   switching, objective and invariant editing, preview, Apply, and reload persistence.
@@ -84,9 +84,10 @@ Initial MVP.
 - Make every compaction-checker success criterion participate in the exit code: the checker now compares the
   Host's compact standing projection, fails on a dirty system prompt or a called-but-mismatched `charter_read`
   standing result, and records a leaking summary as a warning; fixture tests cover each combination.
-- Fence edit and bootstrap Apply results by draft generation, source instance, lifecycle, and request identity, so
-  a late response from a destroyed source cannot clear or overwrite a newer draft; source invalidation keeps the
-  mutation id for an idempotent retry through the replacement source.
+- Fence edit and bootstrap Apply results by draft generation, source connection epoch, source instance, lifecycle,
+  and request identity, so a late response from a destroyed source or a detach/reattach cycle cannot clear or
+  overwrite a newer draft; source invalidation keeps the mutation id for an idempotent retry through the replacement
+  source.
 - Drop empty drafts immediately on the last lease release, apply an idle TTL, and bound released drafts; a
   runtime-invalid record that is repaired in place is re-parsed on the next access and recovers without a Host
   restart, while a still-invalid document stays isolated and is never overwritten.
