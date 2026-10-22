@@ -234,6 +234,17 @@ describe('client charter source', () => {
     await controller.dispose()
   })
 
+  it('accepts a new lifecycle even when its revision and digest repeat or go backwards', () => {
+    const source = new CharterSessionSource({} as never, SessionId('session-lifecycle'))
+    source.accept({ ...view(10, 'old', 'session-lifecycle'), lifecycle: 'life-old' })
+    const replacement = { ...view(0, 'new', 'session-lifecycle'), lifecycle: 'life-new' }
+    source.accept(replacement)
+    expect(source.getSnapshot().view).toMatchObject({ revision: 0, lifecycle: 'life-new' })
+    // Same revision/status/digest with a different lifecycle must not be deduped.
+    source.accept({ ...replacement, lifecycle: 'life-newer' })
+    expect(source.getSnapshot().view?.lifecycle).toBe('life-newer')
+  })
+
   it('retries an attach that failed before the stream existed', async () => {
     let attempts = 0
     const ctx = {

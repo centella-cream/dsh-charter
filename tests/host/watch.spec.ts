@@ -26,7 +26,7 @@ function view(revision: number, text = ''): CharterView {
 }
 
 class FakeSource {
-  private readonly listeners = new Set<(value: CharterView) => void>()
+  private readonly listeners = new Set<(value: CharterView | null) => void>()
   unsubscribed = false
   current: CharterView
 
@@ -39,7 +39,7 @@ class FakeSource {
 
   readonly read = (): CharterView => this.current
 
-  readonly subscribe = (listener: (value: CharterView) => void): (() => void) => {
+  readonly subscribe = (listener: (value: CharterView | null) => void): (() => void) => {
     this.listeners.add(listener)
     this.onSubscribe?.(this)
     return () => {
@@ -50,6 +50,10 @@ class FakeSource {
 
   push(next: CharterView): void {
     for (const listener of [...this.listeners]) listener(next)
+  }
+
+  close(): void {
+    for (const listener of [...this.listeners]) listener(null)
   }
 
   commit(next: CharterView): void {
@@ -99,6 +103,30 @@ describe('charter watch generations', () => {
 
     controller.abort(new Error('test complete'))
     expect(await iterator.next()).toEqual({ done: true, value: undefined })
+  })
+
+  it('ends the generator when the host closes an open watch', async () => {
+    const source = new FakeSource(view(1))
+    const controller = new AbortController()
+    const iterator = watchCharter(source, controller.signal)
+    expect((await iterator.next()).value).toMatchObject({ type: 'snapshot' })
+    const pending = iterator.next()
+    source.close()
+    expect(await pending).toEqual({ done: true, value: undefined })
+    expect(source.unsubscribed).toBe(true)
+  })
+
+  it('compares lifecycle in Host frame deduplication', async () => {
+    const source = new FakeSource(view(1))
+    const controller = new AbortController()
+    const iterator = watchCharter(source, controller.signal)
+    await iterator.next()
+    // Same revision/digest/status but a new lifecycle must still be delivered.
+    source.commit({ ...view(1), lifecycle: 'new-lifecycle' })
+    const next = await iterator.next()
+    expect(next.value).toMatchObject({ type: 'changed', value: { lifecycle: 'new-lifecycle' } })
+    controller.abort(new Error('test complete'))
+    await iterator.next()
   })
 
   it('closes the subscription when the consumer returns early', async () => {

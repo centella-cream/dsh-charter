@@ -149,4 +149,14 @@ describe('bootstrap outcome', () => {
       0,
     )).toEqual({ kind: 'unavailable', reason: 'unavailable', message: 'storage is closed' })
   })
+  it('keeps all candidates active when the budget is large enough (dense case)', () => {
+    const items = candidates(500)
+    const plan = buildBootstrapPlan(emptyView(10 * 1_024 * 1_024), '', items)
+    expect(plan.active).toBe(500)
+    expect(plan.pending).toBe(0)
+    expect(Object.values(plan.outcomes).every(outcome => outcome === 'active')).toBe(true)
+    expect(utf8Bytes(previewPrompt(emptyView(10 * 1_024 * 1_024), plan.ops)))
+      .toBeLessThanOrEqual(10 * 1_024 * 1_024)
+  })
+
 })

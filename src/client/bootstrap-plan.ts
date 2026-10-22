@@ -42,10 +42,13 @@ export function buildBootstrapPlan(
   objective: string,
   items: readonly BootstrapDraftItem[],
 ): BootstrapPlan {
-  // One-pass planning: the projected base prompt is rendered from the
+  // Single review pass: the projected base prompt is rendered from the
   // committed standing set, then each selected candidate is measured by
   // appending it to the running active set. Pending candidates never enter the
-  // prompt, so they do not need a re-render at all.
+  // prompt, so they do not need a re-render at all. Each candidate still
+  // renders the current active set, so a review where almost every candidate
+  // fits is O(n^2); this is acceptable for summary-sized drafts and the exact
+  // fallback keeps correctness, but it is not a linear-time guarantee.
   const objectiveOp: CharterOp | null = view.objective === null && objective.trim().length > 0
     ? { type: 'objective.initialize', text: objective.trim() }
     : null
@@ -130,7 +133,7 @@ export function buildBootstrapPlan(
   return { ops, active, pending, pendingInvariants, pendingDeliverables, outcomes }
 }
 
-/** Exact quadratic fallback used only when the one-pass estimate disagrees. */
+/** Exact quadratic fallback used only when the incremental estimate disagrees. */
 function exactBootstrapPlan(
   view: CharterView,
   items: readonly BootstrapDraftItem[],

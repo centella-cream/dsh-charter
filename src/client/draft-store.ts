@@ -191,6 +191,10 @@ export class CharterDraft {
       && this.state.newInvariant.trim().length === 0
       && this.state.newDeliverable.trim().length === 0
       && this.state.attempt === null
+      && this.state.bootstrapPhase !== 'draft'
+      && this.state.bootstrap === null
+      && this.state.bootstrapItems.length === 0
+      && this.state.bootstrapObjective.trim().length === 0
   }
 
   /**
@@ -235,7 +239,7 @@ export class CharterDraft {
   }
 
   stage(view: CharterView, op: CharterOp): void {
-    if (view.status !== 'ready' || this.state.saving) return
+    if (view.status !== 'ready' || this.state.saving || this.state.bootstrapSaving) return
     const ops = this.state.ops.some(existing => sameOp(existing, op))
       ? this.state.ops
       : [...this.state.ops, op]
@@ -248,6 +252,7 @@ export class CharterDraft {
   }
 
   unstage(itemId: string): void {
+    if (this.state.saving || this.state.bootstrapSaving) return
     const ops = this.state.ops.filter(op => !opTargets(op, itemId))
     this.update({
       ops,
@@ -350,6 +355,7 @@ export class CharterDraft {
   }
 
   addItem(view: CharterView, kind: 'invariant' | 'deliverable', text: string, clear: () => void): void {
+    if (this.state.saving || this.state.bootstrapSaving) return
     const inspection = inspectUserText(text)
     if (inspection.issue !== undefined) {
       this.update({ feedback: { kind: 'editorInvalid', issue: inspection.issue } })
@@ -409,7 +415,17 @@ export class CharterDraft {
       && this.state.ops === requestOps
     try {
       const result = await source.edit(request)
-      if (!current()) return
+      if (!current()) {
+        // A local change replaced the request's ops while it was in flight.
+        // Never leave the draft stuck in `saving`; do not touch the newer ops.
+        if (this.asyncGeneration === generation
+          && this.resolveSource() === source
+          && source.connectionGeneration === sourceGeneration
+          && this.state.saving) {
+          this.update({ saving: false, attempt: null, feedback: { kind: 'connection' } })
+        }
+        return
+      }
       if (result.view !== undefined) source.accept(result.view)
       if (result.ok) {
         this.update({
@@ -446,18 +462,25 @@ export class CharterDraft {
   // ------------------------------------------------------------------
 
   setBootstrapObjective(value: string): void {
-    this.update({ bootstrapObjective: value })
+    if (this.state.bootstrapSaving) return
+    this.update({ bootstrapObjective: value, attempt: null, bootstrapProblem: null })
   }
 
   updateBootstrapItem(id: string, patch: Partial<BootstrapDraftItem>): void {
+    if (this.state.bootstrapSaving) return
     this.update({
       bootstrapItems: this.state.bootstrapItems.map(item => item.id === id ? { ...item, ...patch } : item),
+      attempt: null,
+      bootstrapProblem: null,
     })
   }
 
   setAllBootstrapSelected(selected: boolean): void {
+    if (this.state.bootstrapSaving) return
     this.update({
       bootstrapItems: this.state.bootstrapItems.map(item => ({ ...item, selected })),
+      attempt: null,
+      bootstrapProblem: null,
     })
   }
 
@@ -559,6 +582,7 @@ export class CharterDraft {
       bootstrapObjective: '',
       bootstrapItems: [],
       bootstrapProblem: null,
+      attempt: null,
     })
   }
 
@@ -573,7 +597,13 @@ export class CharterDraft {
       return
     }
     const previous = this.retryableRequest('bootstrap')
-    const request = previous?.request ?? {
+    // A retained request is replayable only if it still describes exactly the
+    // reviewed plan and the same base revision; otherwise it would silently
+    // apply stale selections.
+    const reusable = previous !== undefined
+      && previous.request.baseRevision === view.revision
+      && JSON.stringify(previous.request.ops) === JSON.stringify(plan.ops)
+    const request = reusable ? previous.request : {
       sessionId: this.state.sessionId,
       mutationId: mutationId(),
       baseRevision: view.revision,
@@ -593,7 +623,17 @@ export class CharterDraft {
       && source.connectionGeneration === sourceGeneration
     try {
       const result = await source.edit(request)
-      if (!current()) return
+      if (!current()) {
+        // A local change replaced the request's ops while it was in flight.
+        // Never leave the draft stuck in `saving`; do not touch the newer ops.
+        if (this.asyncGeneration === generation
+          && this.resolveSource() === source
+          && source.connectionGeneration === sourceGeneration
+          && this.state.saving) {
+          this.update({ saving: false, attempt: null, feedback: { kind: 'connection' } })
+        }
+        return
+      }
       if (result.view !== undefined) source.accept(result.view)
       if (result.ok) {
         this.update({

@@ -129,6 +129,81 @@ describe('per-Session draft ownership', () => {
     expect(draft.getSnapshot().feedback).toEqual({ kind: 'editorInvalid', issue: 'surrogate' })
   })
 
+  it('rejects Unstage while the Apply request is in flight', async () => {
+    let release: ((value: CharterEditResult) => void) | undefined
+    const pending = new Promise<CharterEditResult>(resolve => { release = resolve })
+    const fake = source({ edit: () => pending })
+    const draft = new CharterDraft(sessionId, () => fake)
+    draft.bindLifecycle('life-unstage')
+    draft.stage(view(0), {
+      type: 'item.add',
+      item: { clientRef: 'busy-1', kind: 'invariant', text: 'Busy', order: 0 },
+    })
+    const applied = draft.applyDraft(view(0))
+    await new Promise(resolve => setTimeout(resolve, 0))
+    draft.unstage('draft:busy-1')
+    expect(draft.getSnapshot().ops).toHaveLength(1)
+    release!({ ok: true, replayed: false, committedRevision: 1, ids: {}, view: view(1) })
+    await applied
+    expect(draft.getSnapshot()).toMatchObject({ saving: false, ops: [], feedback: { kind: 'saved', revision: 1 } })
+  })
+
+  it('keeps a reviewed history draft when the tab lease is released', async () => {
+    const fake = source({
+      edit: async () => ({ ok: false, code: 'UNAVAILABLE', message: 'unused' }),
+      bootstrap: async () => ({
+        available: true,
+        proposal: {
+          objective: 'Draft objective',
+          invariants: ['Keep it'],
+          deliverables: [],
+          source: { summarySeq: 1, at: 1 },
+        },
+      }),
+    })
+    const draft = new CharterDraft(sessionId, () => fake)
+    draft.bindLifecycle('life-history')
+    draft.ensureBootstrap(view(0), true)
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(draft.getSnapshot().bootstrapPhase).toBe('draft')
+    expect(draft.isEmpty).toBe(false)
+    draft.dismissBootstrap()
+    expect(draft.isEmpty).toBe(true)
+  })
+
+  it('rejects bootstrap edits while the save request is in flight', async () => {
+    let release: ((value: CharterEditResult) => void) | undefined
+    const pending = new Promise<CharterEditResult>(resolve => { release = resolve })
+    const fake = source({
+      edit: () => pending,
+      bootstrap: async () => ({
+        available: true,
+        proposal: {
+          objective: 'Draft objective',
+          invariants: ['Keep it'],
+          deliverables: [],
+          source: { summarySeq: 1, at: 1 },
+        },
+      }),
+    })
+    const draft = new CharterDraft(sessionId, () => fake)
+    draft.bindLifecycle('life-bootstrap-saving')
+    draft.ensureBootstrap(view(0), true)
+    await new Promise(resolve => setTimeout(resolve, 0))
+    const candidateId = draft.getSnapshot().bootstrapItems[0]!.id
+    const applied = draft.applyBootstrap(view(0))
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(draft.getSnapshot().bootstrapSaving).toBe(true)
+    draft.setBootstrapObjective('changed after save')
+    draft.updateBootstrapItem(candidateId, { selected: false })
+    draft.setAllBootstrapSelected(false)
+    expect(draft.getSnapshot().bootstrapObjective).toBe('Draft objective')
+    expect(draft.getSnapshot().bootstrapItems[0]?.selected).toBe(true)
+    release!({ ok: true, replayed: false, committedRevision: 1, ids: {}, view: view(1) })
+    await applied
+    expect(draft.getSnapshot().bootstrapPhase).toBe('dismissed')
+  })
+
   it('ignores an Apply result after its source was replaced', async () => {
     let release: ((value: CharterEditResult) => void) | undefined
     const pending = new Promise<CharterEditResult>(resolve => { release = resolve })

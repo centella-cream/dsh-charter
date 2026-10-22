@@ -67,13 +67,14 @@ export function sameCharterView(left: CharterView, right: CharterView): boolean 
     && left.revision === right.revision
     && left.promptDigest === right.promptDigest
     && left.message === right.message
+    && left.lifecycle === right.lifecycle
 }
 
 export interface CharterWatchSource {
   /** Read the committed view. Must be synchronous and side-effect free. */
   readonly read: () => CharterView
   /** Register a change listener before the opening snapshot is read. */
-  readonly subscribe: (listener: (view: CharterView) => void) => () => void
+  readonly subscribe: (listener: (view: CharterView | null) => void) => () => void
 }
 
 /**
@@ -92,7 +93,10 @@ export async function* watchCharter(
 ): AsyncGenerator<CharterFrame> {
   signal.throwIfAborted()
   const queue = new LatestViewQueue()
-  const unsubscribe = source.subscribe(view => queue.push(view))
+  const unsubscribe = source.subscribe(view => {
+    if (view === null) queue.close()
+    else queue.push(view)
+  })
   try {
     let published = source.read()
     yield { type: 'snapshot', value: published }
