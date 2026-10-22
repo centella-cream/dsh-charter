@@ -159,6 +159,35 @@ describe('per-Session draft ownership', () => {
     expect(draft.getSnapshot().ops).toHaveLength(0)
   })
 
+  it('ignores an Apply result from an older connection epoch', async () => {
+    let release: ((value: CharterEditResult) => void) | undefined
+    const pending = new Promise<CharterEditResult>(resolve => { release = resolve })
+    let epoch = 0
+    const fake = source({ edit: () => pending })
+    Object.defineProperty(fake, 'connectionGeneration', { get: () => epoch })
+    const draft = new CharterDraft(sessionId, () => fake)
+    draft.bindLifecycle('life-conn')
+    draft.stage(view(0), {
+      type: 'item.add',
+      item: { clientRef: 'conn-1', kind: 'invariant', text: 'Old connection', order: 0 },
+    })
+    const applied = draft.applyDraft(view(0))
+    await new Promise(resolve => setTimeout(resolve, 0))
+    epoch = 1
+    release!({ ok: true, replayed: false, committedRevision: 1, ids: {}, view: view(1) })
+    await applied
+    // Even with the same source object and draft ops, a result from the old
+    // connection epoch cannot clear the current draft.
+    expect(draft.getSnapshot().ops).toHaveLength(1)
+    expect(draft.getSnapshot().saving).toBe(true)
+    draft.invalidateSource()
+    expect(draft.getSnapshot()).toMatchObject({
+      saving: false,
+      ops: [expect.objectContaining({ type: 'item.add' })],
+      feedback: { kind: 'connection' },
+    })
+  })
+
   it('ignores an Apply result after the lifecycle was reset', async () => {
     let release: ((value: CharterEditResult) => void) | undefined
     const pending = new Promise<CharterEditResult>(resolve => { release = resolve })

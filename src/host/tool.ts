@@ -8,6 +8,7 @@ export function defineCharterReadTool(charter: CharterService): ToolDefinition {
       'Read the current user-authored session charter. This tool is read-only. '
       + 'Use the standing view for the complete current objective, active invariants, and active deliverables; '
       + 'use all only when historical or inactive charter entries are needed. '
+      + 'standing has no fixed byte cap; a maximum-size charter can produce a large response. '
       + 'all is a bounded debugging projection with full item metadata and chain/source fields; the page and its result envelope stay within 64 items / 32 KiB, and omitted items are reported in truncated.',
     parameters: {
       view: {

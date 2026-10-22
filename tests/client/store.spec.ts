@@ -22,6 +22,7 @@ vi.mock('@deepseek-ai/dsh-api-gateway/client', () => {
       RemoteSnapshotStream.instances.push(this)
     }
     start() {}
+    restart() {}
     dispose(): Promise<void> { return this.disposed }
   }
   return { RemoteSnapshotStream }
@@ -72,6 +73,24 @@ function streamContext(): never {
 }
 
 describe('client charter source', () => {
+  it('exposes a monotonic connection epoch across attach, retry, and detach', async () => {
+    const source = new CharterSessionSource(streamContext(), SessionId('session-connection'))
+    const seen: number[] = []
+    const off = source.onConnectionChange(() => seen.push(source.connectionGeneration))
+    const remote = {} as never
+    source.attach(remote)
+    await tick()
+    const attached = source.connectionGeneration
+    expect(attached).toBeGreaterThan(0)
+    expect(seen.at(-1)).toBe(attached)
+    source.retry()
+    expect(source.connectionGeneration).toBeGreaterThan(attached)
+    source.detach(remote)
+    expect(source.connectionGeneration).toBeGreaterThan(attached)
+    off()
+    await source.dispose()
+  })
+
   it('accepts a committed view immediately and ignores stale or duplicate revisions', async () => {
     const source = new CharterSessionSource({} as never, SessionId('session-1'))
     const seen: number[] = []
