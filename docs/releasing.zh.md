@@ -64,8 +64,10 @@ mkdir -p dist && mv dsh-charter-0.1.0-rc.1.tgz dist/
 (cd dist && shasum -a 256 dsh-charter-0.1.0-rc.1.tgz > SHA256SUMS)
 ```
 
-在 tagged tree 上打包，保证产物与已提交源码一致，并把得到的 digest 记录到验证记录 8.4 的 source commit 旁边。
-`dist/` 不进 git；把 `.tgz` 和 `SHA256SUMS` 附到 GitHub release，但不要提交它们。
+在 tagged tree 上打包，保证产物与已提交源码一致，并把产物 digest 写入 `dist/SHA256SUMS`。验证记录 8.4 记录
+通过门禁的 source commit 以及由该 commit 构建的产物 digest；如果 tagged tree 只额外添加了证据记录，重建产物
+的 digest 会不同，以 `dist/SHA256SUMS` 中的值为准。`dist/` 不进 git；把 `.tgz` 和 `SHA256SUMS` 附到 GitHub
+release，但不要提交它们。
 
 1. 创建 GitHub release，附加 `.tgz`、`SHA256SUMS` 和简短亮点；
 2. 用非 latest dist-tag 发布预发布版本：

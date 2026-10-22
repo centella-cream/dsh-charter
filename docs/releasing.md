@@ -68,9 +68,11 @@ mkdir -p dist && mv dsh-charter-0.1.0-rc.1.tgz dist/
 (cd dist && shasum -a 256 dsh-charter-0.1.0-rc.1.tgz > SHA256SUMS)
 ```
 
-Pack on the tagged tree so the archive matches the committed source, and record the resulting digest next to the
-source commit in verification §8.4. `dist/` is gitignored; attach the `.tgz` and `SHA256SUMS` to the GitHub
-release but never commit them.
+Pack on the tagged tree so the archive matches the committed source, then write its digest to `dist/SHA256SUMS`.
+Verification §8.4 records the source commit that passed the gates and the digest of the archive built from that
+commit; a tagged tree that adds only the evidence record produces a different archive digest, and that tagged-tree
+digest is the one pinned in `dist/SHA256SUMS`. `dist/` is gitignored; attach the `.tgz` and `SHA256SUMS` to the
+GitHub release but never commit them.
 
 1. Create a GitHub release; attach the `.tgz`, `SHA256SUMS`, and concise highlights.
 2. npm publish the pre-release with a non-latest dist-tag:
