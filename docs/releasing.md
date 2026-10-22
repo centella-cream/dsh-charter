@@ -35,7 +35,8 @@ npm run smoke:package
 
 `npm run check` must pass typecheck, build, Remote smoke, client smoke, and the full Vitest suite;
 `npm run smoke:package` additionally packs the tarball and verifies its required files, every `exports` target,
-the packed Host import, and the packed client bundle. CI runs both. The recorded real-model compaction `PASS`
+the packed Host import, and the packed client bundle. CI is configured to run both once the public repository
+exists. The recorded real-model compaction `PASS`
 (verification §8.4) is the acceptance evidence for the compaction-resilience claim; the manual command below is
 kept for a fresh target-profile re-run.
 
@@ -68,11 +69,13 @@ mkdir -p dist && mv dsh-charter-0.1.0-rc.1.tgz dist/
 (cd dist && shasum -a 256 dsh-charter-0.1.0-rc.1.tgz > SHA256SUMS)
 ```
 
-Pack on the tagged tree so the archive matches the committed source, then write its digest to `dist/SHA256SUMS`.
+Pack on the tagged tree so the archive matches the committed source. Write the digest to `dist/SHA256SUMS` and
+to the tracked root `SHA256SUMS` (the root file is intentionally outside the npm `files` whitelist, so it does not
+change the packed artifact). Commit that root file, then move the `v0.1.0-rc.1` tag to the resulting HEAD.
 Verification §8.4 records the source commit that passed the gates and the digest of the archive built from that
 commit; a tagged tree that adds only the evidence record produces a different archive digest, and that tagged-tree
-digest is the one pinned in `dist/SHA256SUMS`. `dist/` is gitignored; attach the `.tgz` and `SHA256SUMS` to the
-GitHub release but never commit them.
+digest is the one pinned in the tracked root `SHA256SUMS` and `dist/SHA256SUMS`. `dist/` is gitignored; attach the
+`.tgz` and `SHA256SUMS` to the GitHub release but never commit the tarball.
 
 1. Create a GitHub release; attach the `.tgz`, `SHA256SUMS`, and concise highlights.
 2. npm publish the pre-release with a non-latest dist-tag:

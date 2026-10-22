@@ -45,17 +45,17 @@ export interface PromptBudgetAdmission {
   readonly over: boolean
   /** The staged prompt is strictly smaller than the committed one. */
   readonly shrinking: boolean
-  /** Apply must stay disabled: the staged prompt is over budget and not shrinking. */
+  /** Apply must stay disabled: the staged prompt is over budget and larger than the committed one. */
   readonly blocksApply: boolean
 }
 
 /**
  * Decide whether the Apply button must stay disabled by the prompt budget.
  *
- * The Host admits an already over-budget prompt only when the edit shrinks it
- * (stepwise convergence); content that stays over budget or grows must be
- * trimmed before Apply. This mirrors `overLimitGrowth` in the Host admission
- * policy and keeps the Pane's button state on the same rule.
+ * This mirrors the Host's `overLimitGrowth` admission: an over-budget prompt is
+ * admitted unless the edit makes it grow (an unchanged or shrinking render is
+ * allowed so a tightened budget can converge stepwise). New or growing content
+ * must be trimmed before Apply.
  */
 export function promptBudgetAdmission(
   currentPrompt: string,
@@ -71,7 +71,7 @@ export function promptBudgetAdmission(
     previewBytes,
     over,
     shrinking,
-    blocksApply: over && !shrinking,
+    blocksApply: over && previewBytes > currentBytes,
   }
 }
 

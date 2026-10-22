@@ -2,7 +2,8 @@
 
 [English](verification.md) | 中文
 
-验证日期：2026-10-20；第二、三轮发布就绪评审后复跑：2026-10-21。
+验证日期：2026-10-20；第二、三轮发布就绪评审后复跑：2026-10-21；`0.1.0-rc.1` tag 与 tracked 产物 digest 的
+最终树复跑：2026-10-22。
 环境：macOS，Node `v22.23.1`，npm `12.0.2`，pnpm `12.3.4`；当前 Desktop 运行时 DSH `0.2.0-rc.2`。
 本地开发依赖基线：DSH `0.2.1-rc.2`。
 
@@ -26,10 +27,10 @@
 | 预算收紧与收敛 | 通过：调低预算后显示 `overBudget`、停止注入、缩小编辑可收敛；不可用配置被 clamp；见 4.5 |
 | Session 级客户端草稿 | 通过：单测覆盖 binding 卸载/重挂载后草稿存活、重试复用 mutation id、冲突 rebase、bootstrap 不抢占 section；见 4.5 |
 | 运行期 schema 重新校验 | 通过：mount 后把记录改成非法 schema，只有该 Session 不可用且原始记录保留；见 4.6 |
-| 打包产物可安装性 | 通过：CI 运行 `smoke:package`（tarball 内容、exports、packed Host import、client bundle）；见第 2 节 |
+| 打包产物可安装性 | 通过：本地 `npm run smoke:package`（tarball 内容、exports、packed Host import、client bundle）；见第 2 节 |
 | Compaction checker 退出条件 | 通过：fixture 覆盖成功、system prompt 污染、charter_read 不匹配、快照丢失、摘要泄漏 warning；见 4.7 |
 | 陈旧异步草稿结果 | 通过：edit/bootstrap 结果按 source/generation/请求身份围栏；空草稿和 idle 草稿会回收；见 4.7 |
-| 真实模型 + compaction 端到端 | **2026-10-22 实测 PASS**（`session-45c509c6…`）：326 条历史消息 / 约 228k tokens 被压缩，revision 1 会话契约存活，压缩后快照与 `charter_read` 均验证（见 8.4） |
+| 真实模型 + compaction 端到端 | **2026-10-22 实测 PASS**（一个匿名评估会话）：326 条历史消息 / 约 228k tokens 被压缩，revision 1 会话契约存活，压缩后快照与 `charter_read` 均验证（见 8.4） |
 
 ## 2. 本地基线
 
@@ -50,8 +51,9 @@ npm test
   把 tarball 安装到一个**空 consumer 项目**（只使用其声明依赖），再加载 packed `dsh-charter/core` 入口与
   client bundle。
 
-CI 在每次 push/PR 上对 Node `22.19.0` 与 Node `24` 运行 `npm run check` 和 `npm run smoke:package`，绿色构建
-现在同时代表可安装产物在最低支持版本与当前 LTS 上都已验证。
+CI 已配置在每次 push/PR 上对 Node `22.19.0` 与 Node `24` 运行 `npm run check` 和 `npm run smoke:package`。
+仓库尚无 remote，因此 CI 尚未实际运行；本文档记录的本地运行就是证据，且可安装产物已在本地的最低支持版本与当前
+LTS 上验证。
 
 关键测试文件：
 
@@ -64,14 +66,14 @@ CI 在每次 push/PR 上对 Node `22.19.0` 与 Node `24` 运行 `npm run check` 
 | `tests/core/state.spec.ts` | 替代链必须指向 current successor |
 | `tests/core/fork.spec.ts` | fork 重铸 id、替代链重映射 |
 | `tests/core/bootstrap.spec.ts` | 压缩摘要分节抽取、latest objective、UTF-8 拆分/不截断、最新/损坏 summary、回退到较旧可用 summary |
-| `tests/host/composition.spec.ts` | 真实 Cordis/Storage/SystemPrompt/Tools 组合、user-role 边界、actor 策略、`item.add` + `item.propose` 混合原子 Apply、user actor 的 proposal、完整 standing 与有上限 `all`、单条损坏记录隔离、调低预算后的 over-budget 收敛、不可用配置 clamp、child retry 发布 ready 帧、fork、幂等、配额、父环拒绝、lifecycle、非 live Session 的只读 stored view 与 live 升级、从真实 `compaction/summary` 事件生成草案 |
+| `tests/host/composition.spec.ts` | 真实 Cordis/Storage/SystemPrompt/Tools 组合、user-role 边界、actor 策略、`item.add` + `item.propose` 混合原子 Apply、user actor 的 proposal、完整 standing 与有上限 `all`、单条损坏记录隔离、调低预算后的超预算收敛、不可用配置 clamp、child retry 发布 ready 帧、fork、幂等、配额、父环拒绝、lifecycle、非 live Session 的只读 stored view 与 live 升级、从真实 `compaction/summary` 事件生成草案 |
 | `tests/host/watch.spec.ts` | opening snapshot、竞态、去重、abort、装饰器兼容、resource-scope 能力检测 |
 | `tests/host/actor.spec.ts` | principal 感知策略：现代运行时缺失 principal 拒绝、仅旧版 owner 回退、非 owner 记录、按版本选择的 `resolveRemoteActor` |
 | `tests/host/remote.spec.ts` | Remote 描述符、wire schema、旧 Host view snapshot、零 pending 上限 |
 | `tests/client/store.spec.ts` | 提交后立即接受 view、忽略陈旧/重复 revision、opening snapshot 单调、权威不可用降级、attach 重试、待生效 attach 在 stream 启动前被取消、共享 source lease/引用计数、旧 lease no-op、忽略其他 Session 的 stream 帧 |
 | `tests/client/bootstrap-plan.spec.ts` | 溢出候选仍在一个 plan 中；单遍规划与逐候选结果（近乎全部 active 时最坏 O(n²)，已披露）；active 前缀符合字节预算；bootstrap 结果分类（draft/discard/stale/unavailable） |
 | `tests/client/draft.spec.ts` / `draft-store.spec.ts` | Session 绑定的请求构造（A 的 ops 不会为 B 构造请求）；binding 卸载/重挂载后草稿存活；重试复用 mutation id；冲突 rebase；陈旧异步结果不能覆盖新的 draft/source/lifecycle；bootstrap 不抢占 section |
-| `tests/client/preview.spec.ts` | 投影后的 draft 行（add/edit/accept/progress/supersede/purge）；渲染器一致性与 pending 排除；prompt 预算的 Apply 准入（缩短、增长、预算内三种渲染） |
+| `tests/client/preview.spec.ts` | 投影后的 draft 行（add/edit/accept/progress/supersede/purge）；渲染器一致性与 pending 排除；prompt 预算的 Apply 准入（缩短、同字节、增长、预算内四种渲染） |
 | `tests/verify/compaction-checks.spec.ts` | compaction checker fixture：system prompt 污染、charter_read 调用但不匹配、压缩后快照丢失、摘要泄漏 warning、紧凑 standing 投影一致 |
 
 ## 3. 跨版本矩阵
@@ -107,8 +109,8 @@ npm run build
 最终 `0.1.0-rc.1` 树在 2026-10-22 重新跑过：每个版本均为 17 个测试文件 / 157 个测试，且 build 内含 remote/client
 smoke 断言。
 
-这个五版本矩阵是**本地证据**：版本目录和驱动脚本位于被 git 忽略的 `.tmp/`，公开 CI 不会复现它。CI 覆盖已提交
-的门禁（`npm run check` + `npm run smoke:package`），运行于 Node `22.19.0` 与 Node `24`。
+这个五版本矩阵是**本地证据**：版本目录和驱动脚本位于被 git 忽略的 `.tmp/`，公开 CI 不会复现它。CI 配置为在
+Node `22.19.0` 与 Node `24` 上覆盖已提交的门禁（`npm run check` + `npm run smoke:package`），仓库存在后才会实际运行。
 
 `0.1.7-rc.2` 和 `0.2.0` 的 remote smoke 输出：
 
@@ -174,7 +176,7 @@ ln -sfn ../node_modules ./proj/node_modules
 
 - 单元/组合层已验证“每次 assembly 从正本读取”和“重新 assembly 字节稳定”；
 - 平台层已验证 runtime-context 的重新物化路径；
-- **尚未**在真实模型会话中执行一次完整 compaction 并观察后续请求。
+- 真实模型 compaction **PASS 已记录在 8.4 节（2026-10-22）**；`npm run verify:compaction` 手工命令保留用于在目标 profile 重新跑一次。
 
 ### 4.4 从压缩摘要生成历史草案
 
@@ -191,9 +193,9 @@ ln -sfn ../node_modules ./proj/node_modules
 `service.bootstrap()`，验证返回的 objective/deliverables、`shadowedTokenCount` 来源元数据，并确认：
 调用本身不改变 revision、不写 storage；只有用户点击应用后，草案才通过普通原子 edit 成为 revision 1。
 
-UI 的自动草案面板依赖客户端 `useEffect` 和 Remote bootstrap；本轮未在真实浏览器中构造“已完成压缩且为 live”的
-Session 做截图验证，客户端代码通过 typecheck/build，Remote 通过契约测试。真实压缩会话的 UI 行为仍需在目标
-profile 手工确认。
+UI 的自动草案面板依赖客户端 `useEffect` 和 Remote bootstrap；8.4 节记录了该面板的草案在真实压缩会话中被审阅并
+应用为 revision 1。真正剩余的缺口只是没有为自动草案面板本身补浏览器截图；客户端路径由 typecheck/build 和 Remote
+契约测试覆盖。
 
 ### 4.5 记录隔离、预算降级与客户端草稿所有权
 
@@ -230,8 +232,12 @@ profile 手工确认。
   仍以独立行可见；重连时显示非阻塞提示，说明暂时只读并展示最近一次确认状态。
 - **调试投影与 envelope**：`charter_read all` 返回 origin/order/createdRevision/替代链/验证来源，32 KiB
   上限按最终 tool envelope 测量（用 30 条大归档条目测试）；`overBudget` 也反映调低的 history/mutation 数量上限。
-- **打包产物门禁**：CI 打包 tarball 并校验必需文件、所有 `exports` 目标、无工作区泄漏、packed Host import 和
-  packed client bundle（`npm run smoke:package`）。
+- **可访问性与提示卫生**：同一时刻只渲染一条超预算提示（阻塞中的暂存草稿 > 已保存超预算记录 > 可提交的超预算
+  渲染），并只给一个处理建议；`status`/`alert` 只包裹消息文本，操作按钮不再嵌套在 live region 内；条目操作
+  菜单使用原生 disclosure + `aria-haspopup`，操作后焦点回到条目行，替代/验证原因改为可见文本而非 title 属性；
+  历史草案 idle 阶段使用独立的“尚未加载草案”文案。
+- **打包产物门禁**：本地 `npm run smoke:package` 打包 tarball 并校验必需文件、所有 `exports` 目标、无工作区泄漏、
+  packed Host import 和 packed client bundle；CI 配置为在仓库存在后运行同一门禁。
 
 ### 4.7 Checker 退出条件、草稿异步围栏与在线修复
 
@@ -270,8 +276,8 @@ profile 手工确认。
 - **待生效 attach 的取消**：上一个 stream 仍在 dispose 时调用 `attach(B)`，随后在新 attach 取得 remote 之前
   调用 `detach(B)`：待生效 generation 被取消，dispose 迟到完成也不会再创建 `B` stream，source 保持 detached
   （测试见 `tests/client/store.spec.ts`）。
-- **Prompt 预算的 Apply 门禁**：Pane 的 Apply 与 Host 准入使用同一条分步规则：渲染后的 prompt 仍超限但严格
-  缩短时允许提交；仍超限或增长时保持禁用；单测覆盖缩短、增长和预算内三种渲染。
+- **Prompt 预算的 Apply 门禁**：Pane 的 Apply 与 Host 的 `overLimitGrowth` 规则完全一致：只有修改让渲染后的
+  prompt 变大时才禁用；仍超限但缩小或保持同字节时可以提交；单测覆盖缩短、同字节、增长和预算内四种渲染。
 - **保存锁与导出围栏**：Apply/bootstrap 保存期间 Rebase 被禁用并拒绝；bootstrap 抽取按 source 实例 +
   connection generation 围栏；脏 draft 不会被 idle TTL/LRU 删除；编辑器允许 objective/同 ID item 已超预算时的
   分步缩短。
@@ -508,17 +514,17 @@ DSH_HOME="$PWD/.tmp/webview/home" dsh --profile charterweb2 --no-open --port 193
 在同一 Web profile 中把 DSH 语言从中文切到 English（Settings → Language → English），不做页面刷新：
 
 - 标签从「会话契约」变为 `Charter`；
-- 面板从「会话会话契约 / 目标 / 硬约束 / 1 条约束 / 预览上下文 / 应用」切换为
-  `SESSION CHARTER / OBJECTIVE / INVARIANTS / 1 constraint / Preview context / Apply`；
+- 面板标签从「概览 / 目标 / 硬约束 / 预览上下文 / 应用」切换为
+  `Overview / Objective / Invariants / Preview context / Apply`（重设计后的面板，见 7.5）；
 - 统计、状态、按钮、占位符、错误码说明全部来自同一 `dsh-charter` locale namespace；
 - 刷新页面后语言偏好仍为 English，标签和面板保持英文。
 
 中文截图见 [charter-pane.png](assets/charter-pane.png)，英文截图见
 [charter-pane.en.png](assets/charter-pane.en.png)。用户输入的目标和约束正文不翻译，这是数据，不是 UI 文案。
 
-### 7.6 重设计 UI 与预算验证
+### 7.5 重设计 UI 与预算验证
 
-本节截图已用第三轮评审后的构建重新生成：面板现在包含声明性上下文提示、始终可用的**历史草案** section、
+本节截图已用最终 `0.1.0-rc.1` 构建（2026-10-22）重新生成：面板包含声明性上下文提示、始终可用的**历史草案** section、
 **上下文** 中的 record 上限、投影后的草稿行，以及逐行操作菜单。
 
 重设计后的面板在同一个 Web profile、1440×757 下验证了明暗主题和中英文：
@@ -540,7 +546,7 @@ DSH_HOME="$PWD/.tmp/webview/home" dsh --profile charterweb2 --no-open --port 193
 prompt renderer 计算草案预览，并在条目/目标/所选草案/投影上下文超预算时禁用 Apply。本轮没有在浏览器里
 实际录入超限文本走一遍禁用态。
 
-### 7.5 说明
+### 7.6 说明
 
 - 测试使用了一个格式合法但没有真实额度的 API Key，所以 Chat 里显示模型请求失败；这是模型调用问题，
   不影响会话契约标签页的目标/约束编辑和 Apply。
@@ -549,14 +555,13 @@ prompt renderer 计算草案预览，并在条目/目标/所选草案/投影上�
 
 ## 8. 真实 compaction 端到端
 
-状态：**2026-10-22 已在真实 DSH Session 上记录 PASS**（`session-45c509c6…`，
-`an internal eval workspace`）：`/compact` 压缩 326 条消息（约 228k tokens），下一次请求携带字节一致且 digest 匹配的
-`charter:standing` 快照。`npm run check` 不调用模型，因此不会执行这项检查；证据见 8.4。
+状态：**2026-10-22 已在真实 DSH Session 上记录 PASS**（一个匿名评估会话）：`/compact` 压缩 326 条消息
+（约 228k tokens），下一次请求携带字节一致且 digest 匹配的 `charter:standing` 快照。`npm run check` 不调用模型，因此不会执行这项检查；证据见 8.4。
 
 ### 8.1 已经证明的部分
 
 - DSH 会把每个装配后的 runtime context 持久化为 `user/message` 事件（`source.kind === "runtime-context"`，
-  带 `sections` 数组）。在一个真实 Web profile Session（`session-aa06df32…`，revision 6，245 B 会话契约）
+  带 `sections` 数组）。在一个真实 Web profile Session（一个匿名评估会话，revision 6，245 B 会话契约）
   中，有 7 个快照包含 `charter:standing` section，其字节与 storage 记录的 `promptText` 完全一致，SHA-256
   也等于 `promptDigest`。这验证了真实 DSH 运行时上的 user-role 注入链路（包含 UI 驱动的编辑）。
 - composition 测试证明 provider 每次请求都从 storage 正本重新装配；平台的 `RuntimeContextProjection` 在
@@ -608,7 +613,7 @@ replacement/compaction 遮蔽后清空 retained，下一次请求重新生成；
 
 ### 8.4 真实模型实测记录（2026-10-22）
 
-目标：`session-45c509c6…`（workspace `an internal eval workspace`）。先审阅并应用其上一轮
+目标：一个匿名评估会话。先审阅并应用其上一轮
 压缩摘要生成的历史草案，成为 **revision 1**（13 条 active 条目，5,081 B，`promptDigest sha256:4dd9e615…`）。
 随后 `/compact` 以 compaction seq **31801**（source `cmd-635e3d77-2`）完成，压缩 326 条消息（约 228,181
 tokens）。压缩后第一次请求产生 runtime-context 快照 seq **31810**，包含

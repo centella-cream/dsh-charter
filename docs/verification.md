@@ -2,7 +2,8 @@
 
 English | [中文](verification.zh.md)
 
-Verification date: 2026-10-20; re-run after the second and third readiness reviews: 2026-10-21.
+Verification date: 2026-10-20; re-run after the second and third readiness reviews: 2026-10-21; final-tree rerun
+for the `0.1.0-rc.1` tag and tracked artifact digest: 2026-10-22.
 Environment: macOS, Node `v22.23.1`, npm `12.0.2`, pnpm `12.3.4`; current Desktop runtime DSH `0.2.0-rc.2`.
 Local development dependency baseline: DSH `0.2.1-rc.2`.
 
@@ -27,10 +28,10 @@ HTML live under `.tmp/` and are excluded from the published package.
 | Budget degradation and convergence | Pass: lowered budgets become `overBudget`, injection stops, shrinking edits converge; non-viable config is clamped; section 4.5 |
 | Session-owned client drafts | Pass: unit tests cover draft survival across bindings, retry mutation-id reuse, conflict rebase, and bootstrap section ownership; section 4.5 |
 | Runtime schema revalidation | Pass: a record mutated to an invalid schema after mount isolates only its Session and is preserved; section 4.6 |
-| Packed artifact installability | Pass: CI runs `smoke:package` (tarball contents, exports, packed Host import, client bundle); section 2 |
+| Packed artifact installability | Pass: local `npm run smoke:package` (tarball contents, exports, packed Host import, client bundle); section 2 |
 | Compaction checker exit criteria | Pass: fixture tests cover success, dirty system prompt, mismatched charter_read, lost snapshot, and leak warning; section 4.7 |
 | Stale async draft results | Pass: edit/bootstrap results are fenced by source/generation/request identity; empty and idle drafts are reclaimed; section 4.7 |
-| Real model + compaction end-to-end | **PASS recorded 2026-10-22** on `session-45c509c6…`: 326 shadowed messages / ~228k tokens, revision-1 charter survived, post-compaction snapshot + `charter_read` verified (section 8.4) |
+| Real model + compaction end-to-end | **PASS recorded 2026-10-22** on an anonymized evaluation Session: 326 shadowed messages / ~228k tokens, revision-1 charter survived, post-compaction snapshot + `charter_read` verified (section 8.4) |
 
 ## 2. Local baseline
 
@@ -51,8 +52,9 @@ Results:
   leaked workspace files, installs the tarball into an **empty consumer project** with only its declared
   dependencies, and loads the packed `dsh-charter/core` entry plus the client bundle.
 
-CI runs `npm run check` and `npm run smoke:package` on every push/PR for Node `22.19.0` and Node `24`, so a green
-build now also means the installable artifact was checked on the minimum supported and current LTS runtimes.
+CI is configured to run `npm run check` and `npm run smoke:package` on every push/PR for Node `22.19.0` and
+Node `24`. The repository has no remote yet, so CI has not run; the local runs recorded in this document are the
+evidence, and the installed artifact was checked on the minimum supported and current LTS runtimes locally.
 
 Key test files:
 
@@ -72,7 +74,7 @@ Key test files:
 | `tests/client/store.spec.ts` | accept committed view immediately, ignore stale/duplicate revisions, monotonic opening snapshot, authoritative availability demotion, attach retry, pending-attach cancellation before its stream starts, shared source lease/ref count, stale-lease no-op, foreign-Session stream frames ignored |
 | `tests/client/bootstrap-plan.spec.ts` | overflow candidates stay in one plan; single planning pass with per-candidate outcomes; dense all-active case; active prefix fits the byte budget; bootstrap outcome classifier (draft/discard/stale/unavailable) |
 | `tests/client/draft.spec.ts` / `tests/client/draft-store.spec.ts` | Session-scoped request guard (Session A ops never build a request for Session B); draft survival across binding unmount/remount; idempotent retry mutation-id reuse; conflict rebase; stale async results cannot overwrite a newer draft/source/lifecycle; bootstrap does not steal the section |
-| `tests/client/preview.spec.ts` | projected draft rows for add/edit/accept/progress/supersede/purge; renderer parity and pending exclusion; prompt-budget Apply admission (shrinking, growing, and within-budget renders) |
+| `tests/client/preview.spec.ts` | projected draft rows for add/edit/accept/progress/supersede/purge; renderer parity and pending exclusion; prompt-budget Apply admission (shrinking, same-size, growing, and within-budget renders) |
 | `tests/verify/compaction-checks.spec.ts` | compaction checker fixtures: dirty system prompt, called-but-mismatched `charter_read`, lost post-compaction snapshot, leak warning, and exact compact standing projection |
 
 ## 3. Cross-version matrix
@@ -110,8 +112,8 @@ Re-run on the final `0.1.0-rc.1` tree on 2026-10-22: each version reports 17 tes
 includes the remote/client smoke assertions.
 
 This five-version matrix is **local evidence**: its version directories and driver script live in the gitignored
-`.tmp/`, so the public CI does not reproduce it. CI covers the committed gates (`npm run check` +
-`npm run smoke:package`) on Node `22.19.0` and Node `24`.
+`.tmp/`, so the public CI does not reproduce it. CI is configured to cover the committed gates
+(`npm run check` + `npm run smoke:package`) on Node `22.19.0` and Node `24` once the repository exists.
 
 `0.1.7-rc.2` and `0.2.0` remote smoke prints:
 
@@ -177,7 +179,7 @@ Therefore:
 
 - unit/composition level verifies "every assembly reads authority" and "re-assembly is byte-stable";
 - platform level verifies the runtime-context re-materialization path;
-- the runtime check (`npm run verify:compaction`) is defined in section 8; a live compaction on a real model Session is still pending.
+- the runtime check (`npm run verify:compaction`) is defined in section 8; a real-model compaction **PASS is recorded in §8.4 (2026-10-22)** and the manual command is retained for a fresh target-profile re-run.
 
 ### 4.4 History draft from a compaction summary
 
@@ -196,10 +198,10 @@ Therefore:
 confirms the call itself does not change the revision or write storage; only a user Apply turns the draft into
 revision 1 through the normal atomic edit.
 
-The UI auto-draft panel depends on a client `useEffect` and the Remote bootstrap method. This round did not build a
-live, already-compacted Session for a browser screenshot; the client passes typecheck/build and the Remote
-passes contract tests. The UI behavior on a real compacted Session still needs a manual pass in the target
-profile.
+The UI auto-draft panel depends on a client `useEffect` and the Remote bootstrap method. §8.4 records that
+panel's draft being reviewed and applied as revision 1 in a real compacted Session; the genuine remaining gap is
+that no browser screenshot of the auto-draft panel itself was captured, and the client path is covered by
+typecheck/build plus Remote contract tests.
 
 ### 4.5 Record isolation, budget degradation, and client draft ownership
 
@@ -246,8 +248,14 @@ The fourth readiness review targeted failure paths that only appear after startu
 - **Debug projection and envelope.** `charter_read all` now carries origin/order/createdRevision/supersede
   chain/verification provenance, and its 32 KiB cap is measured against the final tool envelope (tested with
   30 large archived items). `overBudget` also reflects lowered history/mutation count limits.
-- **Packaged artifact gate.** CI packs the tarball and verifies required files, every `exports` target, no
-  workspace leakage, the packed Host import, and the packed client bundle via `npm run smoke:package`.
+- **Accessibility and alert hygiene.** At most one over-budget alert renders (blocking staged draft > stored
+  over-budget record > admitted over-budget render) with one remedy; `status`/`alert` roles wrap only message
+  text so action buttons are never nested in a live region; the item action menu is a native disclosure with
+  `aria-haspopup`, focus returns to the row after actions, and replacement/verification reasons are visible text
+  instead of title attributes; the idle history phase has a dedicated no-draft message.
+- **Packaged artifact gate.** The local `npm run smoke:package` gate packs the tarball and verifies required
+  files, every `exports` target, no workspace leakage, the packed Host import, and the packed client bundle;
+  CI is configured to run the same gate once the repository exists.
 
 ### 4.7 Checker exit criteria, draft async fencing, and online repair
 
@@ -294,9 +302,9 @@ Additional round-out coverage:
 - **Pending attach cancellation.** `attach(B)` while the previous stream is still disposing, then `detach(B)`
   before the new attach owns the remote: the pending generation is cancelled, so the late resolution never creates
   the `B` stream and the source reports itself detached (test in `tests/client/store.spec.ts`).
-- **Prompt-budget Apply gate.** The Pane's Apply button now uses the same stepwise rule as Host admission: an
-  over-budget rendered prompt is admitted while it strictly shrinks, and remains blocked while it stays over budget
-  or grows; unit tests cover shrinking, growing, and within-budget renders.
+- **Prompt-budget Apply gate.** The Pane's Apply button now uses the Host's exact `overLimitGrowth` rule: an
+  over-budget rendered prompt is blocked only when the edit makes it grow, so a shrinking or unchanged over-budget
+  render is admitted; unit tests cover shrinking, same-size, growing, and within-budget renders.
 - **Saving locks and export guards.** Rebase is disabled/rejected while Apply or bootstrap saving runs; bootstrap
   extraction is fenced by source instance + connection generation; dirty drafts are never removed by idle TTL or
   LRU; the editor accepts a stepwise over-budget shrink for objective and same-id item edits.
@@ -540,8 +548,8 @@ This proves the browser UI → Remote → Host service → storage domain → re
 Switch DSH from Chinese to English in the same Web profile (Settings → Language → English) without reloading:
 
 - tab changes from `会话契约` to `Charter`;
-- pane changes from `会话会话契约 / 目标 / 硬约束 / 1 条约束 / 预览上下文 / 应用` to
-  `SESSION CHARTER / OBJECTIVE / INVARIANTS / 1 constraint / Preview context / Apply`;
+- pane labels change from `概览 / 目标 / 硬约束 / 预览上下文 / 应用` to
+  `Overview / Objective / Invariants / Preview context / Apply` (redesigned pane, see §7.5);
 - stats, statuses, buttons, placeholders, and error-code messages all come from the same `dsh-charter` locale
   namespace;
 - after a page reload the preference remains English and the tab/pane stay English.
@@ -550,9 +558,9 @@ Chinese screenshot: [charter-pane.png](assets/charter-pane.png). English screens
 [charter-pane.en.png](assets/charter-pane.en.png). User-entered objective/constraint body is data and is not
 translated.
 
-### 7.6 Redesigned UI and budget verification
+### 7.5 Redesigned UI and budget verification
 
-The screenshots in this section were regenerated against the third-review build: the pane now shows the
+The screenshots in this section were regenerated against the final `0.1.0-rc.1` build (2026-10-22): the pane shows the
 advisory-context disclaimer, an always-available **History draft** section, the record ceiling in **Context**,
 projected draft rows, and per-row action menus.
 
@@ -580,7 +588,7 @@ selected draft, or the projected context exceeds its budget. The automated cover
 policy is in `tests/core/bootstrap.spec.ts`; the over-limit UI itself was not driven through a browser in this
 round.
 
-### 7.5 Notes
+### 7.6 Notes
 
 - The test used a syntactically valid but uncredited API key, so Chat shows a model-request failure; this is a
   model-call issue and does not affect Charter editing/Apply.
@@ -590,16 +598,16 @@ round.
 
 ## 8. Real compaction end-to-end
 
-Status: **PASS recorded 2026-10-22** on a real DSH Session (`session-45c509c6…`,
-`an internal eval workspace`): `/compact` shadowed 326 messages (~228k tokens) and the next request carried the
-byte-identical `charter:standing` snapshot and matching `promptDigest`. `npm run check` never runs a model and
+Status: **PASS recorded 2026-10-22** on a real DSH Session (an anonymized evaluation Session): `/compact`
+shadowed 326 messages (~228k tokens) and the next request carried the byte-identical `charter:standing` snapshot
+and matching `promptDigest`. `npm run check` never runs a model and
 therefore never runs this check; section 8.4 records the evidence.
 
 ### 8.1 What is already proven
 
 - DSH persists each assembled runtime context as a `user/message` event with
-  `source.kind === "runtime-context"` and a `sections` array. In a real Web-profile Session
-  (`session-aa06df32…`, revision 6, 245 B charter), seven such snapshots contain a `charter:standing` section
+  `source.kind === "runtime-context"` and a `sections` array. In a real Web-profile Session (an anonymized
+  evaluation Session, revision 6, 245 B charter), seven such snapshots contain a `charter:standing` section
   whose bytes equal the storage record's `promptText` and whose SHA-256 equals `promptDigest`. This proves the
   user-role injection path on a real DSH runtime, including UI-driven edits.
 - Composition tests prove the provider re-assembles from the storage authority on every request; the platform's
@@ -658,7 +666,7 @@ derived digest.
 
 ### 8.4 Recorded real-model run (2026-10-22)
 
-Target: `session-45c509c6…` (workspace `an internal eval workspace`). The Session's history
+Target: an anonymized evaluation Session. The Session's history
 draft from its previous compaction summary was reviewed and applied as **revision 1** (13 active items, 5,081 B,
 `promptDigest sha256:4dd9e615…`). `/compact` then completed as compaction seq **31801** (source
 `cmd-635e3d77-2`), shadowing 326 messages (~228,181 tokens). The next request after compaction persisted

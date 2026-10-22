@@ -112,8 +112,16 @@ Initial MVP.
   dirty in the lease-release cleanup.
 - Admit stepwise shrinking of an already over-budget objective or item even while it is still above the limit, so
   a tightened budget can converge without rejecting every intermediate edit.
-- Gate the Apply button by the same prompt-budget rule as Host admission: an over-budget rendered prompt is
-  accepted while it is shrinking, and stays blocked only when it would remain over budget or grow.
+- Gate the Apply button by the Host's exact `overLimitGrowth` rule: an over-budget rendered prompt is blocked
+  only when the edit makes it grow, so a shrinking or unchanged over-budget render is accepted.
+- Consolidate the two stacked over-budget alerts into one alert with one remedy; show replacement and
+  verification-failure reasons as visible item-row text instead of title attributes, and restore keyboard focus
+  to the item row after row actions.
+- Correct the live-region pattern: `status`/`alert` roles now wrap only the message text, so action buttons are
+  never nested inside live regions; the history-draft idle phase shows a dedicated no-draft message instead of
+  the extracted-draft copy.
+- Use real DSH semantic tokens for the primary-button fill/hover, content font size, and font family, and unify
+  Chinese UI terminology (章节 / 待审 / 硬约束 / 会话 / 标记为未验证).
 - Keep the `all` tool envelope bounded even when `maxObjectiveBytes` exceeds it: omit the objective with
   `objectiveTruncated: true` instead of returning an oversized response; validate `shadowedTokenCount` as a
   non-negative integer before the Remote codec sees it.

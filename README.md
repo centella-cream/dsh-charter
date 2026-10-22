@@ -105,8 +105,9 @@ The browser registers a `conversation.view` entry; the pane and `charter.watch` 
 ## Install
 
 > **Current status: pre-release.** `dsh-charter` is not published on the npm registry or in the Desktop plugin
-> catalog yet. The only currently executable path is the local tarball build. The versioned Web command and
-> Desktop Plugins flow become available with the first public release.
+> catalog yet. The only currently installable artifact is a local tarball that a maintainer builds from this
+> checkout; it is not publicly distributed. The versioned Web command and Desktop Plugins flow become available
+> with the first public pre-release.
 
 ### Requirements
 
@@ -142,9 +143,9 @@ dsh plugin --profile web add dsh-charter@0.1.0-rc.1   # exact version: reproduci
 dsh plugin --profile web add dsh-charter@next         # newest pre-release
 ```
 
-Pin an explicit version for reproducible profiles. `0.1.0-rc.1` is published under the `next` dist-tag, never
-under `latest`: use `@latest` only after a stable release exists, otherwise npm resolves it to the last stable
-version or fails before the first stable publication.
+When the first public pre-release ships, `0.1.0-rc.1` will be published under the `next` dist-tag, never under
+`latest`; use `@latest` only after a stable release exists. Until that publication these registry commands do
+not resolve: build and install the local tarball above. Pin an explicit version for reproducible profiles.
 
 Restart `dsh web` (or let profile HMR recompose), then refresh the page. The profile `package.json` gains the
 dependency and bundle entry.
@@ -159,8 +160,8 @@ path above.
 ### Update
 
 - **Local tarball:** rebuild and repeat the local install command.
-- **Web pre-release:** `dsh plugin --profile web add dsh-charter@next`, then restart/refresh; pinned profiles
-  keep their explicit `0.1.0-rc.1` entry until a stable `latest` exists.
+- **Web after the first public pre-release:** `dsh plugin --profile web add dsh-charter@next`, then
+  restart/refresh; pinned profiles keep their explicit `0.1.0-rc.1` entry until a stable `latest` exists.
 - **Desktop after release:** Plugins → `dsh-charter` → **Update**; Desktop hot-applies it.
 
 ## Quick start
@@ -319,11 +320,15 @@ security reports, follow [SECURITY.md](SECURITY.md).
 
 Pre-1.0. The DSH plugin ABI is still moving; compatibility is tested against the versions above, and the design
 keeps the compatibility layer deliberately small. This tree is the `0.1.0-rc.1` pre-release: the real-model
-compaction acceptance **PASS is recorded on 2026-10-22** (session `session-45c509c6…`; 326 messages / ~228k
-tokens shadowed, revision-1 charter survived with matching digest — see verification §8.4). Remaining release
-blockers are publishing prerequisites (a public repository and dist-tag), not the compaction evidence. The
-parser/Host/Remote/client mechanism is covered by automated tests, and CI packs and smoke-tests the installable
-artifact.
+compaction acceptance **PASS is recorded on 2026-10-22** on an anonymized evaluation Session (326 messages /
+~228k tokens shadowed, revision-1 charter survived with matching digest — see verification §8.4). The package is
+not published to npm or the Desktop catalog yet, so the only installable artifact is a local tarball a
+maintainer builds from this tree; the first public pre-release will be available under the `next` dist-tag.
+Remaining release blockers are publishing prerequisites (a public repository and dist-tag), plus one manual
+check recorded in §8.4 that is required before a stable `latest` release: restart the Desktop app and reopen the
+Charter tab once to confirm the installed bundle/tool ABI. CI is configured to pack and smoke-test the
+installable artifact and will run on the first push once the public repository exists; today the local gates in
+verification §2 are the evidence.
 
 ## License
 

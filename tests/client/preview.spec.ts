@@ -85,18 +85,21 @@ describe('projected draft view', () => {
 })
 
 describe('prompt budget admission', () => {
-  it('allows Apply when an over-budget prompt shrinks stepwise', () => {
-    const admission = promptBudgetAdmission('x'.repeat(200), 'x'.repeat(150), 100)
-    expect(admission).toMatchObject({ over: true, shrinking: true, blocksApply: false })
-    expect(admission.currentBytes).toBe(200)
-    expect(admission.previewBytes).toBe(150)
+  it('allows Apply when an over-budget prompt shrinks or keeps the same size', () => {
+    const shrinking = promptBudgetAdmission('x'.repeat(200), 'x'.repeat(150), 100)
+    expect(shrinking).toMatchObject({ over: true, shrinking: true, blocksApply: false })
+    expect(shrinking.currentBytes).toBe(200)
+    expect(shrinking.previewBytes).toBe(150)
+    // Host admission blocks growth only: an unchanged over-budget render is admitted.
+    const unchanged = promptBudgetAdmission('x'.repeat(150), 'x'.repeat(150), 100)
+    expect(unchanged).toMatchObject({ over: true, shrinking: false, blocksApply: false })
   })
 
-  it('blocks Apply when a prompt grows past or stays above the budget', () => {
-    const growing = promptBudgetAdmission('x'.repeat(90), 'x'.repeat(150), 100)
-    expect(growing).toMatchObject({ over: true, shrinking: false, blocksApply: true })
-    const stuck = promptBudgetAdmission('x'.repeat(150), 'x'.repeat(150), 100)
-    expect(stuck).toMatchObject({ over: true, shrinking: false, blocksApply: true })
+  it('blocks Apply when a prompt grows past or further above the budget', () => {
+    const growingPast = promptBudgetAdmission('x'.repeat(90), 'x'.repeat(150), 100)
+    expect(growingPast).toMatchObject({ over: true, shrinking: false, blocksApply: true })
+    const growingAbove = promptBudgetAdmission('x'.repeat(150), 'x'.repeat(200), 100)
+    expect(growingAbove).toMatchObject({ over: true, blocksApply: true })
   })
 
   it('allows Apply for a prompt within the budget', () => {
