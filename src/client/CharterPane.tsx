@@ -33,6 +33,7 @@ import {
   type ProjectedItem,
 } from './preview.js'
 import { buildBootstrapPlan, firstDraftTextIssue, type BootstrapPlan } from './bootstrap-plan.js'
+import { inspectUserText } from '../core/normalize.js'
 import './charter.css'
 
 type CharterText = TranslateNS<typeof CHARTER_LOCALE_NS>
@@ -55,6 +56,8 @@ const EMPTY_PLAN: BootstrapPlan = {
   pendingInvariants: 0,
   pendingDeliverables: 0,
   outcomes: {},
+  usedExactFallback: false,
+  exactRenders: 0,
 }
 
 function formatBytes(t: CharterText, bytes: number): string {
@@ -218,6 +221,15 @@ function StatusTag({
   return <span className={`charter-tag charter-tag--${tone}`} title={title}>{children}</span>
 }
 
+/** Byte budget of the value the Host will store (normalized, not raw input). */
+function normalizedBytes(value: string): number {
+  return utf8Bytes(inspectUserText(value).value)
+}
+
+function normalizedNonEmpty(value: string): boolean {
+  return inspectUserText(value).value.length > 0
+}
+
 function TextEditor({
   value,
   onChange,
@@ -241,12 +253,12 @@ function TextEditor({
   readonly previousBytes?: number | undefined
   readonly t: CharterText
 }) {
-  const bytes = utf8Bytes(value)
+  const bytes = normalizedBytes(value)
   const shrinking = previousBytes !== undefined && bytes < previousBytes
   const over = bytes > maxBytes && !shrinking
   const overButShrinking = bytes > maxBytes && shrinking
   const save = (): void => {
-    if (!over && value.trim().length > 0) onSave()
+    if (!over && normalizedNonEmpty(value)) onSave()
   }
   const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>): void => {
     if (event.key === 'Escape') onCancel()
@@ -293,7 +305,7 @@ function TextEditor({
               ? t('budget.editorOver', { limit: formatBytes(t, maxBytes) })
               : `${formatBytes(t, bytes)} / ${formatBytes(t, maxBytes)}`}
         </span>
-        <ActionButton variant="outline" disabled={over || value.trim().length === 0} onClick={save}>
+        <ActionButton variant="outline" disabled={over || !normalizedNonEmpty(value)} onClick={save}>
           {t('editor.stage')}
         </ActionButton>
         <ActionButton onClick={onCancel}>{t('editor.cancel')}</ActionButton>
@@ -630,10 +642,10 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
     () => (view === null || bootstrapPhase !== 'draft' ? 0 : utf8Bytes(previewPrompt(view, bootstrapPlan.ops))),
     [view, bootstrapPhase, bootstrapPlan.ops],
   )
-  const selectedBootstrapItems = bootstrapItems.filter(item => item.selected && item.text.trim().length > 0)
-  const bootstrapObjectiveOver = view !== null && utf8Bytes(bootstrapObjective) > view.limits.maxObjectiveBytes
+  const selectedBootstrapItems = bootstrapItems.filter(item => item.selected && normalizedNonEmpty(item.text))
+  const bootstrapObjectiveOver = view !== null && normalizedBytes(bootstrapObjective) > view.limits.maxObjectiveBytes
   const bootstrapItemsOver = view !== null
-    && selectedBootstrapItems.some(item => utf8Bytes(item.text) > view.limits.maxItemBytes)
+    && selectedBootstrapItems.some(item => normalizedBytes(item.text) > view.limits.maxItemBytes)
   const bootstrapBudgetOver = view !== null && bootstrapPromptBytes > view.limits.maxPromptBytes
   const bootstrapStorageOver = view !== null && (
     bootstrapPlan.ops.length > view.limits.maxOps
@@ -1084,7 +1096,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                         onSave={() => draft.saveEditor(view)}
                         onCancel={() => draft.closeEditor()}
                         maxBytes={view.limits.maxObjectiveBytes}
-                        previousBytes={utf8Bytes(projectedObjective?.current.text ?? '')}
+                        previousBytes={normalizedBytes(projectedObjective?.current.text ?? '')}
                         t={t}
                       />
                     </div>
@@ -1108,7 +1120,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                 <div className="charter-list">
                   {renderItems(currentInvariants, historyInvariants, 'invariants.empty')}
                 </div>
-                <div className={`charter-add${utf8Bytes(newInvariant) > view.limits.maxItemBytes ? ' is-over' : ''}`}>
+                <div className={`charter-add${normalizedBytes(newInvariant) > view.limits.maxItemBytes ? ' is-over' : ''}`}>
                   <textarea
                     rows={2}
                     disabled={!editable}
@@ -1124,14 +1136,14 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                     }}
                   />
                   <div className="charter-add__foot">
-                    <span className={`charter-budget${utf8Bytes(newInvariant) > view.limits.maxItemBytes ? ' is-over' : ''}`}>
-                      {utf8Bytes(newInvariant) > view.limits.maxItemBytes
+                    <span className={`charter-budget${normalizedBytes(newInvariant) > view.limits.maxItemBytes ? ' is-over' : ''}`}>
+                      {normalizedBytes(newInvariant) > view.limits.maxItemBytes
                         ? t('budget.itemOver', { limit: formatBytes(t, view.limits.maxItemBytes) })
-                        : `${formatBytes(t, utf8Bytes(newInvariant))} / ${formatBytes(t, view.limits.maxItemBytes)}`}
+                        : `${formatBytes(t, normalizedBytes(newInvariant))} / ${formatBytes(t, view.limits.maxItemBytes)}`}
                     </span>
                     <ActionButton
                       variant="outline"
-                      disabled={!editable || newInvariant.trim().length === 0 || utf8Bytes(newInvariant) > view.limits.maxItemBytes}
+                      disabled={!editable || !normalizedNonEmpty(newInvariant) || normalizedBytes(newInvariant) > view.limits.maxItemBytes}
                       onClick={() => draft.addItem(view, 'invariant', newInvariant, () => draft.setNewInvariant(''))}
                     >
                       {t('composer.addInvariant')}
@@ -1146,7 +1158,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                       onSave={() => draft.saveEditor(view)}
                       onCancel={() => draft.closeEditor()}
                       maxBytes={view.limits.maxItemBytes}
-                      previousBytes={editor.kind === 'edit' ? utf8Bytes(editor.item.text) : undefined}
+                      previousBytes={editor.kind === 'edit' ? normalizedBytes(editor.item.text) : undefined}
                       t={t}
                     />
                   </div>
@@ -1166,7 +1178,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                 <div className="charter-list">
                   {renderItems(currentDeliverables, historyDeliverables, 'deliverables.empty')}
                 </div>
-                <div className={`charter-add${utf8Bytes(newDeliverable) > view.limits.maxItemBytes ? ' is-over' : ''}`}>
+                <div className={`charter-add${normalizedBytes(newDeliverable) > view.limits.maxItemBytes ? ' is-over' : ''}`}>
                   <textarea
                     rows={2}
                     disabled={!editable}
@@ -1182,14 +1194,14 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                     }}
                   />
                   <div className="charter-add__foot">
-                    <span className={`charter-budget${utf8Bytes(newDeliverable) > view.limits.maxItemBytes ? ' is-over' : ''}`}>
-                      {utf8Bytes(newDeliverable) > view.limits.maxItemBytes
+                    <span className={`charter-budget${normalizedBytes(newDeliverable) > view.limits.maxItemBytes ? ' is-over' : ''}`}>
+                      {normalizedBytes(newDeliverable) > view.limits.maxItemBytes
                         ? t('budget.itemOver', { limit: formatBytes(t, view.limits.maxItemBytes) })
-                        : `${formatBytes(t, utf8Bytes(newDeliverable))} / ${formatBytes(t, view.limits.maxItemBytes)}`}
+                        : `${formatBytes(t, normalizedBytes(newDeliverable))} / ${formatBytes(t, view.limits.maxItemBytes)}`}
                     </span>
                     <ActionButton
                       variant="outline"
-                      disabled={!editable || newDeliverable.trim().length === 0 || utf8Bytes(newDeliverable) > view.limits.maxItemBytes}
+                      disabled={!editable || !normalizedNonEmpty(newDeliverable) || normalizedBytes(newDeliverable) > view.limits.maxItemBytes}
                       onClick={() => draft.addItem(view, 'deliverable', newDeliverable, () => draft.setNewDeliverable(''))}
                     >
                       {t('composer.addDeliverable')}
@@ -1204,7 +1216,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                       onSave={() => draft.saveEditor(view)}
                       onCancel={() => draft.closeEditor()}
                       maxBytes={view.limits.maxItemBytes}
-                      previousBytes={editor.kind === 'edit' ? utf8Bytes(editor.item.text) : undefined}
+                      previousBytes={editor.kind === 'edit' ? normalizedBytes(editor.item.text) : undefined}
                       t={t}
                     />
                   </div>
@@ -1300,7 +1312,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                         <span className={`charter-budget${bootstrapObjectiveOver ? ' is-over' : ''}`}>
                           {bootstrapObjectiveOver
                             ? t('budget.objectiveOver', { limit: formatBytes(t, view.limits.maxObjectiveBytes) })
-                            : `${formatBytes(t, utf8Bytes(bootstrapObjective))} / ${formatBytes(t, view.limits.maxObjectiveBytes)}`}
+                            : `${formatBytes(t, normalizedBytes(bootstrapObjective))} / ${formatBytes(t, view.limits.maxObjectiveBytes)}`}
                         </span>
                       </label>
                     )}
@@ -1313,7 +1325,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                       return (
                         <>
                           {visible.map(({ item }, index) => {
-                            const bytes = utf8Bytes(item.text)
+                            const bytes = normalizedBytes(item.text)
                             const outcome = bootstrapPlan.outcomes[item.id]
                             return (
                               <label className="charter-bootstrap__item" key={item.id}>

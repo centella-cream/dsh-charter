@@ -59,9 +59,11 @@ permission boundary.
   summary; nothing becomes effective until you review and apply it.
 - **Drafts survive navigation.** Staged edits, an open inline editor, and a reviewed history draft belong to the
   Session, not to the mounted tab, so checking the conversation and coming back does not lose work.
-- **Fail closed and degrade per Session.** One unreadable stored record disables only that Session; a charter
-  that exceeds a later-tightened budget is shown as over-budget instead of corrupt, is not injected, and can be
-  shrunk back into range.
+- **Fail closed and degrade per Session.** One stored record that loads but fails the strict inner schema or
+  consistency checks disables only that Session (its raw bytes are preserved for diagnosis); a charter that
+  exceeds a later-tightened budget is shown as over-budget instead of corrupt, is not injected, and can be shrunk
+  back into range. An **unreadable outer JSON record** is a documented residual risk: the JSON storage backend
+  treats it as absent and the plugin cannot distinguish it from a missing record (verification §4.5).
 - **Recoverable applies.** A retry reuses the mutation id of an unknown-outcome request, and a revision
   conflict offers an explicit apply-to-latest action instead of discarding the draft.
 
@@ -286,7 +288,7 @@ npm run verify:compaction # manual real-model compaction check (not part of chec
 ```
 
 The test suite covers the pure core, real Host composition, storage-domain behavior, Remote framing,
-history extraction, client state, and factory-bundle registration. Current matrix: **167 tests on DSH `0.1.7-rc.2`, `0.2.0-rc.1`/`rc.2`, and `0.2.1-rc.1`/`rc.2`**. See the [verification record](docs/verification.md) for commands and evidence.
+history extraction, client state, and factory-bundle registration. Current matrix: **187 tests on DSH `0.1.7-rc.2`, `0.2.0-rc.1`/`rc.2`, and `0.2.1-rc.1`/`rc.2`**. See the [verification record](docs/verification.md) for commands and evidence.
 
 ## Acknowledgements
 

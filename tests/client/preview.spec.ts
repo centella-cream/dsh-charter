@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type { CharterView } from '../../src/host/types.js'
+import type { CharterItem } from '../../src/core/schemas.js'
 import {
   activeItems,
   itemCounts,
+  opTargets,
   pendingItems,
   previewPrompt,
   projectView,
@@ -12,7 +14,7 @@ import {
 
 const sessionId = SessionId('preview-session')
 
-function view(): CharterView {
+function view(overrides: Partial<CharterView> = {}): CharterView {
   return {
     status: 'ready',
     sessionId,
@@ -31,7 +33,22 @@ function view(): CharterView {
       maxRecordBytes: 1_048_576,
     },
     overBudget: false,
+    ...overrides,
   }
+}
+
+function committedInvariant(
+  overrides: Pick<CharterItem, 'id' | 'text' | 'order'> & Partial<CharterItem>,
+): CharterItem {
+  return {
+    kind: 'invariant',
+    review: 'accepted',
+    lifecycle: 'current',
+    verification: { state: 'unchecked' },
+    origin: 'user',
+    createdRevision: 1,
+    ...overrides,
+  } as CharterItem
 }
 
 describe('projected draft view', () => {
@@ -68,6 +85,20 @@ describe('projected draft view', () => {
     ])).toBe('')
   })
 
+  it('orders rows and prompt tokens by order even when Host ids reverse-sort', () => {
+    const base = view({
+      items: [
+        committedInvariant({ id: 'zzz-first', text: 'first', order: 1 }),
+        committedInvariant({ id: 'aaa-second', text: 'second', order: 2 }),
+      ],
+    })
+    const projected = projectView(base, [])
+    expect(projected.items.map(item => item.text)).toEqual(['first', 'second'])
+    const prompt = previewPrompt(base, [])
+    const payload = JSON.parse(prompt.slice(prompt.indexOf('{')))
+    expect(payload.invariants).toEqual(['first', 'second'])
+  })
+
   it('keeps the exact prompt renderer as the projection consumer', () => {
     const ops = [
       { type: 'objective.initialize' as const, text: 'Objective' },
@@ -83,28 +114,61 @@ describe('projected draft view', () => {
     expect(prompt).not.toContain('Pending')
   })
 
-  it('detaches a successor and marks it as a derived row when the previewed purge removes its predecessor', () => {
-    const ops = [
-      { type: 'item.add' as const, item: { clientRef: 'a', kind: 'invariant' as const, text: 'A', order: 1 } },
-      {
-        type: 'item.supersede' as const,
-        itemId: 'draft:a',
-        replacement: { clientRef: 'b', kind: 'invariant' as const, text: 'B', order: 2 },
-      },
-      { type: 'item.purge' as const, itemId: 'draft:a', confirmed: true as const },
-    ]
-    const projected = projectView(view(), ops)
-    expect(projected.items).toHaveLength(1)
-    const successor = projected.items[0]!
-    expect(successor).toMatchObject({ text: 'B', lifecycle: 'current', staged: true, unstageTarget: null })
-    expect(successor.supersedes).toBeUndefined()
-    // No staged op targets the derived successor, so Unstage would be dead.
-    expect(ops.some(op => 'itemId' in op && op.itemId === successor.id)).toBe(false)
-    // Directly staged rows keep the default target (undefined means item.id).
-    const directlyStaged = projectView(view(), ops.filter(op => op.type !== 'item.purge'))
-    const replacement = directlyStaged.items.find(item => item.text === 'B')
-    expect(replacement?.staged).toBe(true)
-    expect(replacement?.unstageTarget).toBeUndefined()
+  it('keeps a directly staged successor Unstage when a purge derives its link change', () => {
+    const base = view({
+      items: [
+        committedInvariant({ id: 'a', text: 'A', order: 1, lifecycle: 'superseded', supersededBy: 'b' }),
+        committedInvariant({ id: 'b', text: 'B', order: 2, supersedes: 'a' }),
+        committedInvariant({ id: 'c', text: 'C', order: 3 }),
+      ],
+    })
+    const purgeA = { type: 'item.purge' as const, itemId: 'a', confirmed: true as const }
+    const editB = { type: 'item.edit' as const, itemId: 'b', text: 'B2' }
+    const verifyB = { type: 'item.verification.set' as const, itemId: 'b', verification: 'verified' as const }
+    const editC = { type: 'item.edit' as const, itemId: 'c', text: 'C2' }
+    // Both orderings: a direct B operation before or after the purge that
+    // derives the `supersedes` detach on B.
+    for (const ordering of [
+      [editB, verifyB, purgeA, editC],
+      [purgeA, editB, verifyB, editC],
+      [editC, purgeA, editB, verifyB],
+    ]) {
+      const projected = projectView(base, ordering)
+      const successor = projected.items.find(item => item.id === 'b')
+      expect(successor).toMatchObject({ text: 'B2', staged: true, unstageTarget: 'b' })
+      expect(successor?.supersedes).toBeUndefined()
+      // Unstage(B) removes exactly B's direct ops; the purge of A and the
+      // independent edit of C stay staged.
+      const remaining = ordering.filter(op => !opTargets(op, 'b'))
+      expect(remaining.map(op => op.type).sort())
+        .toEqual(['item.edit', 'item.purge'].sort())
+      expect(remaining.some(op => op.type === 'item.edit' && op.itemId === 'c')).toBe(true)
+      expect(remaining.some(op => op.type === 'item.purge' && op.itemId === 'a')).toBe(true)
+    }
+  })
+
+  it('hides Unstage only for a row changed solely by a purge-derived detach', () => {
+    const base = view({
+      items: [
+        committedInvariant({ id: 'a', text: 'A', order: 1, lifecycle: 'superseded', supersededBy: 'b' }),
+        committedInvariant({ id: 'b', text: 'B', order: 2, supersedes: 'a' }),
+      ],
+    })
+    const purgeA = { type: 'item.purge' as const, itemId: 'a', confirmed: true as const }
+    const projected = projectView(base, [purgeA])
+    const successor = projected.items.find(item => item.id === 'b')
+    expect(successor).toMatchObject({ staged: true, unstageTarget: null })
+    expect(successor?.supersedes).toBeUndefined()
+    // No staged op targets B, so its Unstage would be dead and is hidden.
+    expect(opTargets(purgeA, 'b')).toBe(false)
+
+    // A directly added row always has its own removable operation.
+    const added = projectView(base, [
+      purgeA,
+      { type: 'item.add' as const, item: { clientRef: 'new', kind: 'invariant' as const, text: 'N', order: 3 } },
+    ])
+    expect(added.items.find(item => item.id === 'draft:new'))
+      .toMatchObject({ staged: true, unstageTarget: 'draft:new' })
   })
 })
 

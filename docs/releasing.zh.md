@@ -115,6 +115,9 @@ npm publish dist/dsh-charter-0.1.0-rc.1.tgz --access public --tag next
 ## 5. 发布后
 
 - 用已发布产物验证 README 安装命令；
+- 记住已记录的残留风险（验证记录 4.5）：**外层 JSON 不可读**的契约记录会被 JSON storage backend 当作不存在，
+  插件侧 API 无法将其与"记录缺失"区分。不要宣称"损坏数据总是被保留"——该保证只覆盖内部 schema 不合法的记录。
+  打 tag 前重新检查不可变文档，确保这一限制仍然写明。
 - 若测试了新的 DSH 版本，更新兼容矩阵；
 - 保持 `docs/archive/` 不被 git 跟踪；它只包含本地历史设计材料，并且不在 npm `files` 白名单内，保证
   GitHub 与 npm 内容一致。

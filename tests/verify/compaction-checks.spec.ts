@@ -3,8 +3,10 @@ import {
   charterReadArgumentsView,
   compactStandingItem,
   evaluateCompactionEvidence,
+  evaluateCompactionTranscript,
   isValidCharterReadEvidence,
   postCompactionCharterReads,
+  sha256Text,
 } from '../../scripts/verify/compaction-checks.mjs'
 
 const pass = {
@@ -14,6 +16,237 @@ const pass = {
   charterReadStanding: true,
   checkpointLeaksCharter: false,
 }
+
+const PROMPT = 'Current user-authored session charter.\n{"objective":"Ship it"}'
+const PROMPT_PREFIX = 'Current user-authored session charter.'
+const READ_VIEW = { revision: 1, objective: null, items: [] }
+
+function storage(overrides: Record<string, unknown> = {}) {
+  return {
+    revision: 1,
+    promptText: PROMPT,
+    promptDigest: sha256Text(PROMPT),
+    objective: null,
+    items: [],
+    committedAt: 900,
+    ...overrides,
+  }
+}
+
+interface TestEvent {
+  readonly type: string
+  readonly seq: number
+  readonly time: number
+  readonly data?: Record<string, unknown>
+  readonly sourceEventSeqs?: readonly number[]
+}
+
+function compactionLifecycle(id: string, baseSeq: number, baseTime: number): TestEvent[] {
+  return [
+    { type: 'compaction/start', seq: baseSeq, time: baseTime, data: { compactionId: id } },
+    { type: 'compaction/summary', seq: baseSeq + 1, time: baseTime + 1, data: { compactionId: id } },
+    {
+      type: 'user/message',
+      seq: baseSeq + 2,
+      time: baseTime + 2,
+      data: {
+        source: { kind: 'compact-checkpoint', compactionId: id },
+        content: [{ type: 'text', text: 'ordinary summary' }],
+      },
+    },
+    { type: 'compaction/end', seq: baseSeq + 3, time: baseTime + 3, data: { compactionId: id } },
+  ]
+}
+
+function runtimeSnapshot(seq: number, text = PROMPT): TestEvent {
+  return {
+    type: 'user/message',
+    seq,
+    time: 2_000 + seq,
+    data: {
+      source: {
+        kind: 'runtime-context',
+        sections: [
+          { name: 'sandbox:policy', text: 'sandbox' },
+          { name: 'charter:standing', text },
+        ],
+      },
+    },
+  }
+}
+
+function charterReadCall(seq: number, turn: number, callId: string): TestEvent {
+  return {
+    type: 'tool/call',
+    seq,
+    time: 3_000 + seq,
+    data: { turn, step: 1, callId, name: 'charter_read', arguments: '{"view":"standing"}' },
+  }
+}
+
+function charterReadResult(
+  seq: number,
+  turn: number,
+  callId: string,
+  options: { readonly sourceEventSeqs?: readonly number[]; readonly view?: unknown; readonly isError?: boolean } = {},
+): TestEvent {
+  return {
+    type: 'tool/result',
+    seq,
+    time: 3_000 + seq,
+    ...(options.sourceEventSeqs === undefined
+      ? {}
+      : { sourceEventSeqs: options.sourceEventSeqs }),
+    data: {
+      turn,
+      step: 1,
+      message: {
+        role: 'tool',
+        toolCallId: callId,
+        isError: options.isError === true,
+        content: [{ type: 'text', text: JSON.stringify(options.view ?? READ_VIEW) }],
+      },
+    },
+  }
+}
+
+function evidenceFixture(): TestEvent[] {
+  const callSeq = 15
+  return [
+    ...compactionLifecycle('compaction-1', 10, 1_000),
+    runtimeSnapshot(14),
+    charterReadCall(callSeq, 4, 'call-read-1'),
+    charterReadResult(16, 4, 'call-read-1', { sourceEventSeqs: [callSeq] }),
+  ]
+}
+
+function verdict(report: ReturnType<typeof evaluateCompactionTranscript>, label: string) {
+  return report.verdictLines.find(line => line.label === label)
+}
+
+function evaluate(events: TestEvent[], overrides: Record<string, unknown> = {}) {
+  return evaluateCompactionTranscript({
+    events,
+    current: storage(overrides) as never,
+    promptPrefix: PROMPT_PREFIX,
+  })
+}
+
+describe('compaction transcript lifecycle evaluation', () => {
+  it('passes a clean lifecycle and reports exit code, verdicts, text and warnings', () => {
+    const report = evaluate(evidenceFixture())
+    expect(report.status).toBe('pass')
+    expect(report.exitCode).toBe(0)
+    expect(report.latestCompaction).toMatchObject({ id: 'compaction-1', startSeq: 10, endSeq: 13 })
+    expect(report.verdicts).toMatchObject({
+      charterReady: true,
+      survivesCompaction: true,
+      injectedAfterCompaction: true,
+      charterPredatesCompaction: true,
+      charterReadStanding: true,
+      postCompactionExecutionWithoutSnapshot: false,
+    })
+    expect(report.authenticatedCharterReads).toBe(1)
+    expect(report.verification.warnings).toEqual([])
+    expect(verdict(report, 'charter survives compaction')).toMatchObject({ state: 'PASS' })
+    expect(verdict(report, 'authenticated post-compaction charter_read standing view matches the storage revision/objective'))
+      .toMatchObject({ state: 'PASS' })
+    // JSON-serializable report for --json output.
+    expect(JSON.parse(JSON.stringify(report))).toMatchObject({ status: 'pass', exitCode: 0 })
+  })
+
+  it('ignores a later compaction with a failed end as PASS evidence', () => {
+    const events = [
+      ...evidenceFixture(),
+      { type: 'compaction/start', seq: 20, time: 4_000, data: { compactionId: 'compaction-2' } },
+      { type: 'compaction/summary', seq: 21, time: 4_001, data: { compactionId: 'compaction-2' } },
+      {
+        type: 'compaction/end',
+        seq: 22,
+        time: 4_002,
+        data: { compactionId: 'compaction-2', error: 'summary generation failed' },
+      },
+    ]
+    const report = evaluate(events)
+    expect(report.latestCompaction).toMatchObject({ id: 'compaction-1' })
+    expect(report.compactions.find(compaction => compaction.id === 'compaction-2'))
+      .toMatchObject({ ok: false, error: 'summary generation failed' })
+    expect(report.status).toBe('pass')
+    expect(report.exitCode).toBe(0)
+  })
+
+  it('warns when a checkpoint before the end carries the charter text', () => {
+    const events = evidenceFixture().map(event => event.seq === 12
+      ? {
+          ...event,
+          data: {
+            ...event.data,
+            content: [{ type: 'text', text: `summary that leaks: ${PROMPT}` }],
+          },
+        }
+      : event)
+    const report = evaluate(events)
+    expect(report.verdicts.checkpointLeaksCharter).toBe(true)
+    expect(report.checkpoints.some(checkpoint => checkpoint.leaksCharter)).toBe(true)
+    expect(report.verification.ok).toBe(true)
+    expect(report.verification.warnings).toHaveLength(1)
+    expect(report.verification.warnings[0]).toContain('summary carries the charter')
+    expect(verdict(report, 'compaction summary does not carry the charter text')?.detail)
+      .toContain('WARNING')
+  })
+
+  it('requires the charter to be committed before the compaction start, not its end', () => {
+    // Committed between compaction start (time 1000) and end (time 1003).
+    const report = evaluate(evidenceFixture(), { committedAt: 1_002 })
+    expect(report.verdicts.charterPredatesCompaction).toBe(false)
+    expect(report.status).toBe('wait')
+    expect(report.exitCode).toBe(3)
+    expect(verdict(report, 'charter survives compaction')).toMatchObject({ state: 'WAIT' })
+  })
+
+  it('fails when a request executed after the compaction without a runtime snapshot', () => {
+    const events = [
+      ...compactionLifecycle('compaction-1', 10, 1_000),
+      // No runtime-context snapshot after the end; request activity starts.
+      {
+        type: 'assistant/message',
+        seq: 14,
+        time: 2_014,
+        data: { turn: 4, step: 1, message: { role: 'assistant', content: [{ type: 'text', text: 'working' }] } },
+      },
+      { type: 'tool/call', seq: 15, time: 2_015, data: { turn: 4, step: 1, callId: 'call-bash', name: 'bash', arguments: '{}' } },
+    ]
+    const report = evaluate(events)
+    expect(report.verdicts.postCompactionExecutionWithoutSnapshot).toBe(true)
+    expect(report.status).toBe('fail')
+    expect(report.exitCode).toBe(1)
+    expect(report.verification.failures).toContain(
+      'a post-compaction request executed without a new runtime-context snapshot',
+    )
+    expect(verdict(report, 'charter survives compaction')).toMatchObject({ state: 'FAIL' })
+  })
+
+  it('pairs a legacy duplicate callId by turn/step and event order, not globally', () => {
+    const callSeq = 15
+    const events = [
+      // Same callId used in an older turn before the compaction.
+      charterReadCall(2, 2, 'call-duplicate'),
+      charterReadResult(3, 2, 'call-duplicate'),
+      ...compactionLifecycle('compaction-1', 10, 1_000),
+      runtimeSnapshot(14),
+      charterReadCall(callSeq, 3, 'call-duplicate'),
+      charterReadResult(16, 3, 'call-duplicate', { view: READ_VIEW }),
+    ]
+    const report = evaluate(events)
+    expect(report.status).toBe('pass')
+    expect(report.charterRead).toMatchObject({
+      callSeq: 15,
+      callId: 'call-duplicate',
+      resolution: 'callId-turn-step',
+    })
+    expect(report.authenticatedCharterReads).toBe(1)
+  })
+})
 
 describe('authenticated charter_read evidence', () => {
   it('rejects a call recorded before the latest compaction even when its result is after it', () => {

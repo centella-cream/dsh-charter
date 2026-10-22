@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { SessionId } from '@deepseek-ai/dsh-session'
-import type { CharterEditRequest } from '../../src/core/schemas.js'
+import type { CharterEditRequest, CharterItem } from '../../src/core/schemas.js'
 import type { CharterBootstrapResult, CharterEditResult, CharterView } from '../../src/host/types.js'
 import type { CharterSessionSource } from '../../src/client/store.js'
 import { CharterDraft } from '../../src/client/draft-store.js'
+import { utf8Bytes } from '../../src/core/limits.js'
 
 const sessionId = SessionId('draft-session')
 
@@ -28,6 +29,20 @@ function view(revision = 0, overrides: Partial<CharterView> = {}): CharterView {
     overBudget: false,
     ...overrides,
   }
+}
+
+function committedInvariant(
+  overrides: Pick<CharterItem, 'id' | 'text' | 'order'> & Partial<CharterItem>,
+): CharterItem {
+  return {
+    kind: 'invariant',
+    review: 'accepted',
+    lifecycle: 'current',
+    verification: { state: 'unchecked' },
+    origin: 'user',
+    createdRevision: 1,
+    ...overrides,
+  } as CharterItem
 }
 
 function source(handlers: {
@@ -410,6 +425,180 @@ describe('per-Session draft ownership', () => {
     })
     draft.bindLifecycle(undefined)
     expect(draft.getSnapshot().ops).toHaveLength(1)
+  })
+
+  it('stages an editor against the baseline revision it captured at open time', async () => {
+    const requests: CharterEditRequest[] = []
+    const rev1 = view(1, {
+      objective: {
+        original: { text: 'Original', setAtRevision: 1 },
+        current: { text: 'Original', setAtRevision: 1 },
+      },
+    })
+    const fake = source({
+      edit: async request => {
+        requests.push(request)
+        if (request.baseRevision !== 2) {
+          return { ok: false, code: 'REVISION_CONFLICT', message: 'stale', currentRevision: 2, view: view(2) }
+        }
+        return { ok: true, replayed: false, committedRevision: 3, ids: {}, view: view(3) }
+      },
+    })
+    const draft = new CharterDraft(sessionId, () => fake)
+    draft.bindLifecycle('life-editor-baseline')
+    draft.openEditor({ kind: 'objective' }, rev1)
+    draft.setEditorText('Imported objective')
+    draft.setEditorReason('Because we need it')
+    // An unrelated (and even same-field) remote commit arrives while editing.
+    const rev2 = view(2, {
+      objective: {
+        original: { text: 'Original', setAtRevision: 1 },
+        current: { text: 'Remote edit', setAtRevision: 2 },
+      },
+    })
+    draft.saveEditor(rev2)
+    expect(draft.getSnapshot()).toMatchObject({
+      baseRevision: 1,
+      ops: [expect.objectContaining({
+        type: 'objective.redirect',
+        text: 'Imported objective',
+        reason: 'Because we need it',
+      })],
+    })
+    // A later add must not advance the already staged baseline.
+    draft.addItem(rev2, 'invariant', 'Another item', () => undefined)
+    expect(draft.getSnapshot().baseRevision).toBe(1)
+    // Applying against rev2 conflicts until an explicit rebase.
+    await draft.applyDraft(rev2)
+    expect(draft.getSnapshot().feedback).toMatchObject({ kind: 'error', code: 'REVISION_CONFLICT' })
+    expect(requests[0]?.baseRevision).toBe(1)
+    draft.rebase(rev2)
+    expect(draft.getSnapshot().baseRevision).toBe(2)
+    await draft.applyDraft(rev2)
+    expect(draft.getSnapshot().ops).toHaveLength(0)
+    expect(requests[1]?.baseRevision).toBe(2)
+  })
+
+  it('stages an open item editor against its baseline when the item changes remotely', () => {
+    const item = committedInvariant({ id: 'item-1', text: 'Original item', order: 1 })
+    const rev1 = view(1, { items: [item] })
+    const draft = new CharterDraft(sessionId, () => undefined)
+    draft.bindLifecycle('life-item-baseline')
+    draft.openEditor({ kind: 'edit', item }, rev1)
+    draft.setEditorText('Edited item')
+    const rev2 = view(2, {
+      items: [{ ...item, text: 'Remote edit', verification: { state: 'verified', by: 'user' } }],
+    })
+    draft.saveEditor(rev2)
+    expect(draft.getSnapshot()).toMatchObject({
+      baseRevision: 1,
+      ops: [expect.objectContaining({ type: 'item.edit', itemId: 'item-1', text: 'Edited item' })],
+    })
+  })
+
+  it('admits normalized bytes rather than raw input bytes in the editor and composer', () => {
+    const base = view(0, { limits: { ...view(0).limits, maxItemBytes: 1_024 } })
+    const draft = new CharterDraft(sessionId, () => undefined)
+    draft.bindLifecycle('life-normalized-admission')
+    // NFC contraction: 342 decomposed e+acute = 1026 raw bytes but 684 stored.
+    const decomposed = 'e\u0301'.repeat(342)
+    expect(utf8Bytes(decomposed)).toBe(1_026)
+    draft.addItem(base, 'invariant', decomposed, () => undefined)
+    expect(draft.getSnapshot().feedback).toBeNull()
+    expect(draft.getSnapshot().ops).toHaveLength(1)
+    const added = draft.getSnapshot().ops[0]
+    expect(added?.type).toBe('item.add')
+    if (added?.type === 'item.add') {
+      expect(added.item.text).toBe('\u00e9'.repeat(342))
+      expect(utf8Bytes(added.item.text)).toBe(684)
+    }
+
+    // NFC expansion: 1022 x + U+0344 is 1024 raw bytes but normalizes to 1026.
+    const draft2 = new CharterDraft(sessionId, () => undefined)
+    draft2.bindLifecycle('life-normalized-expansion')
+    const expanding = 'x'.repeat(1_022) + '\u0344'
+    expect(utf8Bytes(expanding)).toBe(1_024)
+    draft2.addItem(base, 'invariant', expanding, () => undefined)
+    expect(draft2.getSnapshot().feedback).toEqual({ kind: 'itemBudget', limit: 1_024 })
+    expect(draft2.getSnapshot().ops).toHaveLength(0)
+  })
+
+  it('enforces the normalized item limit boundary', () => {
+    const base = view(0, { limits: { ...view(0).limits, maxItemBytes: 100 } })
+    for (const [text, expected] of [
+      ['a'.repeat(99), 'staged'],
+      ['a'.repeat(100), 'staged'],
+      ['a'.repeat(101), 'over'],
+    ] as const) {
+      const draft = new CharterDraft(sessionId, () => undefined)
+      draft.addItem(base, 'invariant', text, () => undefined)
+      if (expected === 'staged') {
+        expect(draft.getSnapshot().ops).toHaveLength(1)
+        expect(draft.getSnapshot().feedback).toBeNull()
+      } else {
+        expect(draft.getSnapshot().ops).toHaveLength(0)
+        expect(draft.getSnapshot().feedback).toEqual({ kind: 'itemBudget', limit: 100 })
+      }
+    }
+  })
+
+  it('treats CRLF/LF and composed/decomposed forms as unchanged and still allows other ops', () => {
+    const item = committedInvariant({ id: 'crlf', text: 'line one\nline two', order: 1 })
+    const draft = new CharterDraft(sessionId, () => undefined)
+    draft.bindLifecycle('life-crlf')
+    draft.openEditor({ kind: 'edit', item }, view(1, { items: [item] }))
+    draft.setEditorText('line one\r\nline two')
+    draft.saveEditor(view(1, { items: [item] }))
+    expect(draft.getSnapshot().feedback).toEqual({ kind: 'editorUnchanged', target: 'item' })
+    expect(draft.getSnapshot().ops).toHaveLength(0)
+    draft.addItem(view(1, { items: [item] }), 'invariant', 'Other valid op', () => undefined)
+    expect(draft.getSnapshot().ops).toHaveLength(1)
+
+    const cafe = committedInvariant({ id: 'cafe', text: 'Caf\u00e9', order: 2 })
+    const draft2 = new CharterDraft(sessionId, () => undefined)
+    draft2.bindLifecycle('life-nfc-unchanged')
+    draft2.openEditor({ kind: 'edit', item: cafe }, view(1, { items: [cafe] }))
+    draft2.setEditorText('Cafe\u0301')
+    draft2.saveEditor(view(1, { items: [cafe] }))
+    expect(draft2.getSnapshot().feedback).toEqual({ kind: 'editorUnchanged', target: 'item' })
+    expect(draft2.getSnapshot().ops).toHaveLength(0)
+  })
+
+  it('normalizes the objective reason before generating the staged op', () => {
+    const rev1 = view(1, {
+      objective: {
+        original: { text: 'Old', setAtRevision: 1 },
+        current: { text: 'Old', setAtRevision: 1 },
+      },
+    })
+    const draft = new CharterDraft(sessionId, () => undefined)
+    draft.bindLifecycle('life-reason')
+    draft.openEditor({ kind: 'objective' }, rev1)
+    draft.setEditorText('New objective')
+    draft.setEditorReason('Be\u0301cause')
+    draft.saveEditor(rev1)
+    expect(draft.getSnapshot().ops[0]).toMatchObject({
+      type: 'objective.redirect',
+      text: 'New objective',
+      reason: 'B\u00e9cause',
+    })
+  })
+
+  it('allocates orders above committed and currently staged rows after an unstage', () => {
+    const base = view(0)
+    const draft = new CharterDraft(sessionId, () => undefined)
+    draft.bindLifecycle('life-order')
+    draft.addItem(base, 'invariant', 'first', () => undefined)
+    draft.addItem(base, 'invariant', 'second', () => undefined)
+    const firstOp = draft.getSnapshot().ops[0]
+    expect(firstOp?.type).toBe('item.add')
+    if (firstOp?.type !== 'item.add') throw new Error('expected an item.add op')
+    expect([...draft.getSnapshot().ops].map(op => op.type === 'item.add' ? op.item.order : -1))
+      .toEqual([0, 1])
+    draft.unstage(`draft:${firstOp.item.clientRef}`)
+    draft.addItem(base, 'invariant', 'third', () => undefined)
+    const orders = draft.getSnapshot().ops.map(op => op.type === 'item.add' ? op.item.order : -1)
+    expect(orders).toEqual([1, 2])
   })
 
   it('does not steal the current section when a draft arrives while editing', async () => {

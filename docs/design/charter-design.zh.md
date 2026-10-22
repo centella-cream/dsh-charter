@@ -13,8 +13,8 @@
 - [调研记录](../research/charter-research.zh.md)
 
 实现状态：MVP Host、纯内核、JSON storage 组合、Remote contract 和主对话页标签页 Client 已完成实现并通过版本矩阵
-验证。当前 `npm run typecheck`、`npm test`、`npm run build` 均通过（167 个测试，17 个测试文件）；同一源码在 DSH
-`0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-rc.1`、`0.2.1-rc.2` 上分别通过 typecheck、build 和 167 个测试。
+验证。当前 `npm run typecheck`、`npm test`、`npm run build` 均通过（187 个测试，17 个测试文件）；同一源码在 DSH
+`0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-rc.1`、`0.2.1-rc.2` 上分别通过 typecheck、build 和 187 个测试。
 真实 profile 的 tarball 安装、配置组合、Web 启动、boot graph 和客户端 bundle HTTP 已通过；DSH `0.2.0-rc.2`
 Web profile 上已用真实 Chrome 验证「对话」「轨迹」「会话契约」标签顺序、目标编辑、预览、Apply 和刷新持久化。
 真实模型 compaction 端到端已于 **2026-10-22 在真实 Session 上记录 PASS**（见验证记录 8.4）；剩余发布前置项是
@@ -263,8 +263,11 @@ interface EvidenceBinding {
 Session dispose 会关闭所有打开的 watch 订阅（listener 收到 `null`，stream generator 退出），同 ID 重建的 Session
 从新 stream 开始，而不是挂在已脱离的 listener 上。记录校验在 service 边界逐条进行，并且每次运行期读取/写入路径都重新做严格 schema 解析（`recordFor`、只读
 view、parent/fork 读取、`table.update` transform）：domain 保留原始 per-record 文档，单条损坏或前向不兼容的
-记录只让该 Session 不可用，不会阻止整个 domain 打开，也不会被重写覆盖；初始化失败会先清除瞬时不可用状态再
-发布最终 ready view，并支持后续重试。
+记录只让该 Session 不可用，不会阻止整个 domain 打开，也不会被重写覆盖。**该保证的范围**：仅适用于文档能加载、
+但内部 record schema 或一致性检查失败的情况；不覆盖 JSON storage backend 无法读取（或外层 version stamp 被
+拒绝）的外层 JSON 文档——该 backend 会把这种文件当作记录不存在，而插件侧 KvTable API 没有读取错误信号，无法与
+"记录缺失"区分（已记录的残留风险，见验证记录 4.5）。初始化失败会先清除瞬时不可用状态再发布最终 ready view，
+并支持后续重试。
 
 Domain：
 

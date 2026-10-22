@@ -7,6 +7,7 @@ import type {
   CharterView,
 } from '../host/types.js'
 import type { CharterSessionSource } from './store.js'
+import { opTargets } from './preview.js'
 import {
   buildBootstrapPlan,
   classifyBootstrapOutcome,
@@ -80,6 +81,8 @@ export interface CharterDraftState {
   readonly editorText: string
   readonly editorReason: string
   readonly editorNeedsReason: boolean
+  /** Revision the open editor's baseline was captured against. */
+  readonly editorBaseRevision: number | null
   readonly newInvariant: string
   readonly newDeliverable: string
   readonly feedback: DraftFeedback | null
@@ -118,6 +121,7 @@ function initialState(sessionId: SessionId): CharterDraftState {
     editorText: '',
     editorReason: '',
     editorNeedsReason: false,
+    editorBaseRevision: null,
     newInvariant: '',
     newDeliverable: '',
     feedback: null,
@@ -238,14 +242,19 @@ export class CharterDraft {
     this.update({ newDeliverable: value })
   }
 
-  stage(view: CharterView, op: CharterOp): void {
+  stage(view: CharterView, op: CharterOp, fallbackBaseRevision?: number): void {
     if (view.status !== 'ready' || this.state.saving || this.state.bootstrapSaving) return
     const ops = this.state.ops.some(existing => sameOp(existing, op))
       ? this.state.ops
       : [...this.state.ops, op]
+    // Once a draft is staged its baseline is frozen; new/edited content must not
+    // silently retarget the batch at a newer revision. Callers that captured a
+    // baseline earlier (the editor) may provide it as the fallback.
     this.update({
       ops,
-      baseRevision: this.state.baseRevision ?? view.revision,
+      baseRevision: this.state.baseRevision
+        ?? fallbackBaseRevision
+        ?? view.revision,
       feedback: null,
       attempt: null,
     })
@@ -270,6 +279,7 @@ export class CharterDraft {
       editorText: '',
       editorReason: '',
       editorNeedsReason: false,
+      editorBaseRevision: null,
       newInvariant: '',
       newDeliverable: '',
       feedback: null,
@@ -286,6 +296,10 @@ export class CharterDraft {
       editorText: text,
       editorReason: editor.kind === 'objective' ? view.objective?.current.reason ?? '' : '',
       editorNeedsReason: editor.kind === 'objective' && view.objective !== null,
+      // Capture the baseline now: an unrelated remote commit while the editor
+      // is open must not silently retarget the eventual edit to a newer
+      // revision (the Host would accept it without review).
+      editorBaseRevision: this.state.baseRevision ?? view.revision,
     })
   }
 
@@ -298,15 +312,23 @@ export class CharterDraft {
   }
 
   closeEditor(): void {
-    this.update({ editor: null, editorText: '', editorReason: '', editorNeedsReason: false })
+    this.update({
+      editor: null,
+      editorText: '',
+      editorReason: '',
+      editorNeedsReason: false,
+      editorBaseRevision: null,
+    })
   }
 
   /** Validate and stage the open editor; keeps it open when the input is invalid. */
   saveEditor(view: CharterView): void {
     const editor = this.state.editor
     if (editor === null || this.state.editorText.trim().length === 0) return
-    const text = this.state.editorText
-    const inspection = inspectUserText(text)
+    // Validate and measure the normalized value the Host will actually store,
+    // so CRLF/NFD input cannot bypass (or waste) the byte budget and the
+    // unchanged check compares apples to apples.
+    const inspection = inspectUserText(this.state.editorText)
     if (inspection.issue !== undefined) {
       this.update({ feedback: { kind: 'editorInvalid', issue: inspection.issue } })
       return
@@ -316,38 +338,41 @@ export class CharterDraft {
       this.update({ feedback: { kind: 'editorInvalid', issue: reasonInspection.issue } })
       return
     }
-    const bytes = new TextEncoder().encode(text).byteLength
+    const text = inspection.value
+    const bytes = utf8Bytes(text)
     const maxBytes = editor.kind === 'objective' ? view.limits.maxObjectiveBytes : view.limits.maxItemBytes
-    const previousText = editor.kind === 'objective'
+    const previousText = inspectUserText(editor.kind === 'objective'
       ? view.objective?.current.text ?? ''
-      : editor.kind === 'edit' ? editor.item.text : ''
-    const previousBytes = new TextEncoder().encode(previousText).byteLength
+      : editor.kind === 'edit' ? editor.item.text : '').value
+    const previousBytes = utf8Bytes(previousText)
     // An already over-budget field may still be shortened step by step; only
     // growth beyond the limit is rejected by the Host.
     if (bytes > maxBytes && bytes >= previousBytes) {
       this.update({ feedback: { kind: 'editorBudget', limit: maxBytes } })
       return
     }
-    const nextText = text.trim()
+    // The editor captured its baseline when it opened; an unrelated remote
+    // commit must not silently move the staged batch to a newer revision.
+    const baseline = this.state.editorBaseRevision ?? view.revision
     if (editor.kind === 'objective') {
-      if (view.objective?.current.text === nextText) {
+      if (previousText === text) {
         this.update({ feedback: { kind: 'editorUnchanged', target: 'objective' } })
         return
       }
-      const reason = this.state.editorReason.trim()
+      const reason = reasonInspection.value
       this.stage(view, view.objective === null
         ? { type: 'objective.initialize', text }
         : {
             type: 'objective.redirect',
             text,
             ...(reason.length === 0 ? {} : { reason }),
-          })
+          }, baseline)
     } else if (editor.kind === 'edit') {
-      if (editor.item.text === nextText) {
+      if (previousText === text) {
         this.update({ feedback: { kind: 'editorUnchanged', target: 'item' } })
         return
       }
-      this.stage(view, { type: 'item.edit', itemId: editor.item.id, text })
+      this.stage(view, { type: 'item.edit', itemId: editor.item.id, text }, baseline)
     } else {
       const replacement = editor.item.kind === 'invariant'
         ? { clientRef: clientRef(), kind: 'invariant' as const, text, order: editor.item.order }
@@ -355,7 +380,7 @@ export class CharterDraft {
             clientRef: clientRef(), kind: 'deliverable' as const, text, order: editor.item.order,
             progress: editor.item.progress,
           }
-      this.stage(view, { type: 'item.supersede', itemId: editor.item.id, replacement })
+      this.stage(view, { type: 'item.supersede', itemId: editor.item.id, replacement }, baseline)
     }
     this.closeEditor()
   }
@@ -367,15 +392,17 @@ export class CharterDraft {
       this.update({ feedback: { kind: 'editorInvalid', issue: inspection.issue } })
       return
     }
-    const bytes = new TextEncoder().encode(text).byteLength
+    const normalized = inspection.value
+    const bytes = utf8Bytes(normalized)
     if (bytes > view.limits.maxItemBytes) {
       this.update({ feedback: { kind: 'itemBudget', limit: view.limits.maxItemBytes } })
       return
     }
-    const maxOrder = view.items.reduce((maximum, item) => Math.max(maximum, item.order), -1)
+    // Order must clear every live committed AND staged row: reuse of an order
+    // after an unstage would make the sorted projection ambiguous.
     this.stage(view, {
       type: 'item.add',
-      item: newItem(kind, text, maxOrder + 1 + this.state.ops.length),
+      item: newItem(kind, normalized, nextItemOrder(view, this.state.ops)),
     })
     clear()
   }
@@ -461,7 +488,13 @@ export class CharterDraft {
   rebase(view: CharterView): void {
     if (this.state.saving || this.state.bootstrapSaving) return
     if (this.state.baseRevision === null || view.status !== 'ready') return
-    this.update({ baseRevision: view.revision, attempt: null, feedback: null })
+    // Explicit conflict resolution is the only place the frozen baseline moves.
+    this.update({
+      baseRevision: view.revision,
+      editorBaseRevision: this.state.editor === null ? null : view.revision,
+      attempt: null,
+      feedback: null,
+    })
   }
 
   // ------------------------------------------------------------------
@@ -709,18 +742,27 @@ function newItem(
     : { clientRef: clientRef(), kind, text, order, progress: 'not-started' }
 }
 
-/** The synthetic or persisted id a staged operation targets. */
-export function opTargets(op: CharterOp, itemId: string): boolean {
-  switch (op.type) {
-    case 'item.add':
-    case 'item.propose':
-      return `draft:${op.item.clientRef}` === itemId
-    case 'item.supersede':
-      return op.itemId === itemId || `draft:${op.replacement.clientRef}` === itemId
-    case 'objective.initialize':
-    case 'objective.redirect':
-      return false
-    default:
-      return 'itemId' in op && op.itemId === itemId
-  }
+function utf8Bytes(value: string): number {
+  return new TextEncoder().encode(value).byteLength
 }
+
+/** Item orders explicitly occupied by staged operations. */
+function stagedOrders(ops: readonly CharterOp[]): number[] {
+  const orders: number[] = []
+  for (const op of ops) {
+    if (op.type === 'item.add' || op.type === 'item.propose') orders.push(op.item.order)
+    else if (op.type === 'item.supersede') orders.push(op.replacement.order)
+    else if (op.type === 'item.edit' && op.order !== undefined) orders.push(op.order)
+  }
+  return orders
+}
+
+/** Next order above every committed item and every staged item. */
+function nextItemOrder(view: CharterView, ops: readonly CharterOp[]): number {
+  let maximum = view.items.reduce((current, item) => Math.max(current, item.order), -1)
+  for (const order of stagedOrders(ops)) maximum = Math.max(maximum, order)
+  return maximum + 1
+}
+
+/** The synthetic or persisted id a staged operation targets (shared with preview). */
+export { opTargets }

@@ -38,6 +38,10 @@ export interface BootstrapPlan {
   readonly pendingDeliverables: number
   /** Per-candidate outcome for the review UI. */
   readonly outcomes: Readonly<Record<string, 'active' | 'pending'>>
+  /** True only when the incremental estimate disagreed with the exact render. */
+  readonly usedExactFallback: boolean
+  /** Full `previewPrompt` renders used by this plan (diagnostic). */
+  readonly exactRenders: number
 }
 
 /**
@@ -76,6 +80,11 @@ export function buildBootstrapPlan(
   const outcomes: Record<string, 'active' | 'pending'> = {}
   const encoder = new TextEncoder()
   const bytesOf = (value: string): number => encoder.encode(value).byteLength
+  let exactRenders = 0
+  const renderBytes = (candidateOps: readonly CharterOp[]): number => {
+    exactRenders += 1
+    return bytesOf(previewPrompt(view, candidateOps))
+  }
 
   const fixedBytes = bytesOf(CHARTER_PROMPT_PREFIX)
     + bytesOf(PROMPT_OBJECTIVE_OPEN)
@@ -99,8 +108,8 @@ export function buildBootstrapPlan(
   }
   const baseIsEmpty = base.objective === null && invariantCount === 0 && deliverableCount === 0
   let promptBytes = baseIsEmpty ? 0 : fixedBytes + bytesOf(objectiveToken) + tokenBytes
-  if (promptBytes !== bytesOf(previewPrompt(view, baseOps))) {
-    return exactBootstrapPlan(view, items, objectiveOp)
+  if (promptBytes !== renderBytes(baseOps)) {
+    return exactBootstrapPlan(view, items, objectiveOp, exactRenders)
   }
 
   let order = view.items.reduce((maximum, item) => Math.max(maximum, item.order), -1) + 1
@@ -148,15 +157,24 @@ export function buildBootstrapPlan(
     order += 1
   }
 
-  // Never admit a draft the exact renderer would reject: a full render is the
-  // last word. The fallback is quadratic but should be unreachable for normal
-  // normalized text and ascending order values.
-  const exactBytes = bytesOf(previewPrompt(view, ops))
-  if (exactBytes !== promptBytes || exactBytes > view.limits.maxPromptBytes) {
-    return exactBootstrapPlan(view, items, objectiveOp)
+  // A full render is the last word on estimator agreement only. Budget
+  // rejection is the UI's job: when the base prompt is already over budget the
+  // plan is all-pending, and re-rendering per candidate cannot change that.
+  const exactBytes = renderBytes(ops)
+  if (exactBytes !== promptBytes) {
+    return exactBootstrapPlan(view, items, objectiveOp, exactRenders)
   }
 
-  return { ops, active, pending, pendingInvariants, pendingDeliverables, outcomes }
+  return {
+    ops,
+    active,
+    pending,
+    pendingInvariants,
+    pendingDeliverables,
+    outcomes,
+    usedExactFallback: false,
+    exactRenders,
+  }
 }
 
 /** Exact quadratic fallback used only when the incremental estimate disagrees. */
@@ -164,7 +182,9 @@ function exactBootstrapPlan(
   view: CharterView,
   items: readonly BootstrapDraftItem[],
   objectiveOp: CharterOp | null,
+  priorRenders: number,
 ): BootstrapPlan {
+  let exactRenders = priorRenders
   const ops: CharterOp[] = objectiveOp === null ? [] : [objectiveOp]
   const outcomes: Record<string, 'active' | 'pending'> = {}
   let order = view.items.reduce((maximum, item) => Math.max(maximum, item.order), -1) + 1
@@ -182,6 +202,7 @@ function exactBootstrapPlan(
           type: 'item.add',
           item: { clientRef: `bootstrap-${item.id}`, kind: 'deliverable', text, order, progress: 'not-started' },
         }
+    exactRenders += 1
     if (utf8Bytes(previewPrompt(view, [...ops, activeOp])) <= view.limits.maxPromptBytes) {
       ops.push(activeOp)
       outcomes[item.id] = 'active'
@@ -195,7 +216,16 @@ function exactBootstrapPlan(
     }
     order += 1
   }
-  return { ops, active, pending, pendingInvariants, pendingDeliverables, outcomes }
+  return {
+    ops,
+    active,
+    pending,
+    pendingInvariants,
+    pendingDeliverables,
+    outcomes,
+    usedExactFallback: true,
+    exactRenders,
+  }
 }
 
 export interface DraftTextIssue {

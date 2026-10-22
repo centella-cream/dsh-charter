@@ -39,7 +39,7 @@
 - 新浏览器 client 可以兼容仍在运行旧 Host 的 view snapshot（旧 Host 仍带 active 条数字段），避免 host/client
   revision 不一致时「会话契约」白屏；新的 pending 导入语义仍需要完整重启 Host 才生效。
 - 已针对 DSH `0.2.1-rc.2` 验证，无需代码改动；现有 peer range 和兼容层已覆盖该 release candidate。
-- 167 个测试，覆盖内核、Host 组合、fork、幂等、配额、prompt 边界、Remote stream、历史抽取、客户端 tab
+- 187 个测试，覆盖内核、Host 组合、fork、幂等、配额、prompt 边界、Remote stream、历史抽取、客户端 tab
   排序和装饰器兼容。已在 DSH `0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-rc.1`、`0.2.1-rc.2` 上验证。
   真实 Web UI 在 `0.2.0-rc.2` 上验证了标签顺序、中英文切换、目标/约束编辑、预览、Apply 和刷新持久化。
 
@@ -189,3 +189,19 @@
   按钮。
 - 可变发布状态措辞只保留在 `docs/releasing.zh.md`，不进入不可变 tarball 文档；仓库/CI/tag 前置项、
   禁止临时 tag 规则、以及 final tag 前必须刷新文档的要求都记录在发布清单中。
+- 连接就绪与业务数据去重分离：retry/reattach 收到相同 revision 时恢复 `ready` 并清除首帧 watchdog，而已 ready
+  的面板收到相同 revision 仍然去重；结束/失败的 snapshot stream 是终止状态，Retry 会重建 Remote watch 而不是
+  重启已中止的 lifetime（覆盖首个快照前后）。
+- 编辑器打开时冻结 revision baseline，无关的远端提交不会静默把 objective/item 编辑改到新 revision；只有显式
+  rebase 才推进 baseline，后续暂存也不会推进已冻结批次的 baseline。
+- 字节预算、unchanged 比较、reason、候选上限与生成的 op 文本都基于 `inspectUserText(...).value` 计算，
+  CRLF/NFD 输入不能绕过或浪费上限；只做归一化的编辑视为 unchanged。
+- 下一个暂存 order 取 committed max 与当前 staged add/propose/supersede/order-edit 最大有效 order 的较大者 + 1，
+  add/unstage/add 不会复用 order；`Unstage` 按真实 op-target 规则推导，purge 派生后继仍保留自己的可移除操作。
+- 只有估算与渲染确实不一致时才走 quadratic bootstrap-planner fallback：base prompt 已超预算时直接返回全
+  pending 计划、不逐候选重渲染，并通过 `usedExactFallback` / `exactRenders` 暴露诊断。
+- compaction checker 改为纯事件数组求值：只接受完整的 start+summary+无 error end 生命周期，要求 charter 在
+  compaction start 之前提交，按 `compactionId` 关联 checkpoint 的泄漏 warning，将压缩后执行但无 runtime 快照
+  判为 FAIL，并让 legacy 重复 call id 按 turn/step + 事件顺序配对。
+- 诚实收窄存储保留保证：只覆盖内部 schema/一致性不合法的记录；外层 JSON 不可读的文档会被 JSON storage backend
+  当作不存在，仍是已记录的残留风险（插件侧没有读取错误 API，也不做路径特判）。

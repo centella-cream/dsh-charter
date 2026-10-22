@@ -33,17 +33,10 @@
  * binary for compressed session logs. It is not part of the npm package.
  */
 import { spawnSync } from 'node:child_process'
-import { createHash } from 'node:crypto'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import {
-  charterReadArgumentsView,
-  compactStandingItem,
-  evaluateCompactionEvidence,
-  isValidCharterReadEvidence,
-  postCompactionCharterReads,
-} from './compaction-checks.mjs'
+import { evaluateCompactionTranscript } from './compaction-checks.mjs'
 
 const CHARTER_CONTEXT_NAME = 'charter:standing'
 const CHARTER_PROMPT_PREFIX = 'Current user-authored session charter.'
@@ -78,8 +71,8 @@ function parseArgs(argv) {
   return args
 }
 
-function sha256Text(value) {
-  return `sha256:${createHash('sha256').update(value, 'utf8').digest('hex')}`
+function formatBytes(value) {
+  return `${Buffer.byteLength(value, 'utf8')} B`
 }
 
 function findSessionLog(home, sessionId) {
@@ -190,10 +183,6 @@ function preview(value, length = 88) {
   return text.length > length ? `${text.slice(0, length)}...` : text
 }
 
-function formatBytes(value) {
-  return `${Buffer.byteLength(value, 'utf8')} B`
-}
-
 function main() {
   const args = parseArgs(process.argv.slice(2))
   const sessionId = args.session ?? process.env.DSH_SESSION_ID
@@ -206,355 +195,83 @@ function main() {
   if (charterRecord === undefined) fail(`no charter storage record for ${sessionId} (was the plugin ever loaded?)`)
   const record = charterRecord.record
   const current = record.current
-  const promptText = typeof current.promptText === 'string' ? current.promptText : ''
-  const promptDigest = typeof current.promptDigest === 'string' ? current.promptDigest : ''
-  const charterReady = current.revision > 0 && promptText !== ''
-  // The decisive sequence is "charter committed, then compaction, then a
-  // request". A charter applied after the compaction cannot prove survival.
+  // The decisive sequence is "charter committed, then compaction START, then a
+  // request". A charter applied after the start cannot prove survival.
   const latestCommit = Array.isArray(record.history) ? record.history.at(-1) : undefined
-  const charterCommittedAt = typeof latestCommit?.at === 'number' ? latestCommit.at : undefined
+  const committedAt = typeof latestCommit?.at === 'number' ? latestCommit.at : undefined
 
-  const compactions = events
-    .filter(event => event.type === 'compaction/end')
-    .map(event => ({
-      seq: event.seq,
-      time: event.time,
-      id: event.data?.compactionId,
-      sourceCommandId: event.data?.sourceCommandId,
-    }))
-  const latestCompaction = compactions.at(-1)
-
-  const runtimeContexts = events
-    .filter(event => event.type === 'user/message' && event.data?.source?.kind === 'runtime-context')
-    .map(event => {
-      const sections = Array.isArray(event.data.source.sections) ? event.data.source.sections : []
-      const charter = sections.find(section => section?.name === CHARTER_CONTEXT_NAME)
-      return {
-        seq: event.seq,
-        time: event.time,
-        sectionNames: sections.map(section => section?.name ?? '?'),
-        charterText: typeof charter?.text === 'string' ? charter.text : undefined,
-      }
-    })
-  const latestRuntime = runtimeContexts.at(-1)
-
-  const checkpoints = events
-    .filter(event => event.type === 'user/message' && event.data?.source?.kind === 'compact-checkpoint')
-    .map(event => ({
-      seq: event.seq,
-      time: event.time,
-      compactionId: event.data.source.compactionId,
-      text: messageText(event.data.content),
-    }))
-
-  const toolHeaders = events
-    .filter(event => event.type === 'request/header')
-    .map(event => ({
-      seq: event.seq,
-      tools: Array.isArray(event.data?.header?.tools) ? event.data.header.tools.map(tool => tool?.name) : [],
-    }))
-  const latestHeader = toolHeaders.at(-1)
-
-  const toolCalls = events
-    .filter(event => event.type === 'tool/call')
-    .map(event => ({
-      seq: event.seq,
-      callId: event.data?.callId,
-      name: event.data?.name,
-      arguments: event.data?.arguments,
-    }))
-  const toolCallsByCallId = new Map(toolCalls.map(call => [call.callId, call]))
-  const toolCallsBySeq = new Map(toolCalls.map(call => [call.seq, call]))
-  const charterReadCalls = toolCalls.filter(call => call.name === 'charter_read')
-  const standingItems = current.items
-    .filter(item => item.review === 'accepted' && item.lifecycle === 'current')
-    .map(item => compactStandingItem(item))
-  // Each tool result is paired with the tool call that produced it. Modern
-  // transcripts expose top-level `sourceEventSeqs` (the source event seqs), so
-  // the unique charter_read call is authenticated from those; legacy
-  // transcripts without that field fall back to the message toolCallId.
-  const charterReadResults = events
-    .filter(event => event.type === 'tool/result')
-    .map(event => {
-      const data = event.data ?? {}
-      const message = data.message ?? {}
-      const sourceEventSeqs = Array.isArray(event.sourceEventSeqs)
-        ? event.sourceEventSeqs
-        : Array.isArray(data.sourceEventSeqs)
-          ? data.sourceEventSeqs
-          : undefined
-      let call
-      let resolution
-      if (sourceEventSeqs !== undefined) {
-        const matches = sourceEventSeqs
-          .map(seq => toolCallsBySeq.get(seq))
-          .filter(candidate => candidate?.name === 'charter_read')
-        call = matches.length === 1 ? matches[0] : undefined
-        resolution = matches.length === 1
-          ? 'sourceEventSeqs'
-          : matches.length === 0 ? 'sourceEventSeqs-no-charter-read' : 'sourceEventSeqs-ambiguous'
-      } else {
-        const callId = message.toolCallId ?? data.toolCallId
-        const candidate = toolCallsByCallId.get(callId)
-        call = candidate?.name === 'charter_read' ? candidate : undefined
-        resolution = call === undefined ? 'callId-no-charter-read' : 'callId'
-      }
-      if (call === undefined) return undefined
-      const base = {
-        seq: event.seq,
-        callSeq: call.seq,
-        callId: call.callId,
-        resolution,
-        argumentsView: charterReadArgumentsView(call.arguments),
-        isError: message.isError === true,
-      }
-      const text = messageText(message.content)
-      try {
-        const view = JSON.parse(text)
-        if (view === null || typeof view !== 'object' || !Array.isArray(view.items)) {
-          return { ...base, invalid: true }
-        }
-        return {
-          ...base,
-          invalid: false,
-          revision: view.revision,
-          objective: view.objective,
-          items: view.items,
-        }
-      } catch {
-        return { ...base, invalid: true }
-      }
-    })
-    .filter(result => result !== undefined)
-  const latestRuntimeSeq = latestRuntime?.seq
-  const postCompactionCalls = latestCompaction === undefined
-    ? charterReadCalls
-    : charterReadCalls.filter(call => call.seq > latestCompaction.seq)
-  const postCompactionReads = postCompactionCharterReads(charterReadResults, latestCompaction?.seq)
-  // Only an authenticated post-compaction call (ordered after the compaction
-  // and the latest runtime-context snapshot, default/standing view, non-error
-  // result) counts as evidence. A result alone is not enough.
-  const authenticatedReads = charterReadResults.filter(result => isValidCharterReadEvidence({
-    callSeq: result.callSeq,
-    resultSeq: result.seq,
-    compactionSeq: latestCompaction?.seq,
-    runtimeSeq: latestRuntimeSeq,
-    argumentsView: result.argumentsView,
-    isError: result.isError,
-  }))
-  const matchedReads = charterReady
-    ? authenticatedReads.filter(result =>
-        result.invalid === false
-        && result.revision === current.revision
-        && result.objective === (current.objective?.current?.text ?? null)
-        && JSON.stringify(result.items.map(item => compactStandingItem(item)))
-          === JSON.stringify(standingItems))
-    : []
-  const latestCharterRead = authenticatedReads.at(-1)
-  const latestMatchedRead = matchedReads.at(-1)
-
-  const promptSnapshots = events
-    .filter(event => event.type === 'system/message')
-    .map(event => messageText(event.data.message?.content))
-  // The charter body must never enter a system-role prompt. Check the rendered
-  // body plus each distinctive user-authored signal, so a split/encoded leak is
-  // still caught while ordinary short words do not cause false positives.
-  const systemPromptSignals = [
-    promptText,
-    ...(typeof current.objective?.current?.text === 'string' && current.objective.current.text.trim().length >= 8
-      ? [current.objective.current.text]
-      : []),
-    ...standingItems
-      .map(item => item.text)
-      .filter(text => typeof text === 'string' && text.trim().length >= 16),
-  ].filter(text => text !== '')
-  const systemPromptClean = charterReady
-    ? !promptSnapshots.some(text => text.includes(CHARTER_PROMPT_PREFIX)
-      || systemPromptSignals.some(signal => text.includes(signal)))
-    : undefined
-  const charterReadCalled = postCompactionCalls.length > 0
-  const charterReadStanding = charterReady && matchedReads.length > 0 ? true : undefined
-
-  const injected = latestRuntime?.charterText !== undefined
-  const digestMatch = injected
-    && promptText !== ''
-    && latestRuntime.charterText === promptText
-    && sha256Text(latestRuntime.charterText) === promptDigest
-  const injectedAfterCompaction = latestCompaction === undefined
-    ? undefined
-    : latestRuntime !== undefined && latestRuntime.seq > latestCompaction.seq
-  const charterPredatesCompaction = latestCompaction === undefined || charterCommittedAt === undefined
-    ? undefined
-    : charterCommittedAt < latestCompaction.time
-  const survivesCompaction = charterPredatesCompaction === true && injectedAfterCompaction === true
-    && injected && digestMatch
-
-  const latestCheckpoint = latestCompaction === undefined
-    ? checkpoints.at(-1)
-    : [...checkpoints].reverse().find(checkpoint => checkpoint.seq > latestCompaction.seq)
-  const checkpointLeaksCharter = latestCheckpoint !== undefined && charterReady
-    && (latestCheckpoint.text.includes(promptText)
-      || (args.marker !== undefined && latestCheckpoint.text.includes(args.marker)))
-  const markerPresent = args.marker === undefined ? undefined : promptText.includes(args.marker)
-
-  const verification = evaluateCompactionEvidence({
-    charterReady: charterReady === true,
-    survivesCompaction,
-    systemPromptClean: charterReady === true ? systemPromptClean : undefined,
-    charterReadStanding,
-    checkpointLeaksCharter,
+  const report = evaluateCompactionTranscript({
+    events,
+    current: { ...current, committedAt },
+    marker: args.marker,
+    promptPrefix: CHARTER_PROMPT_PREFIX,
   })
-
-  const report = {
+  const { promptText, ...charterReport } = report.charter
+  const compactReport = {
     sessionId,
     logFile,
     storageFile: charterRecord.file,
     events: events.length,
+    charter: charterReport,
+    ...report,
     charter: {
-      revision: current.revision,
-      committedAt: charterCommittedAt === undefined ? null : charterCommittedAt,
-      bytes: formatBytes(promptText),
-      promptDigest,
-      objective: current.objective?.current?.text ?? null,
-      pending: current.items?.filter(item => item.review === 'pending').length ?? 0,
-    },
-    compactions,
-    runtimeContexts,
-    checkpoints: checkpoints.map(checkpoint => ({
-      seq: checkpoint.seq,
-      time: checkpoint.time,
-      compactionId: checkpoint.compactionId,
-      bytes: formatBytes(checkpoint.text),
-    })),
-    requests: toolHeaders.length,
-    charterReadTool: latestHeader?.tools.includes('charter_read') ?? false,
-    charterRead: latestCharterRead ?? null,
-    postCompactionCharterReads: postCompactionReads.length,
-    authenticatedCharterReads: authenticatedReads.length,
-    systemPromptClean,
-    charterReadCalled,
-    verification,
-    verdicts: {
-      charterReady,
-      injected,
-      digestMatch,
-      injectedAfterCompaction,
-      charterPredatesCompaction,
-      survivesCompaction,
-      checkpointLeaksCharter,
-      markerPresent,
-      charterReadStanding,
-      systemPromptClean,
+      ...charterReport,
+      bytes: report.charter.bytes,
+      promptText,
     },
   }
 
   if (args.json) {
-    console.log(JSON.stringify(report, null, 2))
+    console.log(JSON.stringify(compactReport, null, 2))
   } else {
     const stamp = time => new Date(time).toISOString()
+    const latestCompaction = report.latestCompaction
     console.log('dsh-charter compaction end-to-end\n')
     console.log(`session        ${sessionId}`)
     console.log(`transcript     ${logFile} (${events.length} events)`)
     console.log(`storage        ${charterRecord.file}`)
     console.log(
-      `charter        revision ${current.revision}, ${formatBytes(promptText)}, `
-      + `committed ${charterCommittedAt === undefined ? '(unknown)' : new Date(charterCommittedAt).toISOString()}, `
-      + `objective ${current.objective?.current?.text === undefined ? '(none)' : JSON.stringify(preview(current.objective.current.text))}`,
+      `charter        revision ${report.charter.revision}, ${formatBytes(promptText)}, `
+      + `committed ${committedAt === undefined ? '(unknown)' : new Date(committedAt).toISOString()}, `
+      + `objective ${report.charter.objective === null ? '(none)' : JSON.stringify(preview(report.charter.objective))}`,
     )
-    console.log(`promptDigest   ${promptDigest || '(empty)'}`)
-    console.log(`compactions    ${compactions.length === 0 ? 'none' : ''}`)
-    for (const compaction of compactions) {
+    console.log(`promptDigest   ${report.charter.promptDigest || '(empty)'}`)
+    console.log(`compactions    ${report.compactions.length === 0 ? 'none' : ''}`)
+    for (const compaction of report.compactions) {
       console.log(
-        `  seq ${compaction.seq}  ${stamp(compaction.time)}  `
-        + `source ${compaction.sourceCommandId === undefined ? 'automatic' : compaction.sourceCommandId}`,
+        `  seq ${compaction.endSeq}  ${stamp(compaction.time)}  `
+        + `source ${compaction.sourceCommandId === undefined ? 'automatic' : compaction.sourceCommandId}`
+        + `${compaction.ok ? '' : `  INVALID/FAILED (${compaction.error ?? 'missing start/summary'})`}`,
       )
     }
-    console.log(`requests       ${toolHeaders.length} logged request header(s)`
+    console.log(`requests       ${report.requests} logged request header(s)`
       + `; charter_read tool ${report.charterReadTool ? 'registered' : 'NOT registered'}`)
-    console.log(`runtime ctx    ${runtimeContexts.length} snapshot(s)`)
-    for (const snapshot of runtimeContexts) {
-      const afterCompaction = latestCompaction !== undefined && snapshot.seq > latestCompaction.seq
+    console.log(`runtime ctx    ${report.runtimeContexts.length} snapshot(s)`)
+    for (const snapshot of report.runtimeContexts) {
+      const afterCompaction = latestCompaction !== null && snapshot.seq > latestCompaction.endSeq
       const charter = snapshot.charterText === undefined
         ? '-'
         : `charter ${formatBytes(snapshot.charterText)}${afterCompaction ? ', after latest compaction' : ''}`
       console.log(`  seq ${snapshot.seq}  ${stamp(snapshot.time)}  sections [${snapshot.sectionNames.join(', ')}]  ${charter}`)
     }
     console.log('')
-    const verdict = (ok, label, detail) => {
-      const state = ok === true ? 'PASS' : ok === false ? 'FAIL' : 'WAIT'
-      console.log(`  ${state}  ${label}${detail === undefined ? '' : ` — ${detail}`}`)
-    }
-    verdict(charterReady, 'charter established',
-      charterReady ? undefined : 'open the Charter tab and apply an objective or item first')
-    if (charterReady) {
-      verdict(injected, 'latest runtime context carries charter:standing',
-        injected ? undefined : 'send a message, then run this check again')
-      verdict(digestMatch, 'injected text matches storage authority and promptDigest',
-        injected ? (digestMatch ? undefined : 'text/digest mismatch') : undefined)
-    }
-    if (args.marker !== undefined && charterReady) {
-      verdict(markerPresent, `marker ${JSON.stringify(args.marker)} is part of the charter`)
-    }
-    if (charterReady) {
-      verdict(systemPromptClean, 'system prompt carries no charter body',
-        systemPromptClean ? undefined : 'a system-prompt snapshot contains the charter text')
-      verdict(charterReadStanding, 'authenticated post-compaction charter_read standing view matches the storage revision/objective',
-        charterReadStanding === true
-          ? undefined
-          : latestCompaction === undefined
-            ? 'run /compact, then call charter_read to record post-compaction evidence'
-            : !charterReadCalled
-              ? 'call charter_read after the latest compaction; no post-compaction call is recorded'
-              : latestCharterRead === undefined
-                ? 'no authenticated post-compaction charter_read result: its unique call (via sourceEventSeqs/callId) must follow the compaction and the latest runtime-context snapshot, request standing/default, and return a non-error result'
-                : latestMatchedRead === undefined
-                  ? `latest authenticated read is revision ${latestCharterRead.revision} (${latestCharterRead.items?.length ?? 0} standing items); re-read after the final revision`
-                  : undefined)
-    }
-    if (charterReady && latestCompaction !== undefined && charterPredatesCompaction === false) {
-      verdict(undefined, 'charter survives compaction',
-        'the current charter was committed after the latest compaction; run /compact, then send a message')
-    } else if (charterReady && latestCompaction !== undefined) {
-      if (injectedAfterCompaction !== true) {
-        verdict(undefined, 'charter survives compaction', 'waiting for a request after the latest compaction')
-      } else if (survivesCompaction) {
-        verdict(true, 'charter survives compaction',
-          `snapshot seq ${latestRuntime.seq} > compaction seq ${latestCompaction.seq}`)
-      } else {
-        verdict(false, 'charter survives compaction',
-          'post-compaction runtime context is missing the authoritative charter')
-      }
-    } else if (charterReady && latestCompaction === undefined) {
-      verdict(undefined, 'charter survives compaction', 'no compaction recorded yet; run /compact')
-    }
-    if (charterReady) {
-      const leaks = checkpointLeaksCharter === true
-      verdict(true, 'compaction summary does not carry the charter text',
-        leaks ? 'WARNING: summary contains the charter/marker; surviving text may come from the summary' : undefined)
+    for (const line of report.verdictLines) {
+      console.log(`  ${line.state}  ${line.label}${line.detail === undefined ? '' : ` — ${line.detail}`}`)
     }
     console.log('')
-    if (!charterReady) {
-      console.log('result: BLOCKED — establish the charter first (Charter tab, then Apply).')
-    } else if (latestCompaction === undefined) {
-      console.log('result: WAIT — no compaction recorded yet; run /compact in the Session.')
-    } else if (charterPredatesCompaction !== true) {
-      console.log('result: WAIT — compact again now that the charter is committed, then send a message.')
-    } else if (injectedAfterCompaction !== true) {
-      console.log('result: WAIT — send a message after the compaction, then run this check again.')
-    } else if (verification.ok) {
-      console.log('result: PASS — the real compaction kept the charter in the next request and all evidence checks passed.')
-      for (const warning of verification.warnings) console.log(`warning: ${warning}`)
-    } else {
-      console.log('result: FAIL — compaction evidence did not pass; see verdicts.')
-      for (const failure of verification.failures) console.log(`  evidence: ${failure}`)
+    const prefix = report.status === 'pass'
+      ? 'PASS'
+      : report.status === 'blocked' ? 'BLOCKED' : report.status === 'wait' ? 'WAIT' : 'FAIL'
+    console.log(`result: ${prefix} — ${report.statusReason}.`)
+    if (report.status === 'pass') {
+      for (const warning of report.verification.warnings) console.log(`warning: ${warning}`)
+    }
+    if (report.status === 'fail') {
+      for (const failure of report.verification.failures) console.log(`  evidence: ${failure}`)
     }
   }
 
-  if (!charterReady) process.exit(2)
-  if (latestCompaction === undefined
-    || charterPredatesCompaction !== true
-    || injectedAfterCompaction !== true) process.exit(3)
-  process.exit(verification.ok ? 0 : 1)
+  process.exit(report.exitCode)
 }
 
 main()
