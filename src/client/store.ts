@@ -121,8 +121,10 @@ export class CharterSessionSource implements CharterSource {
   }
 
   attach(remote: CharterRemote): void {
-    const generation = ++this.attachGeneration
+    // A duplicate attach while the same stream is live is a no-op; bumping the
+    // generation first would make that healthy stream's callbacks look stale.
     if (this.remote === remote && this.snapshotStream !== undefined) return
+    const generation = ++this.attachGeneration
     this.bumpConnection()
     void this.stop().then(() => {
       if (generation !== this.attachGeneration) return
@@ -140,8 +142,14 @@ export class CharterSessionSource implements CharterSource {
       const snapshots = new RemoteSnapshotStream<CharterSnapshotFrame, CharterChangedFrame>(stream, {
         name: `dsh-charter:${this.sessionId}`,
         isSnapshot: (frame): frame is CharterSnapshotFrame => frame.type === 'snapshot',
-        replace: frame => this.publishIfNewer(frame.value),
-        update: frame => this.publishIfNewer(frame.value),
+        replace: frame => {
+          if (generation !== this.attachGeneration) return
+          this.publishIfNewer(frame.value)
+        },
+        update: frame => {
+          if (generation !== this.attachGeneration) return
+          this.publishIfNewer(frame.value)
+        },
         failed: error => {
           if (generation !== this.attachGeneration) return
           this.publish({ ...this.state, status: 'error', error: messageOf(error) })
@@ -194,8 +202,9 @@ export class CharterSessionSource implements CharterSource {
   private publishIfNewer(view: CharterView): void {
     if (view.sessionId !== this.sessionId) return
     const current = this.state.view
+    // First introduction of a lifecycle (old Host view without a fingerprint,
+    // then a reconnected new Host view) is authoritative too.
     const lifecycleChanged = current !== null
-      && current.lifecycle !== undefined
       && view.lifecycle !== undefined
       && current.lifecycle !== view.lifecycle
     // A new lifecycle is authoritative regardless of revision: its revision
@@ -212,7 +221,9 @@ export class CharterSessionSource implements CharterSource {
       && view.revision === current.revision
       && view.status === current.status
       && view.promptDigest === current.promptDigest
-      && view.message === current.message) return
+      && view.message === current.message
+      && view.overBudget === current.overBudget
+      && JSON.stringify(view.limits) === JSON.stringify(current.limits)) return
     if (this.watchdog !== undefined) {
       clearTimeout(this.watchdog)
       this.watchdog = undefined
@@ -268,14 +279,14 @@ export class CharterClientController {
   constructor(private readonly ctx: ClientContext) {}
 
   /**
-   * The per-Session draft survives Pane unmounts, but the map stays bounded:
-   * the least recently used draft with no active view lease is disposed when
-   * more Sessions are visited.
+   * Reclaim only empty drafts. Staged ops, editor text, and reviewed history
+   * drafts are user work and are never silently evicted by idle time or LRU;
+   * the map may therefore exceed MAX_DRAFTS while those drafts exist.
    */
   private collectIdleDrafts(): void {
     const now = Date.now()
     for (const [id, draft] of [...this.drafts.entries()]) {
-      if ((this.sources.get(id)?.refs ?? 0) > 0) continue
+      if ((this.sources.get(id)?.refs ?? 0) > 0 || !draft.isEmpty) continue
       const touched = this.draftTouched.get(id) ?? 0
       if (now - touched < CharterClientController.DRAFT_IDLE_MS) continue
       this.drafts.delete(id)
@@ -296,9 +307,11 @@ export class CharterClientController {
     const draft = new CharterDraft(sessionId, () => this.sources.get(sessionId)?.source)
     this.drafts.set(sessionId, draft)
     while (this.drafts.size > CharterClientController.MAX_DRAFTS) {
-      const victim = [...this.drafts.entries()].find(([id]) => (this.sources.get(id)?.refs ?? 0) === 0)
+      const victim = [...this.drafts.entries()].find(([id, draft]) =>
+        (this.sources.get(id)?.refs ?? 0) === 0 && draft.isEmpty)
       if (victim === undefined) break
       this.drafts.delete(victim[0])
+      this.draftTouched.delete(victim[0])
       victim[1].dispose()
     }
     return draft

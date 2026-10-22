@@ -318,7 +318,13 @@ export class CharterDraft {
     }
     const bytes = new TextEncoder().encode(text).byteLength
     const maxBytes = editor.kind === 'objective' ? view.limits.maxObjectiveBytes : view.limits.maxItemBytes
-    if (bytes > maxBytes) {
+    const previousText = editor.kind === 'objective'
+      ? view.objective?.current.text ?? ''
+      : editor.kind === 'edit' ? editor.item.text : ''
+    const previousBytes = new TextEncoder().encode(previousText).byteLength
+    // An already over-budget field may still be shortened step by step; only
+    // growth beyond the limit is rejected by the Host.
+    if (bytes > maxBytes && bytes >= previousBytes) {
       this.update({ feedback: { kind: 'editorBudget', limit: maxBytes } })
       return
     }
@@ -453,6 +459,7 @@ export class CharterDraft {
 
   /** Retarget the staged draft at the latest revision after a conflict. */
   rebase(view: CharterView): void {
+    if (this.state.saving || this.state.bootstrapSaving) return
     if (this.state.baseRevision === null || view.status !== 'ready') return
     this.update({ baseRevision: view.revision, attempt: null, feedback: null })
   }
@@ -516,11 +523,24 @@ export class CharterDraft {
       return
     }
     const generation = ++this.bootstrapGeneration
+    const asyncGeneration = this.asyncGeneration
+    const sourceGeneration = source.connectionGeneration
     const requestedRevision = view.revision
     this.update({ bootstrapPhase: 'checking', bootstrapProblem: null, feedback: null })
+    const current = (): boolean => generation === this.bootstrapGeneration
+      && this.asyncGeneration === asyncGeneration
+      && source.sessionId === this.state.sessionId
+      && this.resolveSource() === source
+      && source.connectionGeneration === sourceGeneration
     try {
       const result = await source.bootstrap()
-      if (generation !== this.bootstrapGeneration || source.sessionId !== this.state.sessionId) return
+      if (!current()) {
+        // Reconnected/lifecycle-changed while the extraction was in flight.
+        if (generation === this.bootstrapGeneration) {
+          this.update({ bootstrapPhase: 'failed', bootstrapProblem: { kind: 'request-failed' } })
+        }
+        return
+      }
       const outcome = classifyBootstrapOutcome(
         result,
         source.getSnapshot(),
@@ -568,7 +588,7 @@ export class CharterDraft {
         ...(this.userBusy ? {} : { section: 'history' as const }),
       })
     } catch (error) {
-      if (generation !== this.bootstrapGeneration) return
+      if (!current()) return
       console.error('charter: bootstrap request failed', error)
       this.update({ bootstrapPhase: 'failed', bootstrapProblem: { kind: 'request-failed' } })
     }
@@ -629,8 +649,11 @@ export class CharterDraft {
         if (this.asyncGeneration === generation
           && this.resolveSource() === source
           && source.connectionGeneration === sourceGeneration
-          && this.state.saving) {
-          this.update({ saving: false, attempt: null, feedback: { kind: 'connection' } })
+          && this.state.bootstrapSaving) {
+          this.update({
+            bootstrapSaving: false,
+            bootstrapProblem: { kind: 'save-failed', code: 'UNAVAILABLE' },
+          })
         }
         return
       }

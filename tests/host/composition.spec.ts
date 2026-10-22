@@ -726,6 +726,28 @@ describe('dsh-charter host composition', () => {
     expect(await iterator.next()).toEqual({ done: true, value: undefined })
   })
 
+  it('does not let a closed watch unsubscribe remove a same-id replacement watch', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-watch-replace-'))
+    roots.push(root)
+    const ctx = await mount(root)
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('watch-replace'), {
+      meta: { cwd: root, createdAt: 1_700_000_000_790 },
+    })
+    await waitForReady(service, session)
+    const oldSeen: string[] = []
+    const unsubscribeOld = service.subscribe(session.id, view => { if (view !== null) oldSeen.push(view.status) })
+    // Simulate session/disposed closing the old Set before its generator unwinds.
+    ;(service as unknown as { closeListeners: (id: SessionId) => void }).closeListeners(session.id)
+    const freshSeen: string[] = []
+    const unsubscribeFresh = service.subscribe(session.id, view => { if (view !== null) freshSeen.push(view.status) })
+    unsubscribeOld()
+    ;(service as unknown as { publish: (id: SessionId) => void }).publish(session.id)
+    expect(freshSeen).toEqual(['ready'])
+    unsubscribeFresh()
+    expect(oldSeen).toEqual([])
+  })
+
   it('marks records over the current count limits as over budget', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-charter-count-budget-'))
     roots.push(root)
