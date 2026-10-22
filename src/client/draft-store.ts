@@ -65,6 +65,8 @@ export interface BootstrapProblem {
 interface DraftAttempt {
   readonly kind: 'edit' | 'bootstrap'
   readonly request: import('../core/schemas.js').CharterEditRequest
+  /** Connection epoch the request was sent through. */
+  readonly sourceGeneration: number
 }
 
 export interface CharterDraftState {
@@ -393,11 +395,17 @@ export class CharterDraft {
       baseRevision,
       ops: [...this.state.ops],
     }
-    this.update({ saving: true, feedback: null, attempt: { kind: 'edit', request } })
+    this.update({
+      saving: true,
+      feedback: null,
+      attempt: { kind: 'edit', request, sourceGeneration: source.connectionGeneration },
+    })
     const generation = this.asyncGeneration
+    const sourceGeneration = source.connectionGeneration
     const requestOps = this.state.ops
     const current = (): boolean => this.asyncGeneration === generation
       && this.resolveSource() === source
+      && source.connectionGeneration === sourceGeneration
       && this.state.ops === requestOps
     try {
       const result = await source.edit(request)
@@ -574,13 +582,15 @@ export class CharterDraft {
     this.update({
       bootstrapSaving: true,
       bootstrapProblem: null,
-      attempt: { kind: 'bootstrap', request },
+      attempt: { kind: 'bootstrap', request, sourceGeneration: source.connectionGeneration },
     })
     const generation = this.asyncGeneration
     const candidateGeneration = this.bootstrapGeneration
+    const sourceGeneration = source.connectionGeneration
     const current = (): boolean => this.asyncGeneration === generation
       && this.bootstrapGeneration === candidateGeneration
       && this.resolveSource() === source
+      && source.connectionGeneration === sourceGeneration
     try {
       const result = await source.edit(request)
       if (!current()) return

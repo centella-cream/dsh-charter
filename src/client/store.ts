@@ -52,12 +52,28 @@ export class CharterSessionSource implements CharterSource {
   private snapshotStream: RemoteSnapshotStream<CharterSnapshotFrame, CharterChangedFrame> | undefined
   private remote: CharterRemote | undefined
   private attachGeneration = 0
+  private connection = 0
+  private readonly connectionListeners = new Set<() => void>()
   private watchdog: ReturnType<typeof setTimeout> | undefined
 
   constructor(
     private readonly ctx: ClientContext,
     readonly sessionId: SessionId,
   ) {}
+
+  /** Monotonic connection epoch: attach/detach/retry each start a new one. */
+  get connectionGeneration(): number {
+    return this.connection
+  }
+
+  /**
+   * Observe connection-epoch changes so in-flight draft requests sent through
+   * a previous connection cannot mutate the current draft.
+   */
+  onConnectionChange(listener: () => void): () => void {
+    this.connectionListeners.add(listener)
+    return () => { this.connectionListeners.delete(listener) }
+  }
 
   readonly getSnapshot = (): CharterClientState => this.state
 
@@ -94,6 +110,7 @@ export class CharterSessionSource implements CharterSource {
     // before the snapshot stream existed, attach the already mounted Remote
     // again instead of leaving Retry as a no-op.
     if (this.snapshotStream !== undefined) {
+      this.bumpConnection()
       this.snapshotStream.restart()
       this.publish({ ...this.state, status: 'connecting', error: null })
       return
@@ -106,6 +123,7 @@ export class CharterSessionSource implements CharterSource {
   attach(remote: CharterRemote): void {
     const generation = ++this.attachGeneration
     if (this.remote === remote && this.snapshotStream !== undefined) return
+    this.bumpConnection()
     void this.stop().then(() => {
       if (generation !== this.attachGeneration) return
       this.remote = remote
@@ -150,6 +168,7 @@ export class CharterSessionSource implements CharterSource {
   detach(remote: CharterRemote): void {
     if (this.remote !== remote) return
     const generation = ++this.attachGeneration
+    this.bumpConnection()
     this.remote = undefined
     void this.stop().finally(() => {
       // A later attach owns the state after this detach.
@@ -160,9 +179,16 @@ export class CharterSessionSource implements CharterSource {
 
   async dispose(): Promise<void> {
     this.attachGeneration += 1
+    this.bumpConnection()
     this.remote = undefined
     await this.stop()
     this.listeners.clear()
+    this.connectionListeners.clear()
+  }
+
+  private bumpConnection(): void {
+    this.connection += 1
+    for (const listener of [...this.connectionListeners]) listener()
   }
 
   private publishIfNewer(view: CharterView): void {
@@ -285,7 +311,9 @@ export class CharterClientController {
       // A new source instance invalidates in-flight results from the previous
       // one, while preserving staged content for an idempotent retry.
       this.drafts.get(sessionId)?.invalidateSource()
-      entry = { source: new CharterSessionSource(this.ctx, sessionId), refs: 0 }
+      const source = new CharterSessionSource(this.ctx, sessionId)
+      source.onConnectionChange(() => { this.drafts.get(sessionId)?.invalidateSource() })
+      entry = { source, refs: 0 }
       this.sources.set(sessionId, entry)
       if (this.remote !== undefined) entry.source.attach(this.remote)
     }
