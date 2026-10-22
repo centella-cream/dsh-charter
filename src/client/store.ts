@@ -61,7 +61,12 @@ export class CharterSessionSource implements CharterSource {
   constructor(
     private readonly ctx: ClientContext,
     readonly sessionId: SessionId,
-  ) {}
+    options: { readonly attachTimeoutMs?: number } = {},
+  ) {
+    this.attachTimeoutMs = options.attachTimeoutMs ?? ATTACH_TIMEOUT_MS
+  }
+
+  private readonly attachTimeoutMs: number
 
   /** Monotonic connection epoch: attach/detach/retry each start a new one. */
   get connectionGeneration(): number {
@@ -108,13 +113,14 @@ export class CharterSessionSource implements CharterSource {
   }
 
   readonly retry = (): void => {
-    // A live stream can be restarted in place; when an earlier attach failed
-    // before the snapshot stream existed, attach the already mounted Remote
-    // again instead of leaving Retry as a no-op.
+    // A stream that ended/failed is terminal: it was disposed and cleared so
+    // this path recreates the Remote watch instead of restarting an aborted
+    // lifetime. A genuinely live stream may restart in place.
     if (this.snapshotStream !== undefined) {
       this.bumpConnection()
-      this.snapshotStream.restart()
       this.publish({ ...this.state, status: 'connecting', error: null })
+      this.armWatchdog(this.attachGeneration)
+      this.snapshotStream.restart()
       return
     }
     if (this.remote !== undefined) {
@@ -158,20 +164,12 @@ export class CharterSessionSource implements CharterSource {
         },
         failed: error => {
           if (generation !== this.attachGeneration) return
-          this.publish({ ...this.state, status: 'error', error: messageOf(error) })
+          this.terminateStream(generation, error)
         },
       })
       this.stream = stream
       this.snapshotStream = snapshots
-      this.watchdog = setTimeout(() => {
-        if (generation !== this.attachGeneration || this.state.status === 'ready') return
-        this.publish({
-          ...this.state,
-          status: 'error',
-          error: 'Charter connection timed out before the first snapshot.',
-        })
-      }, ATTACH_TIMEOUT_MS)
-      this.watchdog.unref?.()
+      this.armWatchdog(generation)
       snapshots.start()
     }).catch(error => {
       if (generation !== this.attachGeneration) return
@@ -230,18 +228,20 @@ export class CharterSessionSource implements CharterSource {
       // new generation are not authoritative and are ignored here.
       if (view.status !== 'unavailable') return
     }
-    if (current !== null
+    const sameView = current !== null
       && !lifecycleChanged
       && view.revision === current.revision
       && view.status === current.status
       && view.promptDigest === current.promptDigest
       && view.message === current.message
       && view.overBudget === current.overBudget
-      && JSON.stringify(view.limits) === JSON.stringify(current.limits)) return
-    if (this.watchdog !== undefined) {
-      clearTimeout(this.watchdog)
-      this.watchdog = undefined
-    }
+      && JSON.stringify(view.limits) === JSON.stringify(current.limits)
+    // Connection readiness is separate from business-data dedupe. A retry or
+    // reattach that delivers the same view must still recover `ready` (and
+    // clear the first-frame watchdog); an already-ready pane with the identical
+    // view is the only case that needs no publish.
+    if (sameView && this.state.status === 'ready' && this.state.error === null) return
+    this.clearWatchdog()
     this.publish({ status: 'ready', view, error: null })
   }
 
@@ -250,11 +250,40 @@ export class CharterSessionSource implements CharterSource {
     for (const listener of [...this.listeners]) listener()
   }
 
+  private armWatchdog(generation: number): void {
+    this.clearWatchdog()
+    this.watchdog = setTimeout(() => {
+      if (generation !== this.attachGeneration || this.state.status === 'ready') return
+      this.publish({
+        ...this.state,
+        status: 'error',
+        error: 'Charter connection timed out before the first snapshot.',
+      })
+    }, this.attachTimeoutMs)
+    this.watchdog.unref?.()
+  }
+
+  private clearWatchdog(): void {
+    if (this.watchdog === undefined) return
+    clearTimeout(this.watchdog)
+    this.watchdog = undefined
+  }
+
+  /** A snapshot stream ended or failed: it is terminal and must be recreated. */
+  private terminateStream(generation: number, error: unknown): void {
+    if (generation !== this.attachGeneration) return
+    const snapshots = this.snapshotStream
+    const stream = this.stream
+    this.snapshotStream = undefined
+    this.stream = undefined
+    this.clearWatchdog()
+    this.publish({ ...this.state, status: 'error', error: messageOf(error) })
+    const disposal = snapshots !== undefined ? snapshots.dispose() : stream?.dispose()
+    void disposal?.catch(() => undefined)
+  }
+
   private async stop(): Promise<void> {
-    if (this.watchdog !== undefined) {
-      clearTimeout(this.watchdog)
-      this.watchdog = undefined
-    }
+    this.clearWatchdog()
     const snapshots = this.snapshotStream
     const stream = this.stream
     this.snapshotStream = undefined

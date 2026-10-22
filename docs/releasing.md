@@ -124,6 +124,10 @@ keys, profile data, or local screenshots containing private content.
 ## 5. Post-release
 
 - Verify the README install command against the published artifact.
+- Remember the recorded residual risk (verification §4.5): an **unreadable outer JSON** charter record is treated
+  as absent by the JSON storage backend and cannot be distinguished from a missing record through the plugin-side
+  API. Do not claim "corrupt data is always preserved" — that guarantee covers only an inner schema-invalid
+  record. Before a tag, re-read the immutable docs and keep this limitation stated there.
 - Update the compatibility matrix if a new DSH release was tested.
 - Leave `docs/archive/` untracked; it contains local historical design material only and is outside the npm
   `files` whitelist, so GitHub and npm stay consistent.

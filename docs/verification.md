@@ -15,7 +15,7 @@ HTML live under `.tmp/` and are excluded from the published package.
 | Item | Result |
 | --- | --- |
 | Strict TypeScript check (5 DSH versions) | Pass |
-| Vitest (5 locally available versions × 167 tests) | Pass |
+| Vitest (5 locally available versions × 187 tests) | Pass |
 | Host ESM build + browser single-file bundle | Pass |
 | Remote decorator/resource smoke | Pass (0.1.7/0.2.0 have no resource declaration, as expected) |
 | Browser factory-bundle materialization and `apply` smoke | Pass |
@@ -24,9 +24,10 @@ HTML live under `.tmp/` and are excluded from the published package.
 | Real browser UI (0.2.0-rc.2 Web profile) | Pass: tab order, zh/en switch, objective/invariant editing, preview, Apply, reload persistence; section 7 |
 | Read-only stored view for a non-live Session | Pass: composition test covers stored view and live upgrade |
 | History draft from a compaction summary | Pass: core parser (including real bullet-only summary format) + composition test on a real Session event; section 4.4 |
-| Per-record storage isolation | Pass: one schema-invalid record disables only its own Session and is preserved; section 4.5 |
+| Per-record storage isolation | Pass for a schema-invalid **inner** record (disables only its own Session, preserved); unreadable outer JSON is a documented residual risk, not covered; section 4.5 |
 | Budget degradation and convergence | Pass: lowered budgets become `overBudget`, injection stops, shrinking edits converge; non-viable config is clamped; section 4.5 |
-| Session-owned client drafts | Pass: unit tests cover draft survival across bindings, retry mutation-id reuse, conflict rebase, and bootstrap section ownership; section 4.5 |
+| Session-owned client drafts | Pass: draft survival across bindings, retry mutation-id reuse, conflict rebase, frozen editor revision baseline, normalized admission, order allocation after unstage, and bootstrap section ownership; section 4.5 |
+| Client source recovery and retry | Pass: a retry that delivers the identical revision recovers `ready` and clears the watchdog; a terminal snapshot stream is disposed and Retry recreates it (before/after the first snapshot); section 4.5 |
 | Runtime schema revalidation | Pass: a record mutated to an invalid schema after mount isolates only its Session and is preserved; section 4.6 |
 | Packed artifact installability | Pass: local `npm run smoke:package` (tarball contents, exports/files, packed `core` import, client bundle; Host/Remote runtime imports are covered by the workspace build smoke); section 2 |
 | Compaction checker exit criteria | Pass: fixture tests cover success, dirty system prompt, a required matching post-compaction `charter_read` whose call is authenticated via `sourceEventSeqs`/callId and ordered after the compaction and runtime snapshot (missing, mismatched, pre-compaction, non-standing, and error cases fail), lost snapshot, and leak warning; section 4.7 |
@@ -44,7 +45,7 @@ Results:
 
 - typecheck passes;
 - build passes;
-- 17 test files, 167 tests pass (from `npm test`, which builds and then runs `vitest run`);
+- 17 test files, 187 tests pass (from `npm test`, which builds and then runs `vitest run`);
 - `remote-smoke` asserts `watch,bootstrap,edit`, stream mode, and Session resource;
 - `client-smoke` asserts the single-file factory bundle, external-dependency allowlist, no Node-only `Buffer`
   reference, and `apply` registering the tab/pane/Remote contribution;
@@ -70,11 +71,11 @@ Key test files:
 | `tests/host/watch.spec.ts` | opening snapshot, race, dedupe, abort, decorator compatibility, resource-scope capability detection |
 | `tests/host/actor.spec.ts` | principal-aware policy: modern missing-principal denial, legacy-only owner fallback, non-owner recording, generation-aware `resolveRemoteActor` |
 | `tests/host/remote.spec.ts` | Remote descriptor, wire schema, legacy Host view snapshot, zero pending limit |
-| `tests/client/store.spec.ts` | accept committed view immediately, ignore stale/duplicate revisions, monotonic opening snapshot, authoritative availability demotion, attach retry, pending-attach cancellation before its stream starts, shared source lease/ref count, stale-lease no-op, foreign-Session stream frames ignored |
-| `tests/client/bootstrap-plan.spec.ts` | overflow candidates stay in one plan; O(1) incremental byte accounting with a 3,000 all-active case and a mixed invariant/deliverable case; per-candidate outcomes; exact-render verification; bootstrap outcome classifier (draft/discard/stale/unavailable) |
-| `tests/client/draft.spec.ts` / `tests/client/draft-store.spec.ts` | Session-scoped request guard (Session A ops never build a request for Session B); draft survival across binding unmount/remount; idempotent retry mutation-id reuse; conflict rebase; stale async results cannot overwrite a newer draft/source/lifecycle; bootstrap does not steal the section |
-| `tests/client/preview.spec.ts` | projected draft rows for add/edit/accept/progress/supersede/purge; purge detaches the successor's supersedes link; renderer parity and pending exclusion; prompt-budget Apply admission (shrinking, same-size, growing, and within-budget renders) |
-| `tests/verify/compaction-checks.spec.ts` | compaction checker fixtures: dirty system prompt; required matching post-compaction `charter_read` with authenticated call ordering (`sourceEventSeqs`/callId), default/standing view, non-error result, pre-compaction and call-before-runtime rejection; lost post-compaction snapshot; leak warning; exact compact standing projection |
+| `tests/client/store.spec.ts` | accept committed view immediately, ignore stale/duplicate revisions, monotonic opening snapshot, authoritative availability demotion, attach retry, identical-snapshot retry recovery and watchdog clearing, terminal stream recreation on Retry (before/after first snapshot), pending-attach cancellation before its stream starts, shared source lease/ref count, stale-lease no-op, foreign-Session stream frames ignored |
+| `tests/client/bootstrap-plan.spec.ts` | overflow candidates stay in one plan; O(1) incremental byte accounting with 3,000 all-active, mixed, and 2,000 CRLF/NFD cases; over-budget base objective returns an all-pending plan without the quadratic fallback (`usedExactFallback`/`exactRenders` diagnostics); per-candidate outcomes; bootstrap outcome classifier (draft/discard/stale/unavailable) |
+| `tests/client/draft.spec.ts` / `tests/client/draft-store.spec.ts` | Session-scoped request guard (Session A ops never build a request for Session B); draft survival across binding unmount/remount; idempotent retry mutation-id reuse; conflict rebase; frozen editor revision baseline (conflict until explicit rebase); normalized admission limits (NFC contraction/expansion, CRLF/LF, boundary); order allocation after unstage; stale async results cannot overwrite a newer draft/source/lifecycle; bootstrap does not steal the section |
+| `tests/client/preview.spec.ts` | projected draft rows for add/edit/accept/progress/supersede/purge; purge detaches the successor's supersedes link; committed-fixture purge ordering keeps a directly staged successor's Unstage and hides it only for a derived-only row; renderer parity and pending exclusion; order-based (not Host-id) rendering; prompt-budget Apply admission (shrinking, same-size, growing, and within-budget renders) |
+| `tests/verify/compaction-checks.spec.ts` | compaction checker fixtures: dirty system prompt; required matching post-compaction `charter_read` with authenticated call ordering (`sourceEventSeqs`/turn-step-callId), default/standing view, non-error result, pre-compaction and call-before-runtime rejection, legacy duplicate-callId pairing; lifecycle fixtures (failed end ignored, clean end PASS, commit-between-start/end requires re-compaction, checkpoint-before-end leak warning, post-compaction execution without snapshot FAIL) asserting exit code/JSON verdicts/text/warnings; exact compact standing projection |
 
 ## 3. Cross-version matrix
 
@@ -101,13 +102,13 @@ Results:
 
 | Version | typecheck | build | Vitest | remote smoke | client smoke |
 | --- | --- | --- | --- | --- | --- |
-| `0.1.7-rc.2` | Pass | Pass | 167/167 | Pass (no-resources warning) | Pass |
-| `0.2.0-rc.1` | Pass | Pass | 167/167 | Pass (no-resources warning) | Pass |
-| `0.2.0-rc.2` | Pass | Pass | 167/167 | Pass (no-resources warning) | Pass |
-| `0.2.1-rc.1` | Pass | Pass | 167/167 | Pass | Pass |
-| `0.2.1-rc.2` | Pass | Pass | 167/167 | Pass | Pass |
+| `0.1.7-rc.2` | Pass | Pass | 187/187 | Pass (no-resources warning) | Pass |
+| `0.2.0-rc.1` | Pass | Pass | 187/187 | Pass (no-resources warning) | Pass |
+| `0.2.0-rc.2` | Pass | Pass | 187/187 | Pass (no-resources warning) | Pass |
+| `0.2.1-rc.1` | Pass | Pass | 187/187 | Pass | Pass |
+| `0.2.1-rc.2` | Pass | Pass | 187/187 | Pass | Pass |
 
-Re-run on the final `0.1.0-rc.1` tree on 2026-10-22: each version reports 17 test files / 167 tests, and build
+Re-run on the final `0.1.0-rc.1` tree on 2026-10-22: each version reports 17 test files / 187 tests, and build
 includes the remote/client smoke assertions.
 
 This five-version matrix is **local evidence**: its version directories and driver script live in the gitignored
@@ -210,6 +211,14 @@ only static review:
 - **Invalid record isolation.** A persisted record document with an unexpected field is written directly under
   `storages/dsh_charter_v1/sessions/<id>.json`. After remounting, that Session is `unavailable` and its raw file is
   unchanged, while an unrelated Session still reads, injects, and edits its charter.
+- **Residual risk: unreadable outer JSON.** The JSON storage backend deliberately reads a malformed or
+  version-rejected per-record document as **absent** (`readRecord` catches every read/parse error), and the
+  plugin-side `KvTable` exposes no read-error signal or raw-file view. Without a path-specific hack or a layout
+  switch, the plugin cannot distinguish an unreadable record from a missing one, so service initialization would
+  create a fresh empty record on the next write instead of preserving the unreadable bytes. The "raw document is
+  preserved" guarantee therefore applies **only** to an inner schema/consistency-invalid record, not to unreadable
+  outer JSON. This is a known residual risk, not a closed issue; it is also recorded in
+  `docs/releasing.md` release-state checks.
 - **Lowered budgets.** A charter created with the default 8 KiB budget is remounted with `maxPromptBytes: 300`.
   The view is `ready` + `overBudget`, `promptText()` returns `''` (no injection), adding content returns
   `QUOTA_EXCEEDED`, and archiving the items is admitted because the prompt shrinks; the view then leaves
@@ -222,6 +231,22 @@ only static review:
 - **Client ownership.** Unit tests cover: a draft survives unmount/remount; an unknown-outcome retry reuses the
   mutation id; a conflict rebase mints a fresh id; a bootstrap response never steals the section while an editor
   is open; projected items render the staged state before Apply.
+- **Connection recovery and terminal retry.** `publishIfNewer` separates connection readiness from business-data
+  dedupe: a retry/reattach that delivers the identical revision publishes `ready` and clears the first-frame
+  watchdog, while an identical revision on an already-ready pane stays deduped. A snapshot stream that ends or
+  fails is terminal: it is disposed and cleared, so Retry recreates the Remote watch instead of restarting an
+  aborted lifetime (tested before and after the first snapshot, with no timeout after the new snapshot).
+- **Draft revision baseline and admission.** The editor captures `editorBaseRevision` at open time (an existing
+  staged batch's baseline, else the view revision); saving an objective/item edit stages against that frozen
+  baseline, so an unrelated remote commit cannot silently retarget the edit, and only an explicit rebase advances
+  it. Byte budgets, unchanged checks, reasons, candidate limits, and generated op text all use
+  `inspectUserText(...).value`, so CRLF/NFD input cannot bypass or waste the limit (contraction and expansion
+  fixtures), and a normalization-only edit counts as unchanged while other valid ops still stage.
+- **Order allocation and purge derivation.** The next staged order is committed max + 1 + the max effective order
+  among current staged add/propose/supersede/order-edit ops, so an add/unstage/add sequence never reuses an order;
+  projected rows derive `staged`/`unstageTarget` from the actual op-target rules, so a purge-detached successor
+  that is also directly edited/verified keeps its Unstage (which removes only its own ops), while a purely derived
+  link detach hides Unstage.
 - **Planning scale.** The bootstrap planner uses O(1) incremental byte accounting that mirrors the exact prompt
   renderer: it is tested with 2,000 mixed candidates and 3,000 all-active candidates, reports per-candidate
   active/pending outcomes, and keeps a final exact render as verification/fallback for the budget.
@@ -262,14 +287,16 @@ The fourth readiness review targeted failure paths that only appear after startu
 
 ### 4.7 Checker exit criteria, draft async fencing, and online repair
 
-- **Compaction checker (fixtures).** `tests/verify/compaction-checks.spec.ts` exercises the exact success criteria:
-  a clean pass, a dirty system prompt, and a **required** matching `charter_read` standing result whose unique
-  tool call is authenticated (top-level `sourceEventSeqs`, legacy callId fallback) and ordered after the latest
-  compaction and runtime-context snapshot, with the default/standing view and a non-error result (missing,
-  mismatched, pre-compaction, non-standing, and error cases fail), a lost post-compaction snapshot, and a
-  leaking-summary warning. The transcript reader builds the same compact standing projection as the Host
-  (`kind`/`text`/`verification`/`progress`) and all required evidence participates in the exit code; only a
-  WAIT/BLOCKED state short-circuits before evaluation.
+- **Compaction checker (fixtures).** The event→report decision is a pure function in
+  `scripts/verify/compaction-checks.mjs`; `tests/verify/compaction-checks.spec.ts` feeds it plain event arrays and
+  asserts exit code, JSON verdicts, text verdict lines, and warnings. Covered: a clean pass; a dirty system prompt;
+  a **required** authenticated `charter_read` (top-level `sourceEventSeqs`, legacy turn/step/callId) ordered after
+  the latest successful compaction and runtime snapshot with default/standing view and non-error result; legacy
+  duplicate-callId pairing; newer failed compaction end ignored as evidence; checkpoint before the end leaking the
+  charter as a warning; charter committed between start and end requiring re-compaction (WAIT); and request
+  execution after the end without a runtime snapshot as a FAIL. The transcript reader builds the same compact
+  standing projection as the Host (`kind`/`text`/`verification`/`progress`) and all required evidence participates
+  in the exit code; only a WAIT/BLOCKED state short-circuits before evaluation.
 - **Draft async fencing.** Edit and bootstrap Apply capture `asyncGeneration`, the source instance and its monotonic
   connection epoch, lifecycle, and request ops identity; a late result from a destroyed source or from a
   detach/reattach cycle cannot clear or overwrite a newer draft. Source invalidation preserves the mutation id for
@@ -657,8 +684,13 @@ The command reads the Session transcript and the charter storage record, then re
    an `all` read, or an error result all fail the PASS. A legacy debug-shaped tool result (extra
    id/review/lifecycle fields) is normalized to the same projection, so a Host that has not been restarted after a
    package update still yields comparable working-set evidence;
-6. a compaction summary after the compaction does not carry the rendered body (a warning: it would weaken the
-   proof, not silently pass it).
+6. compaction evidence requires a complete lifecycle for the same `compactionId` — start, summary, and an end
+   without error; a later failed end is ignored as evidence. The charter must be committed before the compaction
+   **start** (a commit between start and end cannot prove survival and requires re-compaction); a request executing
+   after the end without a new runtime-context snapshot is a **FAIL**, while only the complete absence of
+   post-compaction request activity is `WAIT`;
+7. a compaction summary associated with that `compactionId` does not carry the rendered body (a warning: it would
+   weaken the proof, not silently pass it).
 
 Procedure in a real profile:
 
@@ -705,7 +737,7 @@ $ npm run verify:compaction -- --session "$SESSION_ID" \
   PASS  injected text matches storage authority and promptDigest
   PASS  system prompt carries no charter body
   PASS  authenticated post-compaction charter_read standing view matches the storage revision/objective
-  PASS  charter survives compaction — snapshot seq 31810 > compaction seq 31801
+  PASS  charter survives compaction — snapshot seq 31810 > compaction end seq 31801
   PASS  compaction summary does not carry the charter text
 result: PASS
 ```
@@ -726,7 +758,7 @@ Evidence timeline for this pre-release:
   running the pre-restart Host bundle, which is why the `charter_read` result carried legacy debug fields.
 - Local build commit for this local RC build: `a88387690294e4ba7791fbec894d8a628691bdb6`; the final evidence commit adds only this evidence record and
   the tracked digest file. Gates on the build tree: `npm run check` (typecheck + build + 17 test files / 167
-  tests), `npm run smoke:package`, and the local five-version matrix (17 files / 167 tests on every version).
+  tests), `npm run smoke:package`, and the local five-version matrix (17 files / 187 tests on every version).
 - Shipped artifact digest: the tracked repository-root `SHA256SUMS` (refreshed by the final evidence commit,
   which updates only that file) pins the digest of `dsh-charter-0.1.0-rc.1.tgz` built from the build tree;
   `dist/SHA256SUMS` carries the same value. **No release tag exists for this local build**: the provisional local

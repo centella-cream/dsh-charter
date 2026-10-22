@@ -170,6 +170,41 @@ describe('bootstrap outcome', () => {
     expect(utf8Bytes(previewPrompt(view, plan.ops))).toBeLessThanOrEqual(view.limits.maxPromptBytes)
   })
 
+  it('returns an all-pending plan when the base prompt is over budget without the quadratic fallback', () => {
+    const view = emptyView(512)
+    const longCandidates = Array.from({ length: 2_000 }, (_, index) => ({
+      id: `over-${index}`,
+      kind: 'invariant' as const,
+      text: `Constraint ${String(index)} ${'y'.repeat(200)}`,
+      selected: true,
+    }))
+    // 348 and 349 byte objectives straddle the 512-byte base budget; both plans
+    // must be all-pending and computed without per-candidate re-rendering.
+    const withinBase = 'o'.repeat(348)
+    const overBase = 'o'.repeat(349)
+    const withSmall = buildBootstrapPlan(view, withinBase, longCandidates)
+    const withLarge = buildBootstrapPlan(view, overBase, longCandidates)
+    for (const plan of [withSmall, withLarge]) {
+      expect(plan.active).toBe(0)
+      expect(plan.pending).toBe(2_000)
+      expect(plan.usedExactFallback).toBe(false)
+      expect(plan.exactRenders).toBeLessThanOrEqual(2)
+      expect(plan.ops.filter(op => op.type === 'item.propose')).toHaveLength(2_000)
+    }
+    // 348 objective bytes render exactly at the 512-byte budget; 349 exceeds it.
+    expect(utf8Bytes(previewPrompt(view, withSmall.ops))).toBe(512)
+    expect(utf8Bytes(previewPrompt(view, withLarge.ops))).toBeGreaterThan(512)
+    expect(withSmall.outcomes).toEqual(withLarge.outcomes)
+    // Rendering cost is independent of candidate count.
+    expect(withSmall.exactRenders).toBe(withLarge.exactRenders)
+  })
+
+  it('keeps the diagnostic fallback flag off for normal plans', () => {
+    const plan = buildBootstrapPlan(emptyView(64 * 1_024 * 1_024), '', candidates(50))
+    expect(plan.usedExactFallback).toBe(false)
+    expect(plan.active).toBe(50)
+  })
+
   it('normalizes CRLF and NFD candidates before incremental accounting', () => {
     const view = emptyView(64 * 1_024 * 1_024)
     const crlfItems = Array.from({ length: 2_000 }, (_, index) => ({

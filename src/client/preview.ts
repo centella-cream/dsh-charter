@@ -32,6 +32,31 @@ export interface ProjectedView {
   readonly items: readonly ProjectedItem[]
 }
 
+/**
+ * The synthetic or persisted ids a staged operation targets. Unstage must use
+ * the same rule: an operation is removable by unstaging the row it actually
+ * edits, including a supersede's replacement clientRef and its predecessor.
+ */
+export function opTargets(op: CharterOp, itemId: string): boolean {
+  return opTargetIds(op).includes(itemId)
+}
+
+/** Every projected-row id a staged operation directly targets. */
+export function opTargetIds(op: CharterOp): readonly string[] {
+  switch (op.type) {
+    case 'item.add':
+    case 'item.propose':
+      return [`draft:${op.item.clientRef}`]
+    case 'item.supersede':
+      return [op.itemId, `draft:${op.replacement.clientRef}`]
+    case 'objective.initialize':
+    case 'objective.redirect':
+      return []
+    default:
+      return 'itemId' in op ? [op.itemId] : []
+  }
+}
+
 function normalize(value: string): string {
   return value.replace(/\r\n?/gu, '\n').normalize('NFC').trim()
 }
@@ -141,6 +166,20 @@ export function projectView(view: CharterView, ops: readonly CharterOp[]): Proje
     items.set(id, { ...existing, ...patch, staged: true })
   }
 
+  // Direct op targets and purge-derived link detaches are tracked separately:
+  // a row that a staged op genuinely targets must keep its own Unstage even
+  // when a later purge derives a `supersedes` change on it.
+  const direct = new Set<string>()
+  const derivedOnly = new Set<string>()
+
+  for (const op of ops) {
+    for (const id of opTargetIds(op)) direct.add(id)
+    if (op.type !== 'item.purge') continue
+    for (const [id, candidate] of items) {
+      if (candidate.supersedes === op.itemId) derivedOnly.add(id)
+    }
+  }
+
   for (const op of ops) {
     switch (op.type) {
       case 'objective.initialize':
@@ -233,7 +272,7 @@ export function projectView(view: CharterView, ops: readonly CharterOp[]): Proje
           for (const [id, candidate] of items) {
             if (candidate.supersedes !== purged.id) continue
             const { supersedes: _detached, ...detached } = candidate
-            items.set(id, { ...detached, staged: true, unstageTarget: null })
+            items.set(id, { ...detached, staged: true })
           }
         }
         break
@@ -259,6 +298,18 @@ export function projectView(view: CharterView, ops: readonly CharterOp[]): Proje
         break
       }
     }
+  }
+
+  // Derive staged/Unstage from the fully applied op set: directly targeted rows
+  // keep an Unstage that removes their own operations; rows changed only by a
+  // purge-derived link detach are staged but have no directly removable op.
+  for (const [id, item] of items) {
+    const isDirect = direct.has(id)
+    const isDerived = derivedOnly.has(id)
+    if (!isDirect && !isDerived) continue
+    items.set(id, isDirect
+      ? { ...item, staged: true, unstageTarget: id }
+      : { ...item, staged: true, unstageTarget: null })
   }
 
   return {

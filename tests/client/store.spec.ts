@@ -16,14 +16,20 @@ vi.mock('@deepseek-ai/dsh-api-gateway/client', () => {
     readonly options: MockStreamOptions
     disposed: Promise<void>
     resolveDispose!: () => void
+    starts = 0
+    restarts = 0
+    disposeCalls = 0
     constructor(_stream: unknown, options: MockStreamOptions) {
       this.options = options
       this.disposed = new Promise(resolve => { this.resolveDispose = resolve })
       RemoteSnapshotStream.instances.push(this)
     }
-    start() {}
-    restart() {}
-    dispose(): Promise<void> { return this.disposed }
+    start() { this.starts += 1 }
+    restart() { this.restarts += 1 }
+    dispose(): Promise<void> {
+      this.disposeCalls += 1
+      return this.disposed
+    }
   }
   return { RemoteSnapshotStream }
 })
@@ -58,6 +64,9 @@ function view(revision: number, promptText = '', sessionId = 'session-1'): Chart
 interface MockStreamInstance {
   readonly options: MockStreamOptions
   resolveDispose: () => void
+  readonly starts: number
+  readonly restarts: number
+  readonly disposeCalls: number
 }
 
 const mockClass = MockRemoteSnapshotStream as unknown as {
@@ -66,6 +75,10 @@ const mockClass = MockRemoteSnapshotStream as unknown as {
 
 async function tick(): Promise<void> {
   await new Promise(resolve => setTimeout(resolve, 0))
+}
+
+async function sleep(ms: number): Promise<void> {
+  await new Promise(resolve => setTimeout(resolve, ms))
 }
 
 function streamContext(): never {
@@ -385,6 +398,113 @@ describe('client charter source', () => {
     stream.resolveDispose()
     lease.release()
     await controller.dispose()
+  })
+
+  it('recovers ready when a retry delivers the same revision it already had', async () => {
+    const source = new CharterSessionSource(
+      streamContext(),
+      SessionId('session-retry-same'),
+      { attachTimeoutMs: 25 },
+    )
+    const remote = {} as never
+    source.attach(remote)
+    await tick()
+    const stream = mockClass.instances.at(-1)
+    if (stream === undefined) throw new Error('no stream was created')
+    const instancesBefore = mockClass.instances.length
+    let published = 0
+    source.subscribe(() => { published += 1 })
+    stream.options.replace({ value: view(1, 'same', 'session-retry-same') })
+    expect(source.getSnapshot()).toMatchObject({ status: 'ready', view: { revision: 1 } })
+    const publishedAfterReady = published
+
+    source.retry()
+    expect(source.getSnapshot().status).toBe('connecting')
+    expect(stream.restarts).toBe(1)
+    expect(mockClass.instances.length).toBe(instancesBefore)
+
+    // The state is merely `connecting`: the identical business view must still
+    // be republished as ready and clear the first-frame watchdog.
+    stream.options.update({ value: view(1, 'same', 'session-retry-same') })
+    expect(source.getSnapshot()).toMatchObject({ status: 'ready', view: { revision: 1 } })
+    expect(published).toBeGreaterThan(publishedAfterReady)
+    await sleep(60)
+    expect(source.getSnapshot().status).toBe('ready')
+
+    // An identical revision while already ready stays deduped.
+    const publishedAfterReconnect = published
+    stream.options.update({ value: view(1, 'same', 'session-retry-same') })
+    expect(published).toBe(publishedAfterReconnect)
+
+    stream.resolveDispose()
+    await source.dispose()
+  })
+
+  it('recreates the snapshot stream after a terminal end and retries successfully', async () => {
+    const source = new CharterSessionSource(
+      streamContext(),
+      SessionId('session-terminal'),
+      { attachTimeoutMs: 25 },
+    )
+    const remote = {} as never
+    source.attach(remote)
+    await tick()
+    const instancesAfterAttach = mockClass.instances.length
+    const first = mockClass.instances.at(-1)
+    if (first === undefined) throw new Error('no stream was created')
+    first.options.replace({ value: view(1, 'first', 'session-terminal') })
+    expect(source.getSnapshot()).toMatchObject({ status: 'ready', view: { revision: 1 } })
+
+    first.options.failed(new Error('stream ended after snapshot'))
+    expect(source.getSnapshot()).toMatchObject({ status: 'error' })
+    expect(first.disposeCalls).toBe(1)
+
+    // Retry must recreate the stream, not restart the aborted lifetime.
+    source.retry()
+    await tick()
+    expect(mockClass.instances.length).toBe(instancesAfterAttach + 1)
+    const second = mockClass.instances.at(-1)
+    if (second === undefined) throw new Error('retry did not create a new stream')
+    expect(second).not.toBe(first)
+    expect(second.starts).toBe(1)
+
+    // Re-armed watchdog must be cleared by a first snapshot; an identical view
+    // still recovers ready, and no timeout error may appear.
+    second.options.replace({ value: view(1, 'first', 'session-terminal') })
+    expect(source.getSnapshot()).toMatchObject({ status: 'ready', view: { revision: 1 } })
+    await sleep(60)
+    expect(source.getSnapshot().status).toBe('ready')
+
+    second.resolveDispose()
+    await source.dispose()
+  })
+
+  it('recreates the snapshot stream after an end before the first snapshot', async () => {
+    const source = new CharterSessionSource(
+      streamContext(),
+      SessionId('session-terminal-early'),
+      { attachTimeoutMs: 25 },
+    )
+    source.attach({} as never)
+    await tick()
+    const instancesAfterAttach = mockClass.instances.length
+    const first = mockClass.instances.at(-1)
+    if (first === undefined) throw new Error('no stream was created')
+    first.options.failed(new Error('stream ended before snapshot'))
+    expect(source.getSnapshot()).toMatchObject({ status: 'error', view: null })
+
+    source.retry()
+    await tick()
+    expect(mockClass.instances.length).toBe(instancesAfterAttach + 1)
+    const second = mockClass.instances.at(-1)
+    if (second === undefined) throw new Error('retry did not create a new stream')
+    second.options.replace({ value: view(2, 'fresh', 'session-terminal-early') })
+    expect(source.getSnapshot()).toMatchObject({ status: 'ready', view: { revision: 2 } })
+    await sleep(60)
+    expect(source.getSnapshot().status).toBe('ready')
+
+    second.resolveDispose()
+    await source.dispose()
   })
 
   it('ignores stream frames for another Session', async () => {

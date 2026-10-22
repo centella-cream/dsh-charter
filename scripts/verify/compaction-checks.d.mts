@@ -48,3 +48,115 @@ export function postCompactionCharterReads<T extends { readonly seq: number }>(
 ): T[]
 
 export function evaluateCompactionEvidence(evidence: CompactionEvidence): CompactionEvaluation
+
+export interface CompactionLifecycleEntry {
+  readonly id: string
+  readonly sortSeq: number
+  readonly startSeq: number | undefined
+  readonly startTime: number | undefined
+  readonly summarySeq: number | undefined
+  readonly endSeq: number
+  readonly endTime: number
+  readonly sourceCommandId: string | undefined
+  readonly ok: boolean
+  readonly error: string | undefined
+}
+
+export function messageText(content: unknown): string
+
+export function sha256Text(value: string): string
+
+export function readCompactionLifecycles(events: readonly { readonly type?: string; readonly seq: number; readonly data?: Record<string, unknown> }[]): {
+  readonly compactions: readonly CompactionLifecycleEntry[]
+  readonly successful: readonly CompactionLifecycleEntry[]
+  readonly latestSuccessful: CompactionLifecycleEntry | undefined
+}
+
+export interface ResolvedCharterReadCall {
+  readonly seq: number
+  readonly callSeq: number
+  readonly callId: string | undefined
+  readonly resolution: string
+  readonly argumentsView: string | undefined
+  readonly isError: boolean
+  readonly invalid?: boolean
+  readonly revision?: unknown
+  readonly objective?: unknown
+  readonly items?: readonly Record<string, unknown>[]
+}
+
+export function resolveCharterReadCalls(events: readonly object[]): {
+  readonly calls: readonly Record<string, unknown>[]
+  readonly results: readonly ResolvedCharterReadCall[]
+}
+
+export interface CompactionTranscriptReport {
+  readonly status: 'blocked' | 'wait' | 'pass' | 'fail'
+  readonly statusReason: string
+  readonly exitCode: number
+  readonly charter: {
+    readonly revision: number
+    readonly committedAt: number | null
+    readonly promptText: string
+    readonly bytes: number
+    readonly promptDigest: string
+    readonly objective: string | null
+    readonly pending: number
+  }
+  readonly compactions: readonly {
+    readonly id: string
+    readonly seq: number
+    readonly time: number
+    readonly startSeq: number | undefined
+    readonly startTime: number | undefined
+    readonly summarySeq: number | undefined
+    readonly endSeq: number
+    readonly ok: boolean
+    readonly error: string | undefined
+    readonly sourceCommandId: string | undefined
+  }[]
+  readonly latestCompaction: {
+    readonly id: string
+    readonly startSeq: number | undefined
+    readonly startTime: number | undefined
+    readonly summarySeq: number | undefined
+    readonly endSeq: number
+    readonly endTime: number
+  } | null
+  readonly runtimeContexts: readonly {
+    readonly seq: number
+    readonly time: number
+    readonly sectionNames: readonly string[]
+    readonly charterText?: string
+  }[]
+  readonly checkpoints: readonly {
+    readonly seq: number
+    readonly time: number
+    readonly compactionId: string | undefined
+    readonly bytes: number
+    readonly leaksCharter: boolean
+  }[]
+  readonly requests: number
+  readonly charterReadTool: boolean
+  readonly charterRead: ResolvedCharterReadCall | null
+  readonly postCompactionCharterReads: number
+  readonly authenticatedCharterReads: number
+  readonly systemPromptClean: boolean | undefined
+  readonly charterReadCalled: boolean
+  readonly postCompactionActivity: number
+  readonly postCompactionExecutionWithoutSnapshot: boolean
+  readonly verdicts: Record<string, boolean | undefined>
+  readonly verification: CompactionEvaluation
+  readonly verdictLines: readonly {
+    readonly state: 'PASS' | 'FAIL' | 'WAIT'
+    readonly label: string
+    readonly detail?: string
+  }[]
+}
+
+export function evaluateCompactionTranscript(input: {
+  readonly events: readonly object[]
+  readonly current: Record<string, unknown>
+  readonly marker?: string
+  readonly promptPrefix?: string
+}): CompactionTranscriptReport

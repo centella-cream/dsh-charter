@@ -243,7 +243,12 @@ one by one at the service boundary, and every runtime read and write path re-par
 stored document with the strict schema (`recordFor`, read-only views, parent/fork reads, and the
 `table.update` transform). The domain keeps raw per-record documents, so a corrupt or forward-skewed record
 marks only that Session unavailable; it never prevents the domain from opening for every other Session, is
-never overwritten, and the raw document is preserved for diagnosis. A failed initialization is cleared
+never overwritten, and the raw document is preserved for diagnosis. **Scope of this guarantee:** it applies when
+the stored document loads and fails the inner record schema or consistency checks. It does **not** cover an outer
+JSON document that the JSON storage backend cannot read (or whose outer version stamp it rejects): that backend
+treats such a file as an absent record, and the plugin-side KvTable API exposes no read-error signal, so the
+plugin cannot distinguish it from a missing record (documented residual risk, verification §4.5). A failed
+initialization is cleared
 before the durable write publishes, then a final authoritative view is published; transient initialization
 failures are retried instead of being sticky.
 
@@ -566,7 +571,7 @@ uninstall smoke; fault injection and side-by-side domain migration remain open.
 
 Current evidence:
 
-- 167 tests across 17 core, host, client, and verification-helper test files;
+- 187 tests across 17 core, host, client, and verification-helper test files;
 - Typecheck, build, and tests pass on DSH `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-rc.1`, and
   `0.2.1-rc.2`;
 - Real profile install/boot on `0.1.7-rc.2` and `0.2.0-rc.2`;

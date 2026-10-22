@@ -49,7 +49,7 @@ Initial MVP.
   restart is still required for the new pending-import semantics.
 - Verified against DSH `0.2.1-rc.2` with no code changes required; the existing peer range and compatibility layer
   cover the release candidate.
-- 167 tests across core, host composition, fork, idempotency, quota, prompt boundary, Remote stream, history
+- 187 tests across core, host composition, fork, idempotency, quota, prompt boundary, Remote stream, history
   extraction, client reordering, compatibility, and decorator compatibility. Verified on DSH `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`,
   `0.2.1-rc.1`, and `0.2.1-rc.2`. The actual Web UI was exercised on `0.2.0-rc.2`: tab order, Chinese/English
   switching, objective and invariant editing, preview, Apply, and reload persistence.
@@ -244,3 +244,26 @@ Initial MVP.
   Unstage action that cannot remove any staged operation.
 - Keep mutable release-state wording out of the immutable tarball docs; repository/CI/tag prerequisites, the
   no-provisional-tag rule, and the required docs refresh before the final tag live only in `docs/releasing.md`.
+- Separate connection readiness from business-data dedupe: a retry/reattach that delivers the identical revision
+  now recovers `ready` and clears the first-frame watchdog, while an identical revision on an already-ready pane
+  stays deduped; a snapshot stream that ends or fails is terminal, so Retry recreates the Remote watch instead of
+  restarting an aborted lifetime (before or after the first snapshot).
+- Freeze the editor's revision baseline at open time so an unrelated remote commit cannot silently retarget an
+  objective/item edit; only an explicit rebase advances the baseline, and later staging never advances a frozen
+  batch baseline.
+- Compute byte budgets, unchanged checks, reasons, candidate limits, and generated op text from
+  `inspectUserText(...).value`, so CRLF/NFD input cannot bypass or waste the limit; normalization-only edits count
+  as unchanged.
+- Allocate the next staged order from the committed max plus the max effective order among current staged
+  add/propose/supersede/order-edit ops, so add/unstage/add never reuses an order, and derive `Unstage` from the
+  real op-target rules so a purge-detached successor keeps its own removable operations.
+- Keep the quadratic bootstrap-planner fallback only for an actual estimator/render mismatch: an already
+  over-budget base prompt returns the all-pending plan without per-candidate re-rendering, and `usedExactFallback`
+  / `exactRenders` expose the diagnostic.
+- Make the compaction checker a pure event-array evaluator that only accepts a complete start+summary+no-error-end
+  lifecycle, requires the charter commit before the compaction start, associates the checkpoint by `compactionId`
+  for leak warnings, treats post-compaction execution without a runtime snapshot as FAIL, and pairs legacy
+  duplicate call ids by turn/step plus event order.
+- Narrow the stored-record preservation guarantee honestly: it covers an inner schema/consistency-invalid record;
+  an unreadable outer JSON document is treated as absent by the JSON storage backend and remains a documented
+  residual risk (no plugin-side read-error API, no path-specific workaround).
