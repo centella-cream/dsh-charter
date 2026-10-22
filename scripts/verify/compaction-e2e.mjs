@@ -34,6 +34,7 @@ import { createHash } from 'node:crypto'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
+import { compactStandingItem, evaluateCompactionEvidence } from './compaction-checks.mjs'
 
 const CHARTER_CONTEXT_NAME = 'charter:standing'
 const CHARTER_PROMPT_PREFIX = 'Current user-authored session charter.'
@@ -252,15 +253,7 @@ function main() {
   )
   const standingItems = current.items
     .filter(item => item.review === 'accepted' && item.lifecycle === 'current')
-    .map(item => ({
-      id: item.id,
-      kind: item.kind,
-      text: item.text,
-      review: item.review,
-      lifecycle: item.lifecycle,
-      verification: item.verification?.state,
-      progress: item.kind === 'deliverable' ? item.progress : null,
-    }))
+    .map(item => compactStandingItem(item))
   const charterReadResults = events
     .filter(event => event.type === 'tool/result'
       && toolNames.get(event.data?.message?.toolCallId ?? event.data?.toolCallId) === 'charter_read')
@@ -303,6 +296,7 @@ function main() {
     ? !promptSnapshots.some(text => text.includes(CHARTER_PROMPT_PREFIX)
       || systemPromptSignals.some(signal => text.includes(signal)))
     : undefined
+  const charterReadCalled = [...toolNames.values()].includes('charter_read')
   const charterReadStanding = charterReady && charterReadResults.some(result =>
     result.invalid === false
     && result.revision === current.revision
@@ -333,6 +327,15 @@ function main() {
       || (args.marker !== undefined && latestCheckpoint.text.includes(args.marker)))
   const markerPresent = args.marker === undefined ? undefined : promptText.includes(args.marker)
 
+  const verification = evaluateCompactionEvidence({
+    charterReady: charterReady === true,
+    survivesCompaction,
+    systemPromptClean: charterReady === true ? systemPromptClean : undefined,
+    charterReadCalled,
+    charterReadStanding,
+    checkpointLeaksCharter,
+  })
+
   const report = {
     sessionId,
     logFile,
@@ -358,6 +361,8 @@ function main() {
     charterReadTool: latestHeader?.tools.includes('charter_read') ?? false,
     charterRead: latestCharterRead ?? null,
     systemPromptClean,
+    charterReadCalled,
+    verification,
     verdicts: {
       charterReady,
       injected,
@@ -447,31 +452,32 @@ function main() {
     }
     if (charterReady) {
       const leaks = checkpointLeaksCharter === true
-      verdict(leaks ? undefined : true, 'compaction summary does not carry the charter text',
-        leaks ? 'summary contains the charter/marker; surviving text may come from the summary' : undefined)
+      verdict(true, 'compaction summary does not carry the charter text',
+        leaks ? 'WARNING: summary contains the charter/marker; surviving text may come from the summary' : undefined)
     }
     console.log('')
     if (!charterReady) {
       console.log('result: BLOCKED — establish the charter first (Charter tab, then Apply).')
-    } else if (survivesCompaction) {
-      console.log('result: PASS — the real compaction kept the charter in the next request.')
     } else if (latestCompaction === undefined) {
       console.log('result: WAIT — no compaction recorded yet; run /compact in the Session.')
     } else if (charterPredatesCompaction !== true) {
       console.log('result: WAIT — compact again now that the charter is committed, then send a message.')
     } else if (injectedAfterCompaction !== true) {
       console.log('result: WAIT — send a message after the compaction, then run this check again.')
+    } else if (verification.ok) {
+      console.log('result: PASS — the real compaction kept the charter in the next request and all evidence checks passed.')
+      for (const warning of verification.warnings) console.log(`warning: ${warning}`)
     } else {
-      console.log('result: FAIL — the post-compaction request lost the charter; see verdicts.')
+      console.log('result: FAIL — compaction evidence did not pass; see verdicts.')
+      for (const failure of verification.failures) console.log(`  evidence: ${failure}`)
     }
   }
 
   if (!charterReady) process.exit(2)
-  if (survivesCompaction) process.exit(0)
   if (latestCompaction === undefined
     || charterPredatesCompaction !== true
     || injectedAfterCompaction !== true) process.exit(3)
-  process.exit(1)
+  process.exit(verification.ok ? 0 : 1)
 }
 
 main()
