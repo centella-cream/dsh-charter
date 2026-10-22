@@ -58,7 +58,8 @@ Real-model compaction acceptance is manual: apply a charter, run `/compact`, sen
 `npm run verify:compaction -- --session <id> --home <DSH_HOME>` and record the `PASS` evidence in the
 verification record (section 8). This check needs a model and is never part of `npm run check`. The recorded
 `PASS` means the compaction-resilience claim is accepted; if the Desktop process that served it was not restarted
-after the final package update, restart it once and reopen the Charter tab before publishing (see §8.4).
+after the final package update, restart it once and reopen the Charter tab before publishing a stable `latest`
+(not before this `next` pre-release; see §8.4).
 
 ## 4. Tag and publish
 
@@ -72,10 +73,9 @@ mkdir -p dist && mv dsh-charter-0.1.0-rc.1.tgz dist/
 Pack on the tagged tree so the archive matches the committed source. Write the digest to `dist/SHA256SUMS` and
 to the tracked root `SHA256SUMS` (the root file is intentionally outside the npm `files` whitelist, so it does not
 change the packed artifact). Commit that root file, then move the `v0.1.0-rc.1` tag to the resulting HEAD.
-Verification §8.4 records the source commit that passed the gates and the digest of the archive built from that
-commit; a tagged tree that adds only the evidence record produces a different archive digest, and that tagged-tree
-digest is the one pinned in the tracked root `SHA256SUMS` and `dist/SHA256SUMS`. `dist/` is gitignored; attach the
-`.tgz` and `SHA256SUMS` to the GitHub release but never commit the tarball.
+Verification §8.4 records the gated source commit and points to the tracked shipped-artifact digest; the tracked
+root `SHA256SUMS` and `dist/SHA256SUMS` pin the archive built from the tagged tree. `dist/` is gitignored; attach
+the `.tgz` and `SHA256SUMS` to the GitHub release but never commit the tarball.
 
 1. Create a GitHub release; attach the `.tgz`, `SHA256SUMS`, and concise highlights.
 2. npm publish the pre-release with a non-latest dist-tag:

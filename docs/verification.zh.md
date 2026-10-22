@@ -51,9 +51,8 @@ npm test
   把 tarball 安装到一个**空 consumer 项目**（只使用其声明依赖），再加载 packed `dsh-charter/core` 入口与
   client bundle。
 
-CI 已配置在每次 push/PR 上对 Node `22.19.0` 与 Node `24` 运行 `npm run check` 和 `npm run smoke:package`。
-仓库尚无 remote，因此 CI 尚未实际运行；本文档记录的本地运行就是证据，且可安装产物已在本地的最低支持版本与当前
-LTS 上验证。
+CI 已配置在公开仓库存在后对 Node `22.19.0` 与 Node `24` 运行 `npm run check` 和 `npm run smoke:package`。
+本文档记录的本地门禁运行于 Node `v22.23.1`；仓库尚无 remote，因此 CI 本身尚未实际运行。
 
 关键测试文件：
 
@@ -545,7 +544,8 @@ DSH_HOME="$PWD/.tmp/webview/home" dsh --profile charterweb2 --no-open --port 193
 [暗色](assets/charter-pane.dark.png)、[窄屏](assets/charter-pane.narrow.png)。
 
 解析器拆分/目标保持完整的自动化测试在 `tests/core/bootstrap.spec.ts`；客户端会标记超限字段、用同一
-prompt renderer 计算草案预览，并在条目/目标/所选草案/投影上下文超预算时禁用 Apply。本轮没有在浏览器里
+prompt renderer 计算草案预览，并且只在渲染后的 prompt 会变大且仍超预算时禁用 Apply；仍超预算但缩小或保持同
+字节的渲染会被允许。字段编辑器同样允许已超限的 objective/同 ID item 在严格变短时提交。本轮没有在浏览器里
 实际录入超限文本走一遍禁用态。
 
 ### 7.6 说明
