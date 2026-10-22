@@ -39,7 +39,7 @@
 - 新浏览器 client 可以兼容仍在运行旧 Host 的 view snapshot（旧 Host 仍带 active 条数字段），避免 host/client
   revision 不一致时「会话契约」白屏；新的 pending 导入语义仍需要完整重启 Host 才生效。
 - 已针对 DSH `0.2.1-rc.2` 验证，无需代码改动；现有 peer range 和兼容层已覆盖该 release candidate。
-- 144 个测试，覆盖内核、Host 组合、fork、幂等、配额、prompt 边界、Remote stream、历史抽取、客户端 tab
+- 153 个测试，覆盖内核、Host 组合、fork、幂等、配额、prompt 边界、Remote stream、历史抽取、客户端 tab
   排序和装饰器兼容。已在 DSH `0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-rc.1`、`0.2.1-rc.2` 上验证。
   真实 Web UI 在 `0.2.0-rc.2` 上验证了标签顺序、中英文切换、目标/约束编辑、预览、Apply 和刷新持久化。
 
@@ -70,6 +70,17 @@
 
 ### 修复
 
+- watch unsubscribe 增加实例校验：已 dispose 的旧 generation 迟到 unsubscribe 时，不再删除同 ID 新 watch 的 Map
+  条目（只有仍持有捕获 Set 时才删除）。
+- 修复 attach/stream generation 竞态：同 Remote 的重复 attach 是真正 no-op；旧 stream 的 `replace`/`update` 帧
+  在触达状态或 draft lifecycle 前先检查 generation。
+- Apply/bootstrap 保存期间禁用并拒绝 Rebase，保留未知结果重试所需的 mutation attempt；bootstrap 抽取结果绑定
+  source 实例/connection generation，重连后的旧 proposal 不会写入当前 draft。
+- 不静默清除脏 draft：idle TTL 和 LRU 容量淘汰只针对空 draft，容量淘汰同时清理时间戳；staged ops、编辑器文本和
+  已审阅历史草案会跨标签/Session 切换保留。
+- 编辑器允许提交已超预算 objective/同 ID item 的分步缩短，与 Host 准入一致；新增或增长内容仍受硬上限约束。
+- 重连时首次出现的 lifecycle fingerprint 即使 revision 更低也按权威替换接受；Client 帧去重加入
+  `overBudget` 与全部 limits，预算收紧后的快照不会被丢弃。
 - Session dispose 时关闭所有打开的 watch 订阅（listener 收到 `null`，generator 退出），避免 listener 已从 map 删除
   后 watch 永久等待；Host 帧去重和 Client 接受都改为比较 lifecycle，新 lifecycle 即使 revision 从 0 重新开始也会
   被接受。

@@ -14,7 +14,7 @@ HTML live under `.tmp/` and are excluded from the published package.
 | Item | Result |
 | --- | --- |
 | Strict TypeScript check (5 DSH versions) | Pass |
-| Vitest (5 locally available versions × 144 tests) | Pass |
+| Vitest (5 locally available versions × 153 tests) | Pass |
 | Host ESM build + browser single-file bundle | Pass |
 | Remote decorator/resource smoke | Pass (0.1.7/0.2.0 have no resource declaration, as expected) |
 | Browser factory-bundle materialization and `apply` smoke | Pass |
@@ -43,7 +43,7 @@ Results:
 
 - typecheck passes;
 - build passes;
-- 17 test files, 144 tests pass;
+- 17 test files, 153 tests pass;
 - `remote-smoke` asserts `watch,bootstrap,edit`, stream mode, and Session resource;
 - `client-smoke` asserts the single-file factory bundle, external-dependency allowlist, no Node-only `Buffer`
   reference, and `apply` registering the tab/pane/Remote contribution;
@@ -100,11 +100,11 @@ Results:
 
 | Version | typecheck | build | Vitest | remote smoke | client smoke |
 | --- | --- | --- | --- | --- | --- |
-| `0.1.7-rc.2` | Pass | Pass | 144/144 | Pass (no-resources warning) | Pass |
-| `0.2.0-rc.1` | Pass | Pass | 144/144 | Pass (no-resources warning) | Pass |
-| `0.2.0-rc.2` | Pass | Pass | 144/144 | Pass (no-resources warning) | Pass |
-| `0.2.1-rc.1` | Pass | Pass | 144/144 | Pass | Pass |
-| `0.2.1-rc.2` | Pass | Pass | 144/144 | Pass | Pass |
+| `0.1.7-rc.2` | Pass | Pass | 153/153 | Pass (no-resources warning) | Pass |
+| `0.2.0-rc.1` | Pass | Pass | 153/153 | Pass (no-resources warning) | Pass |
+| `0.2.0-rc.2` | Pass | Pass | 153/153 | Pass (no-resources warning) | Pass |
+| `0.2.1-rc.1` | Pass | Pass | 153/153 | Pass | Pass |
+| `0.2.1-rc.2` | Pass | Pass | 153/153 | Pass | Pass |
 
 `0.1.7-rc.2` and `0.2.0` remote smoke prints:
 
@@ -281,6 +281,14 @@ Additional round-out coverage:
 - **Consumer install.** `smoke:package` now performs a real empty-project install using only the tarball and its
   declared dependencies, checks public file modes, and loads the packed Runtime entry; it no longer symlinks the
   workspace `node_modules`.
+- **Watch/stream generation races.** The service's unsubscribe removes a Map entry only when it still owns the
+  captured listener Set (a disposed generation cannot delete a same-id replacement watch); duplicate attach of a
+  live stream is a no-op, and old stream `replace`/`update` frames are dropped by their attach generation.
+- **Saving locks and export guards.** Rebase is disabled/rejected while Apply or bootstrap saving runs; bootstrap
+  extraction is fenced by source instance + connection generation; dirty drafts are never removed by idle TTL or
+  LRU; the editor accepts a stepwise over-budget shrink for objective and same-id item edits.
+- **Config-frame delivery.** The first lifecycle fingerprint is accepted even at a lower revision, and client
+  dedupe now compares `overBudget` and every limit so tightened-budget snapshots reach the Pane.
 
 ## 5. Browser bundle verification
 
@@ -569,8 +577,8 @@ round.
 
 ## 8. Real compaction end-to-end
 
-Status: **PASS recorded 2026-10-22** on a real DSH Session (`session-45c509c6-ab85-45a8-99e9-adb4079a3192`,
-`infcode-eval-service`): `/compact` shadowed 326 messages (~228k tokens) and the next request carried the
+Status: **PASS recorded 2026-10-22** on a real DSH Session (`session-45c509c6…`,
+`an internal eval workspace`): `/compact` shadowed 326 messages (~228k tokens) and the next request carried the
 byte-identical `charter:standing` snapshot and matching `promptDigest`. `npm run check` never runs a model and
 therefore never runs this check; section 8.4 records the evidence.
 
@@ -637,7 +645,7 @@ derived digest.
 
 ### 8.4 Recorded real-model run (2026-10-22)
 
-Target: `session-45c509c6-ab85-45a8-99e9-adb4079a3192` (workspace `infcode-eval-service`). The Session's history
+Target: `session-45c509c6…` (workspace `an internal eval workspace`). The Session's history
 draft from its previous compaction summary was reviewed and applied as **revision 1** (13 active items, 5,081 B,
 `promptDigest sha256:4dd9e615…`). `/compact` then completed as compaction seq **31801** (source
 `cmd-635e3d77-2`), shadowing 326 messages (~228,181 tokens). The next request after compaction persisted
@@ -646,9 +654,9 @@ with a 5,081 B charter whose bytes/digest match storage; a subsequent `charter_r
 revision/objective/working set. Full checker output:
 
 ```text
-$ npm run verify:compaction -- --session session-45c509c6-ab85-45a8-99e9-adb4079a3192 \
-    --home /Users/ryanzhang/.dsh \
-    --store /Users/ryanzhang/.dsh/storages/dsh_charter_v1/sessions/session-45c509c6-ab85-45a8-99e9-adb4079a3192.json
+$ npm run verify:compaction -- --session "$SESSION_ID" \
+    --home "$DSH_HOME" \
+    --store "$DSH_HOME/storages/dsh_charter_v1/sessions/$SESSION_ID.json"
   PASS  charter established
   PASS  latest runtime context carries charter:standing
   PASS  injected text matches storage authority and promptDigest
