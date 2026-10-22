@@ -14,9 +14,12 @@
  *   3. its text is byte-identical to the storage authority's `promptText`, and
  *      its SHA-256 equals the committed `promptDigest`.
  *
- * The same check also detects the failure mode "charter silently dropped by
- * compaction" and reports whether the compaction summary leaked the charter
- * text (which would make the test less conclusive, not necessarily wrong).
+ * The check also requires a matching `charter_read` standing result recorded
+ * after the latest compaction: a tool read from before the compaction cannot
+ * witness the post-compaction request, so it is not evidence for the PASS. It
+ * also detects the failure mode "charter silently dropped by compaction" and
+ * reports whether the compaction summary leaked the charter text (which would
+ * make the test less conclusive, not necessarily wrong).
  *
  * Usage:
  *   node scripts/verify/compaction-e2e.mjs [--session <id>] [--home <dir>]
@@ -34,7 +37,7 @@ import { createHash } from 'node:crypto'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import { compactStandingItem, evaluateCompactionEvidence } from './compaction-checks.mjs'
+import { compactStandingItem, evaluateCompactionEvidence, postCompactionCharterReads } from './compaction-checks.mjs'
 
 const CHARTER_CONTEXT_NAME = 'charter:standing'
 const CHARTER_PROMPT_PREFIX = 'Current user-authored session charter.'
@@ -275,7 +278,10 @@ function main() {
         return { seq: event.seq, invalid: true }
       }
     })
-  const latestCharterRead = charterReadResults.at(-1)
+  // Only reads after the latest compaction can witness the post-compaction
+  // state; a read from before it is not evidence for the PASS.
+  const postCompactionReads = postCompactionCharterReads(charterReadResults, latestCompaction?.seq)
+  const latestCharterRead = postCompactionReads.at(-1)
 
   const promptSnapshots = events
     .filter(event => event.type === 'system/message')
@@ -296,8 +302,8 @@ function main() {
     ? !promptSnapshots.some(text => text.includes(CHARTER_PROMPT_PREFIX)
       || systemPromptSignals.some(signal => text.includes(signal)))
     : undefined
-  const charterReadCalled = [...toolNames.values()].includes('charter_read')
-  const charterReadStanding = charterReady && charterReadResults.some(result =>
+  const charterReadCalled = postCompactionReads.length > 0
+  const charterReadStanding = charterReady && postCompactionReads.some(result =>
     result.invalid === false
     && result.revision === current.revision
     && result.objective === (current.objective?.current?.text ?? null)
@@ -332,7 +338,6 @@ function main() {
     charterReady: charterReady === true,
     survivesCompaction,
     systemPromptClean: charterReady === true ? systemPromptClean : undefined,
-    charterReadCalled,
     charterReadStanding,
     checkpointLeaksCharter,
   })
@@ -361,6 +366,7 @@ function main() {
     requests: toolHeaders.length,
     charterReadTool: latestHeader?.tools.includes('charter_read') ?? false,
     charterRead: latestCharterRead ?? null,
+    postCompactionCharterReads: postCompactionReads.length,
     systemPromptClean,
     charterReadCalled,
     verification,
@@ -428,16 +434,16 @@ function main() {
     if (charterReady) {
       verdict(systemPromptClean, 'system prompt carries no charter body',
         systemPromptClean ? undefined : 'a system-prompt snapshot contains the charter text')
-      if (charterReadCalled) {
-        verdict(charterReadStanding, 'charter_read standing view matches the storage revision/objective',
-          charterReadStanding === true
-            ? undefined
-            : latestCharterRead === undefined || latestCharterRead.invalid === true
-              ? 'no valid standing charter_read result in this transcript yet'
-              : `latest read is revision ${latestCharterRead.revision} (${latestCharterRead.items?.length ?? 0} standing items); re-read after the final revision`)
-      } else {
-        console.log('  INFO  charter_read standing view was not called in this transcript; not required for PASS')
-      }
+      verdict(charterReadStanding, 'post-compaction charter_read standing view matches the storage revision/objective',
+        charterReadStanding === true
+          ? undefined
+          : latestCompaction === undefined
+            ? 'run /compact, then call charter_read to record post-compaction evidence'
+            : !charterReadCalled
+              ? 'call charter_read after the latest compaction; no post-compaction read is recorded'
+              : latestCharterRead === undefined || latestCharterRead.invalid === true
+                ? 'no valid post-compaction charter_read result in this transcript yet'
+                : `latest post-compaction read is revision ${latestCharterRead.revision} (${latestCharterRead.items?.length ?? 0} standing items); re-read after the final revision`)
     }
     if (charterReady && latestCompaction !== undefined && charterPredatesCompaction === false) {
       verdict(undefined, 'charter survives compaction',

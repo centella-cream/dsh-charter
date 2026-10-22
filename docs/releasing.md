@@ -2,21 +2,23 @@
 
 English | [中文](releasing.zh.md)
 
-This checklist keeps a GitHub/npm release reproducible and avoids shipping stale client bundles.
+This checklist keeps a GitHub/npm release reproducible and avoids shipping stale client bundles. The order is
+deliberate: repository metadata and CI come first, then the verified artifact, then the tag, then publish. Never
+move a tag that has already been pushed and never re-pack the archive after tagging.
 
-## 1. External prerequisite — the remaining release blocker
+## 1. External prerequisite — public repository setup
 
-The public GitHub repository does not exist yet, this checkout has no `git remote`, and `package.json`
-`repository`, `homepage`, and `bugs` are intentionally absent. Create and push the repository first:
+At the time of this commit the public GitHub repository does not exist yet, this checkout has no `git remote`,
+`package.json` `repository`, `homepage`, and `bugs` are intentionally absent, and nothing has been pushed or
+published. Prepare the repository first:
 
-1. create the public repository (owner/name agreed by the maintainer);
-2. `git remote add origin <url>` and `git push -u origin main --follow-tags` (this also pushes the
-   `v0.1.0-rc.1` tag);
-3. restore `repository`, `homepage`, and `bugs` in `package.json` to that URL and commit;
-4. confirm `.github/workflows/ci.yml` is green on the pushed commit (Node 22.19.0 and 24 matrix).
+1. create the public repository (owner/name agreed by the maintainer) and add it as `origin`;
+2. restore `repository`, `homepage`, and `bugs` in `package.json` to that URL and commit the metadata change;
+3. push `main` only — do not push tags yet (`git push origin main`; do not use `--follow-tags`);
+4. wait for the public CI in `.github/workflows/ci.yml` to be green on that commit (Node 22.19.0 and 24 matrix).
 
-Only after these steps should `npm publish --tag next` run. The same prerequisite applies to the README links,
-which reference the repository only through its normal package metadata.
+The tag is created later, on the final verified commit (§4); pushing it before verification would make the release
+archive depend on a tree that has not been gated.
 
 ## 2. Preconditions
 
@@ -35,24 +37,10 @@ npm run smoke:package
 
 `npm run check` must pass typecheck, build, Remote smoke, client smoke, and the full Vitest suite;
 `npm run smoke:package` additionally packs the tarball and verifies its required files, every `exports` target,
-the packed Host import, and the packed client bundle. CI is configured to run both once the public repository
-exists. The recorded real-model compaction `PASS`
+the packed `core` import, and the packed client bundle (Host/Remote runtime imports are covered by the workspace
+build smokes). CI runs both on the pushed metadata commit. The recorded real-model compaction `PASS`
 (verification §8.4) is the acceptance evidence for the compaction-resilience claim; the manual command below is
 kept for a fresh target-profile re-run.
-
-Install the packed tarball into a fresh profile and verify:
-
-```bash
-npm pack
-DSH_HOME=/tmp/dsh-charter-release-home \
-  dsh --profile release-smoke --from-default-profile web --dump-config >/dev/null
-DSH_HOME=/tmp/dsh-charter-release-home \
-  dsh plugin --profile release-smoke add ./dsh-charter-0.1.0-rc.1.tgz
-DSH_HOME=/tmp/dsh-charter-release-home \
-  dsh --profile release-smoke --no-open --port 19399
-```
-
-Open the printed URL, start a Session, and check the Charter tab and English/Chinese switching.
 
 Real-model compaction acceptance is manual: apply a charter, run `/compact`, send one message, then run
 `npm run verify:compaction -- --session <id> --home <DSH_HOME>` and record the `PASS` evidence in the
@@ -61,34 +49,53 @@ verification record (section 8). This check needs a model and is never part of `
 after the final package update, restart it once and reopen the Charter tab before publishing a stable `latest`
 (not before this `next` pre-release; see §8.4).
 
-## 4. Tag and publish
+## 4. Build the verified artifact, tag, push, publish
+
+On the final verified commit (metadata restored, CI green, all gates passing):
 
 ```bash
-git tag -a v0.1.0-rc.1 -m "dsh-charter 0.1.0-rc.1"
 npm pack
 mkdir -p dist && mv dsh-charter-0.1.0-rc.1.tgz dist/
 (cd dist && shasum -a 256 dsh-charter-0.1.0-rc.1.tgz > SHA256SUMS)
 ```
 
-Pack on the tagged tree so the archive matches the committed source. Write the digest to `dist/SHA256SUMS` and
-to the tracked root `SHA256SUMS` (the root file is intentionally outside the npm `files` whitelist, so it does not
-change the packed artifact). Commit that root file, then move the `v0.1.0-rc.1` tag to the resulting HEAD.
-Verification §8.4 records the gated source commit and points to the tracked shipped-artifact digest; the tracked
-root `SHA256SUMS` and `dist/SHA256SUMS` pin the archive built from the tagged tree. `dist/` is gitignored; attach
-the `.tgz` and `SHA256SUMS` to the GitHub release but never commit the tarball.
+Write the same digest into the tracked repository-root `SHA256SUMS`. The root file is intentionally outside the
+npm `files` whitelist, so committing it does not change the packed archive bytes; commit it before creating the
+tag. `dist/` is gitignored and is never committed.
 
-1. Create a GitHub release; attach the `.tgz`, `SHA256SUMS`, and concise highlights.
-2. npm publish the pre-release with a non-latest dist-tag:
+Install that exact tarball into a fresh profile and verify it:
 
 ```bash
-npm publish --access public --tag next
+DSH_HOME=/tmp/dsh-charter-release-home \
+  dsh --profile release-smoke --from-default-profile web --dump-config >/dev/null
+DSH_HOME=/tmp/dsh-charter-release-home \
+  dsh plugin --profile release-smoke add dist/dsh-charter-0.1.0-rc.1.tgz
+DSH_HOME=/tmp/dsh-charter-release-home \
+  dsh --profile release-smoke --no-open --port 19399
 ```
 
-Publish a stable `latest` version only after the public repository links are in place, the post-restart check in
-verification §8.4 is recorded, and `npm run check`/`smoke:package` pass on the tagged tree. Until then,
-`dsh-charter@latest` does not exist: install `@0.1.0-rc.1` or `@next`.
+Open the printed URL, start a Session, and check the Charter tab and English/Chinese switching. Now create the
+final annotated tag on this final commit and push it once:
 
-Do not publish API keys, profile data, or local screenshots containing private content.
+```bash
+git tag -a v0.1.0-rc.1 -m "dsh-charter 0.1.0-rc.1"
+git push origin v0.1.0-rc.1
+```
+
+Never move a pushed tag; if the tag is wrong, bump the version instead. Create the GitHub release from that tag
+and attach the **already-built and verified** `dist/dsh-charter-0.1.0-rc.1.tgz` plus `dist/SHA256SUMS` — do not
+run `npm pack` again after tagging. Publish that exact file with a non-latest dist-tag:
+
+```bash
+npm publish dist/dsh-charter-0.1.0-rc.1.tgz --access public --tag next
+```
+
+Verification §8.4 records the gated source commit and points to the tracked shipped-artifact digest; the tracked
+root `SHA256SUMS` and `dist/SHA256SUMS` pin the archive built from the tagged tree.
+
+Publish a stable `latest` version only after the public repository links are in place, the post-restart check in
+verification §8.4 is recorded, and `npm run check`/`smoke:package` pass on the tagged tree. Do not publish API
+keys, profile data, or local screenshots containing private content.
 
 ## 5. Post-release
 

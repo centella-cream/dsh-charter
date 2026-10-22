@@ -1,5 +1,8 @@
 // Verify the packed tarball as a real consumer would: pack it, assert its
-// contents/modes, install it into an empty project, and load its Runtime entry.
+// contents/modes, install it into an empty project, load the pure `core` entry,
+// and check the client bundle. Importing the Host/Remote Runtime entries needs
+// the Host peer graph, so that is covered by the workspace build's
+// remote-smoke/client-smoke, not by this empty consumer.
 import { execFileSync } from 'node:child_process'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -108,10 +111,19 @@ try {
   const client = readFileSync(join(installed, 'lib/client.js'), 'utf8')
   if (!client.includes('__ModuleLoader__.load')) throw new Error('client bundle is not a module-loader factory')
   if (!client.includes('会话契约') || !client.includes('Charter')) throw new Error('client bundle lost the bilingual tab label')
+  // The pure core entry has no Host peer imports, so an empty consumer can
+  // load it. Root/Remote runtime imports are asserted structurally above
+  // (export targets + files) and exercised by the workspace smoke scripts.
   const coreImport = `import('dsh-charter/core').then(m => { if (!m.CHARTER_PROMPT_PREFIX?.startsWith('Current user-authored session charter.')) throw new Error('unexpected core export'); }).catch(e => { console.error(e); process.exit(1) })`
   run(process.execPath, ['--input-type=module', '-e', coreImport], { cwd: consumer })
+  for (const path of ['lib/index.js', 'lib/remote.js', 'lib/index.d.ts', 'lib/remote.d.ts']) {
+    if (!existsSync(join(installed, path))) throw new Error(`consumer install is missing ${path}`)
+  }
 
-  console.log(`package-smoke: ${artifactInfo.filename} (${files.size} files) installs in an empty consumer, dependencies resolve, packed Runtime entry loads`)
+  console.log(
+    `package-smoke: ${artifactInfo.filename} (${files.size} files) installs in an empty consumer, `
+    + 'dependencies resolve, root/remote exports and files exist, packed core import loads, client bundle is valid',
+  )
 } finally {
   rmSync(work, { recursive: true, force: true })
 }

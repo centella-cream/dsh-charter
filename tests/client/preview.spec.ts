@@ -82,6 +82,18 @@ describe('projected draft view', () => {
     expect(payload.deliverables).toEqual([{ text: 'Deliverable', progress: 'not-started' }])
     expect(prompt).not.toContain('Pending')
   })
+
+  it('detaches a successor when the previewed purge removes its superseded predecessor', () => {
+    const projected = projectView(view(), [
+      { type: 'item.add', item: { clientRef: 'a', kind: 'invariant', text: 'A', order: 1 } },
+      { type: 'item.supersede', itemId: 'draft:a', replacement: { clientRef: 'b', kind: 'invariant', text: 'B', order: 2 } },
+      { type: 'item.purge', itemId: 'draft:a', confirmed: true },
+    ])
+    expect(projected.items).toHaveLength(1)
+    const successor = projected.items[0]!
+    expect(successor).toMatchObject({ text: 'B', lifecycle: 'current', staged: true })
+    expect(successor.supersedes).toBeUndefined()
+  })
 })
 
 describe('prompt budget admission', () => {

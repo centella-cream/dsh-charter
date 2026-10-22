@@ -72,7 +72,8 @@ execution guards for restrictions that must be machine-enforced.
 
 - Separate original and current objective; ordinary edits never rewrite the original.
 - `invariant` and `deliverable` items with orthogonal review, lifecycle, verification, and progress state.
-- A localised conversation-view tab placed after Chat and Trajectory, and dynamically after later plugin tabs.
+- A localised conversation-view tab registered once at a stable high order (1000), so it follows Chat, Trajectory,
+  and common plugin tabs without re-registering itself.
 - A compact, navigable pane: **Overview / Objective / Invariants / Deliverables / History / Context**.
 - Sticky Preview / Discard / Apply toolbar and an exact preview of the model-visible user-role context.
 - History draft extraction from `compaction/summary`; deterministic, no model call, no automatic write.
@@ -104,10 +105,9 @@ The browser registers a `conversation.view` entry; the pane and `charter.watch` 
 
 ## Install
 
-> **Current status: pre-release.** `dsh-charter` is not published on the npm registry or in the Desktop plugin
-> catalog yet. The only currently installable artifact is a local tarball that a maintainer builds from this
-> checkout; it is not publicly distributed. The versioned Web command and Desktop Plugins flow become available
-> with the first public pre-release.
+> **Install channels.** Once the maintainer publishes the `next` dist-tag, install the exact version or the
+> pre-release channel (`@0.1.0-rc.1` / `@next`). If the `next` tag is not listed in your registry yet, install the
+> verified local tarball built from this checkout.
 
 ### Requirements
 
@@ -117,7 +117,7 @@ The browser registers a `conversation.view` entry; the pane and `charter.watch` 
 - Node.js **`^22.19.0 || >=24.0.0`**.
 - A Web or Desktop profile.
 
-### Current pre-release — local tarball
+### Verified local tarball (pre-release fallback)
 
 From a checkout:
 
@@ -134,7 +134,7 @@ app that owns that profile.
 Source-level development is described in [CONTRIBUTING.md](CONTRIBUTING.md); do not use `git clone` as the
 normal installation method.
 
-### After the first public pre-release
+### Registry install (after the `next` publish)
 
 #### Web profile — install by version or pre-release tag
 
@@ -143,9 +143,10 @@ dsh plugin --profile web add dsh-charter@0.1.0-rc.1   # exact version: reproduci
 dsh plugin --profile web add dsh-charter@next         # newest pre-release
 ```
 
-When the first public pre-release ships, `0.1.0-rc.1` will be published under the `next` dist-tag, never under
-`latest`; use `@latest` only after a stable release exists. Until that publication these registry commands do
-not resolve: build and install the local tarball above. Pin an explicit version for reproducible profiles.
+After the maintainer publishes the `next` dist-tag, install `dsh-charter@0.1.0-rc.1` (exact and reproducible) or
+`dsh-charter@next` (newest pre-release). The pre-release is published under `next`, never under `latest`; use
+`@latest` only after a stable release exists. If the tag is not listed yet, use the verified local tarball above.
+Pin an explicit version for reproducible profiles.
 
 Restart `dsh web` (or let profile HMR recompose), then refresh the page. The profile `package.json` gains the
 dependency and bundle entry.
@@ -160,8 +161,8 @@ path above.
 ### Update
 
 - **Local tarball:** rebuild and repeat the local install command.
-- **Web after the first public pre-release:** `dsh plugin --profile web add dsh-charter@next`, then
-  restart/refresh; pinned profiles keep their explicit `0.1.0-rc.1` entry until a stable `latest` exists.
+- **Web (registry channel):** `dsh plugin --profile web add dsh-charter@next`, then restart/refresh; pinned
+  profiles keep their explicit `0.1.0-rc.1` entry until a stable `latest` exists.
 - **Desktop after release:** Plugins → `dsh-charter` → **Update**; Desktop hot-applies it.
 
 ## Quick start
@@ -187,7 +188,8 @@ instead of truncating them. The review step is intentionally mandatory.
 
 ## The Charter tab
 
-The tab is opened from the conversation header; it is dynamically placed after every other plugin tab. The pane
+The tab is opened from the conversation header; it is registered once at a stable high order (1000), so it follows
+Chat, Trajectory, and common plugin tabs without re-registering itself. The pane
 has a left section navigation on wide screens and a horizontal tab strip on narrow screens:
 
 | Section | Purpose |
@@ -284,7 +286,7 @@ npm run verify:compaction # manual real-model compaction check (not part of chec
 ```
 
 The test suite covers the pure core, real Host composition, storage-domain behavior, Remote framing,
-history extraction, client state, and factory-bundle registration. Current matrix: **157 tests on DSH `0.1.7-rc.2`, `0.2.0-rc.1`/`rc.2`, and `0.2.1-rc.1`/`rc.2`**. See the [verification record](docs/verification.md) for commands and evidence.
+history extraction, client state, and factory-bundle registration. Current matrix: **161 tests on DSH `0.1.7-rc.2`, `0.2.0-rc.1`/`rc.2`, and `0.2.1-rc.1`/`rc.2`**. See the [verification record](docs/verification.md) for commands and evidence.
 
 ## Acknowledgements
 
@@ -321,14 +323,13 @@ security reports, follow [SECURITY.md](SECURITY.md).
 Pre-1.0. The DSH plugin ABI is still moving; compatibility is tested against the versions above, and the design
 keeps the compatibility layer deliberately small. This tree is the `0.1.0-rc.1` pre-release: the real-model
 compaction acceptance **PASS is recorded on 2026-10-22** on an anonymized evaluation Session (326 messages /
-~228k tokens shadowed, revision-1 charter survived with matching digest — see verification §8.4). The package is
-not published to npm or the Desktop catalog yet, so the only installable artifact is a local tarball a
-maintainer builds from this tree; the first public pre-release will be available under the `next` dist-tag.
-Remaining release blockers are publishing prerequisites (a public repository and dist-tag), plus one manual
-check recorded in §8.4 that is required before a stable `latest` release: restart the Desktop app and reopen the
-Charter tab once to confirm the installed bundle/tool ABI. CI is configured to pack and smoke-test the
-installable artifact and will run on the first push once the public repository exists; today the local gates in
-verification §2 are the evidence.
+~228k tokens shadowed, revision-1 charter survived with matching digest — see verification §8.4). The release is
+distributed as a verified local tarball built from this tree and, once the maintainer publishes it, through the
+`next` dist-tag on npm. One manual check recorded in §8.4 is required before a stable `latest` release: restart
+the Desktop app and reopen the Charter tab once to confirm the installed bundle/tool ABI. CI is configured to
+pack and smoke-test the installable artifact once the public repository exists; the local gates in
+verification §2 are the evidence. External publishing prerequisites and the exact release order are tracked in
+[docs/releasing.md](docs/releasing.md).
 
 ## License
 

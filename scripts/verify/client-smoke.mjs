@@ -59,6 +59,7 @@ if (!Array.isArray(exports.inject) || !exports.inject.includes('locale')) {
 const pending = []
 const registrations = {
   view: undefined,
+  viewCount: 0,
   contribution: undefined,
   localeNamespace: undefined,
   localeDictionaries: undefined,
@@ -68,11 +69,11 @@ let viewEntries = [
   { options: { id: 'trajectory', order: 10 } },
   { options: { id: 'context', order: 20 } },
 ]
-const viewSubscribers = new Set()
-const notifyViews = () => { for (const listener of [...viewSubscribers]) listener() }
+let slotSubscriptions = 0
+let slotQueries = 0
 const addExternalView = (id, order) => {
+  // No notify: the stable-order design must not require a slot subscription.
   viewEntries = [...viewEntries, { options: { id, order } }]
-  notifyViews()
 }
 let activeLocale = 'zh'
 const fakeContext = {
@@ -93,13 +94,12 @@ const fakeContext = {
   },
   slots: {
     entries(name) {
-      if (name !== 'conversation.view') throw new Error(`unexpected slot query: ${name}`)
-      return viewEntries
+      slotQueries += 1
+      throw new Error(`unexpected slot query: ${name}`)
     },
-    subscribe(name, listener) {
-      if (name !== 'conversation.view') throw new Error(`unexpected slot subscription: ${name}`)
-      viewSubscribers.add(listener)
-      return () => { viewSubscribers.delete(listener) }
+    subscribe(name) {
+      slotSubscriptions += 1
+      throw new Error(`unexpected slot subscription: ${name}`)
     },
     inject(name, setup) {
       if (name !== 'conversation.view') throw new Error(`unexpected slot injection: ${name}`)
@@ -107,6 +107,7 @@ const fakeContext = {
       return typeof disposer === 'function' ? disposer : () => {}
     },
     register(definition, component) {
+      registrations.viewCount += 1
       const entry = {
         options: { id: definition.id, order: definition.order, label: definition.label },
         definition,
@@ -114,10 +115,8 @@ const fakeContext = {
       }
       viewEntries = [...viewEntries, entry]
       registrations.view = entry
-      notifyViews()
       return () => {
         viewEntries = viewEntries.filter(candidate => candidate !== entry)
-        notifyViews()
       }
     },
   },
@@ -146,15 +145,28 @@ const fakeContext = {
 exports.apply(fakeContext)
 await Promise.all(pending)
 
-let view = registrations.view
+const view = registrations.view
+if (registrations.viewCount !== 1) {
+  throw new Error(`client apply registered ${registrations.viewCount} conversation views instead of exactly one`)
+}
 if (view?.definition?.name !== 'conversation.view' || view.definition.id !== 'charter') {
   throw new Error('client apply did not register the charter conversation view')
 }
-if (viewEntries.at(-1) !== view) {
-  throw new Error('charter view is not the last registered conversation view')
+if (slotQueries !== 0 || slotSubscriptions !== 0) {
+  throw new Error('client apply queried or subscribed to the conversation.view roster')
 }
-if (typeof view.definition.order !== 'number' || view.definition.order <= 20) {
-  throw new Error(`charter view order ${String(view.definition.order)} does not follow existing tabs`)
+const order = view.definition.order
+if (typeof order !== 'number' || !Number.isFinite(order)) {
+  throw new Error(`charter view order ${String(order)} is not a finite number`)
+}
+if (order !== 1000) {
+  throw new Error(`charter view order ${String(order)} is not the stable CHARTER_VIEW_ORDER (1000)`)
+}
+const existingMaxOrder = Math.max(...viewEntries
+  .filter(entry => entry !== view)
+  .map(entry => (typeof entry.options.order === 'number' ? entry.options.order : 0)))
+if (order <= existingMaxOrder) {
+  throw new Error(`charter view order ${String(order)} does not follow existing tabs (max ${String(existingMaxOrder)})`)
 }
 if (view.definition.locale !== registrations.localeNamespace) {
   throw new Error('charter view locale namespace does not match its dictionary')
@@ -173,19 +185,28 @@ if (typeof view.definition.inject !== 'function') {
   throw new Error('charter view does not provide per-binding source/draft injection')
 }
 
-// A plugin that registers its tab after us must force ours to the end again.
+// Later plugin tabs must neither duplicate nor reorder the Charter view: the
+// single registration keeps its stable order even against a higher-order tab.
+const registered = registrations.view
 addExternalView('fleet', 25)
-view = registrations.view
-if (viewEntries.at(-1) !== view || viewEntries.at(-1).options.id !== 'charter') {
-  throw new Error('charter view did not follow a later-registered tab')
+addExternalView('future-plugin', 5000)
+viewEntries = [...viewEntries]
+if (registrations.view !== registered || registrations.viewCount !== 1) {
+  throw new Error('charter view was re-registered or duplicated after external views registered')
 }
 if (viewEntries.filter(entry => entry.options.id === 'charter').length !== 1) {
-  throw new Error('charter view was duplicated during reordering')
+  throw new Error('charter view was duplicated after external views registered')
+}
+if (registrations.view.definition.order !== order) {
+  throw new Error('charter view order changed after external views registered')
+}
+if (slotQueries !== 0 || slotSubscriptions !== 0) {
+  throw new Error('charter view reacted to external registrations through the slot roster')
 }
 if (registrations.contribution?.package !== 'dsh-charter') {
   throw new Error('client apply did not mount the charter Remote contribution')
 }
 console.log(
   `client-smoke: ${registration.id} registers conversation view "${view.definition.id}" `
-  + `last at order ${String(view.definition.order)} as 会话契约/Charter, plus the Remote contribution`,
+  + `once at stable order ${String(order)} as 会话契约/Charter (no reorder/subscription), plus the Remote contribution`,
 )

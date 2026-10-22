@@ -215,9 +215,21 @@ export function projectView(view: CharterView, ops: readonly CharterOp[]): Proje
         })
         break
       }
-      case 'item.purge':
+      case 'item.purge': {
+        const purged = items.get(op.itemId)
         items.delete(op.itemId)
+        // Match the Host's purge semantics: removing a superseded predecessor
+        // detaches its successor's `supersedes` back-link instead of leaving a
+        // dangling reference in the projected view.
+        if (purged !== undefined) {
+          for (const [id, candidate] of items) {
+            if (candidate.supersedes !== purged.id) continue
+            const { supersedes: _detached, ...detached } = candidate
+            items.set(id, { ...detached, staged: true })
+          }
+        }
         break
+      }
       case 'deliverable.progress': {
         const item = items.get(op.itemId)
         if (item?.kind === 'deliverable') {

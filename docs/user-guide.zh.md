@@ -22,8 +22,8 @@ dsh --profile web --dump-config | grep -n "charter" || true
 
 ## 2. 安装
 
-> **当前状态：预发布。** npm 包和 Desktop 插件目录尚不存在。当前唯一可安装产物是维护者构建的本地 tarball；
-> 按版本安装和 Desktop Plugins 安装会在首次公开预发布后生效。
+> **安装渠道。** 维护者发布 `next` dist-tag 后，可按精确版本或 tag 安装；如果 registry 中还没有列出该 tag，
+> 请使用从本 checkout 构建并验证过的本地 tarball。
 
 ### 2.1 环境要求
 
@@ -33,7 +33,7 @@ dsh --profile web --dump-config | grep -n "charter" || true
 - Node.js **`^22.19.0 || >=24.0.0`**。
 - Web 或 Desktop profile。
 
-### 2.2 当前预发布 — 本地 tarball
+### 2.2 已验证的本地 tarball（预发布回退）
 
 ```bash
 npm install
@@ -43,18 +43,17 @@ dsh plugin --profile web add ./dsh-charter-0.1.0-rc.1.tgz
 ```
 
 Desktop 若支持本地插件导入，可在 Plugins 页面安装同一个 tarball；否则通过 Desktop profile 自己的包管理器
-安装（`dsh plugin --profile desktop` 会被 Electron app 拒绝）。发布前 profile 依赖是本地 `file:` 路径。
+安装（`dsh plugin --profile desktop` 会被 Electron app 拒绝）。profile 依赖是本地 `file:` 路径。
 
-### 2.3 首次公开预发布后 — Web profile 按版本或 tag 安装
+### 2.3 Registry 安装（`next` 发布后）— Web profile 按版本或 tag
 
 ```bash
 dsh plugin --profile web add dsh-charter@0.1.0-rc.1   # 精确版本：可复现
 dsh plugin --profile web add dsh-charter@next         # 最新预发布
 ```
 
-首次公开预发布发布后，`0.1.0-rc.1` 会发布在 `next` dist-tag 下，而不是 `latest`；只有在稳定版发布之后才使用
-`@latest`。在发布之前这些 registry 命令不会解析：请先构建并安装上面的本地 tarball。固定明确版本可以让
-profile 可复现。
+维护者发布 `next` dist-tag 后，`0.1.0-rc.1` 位于 `next` 下，而不是 `latest`；只有在稳定版发布之后才使用
+`@latest`。如果还没有列出该 tag，请先构建并安装上面的已验证本地 tarball。固定明确版本可以让 profile 可复现。
 
 重启 `dsh web`，或让 HMR 重新组合 profile，然后刷新页面。profile 的 `package.json` 会增加依赖和 bundle
 选择：
@@ -69,7 +68,7 @@ profile 可复现。
 安装时 pnpm 可能提示缺少 `@deepseek-ai/dsh-*` peer。这些包由 DSH 运行时提供，不需要装进 profile；以 DSH 的
 peer 兼容检查结果为准。
 
-### 2.4 首次公开预发布后 — Desktop Plugins
+### 2.4 Registry 渠道 — Desktop Plugins
 
 如果你的 Desktop 版本已接入公开插件目录，且包已发布到该目录，打开 **Desktop → Plugins**，搜索
 **`dsh-charter`**，点击 **Install**。已安装时点击 **Update**；Desktop 管理插件生命周期并热更新 bundle。
@@ -98,7 +97,7 @@ npm run build
 
 1. 打开任意已开始的会话，会话头部会依次出现「对话」「轨迹」「会话契约」。若没有「会话契约」，先确认 profile 的
    boot graph 包含 `dsh-charter/client.js`，并确认会话不是空白 Session（空白 Session 会隐藏 View 标签栏）。
-   「会话契约」标签会动态排在所有其他插件标签之后。
+   「会话契约」标签以稳定的高 order 注册一次，因此排在「对话」「轨迹」和常见插件标签之后。
 2. 使用左侧 section 导航：**概览 / 目标 / 硬约束 / 交付物 / 历史草案 / 上下文**。历史草案始终可见，展示当前
    bootstrap 阶段并提供**重新检查**。窄窗口下自动变成横向 tab。
 3. 在 **目标** 中设置目标。原始目标只写一次。

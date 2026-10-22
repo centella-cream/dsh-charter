@@ -14,7 +14,7 @@
 | 验证项 | 结果 |
 | --- | --- |
 | TypeScript 严格类型检查（5 个 DSH 版本） | 通过 |
-| Vitest（5 个本地可用版本 × 157 tests） | 通过 |
+| Vitest（5 个本地可用版本 × 161 tests） | 通过 |
 | Host ESM 构建 + 浏览器单文件 bundle | 通过 |
 | Remote 装饰器/资源 smoke | 通过（0.1.7/0.2.0 按预期无资源声明） |
 | 浏览器 factory bundle 物化与 `apply` smoke | 通过 |
@@ -27,8 +27,8 @@
 | 预算收紧与收敛 | 通过：调低预算后显示 `overBudget`、停止注入、缩小编辑可收敛；不可用配置被 clamp；见 4.5 |
 | Session 级客户端草稿 | 通过：单测覆盖 binding 卸载/重挂载后草稿存活、重试复用 mutation id、冲突 rebase、bootstrap 不抢占 section；见 4.5 |
 | 运行期 schema 重新校验 | 通过：mount 后把记录改成非法 schema，只有该 Session 不可用且原始记录保留；见 4.6 |
-| 打包产物可安装性 | 通过：本地 `npm run smoke:package`（tarball 内容、exports、packed Host import、client bundle）；见第 2 节 |
-| Compaction checker 退出条件 | 通过：fixture 覆盖成功、system prompt 污染、charter_read 不匹配、快照丢失、摘要泄漏 warning；见 4.7 |
+| 打包产物可安装性 | 通过：本地 `npm run smoke:package`（tarball 内容、exports/文件、packed `core` import、client bundle；Host/Remote 运行时 import 由工作区 build smoke 覆盖）；见第 2 节 |
+| Compaction checker 退出条件 | 通过：fixture 覆盖成功、system prompt 污染、必需的压缩后匹配 `charter_read`（缺失/不匹配都失败，压缩前读取按 seq 忽略）、快照丢失、摘要泄漏 warning；见 4.7 |
 | 陈旧异步草稿结果 | 通过：edit/bootstrap 结果按 source/generation/请求身份围栏；空草稿和 idle 草稿会回收；见 4.7 |
 | 真实模型 + compaction 端到端 | **2026-10-22 实测 PASS**（一个匿名评估会话）：326 条历史消息 / 约 228k tokens 被压缩，revision 1 会话契约存活，压缩后快照与 `charter_read` 均验证（见 8.4） |
 
@@ -43,7 +43,7 @@ npm test
 
 - typecheck 通过；
 - build 通过；
-- 17 个测试文件、157 个测试全部通过（来自 `npm test`，即 build 后运行 `vitest run`）；
+- 17 个测试文件、161 个测试全部通过（来自 `npm test`，即 build 后运行 `vitest run`）；
 - `remote-smoke` 断言 `watch,bootstrap,edit`、stream mode 和 Session resource；
 - `client-smoke` 断言单文件 factory bundle、外部依赖白名单、不引用 Node-only `Buffer`、`apply` 注册
   tab/pane/Remote contribution。
@@ -70,10 +70,10 @@ CI 已配置在公开仓库存在后对 Node `22.19.0` 与 Node `24` 运行 `npm
 | `tests/host/actor.spec.ts` | principal 感知策略：现代运行时缺失 principal 拒绝、仅旧版 owner 回退、非 owner 记录、按版本选择的 `resolveRemoteActor` |
 | `tests/host/remote.spec.ts` | Remote 描述符、wire schema、旧 Host view snapshot、零 pending 上限 |
 | `tests/client/store.spec.ts` | 提交后立即接受 view、忽略陈旧/重复 revision、opening snapshot 单调、权威不可用降级、attach 重试、待生效 attach 在 stream 启动前被取消、共享 source lease/引用计数、旧 lease no-op、忽略其他 Session 的 stream 帧 |
-| `tests/client/bootstrap-plan.spec.ts` | 溢出候选仍在一个 plan 中；单遍规划与逐候选结果（近乎全部 active 时最坏 O(n²)，已披露）；active 前缀符合字节预算；bootstrap 结果分类（draft/discard/stale/unavailable） |
+| `tests/client/bootstrap-plan.spec.ts` | 溢出候选仍在一个 plan 中；O(1) 增量字节核算，覆盖 3,000 个全 active 候选与 invariant/deliverable 混合用例；逐候选结果；最终精确渲染校验；bootstrap 结果分类（draft/discard/stale/unavailable） |
 | `tests/client/draft.spec.ts` / `draft-store.spec.ts` | Session 绑定的请求构造（A 的 ops 不会为 B 构造请求）；binding 卸载/重挂载后草稿存活；重试复用 mutation id；冲突 rebase；陈旧异步结果不能覆盖新的 draft/source/lifecycle；bootstrap 不抢占 section |
-| `tests/client/preview.spec.ts` | 投影后的 draft 行（add/edit/accept/progress/supersede/purge）；渲染器一致性与 pending 排除；prompt 预算的 Apply 准入（缩短、同字节、增长、预算内四种渲染） |
-| `tests/verify/compaction-checks.spec.ts` | compaction checker fixture：system prompt 污染、charter_read 调用但不匹配、压缩后快照丢失、摘要泄漏 warning、紧凑 standing 投影一致 |
+| `tests/client/preview.spec.ts` | 投影后的 draft 行（add/edit/accept/progress/supersede/purge）；purge 预览会解除后继的 supersedes 关联；渲染器一致性与 pending 排除；prompt 预算的 Apply 准入（缩短、同字节、增长、预算内四种渲染） |
+| `tests/verify/compaction-checks.spec.ts` | compaction checker fixture：system prompt 污染、必需的压缩后匹配 `charter_read`（缺失与不匹配都失败）、压缩前读取被忽略、压缩后快照丢失、摘要泄漏 warning、紧凑 standing 投影一致 |
 
 ## 3. 跨版本矩阵
 
@@ -99,13 +99,13 @@ npm run build
 
 | 版本 | typecheck | build | Vitest | remote smoke | client smoke |
 | --- | --- | --- | --- | --- | --- |
-| `0.1.7-rc.2` | 通过 | 通过 | 157/157 | 通过（无 resources 警告） | 通过 |
-| `0.2.0-rc.1` | 通过 | 通过 | 157/157 | 通过（无 resources 警告） | 通过 |
-| `0.2.0-rc.2` | 通过 | 通过 | 157/157 | 通过（无 resources 警告） | 通过 |
-| `0.2.1-rc.1` | 通过 | 通过 | 157/157 | 通过 | 通过 |
-| `0.2.1-rc.2` | 通过 | 通过 | 157/157 | 通过 | 通过 |
+| `0.1.7-rc.2` | 通过 | 通过 | 161/161 | 通过（无 resources 警告） | 通过 |
+| `0.2.0-rc.1` | 通过 | 通过 | 161/161 | 通过（无 resources 警告） | 通过 |
+| `0.2.0-rc.2` | 通过 | 通过 | 161/161 | 通过（无 resources 警告） | 通过 |
+| `0.2.1-rc.1` | 通过 | 通过 | 161/161 | 通过 | 通过 |
+| `0.2.1-rc.2` | 通过 | 通过 | 161/161 | 通过 | 通过 |
 
-最终 `0.1.0-rc.1` 树在 2026-10-22 重新跑过：每个版本均为 17 个测试文件 / 157 个测试，且 build 内含 remote/client
+最终 `0.1.0-rc.1` 树在 2026-10-22 重新跑过：每个版本均为 17 个测试文件 / 161 个测试，且 build 内含 remote/client
 smoke 断言。
 
 这个五版本矩阵是**本地证据**：版本目录和驱动脚本位于被 git 忽略的 `.tmp/`，公开 CI 不会复现它。CI 配置为在
@@ -211,8 +211,8 @@ UI 的自动草案面板依赖客户端 `useEffect` 和 Remote bootstrap；8.4 �
   瞬时失败在 `put` 发布前清除，随后发布 ready 帧（修复了此前只发布 stale unavailable 帧的问题）。
 - **客户端所有权**：单测覆盖 draft 在卸载/重挂载后存活、未知结果重试复用 mutation id、冲突 rebase 使用新 id、
   bootstrap 在编辑器打开时不抢占 section、投影条目在 Apply 前即显示暂存状态。
-- **规划规模**：单遍 bootstrap planner 用 2,000 个候选测试，并返回逐候选 active/pending 结果；最终用精确渲染
-  校验预算。
+- **规划规模**：bootstrap planner 使用与精确渲染一致的 O(1) 增量字节核算；用 2,000 个混合候选和 3,000 个全
+  active 候选测试，返回逐候选 active/pending 结果，并保留最终精确渲染作为预算校验/回退。
 
 ### 4.6 运行期完整性、权限 fail-closed 与客户端状态边界
 
@@ -233,17 +233,20 @@ UI 的自动草案面板依赖客户端 `useEffect` 和 Remote bootstrap；8.4 �
   上限按最终 tool envelope 测量（用 30 条大归档条目测试）；`overBudget` 也反映调低的 history/mutation 数量上限。
 - **可访问性与提示卫生**：同一时刻只渲染一条超预算提示（阻塞中的暂存草稿 > 已保存超预算记录 > 可提交的超预算
   渲染），并只给一个处理建议；`status`/`alert` 只包裹消息文本，操作按钮不再嵌套在 live region 内；条目操作
-  菜单使用原生 disclosure + `aria-haspopup`，操作后焦点回到条目行，替代/验证原因改为可见文本而非 title 属性；
+  菜单使用普通 `<details>` disclosure + 普通按钮（不声明 menu-button ARIA 契约），purge 确认按钮自动聚焦、
+  取消后焦点回到 summary，行内操作后焦点不会掉到 `<body>`；替代/验证原因改为可见文本而非 title 属性；
   历史草案 idle 阶段使用独立的“尚未加载草案”文案。
 - **打包产物门禁**：本地 `npm run smoke:package` 打包 tarball 并校验必需文件、所有 `exports` 目标、无工作区泄漏、
-  packed Host import 和 packed client bundle；CI 配置为在仓库存在后运行同一门禁。
+  packed `core` import 和 packed client bundle；Host/Remote 运行时 import 需要 Host peer 依赖图，由工作区
+  `remote-smoke` / `client-smoke` 覆盖，不在空 consumer 中执行。CI 配置为在仓库存在后运行同一门禁。
 
 ### 4.7 Checker 退出条件、草稿异步围栏与在线修复
 
 - **Compaction checker（fixture）**：`tests/verify/compaction-checks.spec.ts` 覆盖精确成功条件：正常通过、
-  system prompt 污染、调用了 `charter_read` 但 standing 不匹配、压缩后快照丢失、摘要泄漏 warning。transcript
-  reader 现在构造与 Host 相同的紧凑 standing 投影（`kind`/`text`/`verification`/`progress`），所有必需证据
-  都参与退出码；只有 WAIT/BLOCKED 状态会在评估前短路。
+  system prompt 污染、**必需的**压缩后匹配 `charter_read` standing 结果（缺失与不匹配都失败；压缩前读取按
+  seq 忽略）、压缩后快照丢失、摘要泄漏 warning。transcript reader 构造与 Host 相同的紧凑 standing 投影
+  （`kind`/`text`/`verification`/`progress`），所有必需证据都参与退出码；只有 WAIT/BLOCKED 状态会在评估前
+  短路。
 - **草稿异步围栏**：edit 和 bootstrap Apply 捕获 `asyncGeneration`、source 实例及其单调 connection epoch、
   lifecycle 和请求 ops 身份；已销毁 source 或 detach/reattach 周期的迟到结果不能清除或覆盖新草稿。source 失效
   保留 mutation id 以便幂等重试，attach/detach/retry 都会使在途结果失效。
@@ -268,7 +271,8 @@ UI 的自动草案面板依赖客户端 `useEffect` 和 Remote bootstrap；8.4 �
   `objective: null` + `objectiveTruncated: true`，不再突破响应上限；standing 仍携带完整 objective。
 - **Bootstrap 元数据**：`shadowedTokenCount` 在 Host 侧也校验为非负整数，负值会在进入严格 Remote codec 前被跳过。
 - **消费者安装**：`smoke:package` 现在在空项目中做真实安装（只依赖 tarball 与声明依赖），检查公开文件 mode，
-  并加载 packed Runtime 入口；不再软链工作区 `node_modules`。
+  并加载 packed `core` 入口（root/Remote 运行时 import 由工作区 build smoke 覆盖）；不再软链工作区
+  `node_modules`。
 - **Watch/stream generation 竞态**：unsubscribe 只有在仍持有捕获的 listener Set 时才删除 Map 条目（已 dispose
   的 generation 不能误删同 ID 新 watch）；同 live stream 的重复 attach 是 no-op，旧 stream 的 `replace`/`update`
   帧按 attach generation 丢弃。
@@ -314,9 +318,10 @@ ls lib/*.css
 - `registration.id === 'dsh-charter'`；
 - factory 只请求白名单模块；
 - 导出 `apply` 和 `inject`；
-- `apply` 注册 `conversation.view` 的 `charter` entry、正文组件和 Remote contribution；
-- 已有 tab 顺序为 chat 0 / trajectory 10 / context 20 时，`charter` 排在最后；
-- 模拟后续注册的 `fleet` tab 后，`charter` 自动重新注册并再次排在最后，且不重复；
+- `apply` 只注册一个 `conversation.view` 的 `charter` entry、正文组件和 Remote contribution；
+- 已有 tab 顺序为 chat 0 / trajectory 10 / context 20 时，`charter` 以稳定 order 1000 只注册一次并排在最后；
+- 模拟后续注册的 `fleet` tab 和更高 order 的 `future-plugin` tab 后，`charter` 既不被复制也不重排，且
+  bundle 不查询、不订阅 slot roster；
 - 中文标签为「会话契约」，英文标签为「Charter」。
 
 ## 6. 真实 profile smoke
@@ -449,7 +454,7 @@ DSH_HOME="$PWD/.tmp/smoke017/home" .tmp/dsh017/node_modules/.bin/dsh \
 
 加入 `conversation.view` 标签页后，又用新 profile `smoke017c` 安装最终 tarball 复核：boot graph 的
 `inject` 包含 `@deepseek-ai/dsh-client-locale` 和 `@deepseek-ai/dsh-client-ui-conversation`，客户端 bundle
-包含动态顺延逻辑（`ensureLast`），`/` 与客户端入口均返回 200。
+以稳定 order 1000 只注册一次（没有 `ensureLast` 循环），`/` 与客户端入口均返回 200。
 
 ## 7. 浏览器 UI 验证（0.2.0-rc.2 Web profile）
 
@@ -479,8 +484,8 @@ DSH_HOME="$PWD/.tmp/webview/home" dsh --profile charterweb2 --no-open --port 193
 - 「会话契约」位于「对话」「轨迹」之后；
 - 再安装 `dsh-context@0.73.3` 后，实际顺序变为 `对话 / 轨迹 / 上下文 / 编队 / 会话契约`，会话契约仍然最后；
 - 中文标签为「会话契约」，英文标签为「Charter」，由 `dsh-client-locale` 字典提供；
-- 另用 `client-smoke` 模拟一个后注册的 tab：本插件会 dispose 后重新注册，再次回到最后，且不会产生
-  重复 entry；
+- 另用 `client-smoke` 注册一个后置 tab 和一个更高 order 的 tab：单次注册的会话契约保持稳定 order，不产生
+  重复 entry，也不查询/订阅 slot roster；
 - 空白 Session 不显示 View tab bar；发送第一条消息后出现。
 
 真实截图：[中文面板](assets/charter-pane.png)、[English pane](assets/charter-pane.en.png)。
@@ -588,23 +593,25 @@ npm run verify:compaction -- --session <id> --json # 其他 Session / 机器可�
 2. 最新 runtime-context 快照位于该 compaction 之后；
 3. 该快照包含 `charter:standing`，文本与 `promptText` 字节一致，SHA-256 等于 `promptDigest`；
 4. 没有任何 system-prompt 快照包含会话契约前缀、正文、目标或较长的条目文本；
-5. transcript 中的 `charter_read` standing 结果等于 Host 的紧凑 standing 投影（`kind`/`text`/
-   `verification`/`progress`），而不只是 revision/objective；旧版 debug 形状的 tool result（额外
-   id/review/lifecycle 字段）会先归一到同一投影，因此未重启的 Host 仍可给出可比的 working-set 证据；
+5. **必需**：transcript 中**位于最近一次 compaction 之后**的 `charter_read` standing 结果等于 Host 的紧凑
+   standing 投影（`kind`/`text`/`verification`/`progress`），而不只是 revision/objective；按事件 seq 忽略压缩
+   前读取，缺失或不匹配都会让 PASS 失败；旧版 debug 形状的 tool result（额外 id/review/lifecycle 字段）会先
+   归一到同一投影，因此未重启的 Host 仍可给出可比的 working-set 证据；
 6. 压缩之后的压缩摘要没有夹带渲染正文（这是 warning：它会削弱证明，而不是静默通过）。
 
 真实 profile 中的操作步骤：
 
 1. 在目标 Session 打开「会话契约」标签页，审阅历史草案并点击 Apply（或手动设置目标），然后发送一条消息，
    让 runtime context 落进 transcript；
-2. 运行 `npm run verify:compaction`：预期 `charter established`、注入、digest、system-prompt 和
-   `charter_read` 检查通过，compaction 步骤为 `WAIT`；
-3. 在同一 Session 执行 `/compact`，然后发送一条消息；
-4. 再次运行命令：预期 `PASS`，并输出 compaction seq、压缩后快照 seq 和 digest。
+2. 运行 `npm run verify:compaction`：预期 `charter established`、注入、digest、system-prompt 检查通过，
+   compaction 步骤为 `WAIT`；
+3. 在同一 Session 执行 `/compact`，发送一条消息，然后让模型调用一次 `charter_read`，留下匹配的压缩后
+   standing 结果；
+4. 再次运行命令：预期 `PASS`，并输出 compaction seq、压缩后快照 seq、压缩后 `charter_read` seq 和 digest。
 
 检查器只会 fail closed 为 `BLOCKED`（还没有契约）或 `WAIT`（压缩后还没有新请求）；一旦存在压缩后请求，
-`survivesCompaction`、system prompt 洁净、以及“调用了 charter_read 但 standing 不匹配”都会参与退出码；
-摘要泄漏记录为 warning 而不是静默通过。`tests/verify/compaction-checks.spec.ts` 用 fixture 覆盖这些通过/失败
+`survivesCompaction`、system prompt 洁净、以及匹配的压缩后 `charter_read` standing 结果都会参与退出码，
+缺失或不匹配的 read 都是 FAIL。摘要泄漏记录为 warning 而不是静默通过。`tests/verify/compaction-checks.spec.ts` 用 fixture 覆盖这些通过/失败
 组合，不依赖真实模型。它绝不把 checkpoint 摘要当作“存活”证据。
 
 ### 8.3 平台依据
@@ -620,7 +627,8 @@ replacement/compaction 遮蔽后清空 retained，下一次请求重新生成；
 随后 `/compact` 以 compaction seq **31801**（source `cmd-635e3d77-2`）完成，压缩 326 条消息（约 228,181
 tokens）。压缩后第一次请求产生 runtime-context 快照 seq **31810**，包含
 `sections [sandbox:policy, approval:policy, charter:standing]`，5,081 B 会话契约的字节/digest 与 storage 一致；
-随后 `charter_read` 返回相同 revision/objective/working set。完整 checker 输出：
+随后 `charter_read`（result seq **31825**，在 compaction 之后）返回相同 revision/objective/working set。完整
+checker 输出：
 
 ```text
 $ npm run verify:compaction -- --session "$SESSION_ID" \
@@ -630,7 +638,7 @@ $ npm run verify:compaction -- --session "$SESSION_ID" \
   PASS  latest runtime context carries charter:standing
   PASS  injected text matches storage authority and promptDigest
   PASS  system prompt carries no charter body
-  PASS  charter_read standing view matches the storage revision/objective
+  PASS  post-compaction charter_read standing view matches the storage revision/objective
   PASS  charter survives compaction — snapshot seq 31810 > compaction seq 31801
   PASS  compaction summary does not carry the charter text
 result: PASS
@@ -639,6 +647,9 @@ result: PASS
 注：运行中的 Desktop 进程加载的是重启前的 Host bundle，所以它的 `charter_read` 结果仍带 legacy debug 字段；
 checker 已将这些字段归一到当前紧凑投影。要让 UI/tool ABI 与磁盘上的当前包完全一致，仍需完全重启 Desktop app。
 
+当前树复检：更严格的 checker（必需最近一次 compaction 之后匹配的 `charter_read` standing 结果）已针对这份已记录
+的 transcript 重跑，仍然返回 `PASS`；匹配的 read result seq 为 **31825**，位于 compaction seq 31801 之后。
+
 本轮预发布的证据时间线：
 
 - 真实模型实测：2026-10-22，运行于 Desktop/Web runtime DSH `0.2.0-rc.2`（`dsh` CLI `0.2.0-rc.2`）。这次
@@ -646,7 +657,7 @@ checker 已将这些字段归一到当前紧凑投影。要让 UI/tool ABI 与�
   `charter_read` 结果带有 legacy debug 字段。
 - 本次收敛记录的通过门禁源码 commit：`2210bf95ef1cc281c6737a2f79a59e01a8ec7072`；tagged tree 只额外添加
   重新生成的纯 demo 截图、本证据记录和 tracked digest 文件。该收敛树通过 `npm run check`（typecheck + build +
-  17 个测试文件 / 157 个测试）、`npm run smoke:package` 以及本地五版本矩阵（每个版本 17 个文件 / 157 个测试）。
+  17 个测试文件 / 161 个测试）、`npm run smoke:package` 以及本地五版本矩阵（每个版本 17 个文件 / 161 个测试）。
 - 随发布产物的 digest：仓库根部 tracked 的 `SHA256SUMS`（由 release commit 保持最新，该 commit 只更新此文件）
   固定从 tagged tree 构建的 `dsh-charter-0.1.0-rc.1.tgz` digest；`dist/SHA256SUMS` 携带相同值。
   annotated tag message 记录 release commit 和随发布 digest，`git rev-parse v0.1.0-rc.1^{commit}` 可解析

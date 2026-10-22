@@ -65,7 +65,7 @@
 
 - 原始目标与当前目标分离；普通编辑永远不会改写原始目标。
 - `invariant` 与 `deliverable` 条目，review / lifecycle / verification / progress 四个维度正交。
-- 会话头部标签页，位于「对话」「轨迹」之后，并动态顺延到其他插件标签之后。
+- 会话头部标签页，以稳定的高 order（1000）注册一次，因此排在「对话」「轨迹」和常见插件标签之后，不会重新注册。
 - 可在 **概览 / 目标 / 硬约束 / 交付物 / 历史草案 / 上下文** 间导航的紧凑面板。
 - 吸顶的预览/丢弃/应用工具栏，以及模型实际收到的 user-role 上下文精确预览。
 - 从 `compaction/summary` 确定性生成历史草案；不调用模型，不自动写入。
@@ -97,9 +97,8 @@ Host 在 `session/created` 时初始化记录，并在首次 prompt 前的 `agen
 
 ## 安装
 
-> **当前状态：预发布。** `dsh-charter` 尚未发布到 npm registry，也未进入 Desktop 插件目录。当前唯一可安装的
-> 产物是维护者从本 checkout 构建的本地 tarball，尚未公开分发；按版本安装和 Desktop Plugins 安装会在首次公开
-> 预发布后生效。
+> **安装渠道。** 维护者发布 `next` dist-tag 后，可按精确版本或预发布渠道安装（`@0.1.0-rc.1` / `@next`）。
+> 如果 registry 中还没有列出 `next` tag，请安装从本 checkout 构建并验证过的本地 tarball。
 
 ### 环境要求
 
@@ -108,7 +107,7 @@ Host 在 `session/created` 时初始化记录，并在首次 prompt 前的 `agen
 - Node.js **`^22.19.0 || >=24.0.0`**。
 - Web 或 Desktop profile。
 
-### 当前预发布 — 本地 tarball
+### 已验证的本地 tarball（预发布回退）
 
 在 checkout 中：
 
@@ -123,7 +122,7 @@ Desktop 若支持本地插件导入，可在 Plugins 页面安装同一个 tarba
 安装。`dsh plugin --profile desktop` 会被拥有该 profile 的 Electron app 拒绝。源码开发流程见
 [CONTRIBUTING.zh.md](CONTRIBUTING.zh.md)；不要把 `git clone` 当作普通用户的安装方式。
 
-### 首次公开预发布之后
+### Registry 安装（`next` 发布之后）
 
 #### Web profile — 按版本或预发布 tag 安装
 
@@ -132,9 +131,9 @@ dsh plugin --profile web add dsh-charter@0.1.0-rc.1   # 精确版本：可复现
 dsh plugin --profile web add dsh-charter@next         # 最新预发布
 ```
 
-首次公开预发布发布后，`0.1.0-rc.1` 会发布在 `next` dist-tag 下，而不是 `latest`；只有在稳定版发布之后才使用
-`@latest`。在发布之前这些 registry 命令不会解析：请先构建并安装上面的本地 tarball。推荐固定明确版本，保证
-profile 可复现。
+维护者发布 `next` dist-tag 后，`0.1.0-rc.1` 位于 `next` 下，而不是 `latest`；只有在稳定版发布之后才使用
+`@latest`。如果还没有列出该 tag，请先构建并安装上面的已验证本地 tarball。推荐固定明确版本，保证 profile
+可复现。
 
 重启 `dsh web`（或等待 profile HMR 重新组合），然后刷新页面。profile 的 `package.json` 会增加依赖和
 bundle 选择。
@@ -148,7 +147,7 @@ bundle。否则使用上面的本地 tarball 路径。
 ### 更新
 
 - **本地 tarball**：重新构建并重复本地安装命令；
-- **首次公开预发布后的 Web**：`dsh plugin --profile web add dsh-charter@next`，然后重启/刷新；固定版本的
+- **Web（registry 渠道）**：`dsh plugin --profile web add dsh-charter@next`，然后重启/刷新；固定版本的
   profile 在稳定 `latest` 出现前继续使用显式的 `0.1.0-rc.1`；
 - **发布后的 Desktop**：Plugins → `dsh-charter` → **Update**，Desktop 会热更新。
 
@@ -172,7 +171,8 @@ bundle。否则使用上面的本地 tarball 路径。
 
 ## 会话契约标签页
 
-标签页从会话头部打开，并动态排在所有插件标签之后。宽屏使用左侧 section 导航，窄屏使用横向 tab：
+标签页从会话头部打开，以稳定的高 order（1000）注册一次，因此排在「对话」「轨迹」和常见插件标签之后。宽屏使用
+左侧 section 导航，窄屏使用横向 tab：
 
 | Section | 用途 |
 | --- | --- |
@@ -263,7 +263,7 @@ npm run verify:compaction # 手工真实模型 compaction 校验（不在 check 
 ```
 
 测试覆盖纯内核、真实 Host 组合、storage domain、Remote framing、历史抽取、客户端状态和 factory bundle
-注册。当前矩阵：**DSH `0.1.7-rc.2`、`0.2.0-rc.1`/`rc.2`、`0.2.1-rc.1`/`rc.2` × 157 个测试全部通过**。命令与证据见[验证记录](docs/verification.zh.md)。
+注册。当前矩阵：**DSH `0.1.7-rc.2`、`0.2.0-rc.1`/`rc.2`、`0.2.1-rc.1`/`rc.2` × 161 个测试全部通过**。命令与证据见[验证记录](docs/verification.zh.md)。
 
 ## 致谢
 
@@ -298,11 +298,11 @@ npm run verify:compaction # 手工真实模型 compaction 校验（不在 check 
 
 Pre-1.0。DSH 插件 ABI 仍在演进；项目对上述版本做兼容验证，并刻意保持兼容层很小。当前树是 `0.1.0-rc.1`
 预发布：真实模型 compaction 验收 **PASS 已于 2026-10-22 记录**（一个匿名评估会话；326 条消息 / 约 228k
-tokens 被压缩，revision 1 契约携带匹配 digest 存活——见验证记录第 8.4 节）。包尚未发布到 npm 或 Desktop 插件
-目录，因此当前唯一可安装产物是维护者从本树构建的本地 tarball；首次公开预发布将通过 `next` dist-tag 提供。
-剩余发布阻塞是发布前置项（公开仓库与 dist-tag），另有一项记录在 8.4 节、且必须在稳定 `latest` 发布前完成的
-人工检查：重启 Desktop app 后重新打开会话契约 tab 一次，确认已安装的 bundle/tool ABI。CI 已配置打包并 smoke
-测试可安装产物，公开仓库出现后的首次 push 才会实际运行；当前证据是验证记录第 2 节的本地门禁。
+tokens 被压缩，revision 1 契约携带匹配 digest 存活——见验证记录第 8.4 节）。发布产物是从本树构建并验证过的
+本地 tarball；维护者发布后也会通过 npm 的 `next` dist-tag 提供。发布稳定 `latest` 前还有一项记录在 8.4 节的人工
+检查：重启 Desktop app 后重新打开会话契约 tab 一次，确认已安装的 bundle/tool ABI。CI 已配置在公开仓库出现后
+打包并 smoke 测试可安装产物；当前证据是验证记录第 2 节的本地门禁。外部发布前置条件和确切发布顺序见
+[docs/releasing.zh.md](docs/releasing.zh.md)。
 
 ## 许可证
 
