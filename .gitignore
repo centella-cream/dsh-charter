@@ -6,3 +6,4 @@ coverage/
 .pnpm-store/
 .tmp/
 docs/archive/
+dist/
