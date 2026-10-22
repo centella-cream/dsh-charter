@@ -570,8 +570,8 @@ Current evidence:
 - Typecheck, build, and tests pass on DSH `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-rc.1`, and
   `0.2.1-rc.2`;
 - Real profile install/boot on `0.1.7-rc.2` and `0.2.0-rc.2`;
-- Real Web UI verified on `0.2.0-rc.2`: tab order, localization, objective/invariant editing, preview, Apply,
-  reload persistence, and dynamic ordering with `dsh-context` installed.
+- Real Web UI verified on `0.2.0-rc.2`: stable-order tab placement (with `dsh-context` installed), localization,
+  objective/invariant editing, preview, Apply, and reload persistence.
 
 ## 14. Testing and acceptance
 
