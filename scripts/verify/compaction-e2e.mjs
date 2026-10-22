@@ -301,7 +301,8 @@ function main() {
     result.invalid === false
     && result.revision === current.revision
     && result.objective === (current.objective?.current?.text ?? null)
-    && JSON.stringify(result.items) === JSON.stringify(standingItems))
+    && JSON.stringify(result.items.map(item => compactStandingItem(item)))
+      === JSON.stringify(standingItems))
     ? true
     : undefined
 

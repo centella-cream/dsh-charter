@@ -233,7 +233,9 @@ bundle。否则使用上面的本地 tarball 路径。
 | `0.2.2-rc.x`、`0.3.x` | 验证前不声明 |
 
 “支持”表示该版本通过 typecheck、build、测试以及 Remote/client smoke。真实交互式 Web UI 在 `0.2.0-rc.2`
-上验证；其他版本是 API/build 级验证。真实模型 compaction 端到端需要用 `npm run verify:compaction` 手工验证（见验证记录第 8 节），当前尚未完成。完整矩阵和降级说明见
+上验证；其他版本是 API/build 级验证。真实模型 compaction 端到端已于 **2026-10-22 记录 PASS**（session
+`session-45c509c6…`，326 条消息 / 约 228k tokens 被压缩，revision 1 契约携带匹配 digest 存活；见验证记录第
+8.4 节）。当前剩余发布阻塞是公开仓库与 dist-tag 等发布前置项，不再是 compaction 证据。完整矩阵和降级说明见
 [兼容文档](docs/design/compatibility.zh.md)。`0.1.7`/`0.2.0` 没有 per-Peer Remote 资源授权，只能在可信
 单操作者环境使用。
 

@@ -11,11 +11,17 @@
  * fields here would make the checker reject a correct implementation.
  */
 export function compactStandingItem(item) {
+  // Accept both the current compact tool result (`verification` is a state
+  // string) and an older Host's debug-shaped result (`verification` is an
+  // object). Extra debug fields never change the working-set semantics.
+  const verification = typeof item.verification === 'string'
+    ? item.verification
+    : item.verification?.state
   return {
     kind: item.kind,
     text: item.text,
-    verification: item.verification?.state,
-    progress: item.kind === 'deliverable' ? item.progress : null,
+    verification,
+    progress: item.kind === 'deliverable' ? (item.progress ?? null) : null,
   }
 }
 

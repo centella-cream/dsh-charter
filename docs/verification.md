@@ -30,7 +30,7 @@ HTML live under `.tmp/` and are excluded from the published package.
 | Packed artifact installability | Pass: CI runs `smoke:package` (tarball contents, exports, packed Host import, client bundle); section 2 |
 | Compaction checker exit criteria | Pass: fixture tests cover success, dirty system prompt, mismatched charter_read, lost snapshot, and leak warning; section 4.7 |
 | Stale async draft results | Pass: edit/bootstrap results are fenced by source/generation/request identity; empty and idle drafts are reclaimed; section 4.7 |
-| Real model + compaction end-to-end | **Procedure + checker ready; live run pending** (`npm run verify:compaction`, section 8) |
+| Real model + compaction end-to-end | **PASS recorded 2026-10-22** on `session-45c509c6…`: 326 shadowed messages / ~228k tokens, revision-1 charter survived, post-compaction snapshot + `charter_read` verified (section 8.4) |
 
 ## 2. Local baseline
 
@@ -569,9 +569,10 @@ round.
 
 ## 8. Real compaction end-to-end
 
-Status: the executable check exists and the runtime injection path is confirmed on a real DSH Session; the
-cross-compaction live run is the remaining manual step. `npm run check` never runs a model and therefore never
-runs this check.
+Status: **PASS recorded 2026-10-22** on a real DSH Session (`session-45c509c6-ab85-45a8-99e9-adb4079a3192`,
+`infcode-eval-service`): `/compact` shadowed 326 messages (~228k tokens) and the next request carried the
+byte-identical `charter:standing` snapshot and matching `promptDigest`. `npm run check` never runs a model and
+therefore never runs this check; section 8.4 records the evidence.
 
 ### 8.1 What is already proven
 
@@ -606,7 +607,9 @@ The command reads the Session transcript and the charter storage record, then re
    `promptDigest`;
 4. no system-prompt snapshot contains the charter prefix, body, objective, or a long item text;
 5. a `charter_read` standing result in the transcript equals the Host's compact standing projection
-   (`kind`/`text`/`verification`/`progress`) for the current revision, not only revision/objective;
+   (`kind`/`text`/`verification`/`progress`) for the current revision, not only revision/objective; a legacy
+   debug-shaped tool result (extra id/review/lifecycle fields) is normalized to the same projection, so a Host
+   that has not been restarted after a package update still yields comparable working-set evidence;
 6. a compaction summary after the compaction does not carry the rendered body (a warning: it would weaken the
    proof, not silently pass it).
 
@@ -631,6 +634,34 @@ model.
 replacement/compaction shadows the snapshot and regenerates it on the next request; this plugin's context
 provider calls `charter.promptText(session)`, which synchronously reads the storage authority and validates the
 derived digest.
+
+### 8.4 Recorded real-model run (2026-10-22)
+
+Target: `session-45c509c6-ab85-45a8-99e9-adb4079a3192` (workspace `infcode-eval-service`). The Session's history
+draft from its previous compaction summary was reviewed and applied as **revision 1** (13 active items, 5,081 B,
+`promptDigest sha256:4dd9e615…`). `/compact` then completed as compaction seq **31801** (source
+`cmd-635e3d77-2`), shadowing 326 messages (~228,181 tokens). The next request after compaction persisted
+runtime-context snapshot seq **31810**, carrying `sections [sandbox:policy, approval:policy, charter:standing]`
+with a 5,081 B charter whose bytes/digest match storage; a subsequent `charter_read` call returned the same
+revision/objective/working set. Full checker output:
+
+```text
+$ npm run verify:compaction -- --session session-45c509c6-ab85-45a8-99e9-adb4079a3192 \
+    --home /Users/ryanzhang/.dsh \
+    --store /Users/ryanzhang/.dsh/storages/dsh_charter_v1/sessions/session-45c509c6-ab85-45a8-99e9-adb4079a3192.json
+  PASS  charter established
+  PASS  latest runtime context carries charter:standing
+  PASS  injected text matches storage authority and promptDigest
+  PASS  system prompt carries no charter body
+  PASS  charter_read standing view matches the storage revision/objective
+  PASS  charter survives compaction — snapshot seq 31810 > compaction seq 31801
+  PASS  compaction summary does not carry the charter text
+result: PASS
+```
+
+Note: the running Desktop process had loaded a pre-restart Host bundle, so its `charter_read` result still
+carried legacy debug fields; the checker normalized them to the current compact projection. Restarting the
+Desktop app is still required to load the current package in memory for UI/tool ABI parity.
 
 ## 9. Unsupported verification
 

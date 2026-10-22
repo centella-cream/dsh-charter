@@ -57,7 +57,8 @@ DSH_HOME=/tmp/dsh-charter-release-home \
 npm publish --access public --tag next
 ```
 
-只有在真实模型 compaction `PASS` 记录完成、公开仓库链接就位后，才发布稳定 `latest` 版本。
+真实模型 compaction `PASS` 已记录在验证记录 8.4（2026-10-22）。只有在公开仓库链接就位，且 tagged tree 上
+`npm run check`/`smoke:package` 通过后，才发布稳定 `latest` 版本。
 
 不要发布 API key、profile 数据或包含私人内容的本地截图。
 

@@ -62,7 +62,8 @@
 - 当前树是 `0.1.0-rc.1` 预发布，必须使用 `npm publish --tag next` 发布；稳定 `latest` 需要真实模型 compaction
   PASS。公开 GitHub 仓库尚未创建，因此 `package.json` 中的 `repository`、`homepage`、`bugs` 在仓库创建并可访问前
   故意留空。
-- 压缩后重新物化依赖 DSH 的 runtime-context projection 契约；完整 compaction 端到端仍需要真实模型会话。
+- 压缩后重新物化依赖 DSH 的 runtime-context projection 契约；真实模型端到端 PASS 已记录在验证记录 8.4
+  （2026-10-22）。
 - 浏览器交互在 `0.2.0-rc.2` 上验证；0.1.7/0.2.1 仅通过 typecheck/build/tests，未逐版重复交互流程。
 - 默认配额尚未用生产样本校准。
 - 历史抽取是确定性启发式；摘要中的陈旧或噪声条目可能进入草案，必须人工审阅。
@@ -79,6 +80,8 @@
 - 已超预算的 objective/item 允许继续分步缩短，即使仍高于上限，也能在预算收紧后逐步收敛。
 - `maxObjectiveBytes` 大于 `all` envelope 时，省略 objective 并返回 `objectiveTruncated: true`，不再突破响应
   上限；`shadowedTokenCount` 在进入 Remote codec 前校验为非负整数。
+- 在证据比较前，把旧版 debug 形状的 `charter_read` tool result（未重启 Host 返回的额外
+  id/review/lifecycle 字段）归一到当前紧凑 standing 投影；并在验证记录 8.4 记录真实模型 compaction PASS。
 - compaction checker 的所有成功条件都参与退出码：按 Host 的紧凑 standing 投影比较，system prompt 被污染或
   调用了 `charter_read` 但 standing 不匹配都会失败；摘要泄漏记为 warning；fixture 覆盖每种组合。
 - edit/bootstrap 的异步 Apply 结果按 draft generation、source connection epoch、source 实例、lifecycle 和请求

@@ -57,8 +57,8 @@ recorded; light, dark, bilingual, and narrow-layout screenshots are now part of 
 npm publish --access public --tag next
 ```
 
-Publish a stable `latest` version only after the real-model compaction `PASS` is recorded and the public repository
-links are in place.
+The real-model compaction `PASS` is recorded in verification §8.4 (2026-10-22). Publish a stable `latest` version
+only after the public repository links are in place and `npm run check`/`smoke:package` pass on the tagged tree.
 
 Do not publish API keys, profile data, or local screenshots containing private content.
 

@@ -23,7 +23,7 @@ export interface CompactionEvaluation {
 export function compactStandingItem(item: {
   readonly kind: string
   readonly text: string
-  readonly verification?: { readonly state?: string; readonly by?: string; readonly reason?: string } | undefined
+  readonly verification?: string | { readonly state?: string; readonly by?: string; readonly reason?: string } | undefined
   readonly progress?: string | null | undefined
   readonly [key: string]: unknown
 }): CompactStandingItem
