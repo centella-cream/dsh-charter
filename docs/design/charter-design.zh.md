@@ -1001,7 +1001,7 @@ scripts/
 
 1. `order:130` 与目标 Profile 其他 runtime context 的最终顺序（需要最终消息快照测试）；
 2. compaction replacement 是否覆盖所有 retained runtime snapshot 的清空路径（已在 0.2.0-rc.2 源码中核对
-   `RuntimeContextProjection`，真实模型 compaction E2E 仍待执行）；
+   `RuntimeContextProjection`，真实模型 compaction E2E PASS 已记录于验证记录 8.4）；
 3. fork 初始化监听器在所有目标入口中是否都早于首次 prompt assembly（`agent/created` 是可等待边界，但
    仍需在真实 fork 入口验证）；
 4. 8 KiB prompt 上限与 512 KiB record 上限的真实样本分布；

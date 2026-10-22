@@ -29,7 +29,7 @@
 | 打包产物可安装性 | 通过：CI 运行 `smoke:package`（tarball 内容、exports、packed Host import、client bundle）；见第 2 节 |
 | Compaction checker 退出条件 | 通过：fixture 覆盖成功、system prompt 污染、charter_read 不匹配、快照丢失、摘要泄漏 warning；见 4.7 |
 | 陈旧异步草稿结果 | 通过：edit/bootstrap 结果按 source/generation/请求身份围栏；空草稿和 idle 草稿会回收；见 4.7 |
-| 真实模型 + compaction 端到端 | **校验命令已就绪，实测待执行**（`npm run verify:compaction`，见第 8 节） |
+| 真实模型 + compaction 端到端 | **2026-10-22 实测 PASS**（`session-45c509c6…`）：326 条历史消息 / 约 228k tokens 被压缩，revision 1 会话契约存活，压缩后快照与 `charter_read` 均验证（见 8.4） |
 
 ## 2. 本地基线
 
@@ -529,8 +529,9 @@ prompt renderer 计算草案预览，并在条目/目标/所选草案/投影上�
 
 ## 8. 真实 compaction 端到端
 
-状态：校验命令已就绪，真实 DSH Session 上的注入链路已确认；跨 compaction 的实测是剩余的手工步骤。
-`npm run check` 不调用模型，因此不会执行这项检查。
+状态：**2026-10-22 已在真实 DSH Session 上记录 PASS**（`session-45c509c6-ab85-45a8-99e9-adb4079a3192`，
+`infcode-eval-service`）：`/compact` 压缩 326 条消息（约 228k tokens），下一次请求携带字节一致且 digest 匹配的
+`charter:standing` 快照。`npm run check` 不调用模型，因此不会执行这项检查；证据见 8.4。
 
 ### 8.1 已经证明的部分
 
@@ -561,7 +562,8 @@ npm run verify:compaction -- --session <id> --json # 其他 Session / 机器可�
 3. 该快照包含 `charter:standing`，文本与 `promptText` 字节一致，SHA-256 等于 `promptDigest`；
 4. 没有任何 system-prompt 快照包含会话契约前缀、正文、目标或较长的条目文本；
 5. transcript 中的 `charter_read` standing 结果等于 Host 的紧凑 standing 投影（`kind`/`text`/
-   `verification`/`progress`），而不只是 revision/objective；
+   `verification`/`progress`），而不只是 revision/objective；旧版 debug 形状的 tool result（额外
+   id/review/lifecycle 字段）会先归一到同一投影，因此未重启的 Host 仍可给出可比的 working-set 证据；
 6. 压缩之后的压缩摘要没有夹带渲染正文（这是 warning：它会削弱证明，而不是静默通过）。
 
 真实 profile 中的操作步骤：
@@ -583,6 +585,32 @@ npm run verify:compaction -- --session <id> --json # 其他 Session / 机器可�
 `@deepseek-ai/dsh-agent-loop@0.2.1-rc.2` 的 `RuntimeContextProjection` 在 retained snapshot 被
 replacement/compaction 遮蔽后清空 retained，下一次请求重新生成；本插件的 context provider 调用
 `charter.promptText(session)`，同步读取 storage 正本并校验派生 digest。
+
+### 8.4 真实模型实测记录（2026-10-22）
+
+目标：`session-45c509c6-ab85-45a8-99e9-adb4079a3192`（workspace `infcode-eval-service`）。先审阅并应用其上一轮
+压缩摘要生成的历史草案，成为 **revision 1**（13 条 active 条目，5,081 B，`promptDigest sha256:4dd9e615…`）。
+随后 `/compact` 以 compaction seq **31801**（source `cmd-635e3d77-2`）完成，压缩 326 条消息（约 228,181
+tokens）。压缩后第一次请求产生 runtime-context 快照 seq **31810**，包含
+`sections [sandbox:policy, approval:policy, charter:standing]`，5,081 B 会话契约的字节/digest 与 storage 一致；
+随后 `charter_read` 返回相同 revision/objective/working set。完整 checker 输出：
+
+```text
+$ npm run verify:compaction -- --session session-45c509c6-ab85-45a8-99e9-adb4079a3192 \
+    --home /Users/ryanzhang/.dsh \
+    --store /Users/ryanzhang/.dsh/storages/dsh_charter_v1/sessions/session-45c509c6-ab85-45a8-99e9-adb4079a3192.json
+  PASS  charter established
+  PASS  latest runtime context carries charter:standing
+  PASS  injected text matches storage authority and promptDigest
+  PASS  system prompt carries no charter body
+  PASS  charter_read standing view matches the storage revision/objective
+  PASS  charter survives compaction — snapshot seq 31810 > compaction seq 31801
+  PASS  compaction summary does not carry the charter text
+result: PASS
+```
+
+注：运行中的 Desktop 进程加载的是重启前的 Host bundle，所以它的 `charter_read` 结果仍带 legacy debug 字段；
+checker 已将这些字段归一到当前紧凑投影。要让 UI/tool ABI 与磁盘上的当前包完全一致，仍需完全重启 Desktop app。
 
 ## 9. 未支持的验证项
 

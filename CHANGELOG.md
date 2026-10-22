@@ -74,8 +74,8 @@ Initial MVP.
 - This tree is the `0.1.0-rc.1` pre-release and must be published with `npm publish --tag next`; a stable `latest`
   release requires the real-model compaction PASS. No public GitHub repository exists yet, so `repository`,
   `homepage`, and `bugs` are intentionally absent from `package.json` until the repository is created and reachable.
-- Compaction rematerialization depends on the DSH runtime-context projection contract; the full compaction
-  end-to-end still needs a real model session.
+- Compaction rematerialization depends on the DSH runtime-context projection contract; the real-model
+  end-to-end PASS is recorded in verification §8.4 (2026-10-22).
 - Browser interaction was verified on `0.2.0-rc.2`; 0.1.7/0.2.1 were verified by typecheck/build/tests, not by
   repeated interactive flows.
 - Default quotas are not calibrated against production samples.
@@ -98,6 +98,9 @@ Initial MVP.
 - Keep the `all` tool envelope bounded even when `maxObjectiveBytes` exceeds it: omit the objective with
   `objectiveTruncated: true` instead of returning an oversized response; validate `shadowedTokenCount` as a
   non-negative integer before the Remote codec sees it.
+- Normalize a legacy debug-shaped `charter_read` tool result (extra id/review/lifecycle fields from a Host that
+  has not been restarted after a package update) to the current compact standing projection before evidence
+  comparison, and record the real-model compaction PASS in verification §8.4.
 - Make every compaction-checker success criterion participate in the exit code: the checker now compares the
   Host's compact standing projection, fails on a dirty system prompt or a called-but-mismatched `charter_read`
   standing result, and records a leaking summary as a warning; fixture tests cover each combination.

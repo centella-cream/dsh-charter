@@ -253,7 +253,7 @@ truncated, or silently dropped.
 | `0.2.2-rc.x`, `0.3.x` | Not declared until verified |
 
 "Supported" means typecheck, build, tests, and Remote/client smoke for that version. Interactive Web UI was
-exercised on `0.2.0-rc.2`; other versions are API/build verified. Real-model compaction end-to-end is a documented manual check (`npm run verify:compaction`, section 8 of the verification record); its live run is still pending.
+exercised on `0.2.0-rc.2`; other versions are API/build verified. Real-model compaction end-to-end is a documented manual check (`npm run verify:compaction`, section 8 of the verification record); a **PASS is recorded there (§8.4, 2026-10-22)**.
 The full matrix and degradation notes are in the [compatibility document](docs/design/compatibility.md).
 `0.1.7`/`0.2.0` have no per-Peer Remote resource authorization; use them only in a trusted single-operator
 environment.
@@ -319,11 +319,12 @@ security reports, follow [SECURITY.md](SECURITY.md).
 ## Status
 
 Pre-1.0. The DSH plugin ABI is still moving; compatibility is tested against the versions above, and the design
-keeps the compatibility layer deliberately small. This is a **pre-release candidate, not a release candidate**
-for the compaction-resilience claim: the real-model compaction acceptance still requires a live Session, and
-`npm run verify:compaction` is the manual acceptance check whose `PASS` evidence must be recorded before the
-claim is release-validated. The parser/Host/Remote/client mechanism is covered by automated tests, and CI now
-packs and smoke-tests the installable artifact.
+keeps the compatibility layer deliberately small. This tree is the `0.1.0-rc.1` pre-release: the real-model
+compaction acceptance **PASS is recorded on 2026-10-22** (session `session-45c509c6…`; 326 messages / ~228k
+tokens shadowed, revision-1 charter survived with matching digest — see verification §8.4). Remaining release
+blockers are publishing prerequisites (a public repository and dist-tag), not the compaction evidence. The
+parser/Host/Remote/client mechanism is covered by automated tests, and CI packs and smoke-tests the installable
+artifact.
 
 ## License
 

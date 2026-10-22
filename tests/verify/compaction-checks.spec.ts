@@ -65,5 +65,17 @@ describe('compaction checker success criteria', () => {
       verification: 'verified',
       progress: 'done',
     })
+    // Current compact output is idempotent under the same projection.
+    expect(compactStandingItem({
+      kind: 'invariant',
+      text: 'Keep it',
+      verification: 'unchecked',
+      progress: null,
+    })).toEqual({
+      kind: 'invariant',
+      text: 'Keep it',
+      verification: 'unchecked',
+      progress: null,
+    })
   })
 })
