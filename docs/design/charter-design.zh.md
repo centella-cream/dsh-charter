@@ -13,8 +13,8 @@
 - [调研记录](../research/charter-research.zh.md)
 
 实现状态：MVP Host、纯内核、JSON storage 组合、Remote contract 和主对话页标签页 Client 已完成实现并通过版本矩阵
-验证。当前 `npm run typecheck`、`npm test`、`npm run build` 均通过（133 个测试，17 个测试文件）；同一源码在 DSH
-`0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-rc.1`、`0.2.1-rc.2` 上分别通过 typecheck、build 和 133 个测试。
+验证。当前 `npm run typecheck`、`npm test`、`npm run build` 均通过（144 个测试，17 个测试文件）；同一源码在 DSH
+`0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-rc.1`、`0.2.1-rc.2` 上分别通过 typecheck、build 和 144 个测试。
 真实 profile 的 tarball 安装、配置组合、Web 启动、boot graph 和客户端 bundle HTTP 已通过；DSH `0.2.0-rc.2`
 Web profile 上已用真实 Chrome 验证「对话」「轨迹」「会话契约」标签顺序、目标编辑、预览、Apply 和刷新持久化。
 完整 compaction 端到端仍需在目标 profile 手工执行。兼容边界与降级见
@@ -259,7 +259,8 @@ interface EvidenceBinding {
 
 ### 6.1 一 Session 一记录
 
-记录校验在 service 边界逐条进行，并且每次运行期读取/写入路径都重新做严格 schema 解析（`recordFor`、只读
+Session dispose 会关闭所有打开的 watch 订阅（listener 收到 `null`，stream generator 退出），同 ID 重建的 Session
+从新 stream 开始，而不是挂在已脱离的 listener 上。记录校验在 service 边界逐条进行，并且每次运行期读取/写入路径都重新做严格 schema 解析（`recordFor`、只读
 view、parent/fork 读取、`table.update` transform）：domain 保留原始 per-record 文档，单条损坏或前向不兼容的
 记录只让该 Session 不可用，不会阻止整个 domain 打开，也不会被重写覆盖；初始化失败会先清除瞬时不可用状态再
 发布最终 ready view，并支持后续重试。
@@ -378,6 +379,9 @@ interface CharterEditRequest {
   readonly ops: readonly CharterOp[]
 }
 ```
+
+lifecycle 变化在 Host 和 Client 两侧都是权威信号：Host 帧去重比较 `lifecycle`，Client 即使新 revision 从 0 开始也会
+接受。Apply/bootstrap 请求在途时锁定会修改草稿的控件；已审阅历史草案算 dirty，跨标签切换不会丢失。
 
 客户端新增条目使用临时 `clientRef`；Host 铸造正式 item id，并在成功结果中返回映射。actor、revision、
 时间和 origin 都由 Host 填充，不能相信客户端字段。`objective.redirect` 的 reason 可选：缺省时 UI 显示
@@ -763,6 +767,9 @@ Session dispose：
 | recent history | 64 revisions 或 128 KiB | 自动裁最旧回执，不影响 current |
 | recent mutation receipts | 128 | 自动裁最旧幂等回执 |
 
+已超预算的 objective/item 允许继续缩短，即使仍高于上限；准入按同一 id 的旧文本比较，使收紧预算后可以分步收敛。
+`all` 视图遇到单独无法放入 32 KiB envelope 的 objective 时会省略它并返回 `objectiveTruncated: true`。
+
 模型可见容量只有最终 prompt 字节预算；active 条目不单独设上限。`maxItems`、`maxPendingItems`、
 `maxOps`、`maxRecordBytes` 仍是存储/单批边界。超限增长整批拒绝；`overBudget` 同时覆盖字节预算、条目数以及
 history/mutation 数量上限。
@@ -828,7 +835,7 @@ src/
     store.ts          RemoteSnapshotStream 客户端状态、连接重试、source lease
     draft.ts          草稿请求构造
     draft-store.ts    per-Session 草稿所有权（暂存/编辑器/历史草案/反馈）
-    bootstrap-plan.ts 历史草案单遍规划与结果分类
+    bootstrap-plan.ts 历史草案单遍规划与结果分类（逐候选渲染；近乎全部 active 时最坏 O(n²)）
     preview.ts        投影草稿视图 + 共享渲染器
     CharterPane.tsx   主对话页标签页面板
     locales.ts        中英文 UI 字典

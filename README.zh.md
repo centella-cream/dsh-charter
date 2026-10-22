@@ -1,8 +1,7 @@
 # dsh-charter
 
-[![CI](https://github.com/zhangyuze/dsh-charter/actions/workflows/ci.yml/badge.svg)](https://github.com/zhangyuze/dsh-charter/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![DSH](https://img.shields.io/badge/DSH-0.1.7%20%E2%80%93%200.2.x-4b6bfb)](docs/design/compatibility.zh.md)
+[![DSH](https://img.shields.io/badge/DSH-5%20verified%20RC%20versions-4b6bfb)](docs/design/compatibility.zh.md)
 [![Node](https://img.shields.io/badge/node-%5E22.19%20%7C%7C%20%3E%3D24-339933)](package.json)
 [![Status: preview](https://img.shields.io/badge/status-preview-orange)](#状态)
 
@@ -103,7 +102,8 @@ Host 在 `session/created` 时初始化记录，并在首次 prompt 前的 `agen
 
 ### 环境要求
 
-- DSH **`0.1.7-rc.2`** 或更高；推荐 `0.2.0-rc.1+`，完整 per-Peer Remote 资源授权推荐 `0.2.1+`。
+- DSH：只支持[兼容矩阵](docs/design/compatibility.zh.md)中列出的版本（`0.1.7-rc.2`、`0.2.0-rc.1`/`rc.2`、
+  `0.2.1-rc.1`/`rc.2`）。在扩展矩阵前不声明支持更新的 stable/RC 版本；per-Peer Remote 资源授权需要 `0.2.1+`。
 - Node.js **`^22.19.0 || >=24.0.0`**。
 - Web 或 Desktop profile。
 
@@ -114,8 +114,8 @@ Host 在 `session/created` 时初始化记录，并在首次 prompt 前的 `agen
 ```bash
 npm install
 npm run build
-npm pack                         # dsh-charter-0.1.0.tgz
-dsh plugin --profile web add ./dsh-charter-0.1.0.tgz
+npm pack                         # dsh-charter-0.1.0-rc.1.tgz
+dsh plugin --profile web add ./dsh-charter-0.1.0-rc.1.tgz
 ```
 
 Desktop 若支持本地插件导入，可在 Plugins 页面安装同一个 tarball；否则通过 Desktop profile 自己的包管理器
@@ -127,7 +127,7 @@ Desktop 若支持本地插件导入，可在 Plugins 页面安装同一个 tarba
 #### Web profile — 按版本安装
 
 ```bash
-dsh plugin --profile web add dsh-charter@0.1.0
+dsh plugin --profile web add dsh-charter@0.1.0-rc.1
 ```
 
 推荐固定明确版本，保证 profile 可复现。需要主动使用最新发布时：
@@ -261,7 +261,7 @@ npm run verify:compaction # 手工真实模型 compaction 校验（不在 check 
 ```
 
 测试覆盖纯内核、真实 Host 组合、storage domain、Remote framing、历史抽取、客户端状态和 factory bundle
-注册。当前矩阵：**DSH `0.1.7-rc.2`、`0.2.0-rc.1`/`rc.2`、`0.2.1-rc.1`/`rc.2` × 133 个测试全部通过**。命令与证据见[验证记录](docs/verification.zh.md)。
+注册。当前矩阵：**DSH `0.1.7-rc.2`、`0.2.0-rc.1`/`rc.2`、`0.2.1-rc.1`/`rc.2` × 144 个测试全部通过**。命令与证据见[验证记录](docs/verification.zh.md)。
 
 ## 致谢
 

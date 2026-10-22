@@ -14,10 +14,10 @@
 
 | DSH 版本 | 状态 | 验证内容 |
 | --- | --- | --- |
-| `0.1.7-rc.2` | 支持（最低版本） | typecheck、build、133 tests、remote/client smoke、真实 profile 安装与启动 |
-| `0.2.0-rc.1` | 支持 | typecheck、build、133 tests、remote/client smoke |
+| `0.1.7-rc.2` | 支持（最低版本） | typecheck、build、144 tests、remote/client smoke、真实 profile 安装与启动 |
+| `0.2.0-rc.1` | 支持 | typecheck、build、144 tests、remote/client smoke |
 | `0.2.0-rc.2` | 支持 | 同上 + 真实 profile 安装与启动、boot graph、bundle HTTP |
-| `0.2.1-rc.1` | 支持 | typecheck、build、133 tests、remote/client smoke |
+| `0.2.1-rc.1` | 支持 | typecheck、build、144 tests、remote/client smoke |
 | `0.2.1-rc.2` | 支持（主开发基线） | 同上 |
 | `0.1.5-rc.1` / `0.1.5-rc.2` / `0.1.5-rc.3` | 不支持 | 契约差异过大，见第 4 节 |
 | `0.1.6-alpha.x` | 不支持 | 与 0.1.5 同代，未逐一验证 |
@@ -107,7 +107,7 @@ boot graph 与客户端 bundle HTTP。结果和复现命令见[验证记录](../
 
 ## 6. 升级策略
 
-- 新的 `0.2.x` stable 版本：peer range 已覆盖，建议跑一次 133 tests + profile smoke。
+- 新的 `0.2.x` stable 版本：peer range 已覆盖，建议跑一次 144 tests + profile smoke。
 - 新的 `0.2.x` prerelease：先补 peer range，再跑版本矩阵；不要未经验证就宣称兼容。
 - `0.2.1` 引入了资源授权，是安全边界上的最小推荐版本。
 - `0.3.0` 及以上：重新核验 Remote、storage domain、prompt context、conversation view slot 和 client module loader 五组契约。

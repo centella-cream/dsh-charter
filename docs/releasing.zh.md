@@ -6,8 +6,10 @@
 
 ## 1. 前置检查
 
-- `package.json` 的 `repository`、`homepage`、`bugs` 指向真实 GitHub 仓库；
-- 版本在 `package.json`、`CHANGELOG.md` / `CHANGELOG.zh.md` 中一致更新；
+- 已创建并可公开访问的 GitHub 仓库，`package.json` 的 `repository`、`homepage`、`bugs` 已恢复为该 URL（当前没有
+  公开仓库时这些字段故意留空）；
+- 版本在 `package.json`、`CHANGELOG.md` / `CHANGELOG.zh.md` 中一致更新；本树是预发布（`0.1.0-rc.1`），必须
+  使用非 latest dist-tag 发布；
 - 新支持的 DSH prerelease 已重新核对兼容矩阵；
 - 工作树中没有密钥、私人对话或 `.tmp` 产物。
 
@@ -31,7 +33,7 @@ compaction checker 已用 fixture 测试覆盖成功/失败退出条件，但真
 DSH_HOME=/tmp/dsh-charter-release-home \
   dsh --profile release-smoke --from-default-profile web --dump-config >/dev/null
 DSH_HOME=/tmp/dsh-charter-release-home \
-  dsh plugin --profile release-smoke add ./dsh-charter-0.1.0.tgz
+  dsh plugin --profile release-smoke add ./dsh-charter-0.1.0-rc.1.tgz
 DSH_HOME=/tmp/dsh-charter-release-home \
   dsh --profile release-smoke --no-open --port 19399
 ```
@@ -49,11 +51,13 @@ DSH_HOME=/tmp/dsh-charter-release-home \
 
 1. 提交并打 tag `vX.Y.Z`；
 2. 创建 GitHub release，附加 `.tgz`、`SHA256SUMS` 和简短亮点；
-3. 可选 npm publish：
+3. 用非 latest dist-tag 发布预发布版本：
 
 ```bash
-npm publish --access public
+npm publish --access public --tag next
 ```
+
+只有在真实模型 compaction `PASS` 记录完成、公开仓库链接就位后，才发布稳定 `latest` 版本。
 
 不要发布 API key、profile 数据或包含私人内容的本地截图。
 

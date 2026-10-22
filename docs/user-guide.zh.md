@@ -37,7 +37,7 @@ dsh --profile web --dump-config | grep -n "charter" || true
 npm install
 npm run build
 npm pack
-dsh plugin --profile web add ./dsh-charter-0.1.0.tgz
+dsh plugin --profile web add ./dsh-charter-0.1.0-rc.1.tgz
 ```
 
 Desktop 若支持本地插件导入，可在 Plugins 页面安装同一个 tarball；否则通过 Desktop profile 自己的包管理器
@@ -46,7 +46,7 @@ Desktop 若支持本地插件导入，可在 Plugins 页面安装同一个 tarba
 ### 2.3 发布后 — Web profile 按版本安装
 
 ```bash
-dsh plugin --profile web add dsh-charter@0.1.0
+dsh plugin --profile web add dsh-charter@0.1.0-rc.1
 ```
 
 固定明确版本可以让 profile 可复现。需要更新到最新发布：
@@ -60,7 +60,7 @@ dsh plugin --profile web add dsh-charter@latest
 
 ```json
 {
-  "dependencies": { "dsh-charter": "0.1.0" },
+  "dependencies": { "dsh-charter": "0.1.0-rc.1" },
   "dsh": { "profile": { "bundles": ["...", "dsh-charter"] } }
 }
 ```
@@ -275,7 +275,8 @@ dsh plugin --profile web remove dsh-charter
 - 已打开的 Session 可以正常恢复和继续对话；
 - 重新安装后同一 Session 会重新读取原记录。
 
-如需彻底删除数据，请在卸载前通过 UI Purge，或在确认路径后清理 `dsh_charter_v1` domain。
+UI Purge **只能逐条清除条目**，不能删除目标、record identity/revision 或整条 Session record。如需彻底删除会话契约
+数据，请先停止 DSH，确认路径后清理对应的 `dsh_charter_v1` domain 记录（或整个 profile storage 目录）。
 
 ## 9. 开发与贡献
 

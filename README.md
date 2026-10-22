@@ -1,8 +1,7 @@
 # dsh-charter
 
-[![CI](https://github.com/zhangyuze/dsh-charter/actions/workflows/ci.yml/badge.svg)](https://github.com/zhangyuze/dsh-charter/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![DSH](https://img.shields.io/badge/DSH-0.1.7%20%E2%80%93%200.2.x-4b6bfb)](docs/design/compatibility.md)
+[![DSH](https://img.shields.io/badge/DSH-5%20verified%20RC%20versions-4b6bfb)](docs/design/compatibility.md)
 [![Node](https://img.shields.io/badge/node-%5E22.19%20%7C%7C%20%3E%3D24-339933)](package.json)
 [![Status: preview](https://img.shields.io/badge/status-preview-orange)](#status)
 
@@ -111,8 +110,9 @@ The browser registers a `conversation.view` entry; the pane and `charter.watch` 
 
 ### Requirements
 
-- DSH **`0.1.7-rc.2`** or later; `0.2.0-rc.1+` recommended, `0.2.1+` recommended for per-Peer Remote resource
-  authorization.
+- DSH: only the versions listed in the [compatibility matrix](docs/design/compatibility.md) are supported
+  (`0.1.7-rc.2`, `0.2.0-rc.1`/`rc.2`, `0.2.1-rc.1`/`rc.2`). Newer stable/RC versions are not claimed until the
+  matrix is extended; `0.2.1+` is required for per-Peer Remote resource authorization.
 - Node.js **`^22.19.0 || >=24.0.0`**.
 - A Web or Desktop profile.
 
@@ -123,8 +123,8 @@ From a checkout:
 ```bash
 npm install
 npm run build
-npm pack                         # dsh-charter-0.1.0.tgz
-dsh plugin --profile web add ./dsh-charter-0.1.0.tgz
+npm pack                         # dsh-charter-0.1.0-rc.1.tgz
+dsh plugin --profile web add ./dsh-charter-0.1.0-rc.1.tgz
 ```
 
 For Desktop, use the Plugins page when your build offers local plugin import; otherwise add the tarball through the
@@ -138,7 +138,7 @@ normal installation method.
 #### Web profile — install by version
 
 ```bash
-dsh plugin --profile web add dsh-charter@0.1.0
+dsh plugin --profile web add dsh-charter@0.1.0-rc.1
 ```
 
 Pin an explicit version for reproducible profiles. Use `@latest` when you intentionally want the newest
@@ -284,7 +284,7 @@ npm run verify:compaction # manual real-model compaction check (not part of chec
 ```
 
 The test suite covers the pure core, real Host composition, storage-domain behavior, Remote framing,
-history extraction, client state, and factory-bundle registration. Current matrix: **133 tests on DSH `0.1.7-rc.2`, `0.2.0-rc.1`/`rc.2`, and `0.2.1-rc.1`/`rc.2`**. See the [verification record](docs/verification.md) for commands and evidence.
+history extraction, client state, and factory-bundle registration. Current matrix: **144 tests on DSH `0.1.7-rc.2`, `0.2.0-rc.1`/`rc.2`, and `0.2.1-rc.1`/`rc.2`**. See the [verification record](docs/verification.md) for commands and evidence.
 
 ## Acknowledgements
 

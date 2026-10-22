@@ -6,8 +6,10 @@ This checklist keeps a GitHub/npm release reproducible and avoids shipping stale
 
 ## 1. Preconditions
 
-- `package.json` `repository`, `homepage`, and `bugs` point at the real GitHub repository.
-- The version is bumped consistently (`package.json` + `CHANGELOG.md` / `CHANGELOG.zh.md`).
+- A **public** GitHub repository exists and is reachable; `package.json` `repository`, `homepage`, and `bugs` are
+  restored to that URL (they are intentionally absent while no public repo exists).
+- The version is bumped consistently (`package.json` + `CHANGELOG.md` / `CHANGELOG.zh.md`). This tree is a
+  pre-release (`0.1.0-rc.1`); do not publish it without a dist-tag.
 - The profile compatibility matrix has been re-checked for any newly supported DSH prerelease.
 - The working tree contains no secrets, private transcripts, or `.tmp` artifacts.
 
@@ -31,7 +33,7 @@ Install the packed tarball into a fresh profile and verify:
 DSH_HOME=/tmp/dsh-charter-release-home \
   dsh --profile release-smoke --from-default-profile web --dump-config >/dev/null
 DSH_HOME=/tmp/dsh-charter-release-home \
-  dsh plugin --profile release-smoke add ./dsh-charter-0.1.0.tgz
+  dsh plugin --profile release-smoke add ./dsh-charter-0.1.0-rc.1.tgz
 DSH_HOME=/tmp/dsh-charter-release-home \
   dsh --profile release-smoke --no-open --port 19399
 ```
@@ -49,11 +51,14 @@ recorded; light, dark, bilingual, and narrow-layout screenshots are now part of 
 
 1. Commit and tag `vX.Y.Z`.
 2. Create a GitHub release; attach the `.tgz`, `SHA256SUMS`, and concise highlights.
-3. Optional npm publish:
+3. npm publish the pre-release with a non-latest dist-tag:
 
 ```bash
-npm publish --access public
+npm publish --access public --tag next
 ```
+
+Publish a stable `latest` version only after the real-model compaction `PASS` is recorded and the public repository
+links are in place.
 
 Do not publish API keys, profile data, or local screenshots containing private content.
 

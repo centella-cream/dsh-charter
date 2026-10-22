@@ -5,7 +5,7 @@ English | [中文](CHANGELOG.zh.md)
 All notable changes to `dsh-charter` are recorded here. The project follows a pre-1.0 version line while the
 DSH plugin ABI is still moving.
 
-## 0.1.0 — Unreleased
+## 0.1.0-rc.1 — Unreleased
 
 Initial MVP.
 
@@ -48,7 +48,7 @@ Initial MVP.
   restart is still required for the new pending-import semantics.
 - Verified against DSH `0.2.1-rc.2` with no code changes required; the existing peer range and compatibility layer
   cover the release candidate.
-- 133 tests across core, host composition, fork, idempotency, quota, prompt boundary, Remote stream, history
+- 144 tests across core, host composition, fork, idempotency, quota, prompt boundary, Remote stream, history
   extraction, client reordering, compatibility, and decorator compatibility. Verified on DSH `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`,
   `0.2.1-rc.1`, and `0.2.1-rc.2`. The actual Web UI was exercised on `0.2.0-rc.2`: tab order, Chinese/English
   switching, objective and invariant editing, preview, Apply, and reload persistence.
@@ -71,6 +71,9 @@ Initial MVP.
   produce a large tool result. Paging or an explicit response cap is a follow-up, not part of this round.
 - Active client drafts are not byte-capped beyond their UI inputs; the idle TTL/LRU bounds released drafts, not
   text held by a currently mounted editor/bootstrap sheet.
+- This tree is the `0.1.0-rc.1` pre-release and must be published with `npm publish --tag next`; a stable `latest`
+  release requires the real-model compaction PASS. No public GitHub repository exists yet, so `repository`,
+  `homepage`, and `bugs` are intentionally absent from `package.json` until the repository is created and reachable.
 - Compaction rematerialization depends on the DSH runtime-context projection contract; the full compaction
   end-to-end still needs a real model session.
 - Browser interaction was verified on `0.2.0-rc.2`; 0.1.7/0.2.1 were verified by typecheck/build/tests, not by
@@ -81,6 +84,20 @@ Initial MVP.
 
 ### Fixed
 
+- Close every open watch subscription when its Session is disposed (listeners receive `null` and the generator
+  exits), so a recreated Session is not stuck behind a listener removed from the service map; Host frame dedupe
+  and client acceptance now compare the lifecycle, and a new lifecycle whose revision restarts at 0 is accepted.
+- Lock mutating draft actions while a request is in flight: Unstage is rejected and disabled during Apply, all
+  bootstrap editors/selectors are disabled during a bootstrap save, setters reject edits, retained bootstrap
+  requests are only replayed when their ops and base revision still match the reviewed plan, and `dismissBootstrap`
+  clears the attempt.
+- Preserve a reviewed history draft across Chat/Charter tab switches by treating any non-empty bootstrap draft as
+  dirty in the lease-release cleanup.
+- Admit stepwise shrinking of an already over-budget objective or item even while it is still above the limit, so
+  a tightened budget can converge without rejecting every intermediate edit.
+- Keep the `all` tool envelope bounded even when `maxObjectiveBytes` exceeds it: omit the objective with
+  `objectiveTruncated: true` instead of returning an oversized response; validate `shadowedTokenCount` as a
+  non-negative integer before the Remote codec sees it.
 - Make every compaction-checker success criterion participate in the exit code: the checker now compares the
   Host's compact standing projection, fails on a dirty system prompt or a called-but-mismatched `charter_read`
   standing result, and records a leaking summary as a warning; fixture tests cover each combination.
