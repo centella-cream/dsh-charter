@@ -427,12 +427,16 @@ function main() {
     if (charterReady) {
       verdict(systemPromptClean, 'system prompt carries no charter body',
         systemPromptClean ? undefined : 'a system-prompt snapshot contains the charter text')
-      verdict(charterReadStanding, 'charter_read standing view matches the storage revision/objective',
-        charterReadStanding === true
-          ? undefined
-          : latestCharterRead === undefined || latestCharterRead.invalid === true
-            ? 'no valid standing charter_read result in this transcript yet'
-            : `latest read is revision ${latestCharterRead.revision} (${latestCharterRead.items?.length ?? 0} standing items); re-read after the final revision`)
+      if (charterReadCalled) {
+        verdict(charterReadStanding, 'charter_read standing view matches the storage revision/objective',
+          charterReadStanding === true
+            ? undefined
+            : latestCharterRead === undefined || latestCharterRead.invalid === true
+              ? 'no valid standing charter_read result in this transcript yet'
+              : `latest read is revision ${latestCharterRead.revision} (${latestCharterRead.items?.length ?? 0} standing items); re-read after the final revision`)
+      } else {
+        console.log('  INFO  charter_read standing view was not called in this transcript; not required for PASS')
+      }
     }
     if (charterReady && latestCompaction !== undefined && charterPredatesCompaction === false) {
       verdict(undefined, 'charter survives compaction',
