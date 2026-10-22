@@ -20,6 +20,8 @@
 
 ## 开发环境
 
+下面的 `git clone` URL 只在公开仓库创建后有效；在此之前请直接使用已有的 checkout，跳过 clone 命令。
+
 ```bash
 git clone https://github.com/zhangyuze/dsh-charter.git
 cd dsh-charter

@@ -22,12 +22,14 @@ dsh --profile web --dump-config | grep -n "charter" || true
 
 ## 2. 安装
 
-> **当前状态：预发布。** npm 包和 Desktop 插件目录尚不存在。现在请使用本地 tarball；按版本安装和
-> Desktop Plugins 安装会在首次公开发布后生效。
+> **当前状态：预发布。** npm 包和 Desktop 插件目录尚不存在。当前唯一可安装产物是维护者构建的本地 tarball；
+> 按版本安装和 Desktop Plugins 安装会在首次公开预发布后生效。
 
 ### 2.1 环境要求
 
-- DSH **`0.1.7-rc.2`** 或更高；推荐 `0.2.0-rc.1+`，完整 per-Peer Remote 资源授权推荐 `0.2.1+`。
+- DSH：只支持[兼容矩阵](design/compatibility.zh.md)中列出的版本（`0.1.7-rc.2`、`0.2.0-rc.1`/`rc.2`、
+  `0.2.1-rc.1`/`rc.2`）。在扩展矩阵前不声明支持更新的 stable/RC 版本；完整 per-Peer Remote 资源授权要求
+  `0.2.1+`。
 - Node.js **`^22.19.0 || >=24.0.0`**。
 - Web 或 Desktop profile。
 
@@ -43,15 +45,16 @@ dsh plugin --profile web add ./dsh-charter-0.1.0-rc.1.tgz
 Desktop 若支持本地插件导入，可在 Plugins 页面安装同一个 tarball；否则通过 Desktop profile 自己的包管理器
 安装（`dsh plugin --profile desktop` 会被 Electron app 拒绝）。发布前 profile 依赖是本地 `file:` 路径。
 
-### 2.3 发布后 — Web profile 按版本或预发布 tag 安装
+### 2.3 首次公开预发布后 — Web profile 按版本或 tag 安装
 
 ```bash
 dsh plugin --profile web add dsh-charter@0.1.0-rc.1   # 精确版本：可复现
 dsh plugin --profile web add dsh-charter@next         # 最新预发布
 ```
 
-`0.1.0-rc.1` 发布在 `next` dist-tag 下，而不是 `latest`：只有在稳定版发布之后才使用 `@latest`，否则 npm 会
-解析到上一个稳定版，或在首次稳定发布前安装失败。固定明确版本可以让 profile 可复现。
+首次公开预发布发布后，`0.1.0-rc.1` 会发布在 `next` dist-tag 下，而不是 `latest`；只有在稳定版发布之后才使用
+`@latest`。在发布之前这些 registry 命令不会解析：请先构建并安装上面的本地 tarball。固定明确版本可以让
+profile 可复现。
 
 重启 `dsh web`，或让 HMR 重新组合 profile，然后刷新页面。profile 的 `package.json` 会增加依赖和 bundle
 选择：
@@ -66,7 +69,7 @@ dsh plugin --profile web add dsh-charter@next         # 最新预发布
 安装时 pnpm 可能提示缺少 `@deepseek-ai/dsh-*` peer。这些包由 DSH 运行时提供，不需要装进 profile；以 DSH 的
 peer 兼容检查结果为准。
 
-### 2.4 发布后 — Desktop Plugins
+### 2.4 首次公开预发布后 — Desktop Plugins
 
 如果你的 Desktop 版本已接入公开插件目录，且包已发布到该目录，打开 **Desktop → Plugins**，搜索
 **`dsh-charter`**，点击 **Install**。已安装时点击 **Update**；Desktop 管理插件生命周期并热更新 bundle。
@@ -105,14 +108,14 @@ npm run build
    - `Keep the public API backward compatible`
 5. 在 **交付物** 中添加交付物，选择 `not-started` / `in-progress` / `blocked` / `done` / `cancelled`。
    标签名和面板全部文案跟随 DSH 当前语言：中文显示「会话契约」，英文显示 `Charter`。
-6. 所有修改先进入草稿，列表会立即显示投影后的结果。**Preview context** 显示 Apply 后模型会看到的 user-role
+6. 所有修改先进入草稿，列表会立即显示投影后的结果。**预览上下文** 显示点击**应用**后模型会看到的 user-role
    文本和字节数。
-7. **Apply** 原子提交。成功后 revision 加一，下一个请求生效。网络失败时保留同一 mutation id，Retry 可以
+7. **应用** 原子提交。成功后 revision 加一，下一个请求生效。网络失败时保留同一 mutation id，**重试**可以
    安全重放结果未知的写入。
 8. 如果期间其他人或另一个标签页提交了修改，面板会保留草稿并提供**将草稿应用到修订 N**；选择它即可基于
    最新 revision 重新提交，或丢弃草稿重新开始。
 9. 暂存修改、打开中的行内编辑器和已审阅的历史草案属于 Session 而不是当前挂载的标签页：切到「对话」再回来
-   会恢复。只有 Apply、显式丢弃或 Session 变化才会清除。
+   会恢复。只有 应用、显式丢弃或 Session 变化才会清除。
 
 ### 3.1 条目操作与替代链
 
@@ -136,7 +139,7 @@ npm run build
 `verification.failed` 也不自动归档。当前 MVP UI 只切换 `unchecked`/`verified`；`failed`/`unavailable`
 是记录层接受、留给未来 validator 集成的只读状态，不能从当前 UI 创建。
 
-### 3.2 永久清除
+### 3.3 永久清除
 
 archived / rejected / superseded 条目仍计入“全部条目”配额。**Purge** 仅 owner 可执行，会二次确认，并在同一个
 原子记录更新中：
@@ -148,21 +151,21 @@ archived / rejected / superseded 条目仍计入“全部条目”配额。**Pur
 active accepted/pending 条目会被核心拒绝；只有 archived、rejected 或 superseded 链条目可清除。若后续条目仍
 引用它，Purge 会被拒绝；先处理引用方。
 
-### 3.3 只读工具视图
+### 3.4 只读工具视图
 
 `charter_read` 默认返回 `standing`，返回完整的当前工作集（目标 + 全部 accepted/current 条目，受 record 配额
 约束）。`all` 是**有上限的调试视图**，不是当前工作集：它包含 rejected、
 archived、superseded 条目，最多返回 64 条 / 32 KiB，并在 `truncated` 中报告省略数量。它不能替代
 standing 会话契约，也不应作为常规工作流。
 
-### 3.4 Actor 策略
+### 3.5 Actor 策略
 
 - `owner`：所有会话契约编辑，包括不可逆的永久清除；
 - `user`：普通目标/条目/进度/验证编辑，但不能 `item.purge`；
 - `host`：不会通过 Remote edit 路径被接受；内部初始化/fork 使用专门代码；
 - agent/model：没有暴露写工具或 edit API。
 
-### 3.5 非 live Session
+### 3.6 非 live Session
 
 Web 进程可以只读显示另一个进程中 live 的 Session 的已存会话契约。编辑和历史草案抽取要求 Session 在当前
 进程 live；Session 重连后标签页升级为可编辑。因此 `charter.bootstrap` 返回 `not-live`，而不是读取另一个
@@ -189,7 +192,7 @@ Web 进程可以只读显示另一个进程中 live 的 Session 的已存会话�
 | `maxItems` | 512 | 全部条目存储上限 |
 | `maxPendingItems` | 512 | pending 条目上限；设为 `0` 可禁用新提案 |
 | `maxRecordBytes` | 1048576 | 单条 Session record（含受限历史/回执）上限；面板中显示 |
-| `maxOps` | 1024 | 单次 Apply 的 op 数 |
+| `maxOps` | 1024 | 单次应用 的 op 数 |
 | `historyLimit` | 64 | 近期 history 条数 |
 | `maxHistoryBytes` | 131072 | 近期 history 字节上限 |
 | `mutationLimit` | 128 | 近期 mutation 回执上限 |
@@ -198,25 +201,25 @@ Web 进程可以只读显示另一个进程中 live 的 Session 的已存会话�
 模型可见容量只有 `maxPromptBytes`；active 条目数不再单独设上限。存储由 `maxItems`、`maxPendingItems` 和
 `maxRecordBytes` 约束。会让 Session 处于 ready 但永久不可编辑的配置值会被抬到文档化最小值，并由 Host 记录 warning。
 
-## 4.1 预算与溢出
+### 4.1 预算与溢出
 
 「会话契约」标签激活时独占阅读区域：对话框隐藏，未发送的草稿保留；切回「对话」时恢复对话框和草稿。
 审批、提问和计划审阅等必须保留的输入位不会隐藏。
 
 标签页显示实时上下文预算条和每个字段的字节计数。任何内容都不会被静默截断：
 
-- 历史草案中的长条目按句子/分句边界拆成多个候选，全部保留。仍然超过单条上限的候选会高亮，Apply
+- 历史草案中的长条目按句子/分句边界拆成多个候选，全部保留。仍然超过单条上限的候选会高亮，应用
   保持禁用，直到你缩短它。
 - 目标保持完整。若超过 `maxObjectiveBytes`，草案显示全文和超限提示；请缩短后再应用。
-- 候选放不进上下文预算时，能放下的部分直接生效，其余保存为**待审提案**。Apply 仍然可用；不会拒绝、
+- 候选放不进上下文预算时，能放下的部分直接生效，其余保存为**待审提案**。应用 仍然可用；不会拒绝、
   截断、丢弃或再次摘要。等上下文有余量时再逐条接受提案。
-- 目标、单条字节、存储/单批容量仍是硬限制；UI 会显示具体问题，只有这些真实限制会让 Apply 禁用。
+- 目标、单条字节、存储/单批容量仍是硬限制；UI 会显示具体问题，只有这些真实限制会让应用 禁用。
 
 会话契约需要更多空间时，可在 profile 中调高预算。
 
 ### 4.2 超预算记录
 
-预算是准入策略，不是记录有效性。若记录已存在后调低上限，受影响的 Session 显示 **over-budget** 状态：视图
+预算是准入策略，不是记录有效性。若记录已存在后调低上限，受影响的 Session 显示 **超预算（over-budget）** 状态：视图
 仍可读取，Host 不把会话契约注入 prompt，面板解释原因。增加内容会被拒绝，而归档、清除、缩短等操作会被允许，直到记录回到预算内。编辑器按旧值比较：objective 或
 同 ID item 只要严格变短，即使仍超过上限也可以提交。**上下文** 中会显示 record 上限。
 
@@ -232,15 +235,15 @@ Web 进程可以只读显示另一个进程中 live 的 Session 的已存会话�
 
 | 现象 | 原因 | 处理 |
 | --- | --- | --- |
-| 面板一直 `Loading charter...` | Session 尚未初始化或初始化被阻塞 | 查看 Host 日志中的 `charter:` 行；确认 Session 存活 |
+| 面板一直 `正在加载会话契约...` | Session 尚未初始化或初始化被阻塞 | 查看 Host 日志中的 `charter:` 行；确认 Session 存活 |
 | 插件更新后会话契约面板白屏 | 浏览器 bundle 与 Host bundle 来自不同 revision（尤其手动安装 profile 后） | 完全重启 `dsh web` / DeepSeek Harness，让新 Host 加载；只刷新浏览器可能不会重启 Host |
 | `unavailable` + lifecycle mismatch | 同 id 的 Session 换了 lifecycle | 不读取旧记录；新 Session 使用新记录 |
 | 面板提示 Session 不在当前 Host / 只读 | 该 Session 属于另一个 DSH 进程（例如 Desktop），尚未在 Web 进程加载 | 在 Web 中新建会话或发送消息使其变为 live；标签页会自动升级为可编辑 |
 | `unavailable` + schema-invalid record | 存储中出现未知字段、错误版本/结构或截断 JSON | 非法期间不注入；修复原始文档后，下一次 view/初始化会重新解析并恢复，无需重启 Host；仍不合法的文档保持隔离且不被覆盖 |
 | `unavailable` + semantic corruption | schema 合法但记录内部的派生 digest/history/state 不一致 | 重新解析无法修复。检查 storage 并人工修复记录；若内存中的 Session 仍持有坏 revision，需重启 Host；修复前不注入 |
 | `unavailable` + lifecycle mismatch | 同一 Session id 的 `createdAt`/`cwd`/父 Session 身份不同 | 这不是数据损坏，也不应被覆盖；旧记录不会被读取，新 lifecycle 使用自己的记录 |
-| Apply 返回 `REVISION_CONFLICT` | 期间有别的提交 | 草稿保留；使用**将草稿应用到修订 N**把同一批 ops 重新指向最新 revision。未知结果的重试保留 mutation id，不会重复创建条目 |
-| Apply 返回 `QUOTA_EXCEEDED` | 超过 prompt、单条或存储/单批上限 | 检查高亮字段；减少候选或调高对应上限。active 条数没有单独上限 |
+|应用 返回 `REVISION_CONFLICT` | 期间有别的提交 | 草稿保留；使用**将草稿应用到修订 N**把同一批 ops 重新指向最新 revision。未知结果的重试保留 mutation id，不会重复创建条目 |
+|应用 返回 `QUOTA_EXCEEDED` | 超过 prompt、单条或存储/单批上限 | 检查高亮字段；减少候选或调高对应上限。active 条数没有单独上限 |
 | `charter_read` 返回 `UNAVAILABLE` | 插件存储未就绪或记录不可用 | 会话仍可正常使用；修复后重试 |
 | 会话头部没有「会话契约」 | 客户端 bundle 未加载/未注入，或当前是空白 Session | 检查 `dsh --profile web --dump-config` 中是否有 `charter` 行；先发送一条消息开始会话；刷新页面 |
 | 0.1.7-rc.2 / 0.2.0 上出现授权担忧 | Gateway 无 `@Remote.resources` | 升级到 0.2.1+，或在可信单操作者环境使用 |
@@ -249,7 +252,7 @@ Web 进程可以只读显示另一个进程中 live 的 Session 的已存会话�
 
 ## 7. 验证是否生效
 
-1. 在「会话契约」标签页设置目标并 Apply；
+1. 在「会话契约」标签页设置目标并 应用；
 2. 让会话继续几轮，触发 compaction；
 3. 再次打开「会话契约」标签页，确认目标/约束仍在；
 4. 让模型调用 `charter_read`（或直接问它“当前会话契约是什么”），确认 standing 内容可见；

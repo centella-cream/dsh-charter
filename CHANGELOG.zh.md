@@ -18,7 +18,7 @@
 - 子 Session fork 时一次性复制父会话契约，并重铸条目 id。
 - 非 live Session（例如在独立 Web 进程中打开 Desktop 会话）显示已保存会话契约的只读视图和说明；Session
   变为 live 后原位升级为可编辑，而不是让 Remote stream 直接抛 "not live" 原始错误。
-- 重新设计 Charter 面板：使用 DSH 语义 token，紧凑页头与预算条、吸顶预览/丢弃/应用工具栏、目标卡片、
+- 重新设计会话契约面板：使用 DSH 语义 token，紧凑页头与预算条、吸顶预览/丢弃/应用工具栏、目标卡片、
   响应式硬约束/交付物双栏、hover/focus 条目操作、section 内联添加输入，并支持明暗主题。
 - 默认 charter-contribution 预算提升到 8 KiB、目标 4 KiB、单条条目 1 KiB。任何路径都不静默截断：超长历史草案条目拆成
   多个候选，超限字段高亮。历史导入以真实上下文预算为准，不再用 per-kind active 条数拒绝整个草案：放不下的
@@ -27,9 +27,9 @@
   `maxRecordBytes` 1 MiB。
 - 已有压缩历史且会话契约为空的 Session 会自动显示从最近一次压缩摘要确定性抽取的只读草案；不调用模型、不自动
   写入。用户编辑/取消勾选后点击应用才会生效。
-- 完整的 Charter 标签页与面板中英文界面，由 `dsh-client-locale` 和 DSH 当前语言驱动；计数、状态、按钮、
+- 完整的会话契约标签页与面板中英文界面，由 `dsh-client-locale` 和 DSH 当前语言驱动；计数、状态、按钮、
   占位符和错误码文案均包含在内。
-- 主对话页 `conversation.view` 的 Charter 标签页（中文「会话契约」/ English「Charter」），支持草稿暂存、
+- 主对话页 `conversation.view` 的会话契约标签页（中文「会话契约」/ English「Charter」），支持草稿暂存、
   冲突保留、预览、归档/恢复、替代、待确认审阅（历史草案溢出；模型提议入口预留）、清除确认、进度和验证操作。标签跟随 Chat/Trajectory，
   并动态排到后续注册的插件标签之后。
 - 按 Session 授权的 Remote stream 和 edit 端点。
@@ -91,8 +91,14 @@
   `dismissBootstrap` 会清除 attempt。
 - `isEmpty` 把非空 bootstrap 草案视为 dirty，Chat/Charter 切换时 lease-release 清理不再删除已审阅的历史草案。
 - 已超预算的 objective/item 允许继续分步缩短，即使仍高于上限，也能在预算收紧后逐步收敛。
-- Apply 按钮与 Host 准入使用同一条 prompt 预算规则：渲染后的 prompt 仍超限但正在缩短时允许提交；只有仍然
-  超限或变大时才保持禁用。
+- Apply 按钮与 Host 的 `overLimitGrowth` 规则完全一致：渲染后的 prompt 仍超限但缩小或保持同字节时允许提交；
+  只有变大时才保持禁用。
+- 把两条堆叠的超预算提示合并为一条带单一处理建议的提示；替代/验证失败原因改为条目行内可见文本，行内操作后
+  焦点回到条目行而不是掉到 `<body>`。
+- 修正 live region 模式：`status`/`alert` 只包裹消息文本，操作按钮不再嵌套在 live region 内；历史草案的 idle
+  阶段显示专门的“尚未加载草案”文案，而不是“已抽取草案”的文案。
+- 主按钮 fill/hover、内容字号和字体族改用真实 DSH 语义 token；统一中文 UI 术语（章节 / 待审 / 硬约束 /
+  会话 / 标记为未验证）。
 - `maxObjectiveBytes` 大于 `all` envelope 时，省略 objective 并返回 `objectiveTruncated: true`，不再突破响应
   上限；`shadowedTokenCount` 在进入 Remote codec 前校验为非负整数。
 - 在证据比较前，把旧版 debug 形状的 `charter_read` tool result（未重启 Host 返回的额外
@@ -137,7 +143,7 @@
 - active UI 计数和列表只包含 accepted + current；pending proposal 仍在各自 section 可见；连接重试时显示非阻塞
   提示，说明暂时只读并展示最近一次确认状态。
 - `charter_read all` 返回完整的有界调试投影（origin/order/createdRevision/替代链/验证来源），最终 tool
-  envelope 限制在 32 KiB；over-budget 状态纳入 history/mutation 数量上限。
+  envelope 限制在 32 KiB；超预算状态纳入 history/mutation 数量上限。
 - CI 增加打包产物 smoke（tarball 可安装、exports 可解析、client bundle 可加载）；移除多余的
   `@deepseek-ai/schemastery` peer 声明；明确预发布与 compaction 验收口径。
 - 存储记录校验按 Session 隔离：domain 边界保留原始文档，service 逐条解析；单条损坏或前向不兼容的记录只让该

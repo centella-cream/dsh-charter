@@ -4,7 +4,8 @@
   --charter-surface: var(--dsw-alias-bg-layer-1, rgba(127, 127, 127, 0.055));
   --charter-surface-2: var(--dsw-alias-bg-layer-2, rgba(127, 127, 127, 0.085));
   --charter-brand: var(--dsw-alias-brand-primary, #3978d4);
-  --charter-brand-fill: var(--dsw-alias-button-primary-fill, var(--dsw-alias-button-primary-bg, #3978d4));
+  --charter-brand-fill: var(--dsw-alias-button-primary-fill, #3978d4);
+  --charter-brand-fill-hover: var(--dsw-alias-button-primary-hover, var(--charter-brand-fill));
   --charter-brand-label: var(--dsw-alias-label-primary-foreground, #fff);
   --charter-danger: var(--dsw-alias-state-error-primary, #d14343);
   --charter-warn: var(--dsw-alias-state-warn-primary, #b7791f);
@@ -18,8 +19,8 @@
   min-height: 100%;
   color: var(--dsw-alias-label-primary, inherit);
   background: var(--dsw-alias-bg-base, transparent);
-  font-family: var(--dsh-font-family-text, inherit);
-  font-size: 13px;
+  font-family: var(--dsw-font-family, inherit);
+  font-size: var(--dsh-content-font-size, 13px);
   line-height: 1.5;
   overflow-x: hidden;
   container-type: inline-size;
@@ -361,6 +362,17 @@
   background: var(--dsw-alias-interactive-bg-hover, rgba(127, 127, 127, 0.08));
 }
 
+.charter-item:focus-visible {
+  outline: 2px solid var(--charter-brand);
+  outline-offset: -2px;
+}
+
+.charter-item__hint {
+  color: var(--dsw-alias-label-tertiary, #999);
+  font-size: 10.5px;
+  line-height: 1.45;
+}
+
 .charter-item--inactive {
   opacity: 0.72;
 }
@@ -592,7 +604,7 @@
 
 .charter-button--primary:hover:not(:disabled) {
   color: var(--charter-brand-label);
-  filter: brightness(1.04);
+  background: var(--charter-brand-fill-hover);
 }
 
 .charter-button--primary:disabled {

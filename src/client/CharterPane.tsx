@@ -303,11 +303,6 @@ function TextEditor({
   )
 }
 
-function closeMenu(event: { currentTarget: EventTarget }): void {
-  const target = event.currentTarget as HTMLElement | null
-  target?.closest('details')?.removeAttribute('open')
-}
-
 function ItemRow({
   item,
   successor,
@@ -328,6 +323,8 @@ function ItemRow({
   readonly t: CharterText
 }) {
   const [confirmPurge, setConfirmPurge] = useState(false)
+  const rowRef = useRef<HTMLElement | null>(null)
+  const menuRef = useRef<HTMLDetailsElement | null>(null)
   const current = item.lifecycle === 'current'
   const terminalHead = item.lifecycle === 'superseded' && item.supersedes === undefined
   const purgeable = !item.staged
@@ -337,8 +334,35 @@ function ItemRow({
   const menuLabel = t('item.actionsAria', { text: shortText(item.text) })
   const canMutate = editable && !item.staged
   const hasMenu = canMutate && (current || purgeable)
+  // A queued action can remove the control that had focus; park focus on the
+  // row (or the disclosure trigger) so it never falls back to <body>.
+  const focusRow = (): void => {
+    requestAnimationFrame(() => {
+      const details = menuRef.current
+      const summary = details?.querySelector('summary')
+      if (details?.isConnected === true && summary !== null && summary !== undefined) {
+        ;(summary as HTMLElement).focus()
+      } else {
+        rowRef.current?.focus()
+      }
+    })
+  }
+  const queueFromMenu = (op: CharterOp): void => {
+    menuRef.current?.removeAttribute('open')
+    onQueue(op)
+    focusRow()
+  }
+  const openInEditor = (open: () => void): void => {
+    menuRef.current?.removeAttribute('open')
+    // The editor autofocuses; keep the row as the return target so closing the
+    // editor restores focus inside the pane.
+    rowRef.current?.focus()
+    open()
+  }
   return (
     <article
+      ref={rowRef}
+      tabIndex={-1}
       className={`charter-item${item.lifecycle !== 'current' || item.review === 'rejected' ? ' charter-item--inactive' : ''}${item.staged ? ' is-staged' : ''}`}
     >
       <div className="charter-item__main">
@@ -352,25 +376,29 @@ function ItemRow({
             {item.kind === 'deliverable' && <StatusTag>{progressLabel(item.progress, t)}</StatusTag>}
             {item.lifecycle === 'archived' && <StatusTag>{t('tag.archived')}</StatusTag>}
             {item.lifecycle === 'superseded' && <StatusTag>{t('tag.superseded')}</StatusTag>}
-            {item.supersedes !== undefined && <StatusTag title={t('item.replacementHint')}>{t('tag.replacement')}</StatusTag>}
+            {item.supersedes !== undefined && <StatusTag>{t('tag.replacement')}</StatusTag>}
             {item.verification.state === 'verified' && (
               <StatusTag tone="success">
                 {item.verification.by === 'validator' ? t('tag.verifiedValidator') : t('tag.verifiedUser')}
               </StatusTag>
             )}
             {item.verification.state === 'failed' && (
-              <StatusTag tone="danger" title={item.verification.reason}>
+              <StatusTag tone="danger">
                 {t('tag.verificationFailedReason', { reason: item.verification.reason })}
               </StatusTag>
             )}
             {item.verification.state === 'unavailable' && (
-              <StatusTag tone="warning" title={item.verification.reason}>
+              <StatusTag tone="warning">
                 {t('tag.verificationUnavailableReason', { reason: item.verification.reason })}
               </StatusTag>
             )}
             {successor !== undefined && <StatusTag>{t('tag.replacedBy', { text: shortText(successor.text) })}</StatusTag>}
             <span className="charter-item__bytes">{formatBytes(t, utf8Bytes(item.text))}</span>
           </div>
+          {item.supersedes !== undefined && (
+            <span className="charter-item__hint">{t('item.replacementHint')}</span>
+          )}
+          {terminalHead && <span className="charter-item__hint">{t('item.purgeDetaches')}</span>}
         </div>
       </div>
       <div className="charter-item__actions">
@@ -378,32 +406,49 @@ function ItemRow({
           <ActionButton
             ariaLabel={`${menuLabel}: ${t('item.unstage')}`}
             disabled={!editable}
-            onClick={() => onUnstage(item.id)}
+            onClick={() => {
+              onUnstage(item.id)
+              focusRow()
+            }}
           >
             {t('item.unstage')}
           </ActionButton>
         )}
         {item.review === 'pending' && current && !item.staged && (
           <>
-            <ActionButton disabled={!editable} onClick={() => onQueue({ type: 'item.accept', itemId: item.id })}>
+            <ActionButton
+              disabled={!editable}
+              onClick={() => {
+                onQueue({ type: 'item.accept', itemId: item.id })
+                focusRow()
+              }}
+            >
               {t('item.accept')}
             </ActionButton>
-            <ActionButton disabled={!editable} onClick={() => onQueue({ type: 'item.reject', itemId: item.id })}>
+            <ActionButton
+              disabled={!editable}
+              onClick={() => {
+                onQueue({ type: 'item.reject', itemId: item.id })
+                focusRow()
+              }}
+            >
               {t('item.reject')}
             </ActionButton>
           </>
         )}
         {hasMenu && (
-          <details className="charter-item__menu">
-            <summary className="charter-button charter-button--ghost" aria-label={menuLabel}>{t('item.actions')}</summary>
+          <details className="charter-item__menu" ref={menuRef}>
+            <summary className="charter-button charter-button--ghost" aria-label={menuLabel} aria-haspopup="menu">
+              {t('item.actions')}
+            </summary>
             <div className="charter-item__menulist" role="menu">
               {current && item.review === 'accepted' && (
                 <>
-                  <button type="button" role="menuitem" onClick={event => { closeMenu(event); onEdit(item) }}>
+                  <button type="button" role="menuitem" onClick={() => openInEditor(() => onEdit(item))}>
                     {t('item.edit')}
                   </button>
                   {item.supersedes === undefined && (
-                    <button type="button" role="menuitem" onClick={event => { closeMenu(event); onSupersede(item) }}>
+                    <button type="button" role="menuitem" onClick={() => openInEditor(() => onSupersede(item))}>
                       {t('item.replace')}
                     </button>
                   )}
@@ -411,10 +456,7 @@ function ItemRow({
                     <button
                       type="button"
                       role="menuitem"
-                      onClick={event => {
-                        closeMenu(event)
-                        onQueue({ type: 'item.archive', itemId: item.id })
-                      }}
+                      onClick={() => queueFromMenu({ type: 'item.archive', itemId: item.id })}
                     >
                       {t('item.archive')}
                     </button>
@@ -422,14 +464,11 @@ function ItemRow({
                   <button
                     type="button"
                     role="menuitem"
-                    onClick={event => {
-                      closeMenu(event)
-                      onQueue({
-                        type: 'item.verification.set',
-                        itemId: item.id,
-                        verification: item.verification.state === 'verified' ? 'unchecked' : 'verified',
-                      })
-                    }}
+                    onClick={() => queueFromMenu({
+                      type: 'item.verification.set',
+                      itemId: item.id,
+                      verification: item.verification.state === 'verified' ? 'unchecked' : 'verified',
+                    })}
                   >
                     {item.verification.state === 'verified' ? t('item.unverify') : t('item.verify')}
                   </button>
@@ -439,10 +478,7 @@ function ItemRow({
                 <button
                   type="button"
                   role="menuitem"
-                  onClick={event => {
-                    closeMenu(event)
-                    onQueue({ type: 'item.restore', itemId: item.id })
-                  }}
+                  onClick={() => queueFromMenu({ type: 'item.restore', itemId: item.id })}
                 >
                   {t('item.restore')}
                 </button>
@@ -453,15 +489,21 @@ function ItemRow({
                       <button
                         type="button"
                         role="menuitem"
-                        onClick={event => {
-                          closeMenu(event)
+                        onClick={() => {
                           setConfirmPurge(false)
-                          onQueue({ type: 'item.purge', itemId: item.id, confirmed: true })
+                          queueFromMenu({ type: 'item.purge', itemId: item.id, confirmed: true })
                         }}
                       >
                         {t('item.confirmPurge')}
                       </button>
-                      <button type="button" role="menuitem" onClick={() => setConfirmPurge(false)}>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setConfirmPurge(false)
+                          focusRow()
+                        }}
+                      >
                         {t('item.keep')}
                       </button>
                     </>
@@ -470,8 +512,7 @@ function ItemRow({
                     <button
                       type="button"
                       role="menuitem"
-                      title={terminalHead ? t('item.purgeDetaches') : undefined}
-                      onClick={event => { closeMenu(event); setConfirmPurge(true) }}
+                      onClick={() => setConfirmPurge(true)}
                     >
                       {t('item.purge')}
                     </button>
@@ -487,11 +528,14 @@ function ItemRow({
             value={item.progress}
             disabled={!editable}
             aria-label={`${t('progress.label')}: ${shortText(item.text)}`}
-            onChange={event => onQueue({
-              type: 'deliverable.progress',
-              itemId: item.id,
-              progress: event.target.value as DeliverableProgress,
-            })}
+            onChange={event => {
+              onQueue({
+                type: 'deliverable.progress',
+                itemId: item.id,
+                progress: event.target.value as DeliverableProgress,
+              })
+              focusRow()
+            }}
           >
             {(['not-started', 'in-progress', 'blocked', 'done', 'cancelled'] as const).map(value => (
               <option key={value} value={value}>{progressLabel(value, t)}</option>
@@ -647,6 +691,21 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
     && projectedItems.length === 0
     && (bootstrapPhase === 'idle' || bootstrapPhase === 'dismissed')
   const draftOpen = bootstrapPhase === 'draft'
+  // One consolidated budget alert with one remedy: a blocking staged draft wins,
+  // then the stored over-budget state, then an admitted over-budget render.
+  const budgetNotice = contextBlocksApply
+    ? {
+        tone: 'danger' as const,
+        text: t('budget.contextOver', { limit: formatBytes(t, view.limits.maxPromptBytes) }),
+      }
+    : overBudget
+      ? { tone: 'warning' as const, text: t('status.overBudget') }
+      : contextOver
+        ? {
+            tone: 'warning' as const,
+            text: promptBudget.shrinking ? t('budget.shrinking') : t('budget.notGrowing'),
+          }
+        : null
 
   const goSection = (next: CharterSection): void => draft.setSection(next)
   const queue = (op: CharterOp): void => {
@@ -740,25 +799,24 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
         </header>
 
         {state.status === 'connecting' && view !== null && (
-          <div className="charter-notice" role="status">{t('status.reconnecting')}</div>
+          <div className="charter-notice">
+            <span role="status">{t('status.reconnecting')}</span>
+          </div>
         )}
         {disconnected && (
-          <div className="charter-notice charter-notice--danger" role="alert">
-            <span>{t('error.connection')}</span>
+          <div className="charter-notice charter-notice--danger">
+            <span role="alert">{t('error.connection')}</span>
             <ActionButton variant="outline" onClick={source.retry}>{t('button.retry')}</ActionButton>
           </div>
         )}
         {notice !== null && (
-          <div className="charter-notice charter-notice--warning" role="status">{notice}</div>
-        )}
-        {overBudget && (
-          <div className="charter-notice charter-notice--warning" role="alert">
-            {t('status.overBudget')}
+          <div className="charter-notice charter-notice--warning">
+            <span role="status">{notice}</span>
           </div>
         )}
         {revisionConflict && (
-          <div className="charter-notice charter-notice--warning" role="alert">
-            <span>{t('notice.conflict', { from: baseRevision ?? 0, to: view.revision })}</span>
+          <div className="charter-notice charter-notice--warning">
+            <span role="alert">{t('notice.conflict', { from: baseRevision ?? 0, to: view.revision })}</span>
             <ActionButton
               variant="outline"
               disabled={saving || bootstrapSaving}
@@ -768,14 +826,9 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
             </ActionButton>
           </div>
         )}
-        {contextOver && (
-          <div
-            className={`charter-notice${contextBlocksApply ? ' charter-notice--danger' : ' charter-notice--warning'}`}
-            role="alert"
-          >
-            {contextBlocksApply
-              ? t('budget.contextOver', { limit: formatBytes(t, view.limits.maxPromptBytes) })
-              : t('budget.shrinking')}
+        {budgetNotice !== null && (
+          <div className={`charter-notice charter-notice--${budgetNotice.tone}`}>
+            <span role="alert">{budgetNotice.text}</span>
           </div>
         )}
 
@@ -784,8 +837,6 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
             ref={statusRef}
             className="charter-actionbar__status"
             tabIndex={-1}
-            role={feedback?.kind === 'error' || feedback?.kind === 'connection' ? 'alert' : 'status'}
-            aria-live="polite"
             title={messageDetail}
           >
             <span className={`charter-dot${ops.length > 0 || draftOpen ? ' is-staged' : ''}`} aria-hidden="true" />
@@ -795,7 +846,14 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                   ? draftOpen ? t('footer.draftStatus') : t('footer.none')
                   : countLabel(t, ops.length, 'footer.one', 'footer.other')}
               </strong>
-              {message !== null && <span className="charter-actionbar__message">{message}</span>}
+              {message !== null && (
+                <span
+                  className="charter-actionbar__message"
+                  role={feedback?.kind === 'error' || feedback?.kind === 'connection' ? 'alert' : 'status'}
+                >
+                  {message}
+                </span>
+              )}
               <span className="charter-actionbar__hint">{t('footer.applyHint')}</span>
             </div>
           </div>
@@ -880,7 +938,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                 {(bootstrapPhase === 'failed' || bootstrapPhase === 'unavailable' || bootstrapPhase === 'no-summary' || bootstrapPhase === 'not-live') && (
                   <div className="charter-callout charter-callout--static">
                     <span className="charter-kicker">{t('bootstrap.kicker')}</span>
-                    <span>{bootstrapProblemText(bootstrapProblem, t)
+                    <span role="status">{bootstrapProblemText(bootstrapProblem, t)
                       ?? (bootstrapPhase === 'no-summary' ? t('bootstrap.noSummary')
                         : bootstrapPhase === 'not-live' ? t('bootstrap.notLive')
                           : t('bootstrap.overviewFailed'))}</span>
@@ -1155,42 +1213,50 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
             {section === 'history' && (
               <>
                 {bootstrapPhase === 'checking' && (
-                  <div className="charter-notice" role="status">{t('bootstrap.loading')}</div>
+                  <div className="charter-notice">
+                    <span role="status">{t('bootstrap.loading')}</span>
+                  </div>
                 )}
                 {bootstrapPhase === 'failed' && (
-                  <div className="charter-notice charter-notice--danger" role="alert">
-                    <span>{bootstrapProblemText(bootstrapProblem, t) ?? t('bootstrap.requestFailed')}</span>
+                  <div className="charter-notice charter-notice--danger">
+                    <span role="alert">
+                      {bootstrapProblemText(bootstrapProblem, t) ?? t('bootstrap.requestFailed')}
+                    </span>
                     <ActionButton onClick={() => draft.retryBootstrap(view)}>{t('button.retry')}</ActionButton>
                   </div>
                 )}
                 {bootstrapPhase === 'unavailable' && (
-                  <div className="charter-notice" role="status">
-                    <span>{bootstrapProblemText(bootstrapProblem, t) ?? t('bootstrap.unavailable')}</span>
+                  <div className="charter-notice">
+                    <span role="status">
+                      {bootstrapProblemText(bootstrapProblem, t) ?? t('bootstrap.unavailable')}
+                    </span>
                     <ActionButton onClick={() => draft.retryBootstrap(view)}>{t('button.retry')}</ActionButton>
                   </div>
                 )}
                 {(bootstrapPhase === 'no-summary' || bootstrapPhase === 'not-live' || bootstrapPhase === 'idle') && (
-                  <div className="charter-notice" role="status">
-                    <span>{bootstrapPhase === 'no-summary'
-                      ? t('bootstrap.noSummary')
-                      : bootstrapPhase === 'not-live' ? t('bootstrap.notLive') : t('bootstrap.body')}</span>
+                  <div className="charter-notice">
+                    <span role="status">
+                      {bootstrapPhase === 'no-summary'
+                        ? t('bootstrap.noSummary')
+                        : bootstrapPhase === 'not-live' ? t('bootstrap.notLive') : t('bootstrap.idle')}
+                    </span>
                     <ActionButton onClick={() => draft.retryBootstrap(view)}>{t('bootstrap.checkAgain')}</ActionButton>
                   </div>
                 )}
                 {bootstrapPhase === 'dismissed' && (
-                  <div className="charter-notice" role="status">
-                    <span>{t('bootstrap.dismissed')}</span>
+                  <div className="charter-notice">
+                    <span role="status">{t('bootstrap.dismissed')}</span>
                     <ActionButton onClick={() => draft.retryBootstrap(view)}>{t('bootstrap.checkAgain')}</ActionButton>
                   </div>
                 )}
                 {ops.length > 0 && (
-                  <div className="charter-notice charter-notice--warning" role="status">
-                    {t('bootstrap.blocked')}
+                  <div className="charter-notice charter-notice--warning">
+                    <span role="status">{t('bootstrap.blocked')}</span>
                   </div>
                 )}
                 {bootstrap !== null && ops.length === 0 && editor !== null && (
-                  <div className="charter-notice charter-notice--warning" role="status">
-                    {t('bootstrap.blockedEditor')}
+                  <div className="charter-notice charter-notice--warning">
+                    <span role="alert">{t('bootstrap.blockedEditor')}</span>
                     <ActionButton onClick={() => draft.closeEditor()}>{t('editor.cancel')}</ActionButton>
                   </div>
                 )}

@@ -33,7 +33,7 @@ npm run smoke:package
 
 `npm run check` 必须通过 typecheck、build、Remote smoke、client smoke 和完整 Vitest；
 `npm run smoke:package` 另外会打包 tarball 并校验必需文件、所有 `exports` 目标、packed Host import 和 packed
-client bundle。CI 同时运行两者。已记录的真实模型 compaction `PASS`（验证记录 8.4）就是 compaction 韧性声明的
+client bundle。CI 配置为在公开仓库存在后同时运行两者。已记录的真实模型 compaction `PASS`（验证记录 8.4）就是 compaction 韧性声明的
 验收证据；下面的手工命令保留用于在目标 profile 重新跑一次。
 
 用一个全新 profile 安装 tarball 并验证：
@@ -64,10 +64,12 @@ mkdir -p dist && mv dsh-charter-0.1.0-rc.1.tgz dist/
 (cd dist && shasum -a 256 dsh-charter-0.1.0-rc.1.tgz > SHA256SUMS)
 ```
 
-在 tagged tree 上打包，保证产物与已提交源码一致，并把产物 digest 写入 `dist/SHA256SUMS`。验证记录 8.4 记录
-通过门禁的 source commit 以及由该 commit 构建的产物 digest；如果 tagged tree 只额外添加了证据记录，重建产物
-的 digest 会不同，以 `dist/SHA256SUMS` 中的值为准。`dist/` 不进 git；把 `.tgz` 和 `SHA256SUMS` 附到 GitHub
-release，但不要提交它们。
+在 tagged tree 上打包，保证产物与已提交源码一致。把产物 digest 同时写入 `dist/SHA256SUMS` 和仓库根部
+tracked 的 `SHA256SUMS`（根部文件刻意不在 npm `files` 白名单内，因此不会改变打包产物）。提交根部文件后，再把
+`v0.1.0-rc.1` tag 移到新的 HEAD。验证记录 8.4 记录通过门禁的 source commit 以及由该 commit 构建的产物
+digest；如果 tagged tree 只额外添加了证据记录，重建产物的 digest 会不同，以 tracked 根部 `SHA256SUMS` 和
+`dist/SHA256SUMS` 中的值为准。`dist/` 不进 git；把 `.tgz` 和 `SHA256SUMS` 附到 GitHub release，但不要提交
+tarball。
 
 1. 创建 GitHub release，附加 `.tgz`、`SHA256SUMS` 和简短亮点；
 2. 用非 latest dist-tag 发布预发布版本：

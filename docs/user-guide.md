@@ -23,14 +23,15 @@ For a Web or Desktop profile the plugin registers:
 
 ## 2. Install
 
-> **Current status: pre-release.** The registry package and Desktop catalog entry do not exist yet. Use the
-> local tarball path now; the versioned and Desktop Plugins paths become available after the first public
-> release.
+> **Current status: pre-release.** The registry package and Desktop catalog entry do not exist yet. The only
+> installable artifact today is a maintainer-built local tarball; the versioned and Desktop Plugins paths become
+> available after the first public pre-release.
 
 ### 2.1 Requirements
 
-- DSH **`0.1.7-rc.2`** or later; `0.2.0-rc.1+` recommended, `0.2.1+` recommended for per-Peer Remote resource
-  authorization.
+- DSH: only the versions listed in the [compatibility matrix](design/compatibility.md) are supported
+  (`0.1.7-rc.2`, `0.2.0-rc.1`/`rc.2`, `0.2.1-rc.1`/`rc.2`); newer stable/RC versions are not claimed until the
+  matrix is extended. `0.2.1+` is required for per-Peer Remote resource authorization.
 - Node.js **`^22.19.0 || >=24.0.0`**.
 - A Web or Desktop profile.
 
@@ -47,16 +48,16 @@ For Desktop, use the Plugins page if local import is available; otherwise instal
 profile's own package manager (`dsh plugin --profile desktop` is refused by the Electron app). The profile dependency
 is a local `file:` path until the package is published.
 
-### 2.3 After release — Web profile by version or pre-release tag
+### 2.3 After the first public pre-release — Web profile by version or tag
 
 ```bash
 dsh plugin --profile web add dsh-charter@0.1.0-rc.1   # exact version: reproducible
 dsh plugin --profile web add dsh-charter@next         # newest pre-release
 ```
 
-`0.1.0-rc.1` is published under the `next` dist-tag, not `latest`: use `@latest` only after a stable release
-exists, otherwise npm resolves it to the last stable version or fails before the first stable publication. Pin an
-explicit version for reproducible profiles.
+When the first public pre-release ships, `0.1.0-rc.1` will be published under the `next` dist-tag, not `latest`;
+use `@latest` only after a stable release exists. Until that publication these registry commands do not resolve:
+build and install the local tarball above. Pin an explicit version for reproducible profiles.
 
 Restart `dsh web`, or let profile HMR recompose, then refresh the page. The profile's `package.json` gains the
 dependency and bundle selection:
@@ -71,7 +72,7 @@ dependency and bundle selection:
 pnpm may warn about missing `@deepseek-ai/dsh-*` peers. The DSH runtime supplies those packages; do not install
 them into the profile. Trust DSH's peer compatibility check.
 
-### 2.4 After release — Desktop Plugins
+### 2.4 After the first public pre-release — Desktop Plugins
 
 If your Desktop build exposes the public catalog and the package is published there, open **Desktop → Plugins**,
 search for **`dsh-charter`**, and click **Install**. When already installed, click **Update**; Desktop owns the
@@ -147,7 +148,7 @@ verified, and `verification.failed` does not archive automatically. The MVP UI o
 `unchecked`/`verified`; `failed`/`unavailable` are accepted read-only record states reserved for a future
 validator integration, not states you can create from this UI.
 
-### 3.2 Permanent purge
+### 3.3 Permanent purge
 
 Archived, rejected, and superseded items still count toward the all-items quota. **Purge** is owner-only, asks
 for confirmation, and in one atomic record update:
@@ -159,7 +160,7 @@ for confirmation, and in one atomic record update:
 Active accepted/pending items are rejected by the core; only archived, rejected, or superseded chain entries
 can be purged. If a later item still references it, Purge is rejected; handle the referrer first.
 
-### 3.3 Read-only tool views
+### 3.4 Read-only tool views
 
 `charter_read` defaults to `standing`, which returns the complete current working set (the objective plus every
 accepted/current item, bounded by the record quotas). The `all` view is a **bounded debugging view**, not the
@@ -167,14 +168,14 @@ current working set: it includes rejected, archived, and superseded items, retur
 omitted count as `truncated`. It is not a substitute for the standing charter and should not be used
 routinely.
 
-### 3.4 Actor policy
+### 3.5 Actor policy
 
 - `owner`: all charter edits, including irreversible purge.
 - `user`: ordinary objective/item/progress/verification edits, but **not** `item.purge`.
 - `host`: never accepted through the Remote edit path; internal initialization/fork uses dedicated code.
 - agent/model: no write tool or edit API is exposed.
 
-### 3.5 Non-live Sessions
+### 3.6 Non-live Sessions
 
 A Web process can show the stored charter of a Session that is live in another process as a read-only view.
 Editing and history-draft extraction require the Session to be live in the current process; reconnecting the
@@ -212,7 +213,7 @@ The only model-visible capacity is `maxPromptBytes`; active item counts are not 
 bounded by `maxItems`, `maxPendingItems`, and `maxRecordBytes`. Values that would make a Session ready but
 permanently uneditable are raised to documented minimums with a Host warning.
 
-## 4.1 Budgets and overflow
+### 4.1 Budgets and overflow
 
 While the Charter tab is active it owns the reading surface: the chat composer is hidden and its unsent draft is
 preserved; switching back to **Chat** restores the composer and the draft. Approval, question, and plan-review
