@@ -655,8 +655,8 @@ checker 已将这些字段归一到当前紧凑投影。要让 UI/tool ABI 与�
 - 真实模型实测：2026-10-22，运行于 Desktop/Web runtime DSH `0.2.0-rc.2`（`dsh` CLI `0.2.0-rc.2`）。这次
   运行发生在上述完整重启 Desktop **之前**；当时仍在运行的进程加载的是重启前的 Host bundle，因此
   `charter_read` 结果带有 legacy debug 字段。
-- 本次收敛记录的通过门禁源码 commit：`b0076f2a2a55ca1a9771b2dc974fe7082c76f2d5`；tagged tree 只额外添加
-  本证据记录和 tracked digest 文件。该收敛树通过 `npm run check`（typecheck + build + 17 个测试文件 /
+- 本次收敛记录的通过门禁源码 commit：`b0076f2a2a55ca1a9771b2dc974fe7082c76f2d5`；tagged tree 额外添加
+  本证据记录、最终文档润色和 tracked digest 文件。该收敛树通过 `npm run check`（typecheck + build + 17 个测试文件 /
   161 个测试）、`npm run smoke:package` 以及本地五版本矩阵（每个版本 17 个文件 / 161 个测试）。
 - 随发布产物的 digest：仓库根部 tracked 的 `SHA256SUMS`（由 release commit 保持最新，该 commit 只更新此文件）
   固定从 tagged tree 构建的 `dsh-charter-0.1.0-rc.1.tgz` digest；`dist/SHA256SUMS` 携带相同值。

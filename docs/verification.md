@@ -717,7 +717,7 @@ Evidence timeline for this pre-release:
   The run happened **before** the full Desktop restart described above; the process that served it was still
   running the pre-restart Host bundle, which is why the `charter_read` result carried legacy debug fields.
 - Gated source commit for this convergence record: `b0076f2a2a55ca1a9771b2dc974fe7082c76f2d5`; the tagged tree
-  adds only this evidence record and the tracked digest file. Gates on the convergence tree: `npm run check`
+  adds this evidence record, the final documentation polish, and the tracked digest file. Gates on the convergence tree: `npm run check`
   (typecheck + build + 17 test files / 161 tests), `npm run smoke:package`, and the local five-version matrix
   (17 files / 161 tests on every version).
 - Shipped artifact digest: the tracked repository-root `SHA256SUMS` (kept current by the release commit, which
