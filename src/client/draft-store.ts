@@ -143,6 +143,7 @@ export class CharterDraft {
   private state: CharterDraftState
   private readonly listeners = new Set<() => void>()
   private bootstrapGeneration = 0
+  private asyncGeneration = 0
 
   constructor(
     private readonly sessionId: SessionId,
@@ -164,6 +165,7 @@ export class CharterDraft {
       return
     }
     this.bootstrapGeneration += 1
+    this.asyncGeneration += 1
     this.state = { ...initialState(this.sessionId), lifecycle, section: this.state.section }
     for (const listener of [...this.listeners]) listener()
   }
@@ -178,6 +180,33 @@ export class CharterDraft {
   private update(patch: Partial<CharterDraftState>): void {
     this.state = { ...this.state, ...patch }
     for (const listener of [...this.listeners]) listener()
+  }
+
+  /** True when the draft holds no unsaved user work and can be dropped on release. */
+  get isEmpty(): boolean {
+    return this.state.ops.length === 0
+      && this.state.editor === null
+      && this.state.newInvariant.trim().length === 0
+      && this.state.newDeliverable.trim().length === 0
+      && this.state.attempt === null
+  }
+
+  /**
+   * Invalidate in-flight async results because the source instance they were
+   * sent through no longer exists. Local staged content is preserved.
+   */
+  invalidateSource(): void {
+    this.asyncGeneration += 1
+    if (this.state.saving) {
+      // Keep the same mutation id so a retry through the new source replays
+      // the already-sent request instead of duplicating it.
+      this.update({ saving: false, feedback: { kind: 'connection' } })
+    } else if (this.state.bootstrapSaving) {
+      this.update({
+        bootstrapSaving: false,
+        bootstrapProblem: { kind: 'save-failed', code: 'UNAVAILABLE' },
+      })
+    }
   }
 
   get userBusy(): boolean {
@@ -226,6 +255,7 @@ export class CharterDraft {
   }
 
   discard(): void {
+    this.asyncGeneration += 1
     this.update({
       ops: [],
       baseRevision: null,
@@ -364,8 +394,14 @@ export class CharterDraft {
       ops: [...this.state.ops],
     }
     this.update({ saving: true, feedback: null, attempt: { kind: 'edit', request } })
+    const generation = this.asyncGeneration
+    const requestOps = this.state.ops
+    const current = (): boolean => this.asyncGeneration === generation
+      && this.resolveSource() === source
+      && this.state.ops === requestOps
     try {
       const result = await source.edit(request)
+      if (!current()) return
       if (result.view !== undefined) source.accept(result.view)
       if (result.ok) {
         this.update({
@@ -385,6 +421,7 @@ export class CharterDraft {
         })
       }
     } catch (error) {
+      if (!current()) return
       console.error('charter: edit request failed', error)
       this.update({ saving: false, feedback: { kind: 'connection' } })
     }
@@ -539,8 +576,14 @@ export class CharterDraft {
       bootstrapProblem: null,
       attempt: { kind: 'bootstrap', request },
     })
+    const generation = this.asyncGeneration
+    const candidateGeneration = this.bootstrapGeneration
+    const current = (): boolean => this.asyncGeneration === generation
+      && this.bootstrapGeneration === candidateGeneration
+      && this.resolveSource() === source
     try {
       const result = await source.edit(request)
+      if (!current()) return
       if (result.view !== undefined) source.accept(result.view)
       if (result.ok) {
         this.update({
@@ -570,6 +613,7 @@ export class CharterDraft {
         })
       }
     } catch (error) {
+      if (!current()) return
       console.error('charter: bootstrap apply failed', error)
       this.update({ bootstrapSaving: false, bootstrapProblem: { kind: 'save-failed', code: 'UNAVAILABLE' } })
     }
@@ -577,6 +621,7 @@ export class CharterDraft {
 
   dispose(): void {
     this.bootstrapGeneration += 1
+    this.asyncGeneration += 1
     this.listeners.clear()
   }
 }
