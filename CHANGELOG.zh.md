@@ -39,7 +39,7 @@
 - 新浏览器 client 可以兼容仍在运行旧 Host 的 view snapshot（旧 Host 仍带 active 条数字段），避免 host/client
   revision 不一致时「会话契约」白屏；新的 pending 导入语义仍需要完整重启 Host 才生效。
 - 已针对 DSH `0.2.1-rc.2` 验证，无需代码改动；现有 peer range 和兼容层已覆盖该 release candidate。
-- 131 个测试，覆盖内核、Host 组合、fork、幂等、配额、prompt 边界、Remote stream、历史抽取、客户端 tab
+- 133 个测试，覆盖内核、Host 组合、fork、幂等、配额、prompt 边界、Remote stream、历史抽取、客户端 tab
   排序和装饰器兼容。已在 DSH `0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-rc.1`、`0.2.1-rc.2` 上验证。
   真实 Web UI 在 `0.2.0-rc.2` 上验证了标签顺序、中英文切换、目标/约束编辑、预览、Apply 和刷新持久化。
 
@@ -68,8 +68,9 @@
 
 - compaction checker 的所有成功条件都参与退出码：按 Host 的紧凑 standing 投影比较，system prompt 被污染或
   调用了 `charter_read` 但 standing 不匹配都会失败；摘要泄漏记为 warning；fixture 覆盖每种组合。
-- edit/bootstrap 的异步 Apply 结果按 draft generation、source 实例、lifecycle 和请求身份围栏：已销毁 source
-  的迟到结果不能清除或覆盖新草稿；source 失效时保留 mutation id，通过新 source 重试仍幂等。
+- edit/bootstrap 的异步 Apply 结果按 draft generation、source connection epoch、source 实例、lifecycle 和请求
+  身份围栏：已销毁 source 或 detach/reattach 周期的迟到结果不能清除或覆盖新草稿；source 失效时保留 mutation id，
+  通过新 source 重试仍幂等。
 - 最后一个 lease 释放后立即清理空 draft，并加 idle TTL 与 released-draft 上限；运行期损坏记录被就地修复后，
   下一次访问/初始化会重新解析并恢复，无需重启 Host；仍不合法的文档保持隔离且绝不被覆盖。
 - 在 service 和 `commitRecord()` 两层执行 actor 策略：拒绝 `host` 编辑；`user` 可普通编辑但不能 `item.purge`；
