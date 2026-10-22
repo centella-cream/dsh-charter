@@ -642,16 +642,15 @@ checker 已将这些字段归一到当前紧凑投影。要让 UI/tool ABI 与�
 - 真实模型实测：2026-10-22，运行于 Desktop/Web runtime DSH `0.2.0-rc.2`（`dsh` CLI `0.2.0-rc.2`）。这次
   运行发生在上述完整重启 Desktop **之前**；当时仍在运行的进程加载的是重启前的 Host bundle，因此
   `charter_read` 结果带有 legacy debug 字段。
-- 本文记录的源码 commit：`fe48f69c1fdaa15d85b4be456b7894a656755add`。该树通过 `npm run check`
-  （typecheck + build + 17 个测试文件 / 157 个测试）、`npm run smoke:package` 以及本地五版本矩阵
-  （每个版本 17 个文件 / 157 个测试）。
-- 由该源码 commit 构建的产物：`dsh-charter-0.1.0-rc.1.tgz`，SHA-256
-  `085e5a56f668991b2dc28caa5036299849ef8388e762bdbe085fa2c3062f2dbf`。
-- tag `v0.1.0-rc.1` 指向添加本段证据的 docs-only commit。由于本记录本身会被打进 tarball，从 tagged tree
-  重新构建的产物 digest 会不同；随发布产物的 digest 固定在 `dist/SHA256SUMS`（不进 git，随 GitHub release
-  附加）。
+- 本次收敛记录的通过门禁源码 commit：`2210bf95ef1cc281c6737a2f79a59e01a8ec7072`。该树通过
+  `npm run check`（typecheck + build + 17 个测试文件 / 157 个测试）、`npm run smoke:package` 以及本地
+  五版本矩阵（每个版本 17 个文件 / 157 个测试）。
+- 随发布产物的 digest：仓库根部 tracked 的 `SHA256SUMS`（由 release commit 添加，该 commit 仅在本记录之上
+  添加此文件）固定从 tagged tree 构建的 `dsh-charter-0.1.0-rc.1.tgz` digest；`dist/SHA256SUMS` 携带相同值。
+  annotated tag message 记录 release commit 和随发布 digest，`git rev-parse v0.1.0-rc.1^{commit}` 可解析
+  release commit。
 - 剩余手工检查：重启 Desktop 后重新打开会话契约 tab 一次，确认当前 bundle/tool ABI——这次重启后复核**不在**
-  上述实测记录中。
+  上述实测记录中，且只在发布稳定 `latest` 前必需，不影响以 `next` 发布本预发布。
 
 ## 9. 未支持的验证项
 
