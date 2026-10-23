@@ -37,7 +37,9 @@ export function compactStandingItem(item) {
  * @returns {string | undefined}
  */
 export function charterReadArgumentsView(rawArguments) {
-  if (rawArguments === undefined || rawArguments === null || rawArguments === '') return undefined
+  // Only truly missing arguments mean "default". null, arrays, primitives,
+  // {"view":42}, {"view":null} and parse failures are malformed, not default.
+  if (rawArguments === undefined) return undefined
   let parsed = rawArguments
   if (typeof parsed === 'string') {
     try {
@@ -46,9 +48,10 @@ export function charterReadArgumentsView(rawArguments) {
       return 'invalid-arguments'
     }
   }
-  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return undefined
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return 'invalid-arguments'
   const view = parsed.view
-  return typeof view === 'string' ? view : undefined
+  if (view === undefined) return undefined
+  return typeof view === 'string' ? view : 'invalid-arguments'
 }
 
 /**
@@ -154,51 +157,75 @@ export function sha256Text(value) {
 }
 
 /**
- * A compaction lifecycle is only evidence when the same id has a start, a
- * summary, and an end without an error. A failed end is recorded for display
- * but never selected as the latest successful compaction.
+ * Compaction evidence requires a single seq-ordered attempt state machine:
+ * a start opens an attempt, a summary only attaches to the current open
+ * attempt, and an end closes only the current attempt when the id matches.
+ * An attempt is successful only when start.seq < summary.seq < end.seq, all
+ * three share the compactionId, and the end carries no error. Same-id retries
+ * are independent attempts; end-before-start / out-of-order events can never
+ * produce a successful compaction.
  */
 export function readCompactionLifecycles(events) {
   const ordered = [...events].sort((left, right) => left.seq - right.seq)
-  const starts = new Map()
-  const summaries = new Map()
-  const ends = []
+  const attempts = []
+  let open
+  const close = (attempt, end) => {
+    attempt.endSeq = end.seq
+    attempt.endTime = end.time
+    const error = end.data?.error ?? end.data?.failure
+    attempt.error = error === undefined ? undefined : String(error)
+    const badEnd = error !== undefined || end.data?.ok === false || end.data?.failed === true
+    attempt.ok = attempt.startSeq !== undefined
+      && attempt.summarySeq !== undefined
+      && attempt.startSeq < attempt.summarySeq
+      && attempt.summarySeq < attempt.endSeq
+      && !badEnd
+  }
   for (const event of ordered) {
     const id = event.data?.compactionId
     if (typeof id !== 'string') continue
-    if (event.type === 'compaction/start') starts.set(id, event)
-    else if (event.type === 'compaction/summary') summaries.set(id, event)
-    else if (event.type === 'compaction/end') ends.push(event)
-  }
-  const compactions = ends.map(end => {
-    const id = end.data.compactionId
-    const start = starts.get(id)
-    const summary = summaries.get(id)
-    const error = end.data?.error ?? end.data?.failure
-    const ok = start !== undefined && summary !== undefined && error === undefined
-      && end.data?.ok !== false && end.data?.failed !== true
-    return {
-      id,
-      sortSeq: start?.seq ?? end.seq,
-      startSeq: start?.seq,
-      startTime: start?.time,
-      summarySeq: summary?.seq,
-      endSeq: end.seq,
-      endTime: end.time,
-      sourceCommandId: start?.data?.sourceCommandId ?? end.data?.sourceCommandId,
-      ok,
-      error: error === undefined ? undefined : String(error),
+    if (event.type === 'compaction/start') {
+      open = {
+        id,
+        sortSeq: event.seq,
+        startSeq: event.seq,
+        startTime: event.time,
+        summarySeq: undefined,
+        endSeq: undefined,
+        endTime: undefined,
+        sourceCommandId: event.data?.sourceCommandId,
+        error: undefined,
+        ok: false,
+      }
+      attempts.push(open)
+      continue
     }
-  })
-  const successful = compactions.filter(compaction => compaction.ok)
-  return { compactions, successful, latestSuccessful: successful.at(-1) }
+    if (event.type === 'compaction/summary') {
+      // Only the current open attempt may take a summary. A stray summary for
+      // an older/other id never rewrites history.
+      if (open !== undefined && open.id === id && open.summarySeq === undefined) {
+        open.summarySeq = event.seq
+        open.sortSeq = open.sortSeq
+      }
+      continue
+    }
+    if (event.type === 'compaction/end' && open !== undefined && open.id === id) {
+      close(open, event)
+      open = undefined
+    }
+    // An end without a matching open attempt is ignored: it cannot close a
+    // future attempt, so end-before-start can never become PASS evidence.
+  }
+  const successful = attempts.filter(attempt => attempt.ok)
+  return { compactions: attempts, successful, latestSuccessful: successful.at(-1) }
 }
 
 /**
- * Pair every `tool/result` with the `tool/call` that produced it. Modern
- * transcripts expose top-level `sourceEventSeqs`; legacy transcripts fall back
- * to (turn, step, callId) plus event order — never to the last same callId
- * globally, which breaks when an id repeats across turns.
+ * Pair every `tool/result` with the `tool/call` that produced it. A modern
+ * result must authenticate exactly one producing call through top-level
+ * `sourceEventSeqs`; a legacy result (no such field) falls back to
+ * (turn, step, callId) plus event order. Failed authentications stay in the
+ * returned results for diagnostics but carry `authenticated: false`.
  */
 export function resolveCharterReadCalls(events) {
   const ordered = [...events].sort((left, right) => left.seq - right.seq)
@@ -225,14 +252,35 @@ export function resolveCharterReadCalls(events) {
         : undefined
     let call
     let resolution
+    let authError
     if (sourceEventSeqs !== undefined) {
-      const matches = sourceEventSeqs
-        .map(seq => bySeq.get(seq))
-        .filter(candidate => candidate?.name === 'charter_read')
-      call = matches.length === 1 ? matches[0] : undefined
-      resolution = matches.length === 1
-        ? 'sourceEventSeqs'
-        : matches.length === 0 ? 'sourceEventSeqs-no-charter-read' : 'sourceEventSeqs-ambiguous'
+      const validSeqs = sourceEventSeqs.length > 0
+        && sourceEventSeqs.every(seq => Number.isInteger(seq) && Number.isFinite(seq) && seq < event.seq)
+      const referenced = sourceEventSeqs.map(seq => bySeq.get(seq))
+      const rejectedOther = referenced.some(candidate => candidate !== undefined
+        && candidate.name !== 'charter_read')
+      const charterCalls = referenced.filter(candidate => candidate?.name === 'charter_read')
+      const uniqueCharterCalls = [...new Set(charterCalls)]
+      if (!validSeqs) {
+        authError = 'invalid-source-seqs'
+      } else if (referenced.some(candidate => candidate === undefined)) {
+        authError = 'source-seqs-missing-call'
+      } else if (rejectedOther) {
+        authError = 'source-seqs-reference-other-tool'
+      } else if (uniqueCharterCalls.length !== 1) {
+        authError = uniqueCharterCalls.length === 0 ? 'source-seqs-no-charter-read' : 'source-seqs-ambiguous'
+      } else if (message.toolCallId !== undefined && message.toolCallId !== uniqueCharterCalls[0].callId) {
+        authError = 'tool-call-id-mismatch'
+      } else if (uniqueCharterCalls[0].turn !== undefined && data.turn !== undefined
+        && uniqueCharterCalls[0].turn !== data.turn) {
+        authError = 'turn-mismatch'
+      } else if (uniqueCharterCalls[0].step !== undefined && data.step !== undefined
+        && uniqueCharterCalls[0].step !== data.step) {
+        authError = 'step-mismatch'
+      } else {
+        call = uniqueCharterCalls[0]
+        resolution = 'sourceEventSeqs'
+      }
     } else {
       const callId = message.toolCallId ?? data.toolCallId
       const turn = data.turn
@@ -242,38 +290,87 @@ export function resolveCharterReadCalls(events) {
         && (turn === undefined || candidate.turn === undefined || candidate.turn === turn)
         && (step === undefined || candidate.step === undefined || candidate.step === step)
       call = calls.filter(sameIdentity).at(-1)
+      if (call?.name !== 'charter_read') call = undefined
       resolution = call === undefined
         ? 'callId-no-charter-read'
         : call.turn === turn && call.step === step ? 'callId-turn-step' : 'callId-seq'
+      if (call === undefined) authError = 'no-producing-call'
     }
-    if (call?.name !== 'charter_read') continue
+    if (call === undefined && authError === undefined) continue
     const base = {
       seq: event.seq,
-      callSeq: call.seq,
-      callId: call.callId,
+      callSeq: call?.seq,
+      callId: call?.callId,
       resolution,
-      argumentsView: charterReadArgumentsView(call.arguments),
+      authenticated: authError === undefined,
+      ...(authError === undefined ? {} : { authError }),
+      argumentsView: call === undefined ? undefined : charterReadArgumentsView(call.arguments),
       isError: message.isError === true,
     }
     const text = messageText(message.content)
+    let view
     try {
-      const view = JSON.parse(text)
-      if (view === null || typeof view !== 'object' || !Array.isArray(view.items)) {
-        results.push({ ...base, invalid: true })
-      } else {
-        results.push({
-          ...base,
-          invalid: false,
-          revision: view.revision,
-          objective: view.objective,
-          items: view.items,
-        })
-      }
+      view = JSON.parse(text)
     } catch {
       results.push({ ...base, invalid: true })
+      continue
     }
+    if (view === null || typeof view !== 'object' || !Array.isArray(view.items)) {
+      results.push({ ...base, invalid: true })
+      continue
+    }
+    results.push({
+      ...base,
+      invalid: false,
+      revision: view.revision,
+      objective: view.objective,
+      items: view.items,
+    })
   }
   return { calls, results }
+}
+
+/**
+ * Parse a JSONL transcript without silently skipping corruption. Only the last
+ * non-empty line may be torn, and only when the source does not end with a
+ * complete newline (an append was interrupted). Any malformed middle line or a
+ * malformed complete final line is a hard error with its line number, so the
+ * checker can never PASS on a transcript whose dropped lines might hide the
+ * evidence it is looking for.
+ */
+export function parseTranscript(source) {
+  const lines = source.split('\n')
+  const events = []
+  const errors = []
+  let finalNonEmpty = -1
+  for (let index = 0; index < lines.length; index += 1) {
+    if (lines[index].trim() !== '') finalNonEmpty = index
+  }
+  const endsWithNewline = source.endsWith('\n')
+  let tornTailLine
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index]
+    if (line.trim() === '') continue
+    try {
+      events.push(JSON.parse(line))
+    } catch (error) {
+      const tornAllowed = index === finalNonEmpty && !endsWithNewline
+      if (tornAllowed) {
+        tornTailLine = index + 1
+        continue
+      }
+      errors.push({
+        line: index + 1,
+        message: error instanceof Error ? error.message : String(error),
+      })
+    }
+  }
+  return {
+    events,
+    errors,
+    tornTailLine,
+    complete: errors.length === 0,
+  }
 }
 
 function countedRequestActivity(events, seq) {
@@ -339,10 +436,14 @@ export function evaluateCompactionTranscript({ events, current, marker, promptPr
       compactionId: event.data.source.compactionId,
       text: messageText(event.data.content),
     }))
+  // Associate the checkpoint by compactionId. A positional fallback is only
+  // for legacy transcripts whose checkpoint carries no id at all; a checkpoint
+  // explicitly belonging to another (e.g. failed) compaction is never used.
   const latestCheckpoint = latestCompaction === undefined
-    ? checkpoints.at(-1)
+    ? [...checkpoints].reverse().find(checkpoint => checkpoint.compactionId === undefined)
     : checkpoints.filter(checkpoint => checkpoint.compactionId === latestCompaction.id).at(-1)
-    ?? [...checkpoints].reverse().find(checkpoint => checkpoint.seq > latestCompaction.endSeq)
+      ?? [...checkpoints].reverse().find(checkpoint => checkpoint.compactionId === undefined
+        && checkpoint.seq > latestCompaction.endSeq)
   const checkpointLeaksCharter = latestCheckpoint !== undefined && charterReady
     && (latestCheckpoint.text.includes(promptText)
       || (marker !== undefined && latestCheckpoint.text.includes(marker)))
@@ -363,14 +464,15 @@ export function evaluateCompactionTranscript({ events, current, marker, promptPr
   const postCompactionCalls = latestCompaction === undefined
     ? charterReadCalls
     : charterReadCalls.filter(call => call.seq > latestCompaction.endSeq)
-  const authenticatedReads = charterReadResults.filter(result => isValidCharterReadEvidence({
+  const authenticatedReads = charterReadResults.filter(result => result.authenticated === true
+    && isValidCharterReadEvidence({
     callSeq: result.callSeq,
     resultSeq: result.seq,
     compactionSeq: latestCompaction?.endSeq,
     runtimeSeq: latestRuntimeSeq,
-    argumentsView: result.argumentsView,
-    isError: result.isError,
-  }))
+      argumentsView: result.argumentsView,
+      isError: result.isError,
+    }))
   const matchedReads = charterReady
     ? authenticatedReads.filter(result =>
         result.invalid === false
@@ -420,6 +522,9 @@ export function evaluateCompactionTranscript({ events, current, marker, promptPr
   const activity = latestCompaction === undefined
     ? []
     : countedRequestActivity(order, latestCompaction.endSeq)
+  // No post-compaction request activity at all means there is nothing to judge
+  // yet: WAIT. Only an executed request without a runtime snapshot is FAIL.
+  const noPostCompactionActivity = latestCompaction !== undefined && activity.length === 0
   const postCompactionExecutionWithoutSnapshot = latestCompaction !== undefined
     && activity.length > 0
     && latestRuntime === undefined
@@ -453,6 +558,7 @@ export function evaluateCompactionTranscript({ events, current, marker, promptPr
     markerPresent: marker === undefined ? undefined : promptText.includes(marker),
     charterReadStanding,
     systemPromptClean,
+    noPostCompactionActivity,
     postCompactionExecutionWithoutSnapshot,
   }
 
@@ -472,29 +578,35 @@ export function evaluateCompactionTranscript({ events, current, marker, promptPr
             label: 'charter survives compaction',
             detail: 'the current charter was not committed before the latest successful compaction started; run /compact again',
           }
-        : postCompactionExecutionWithoutSnapshot
+        : noPostCompactionActivity
           ? {
-              state: 'FAIL',
+              state: 'WAIT',
               label: 'charter survives compaction',
-              detail: 'a request executed after the compaction without a runtime-context snapshot',
+              detail: 'no post-compaction request activity yet; send a message',
             }
-          : injectedAfterCompaction !== true
+          : postCompactionExecutionWithoutSnapshot
             ? {
-                state: 'WAIT',
+                state: 'FAIL',
                 label: 'charter survives compaction',
-                detail: 'no post-compaction runtime-context snapshot yet; send a message',
+                detail: 'a request executed after the compaction without a runtime-context snapshot',
               }
-            : survivesCompaction
+            : injectedAfterCompaction !== true
               ? {
-                  state: 'PASS',
+                  state: 'WAIT',
                   label: 'charter survives compaction',
-                  detail: `snapshot seq ${latestRuntime.seq} > compaction end seq ${latestCompaction.endSeq}`,
+                  detail: 'no post-compaction runtime-context snapshot yet; send a message',
                 }
-              : {
-                  state: 'FAIL',
-                  label: 'charter survives compaction',
-                  detail: 'post-compaction runtime context is missing the authoritative charter',
-                }
+              : survivesCompaction
+                ? {
+                    state: 'PASS',
+                    label: 'charter survives compaction',
+                    detail: `snapshot seq ${latestRuntime.seq} > compaction end seq ${latestCompaction.endSeq}`,
+                  }
+                : {
+                    state: 'FAIL',
+                    label: 'charter survives compaction',
+                    detail: 'post-compaction runtime context is missing the authoritative charter',
+                  }
     verdictLines.push(one)
     verdict(injected, 'latest runtime context carries charter:standing',
       injected ? undefined : 'send a message, then run this check again')
@@ -533,6 +645,9 @@ export function evaluateCompactionTranscript({ events, current, marker, promptPr
   } else if (charterPredatesCompaction !== true) {
     status = 'wait'
     statusReason = 'the charter was not committed before the latest successful compaction started; run /compact again'
+  } else if (noPostCompactionActivity) {
+    status = 'wait'
+    statusReason = 'no post-compaction request activity yet; send a message after the compaction'
   } else if (verification.ok) {
     status = 'pass'
     statusReason = 'the real compaction kept the charter in the next request and all evidence checks passed'
@@ -598,6 +713,7 @@ export function evaluateCompactionTranscript({ events, current, marker, promptPr
     systemPromptClean,
     charterReadCalled,
     postCompactionActivity: activity.length,
+    noPostCompactionActivity,
     postCompactionExecutionWithoutSnapshot,
     verdicts,
     verification,

@@ -238,10 +238,11 @@ Web 进程可以只读显示另一个进程中 live 的 Session 的已存会话�
 | 插件更新后会话契约面板白屏 | 浏览器 bundle 与 Host bundle 来自不同 revision（尤其手动安装 profile 后） | 完全重启 `dsh web` / DeepSeek Harness，让新 Host 加载；只刷新浏览器可能不会重启 Host |
 | `unavailable` + lifecycle mismatch | 同 id 的 Session 换了 lifecycle | 不读取旧记录；新 Session 使用新记录 |
 | 面板提示 Session 不在当前 Host / 只读 | 该 Session 属于另一个 DSH 进程（例如 Desktop），尚未在 Web 进程加载 | 在 Web 中新建会话或发送消息使其变为 live；标签页会自动升级为可编辑 |
-| `unavailable` + schema-invalid record | 存储中出现未知字段、错误版本/结构或截断 JSON | 非法期间不注入；修复原始文档后，下一次 view/初始化会重新解析并恢复，无需重启 Host；仍不合法的文档保持隔离且不被覆盖 |
+| `unavailable` + 内部 schema/一致性不合法记录 | 外层 wrapper 可读，但内部 record 出现未知字段、错误结构，或派生 digest/history/state 不一致 | 非法期间不注入；内部记录不合法时保持隔离，原始字节保留（本插件不会覆盖它）。修复后下一次 view/初始化会重新解析并恢复，无需重启 Host |
+| 外层记录错误后 `unavailable` 或静默为空 | 存储文件本身 malformed/截断，或外层 version stamp 被拒绝（JSON backend 完全无法读取 wrapper） | **已知覆盖风险，本插件无法修复**：backend 会把该文件当作不存在，之后初始化可能用新记录覆盖它。立即停止 Host，备份 `storages/dsh_charter_v1/sessions/<id>.json`，从备份修复后再重启；不要继续运行让插件初始化该 Session |
 | `unavailable` + semantic corruption | schema 合法但记录内部的派生 digest/history/state 不一致 | 重新解析无法修复。检查 storage 并人工修复记录；若内存中的 Session 仍持有坏 revision，需重启 Host；修复前不注入 |
 | `unavailable` + lifecycle mismatch | 同一 Session id 的 `createdAt`/`cwd`/父 Session 身份不同 | 这不是数据损坏，也不应被覆盖；旧记录不会被读取，新 lifecycle 使用自己的记录 |
-|应用 返回 `REVISION_CONFLICT` | 期间有别的提交 | 草稿保留；使用**将草稿应用到修订 N**把同一批 ops 重新指向最新 revision。未知结果的重试保留 mutation id，不会重复创建条目 |
+|应用 返回 `REVISION_CONFLICT` | 期间有别的提交 | 草稿保留。先关闭打开的编辑器——编辑器打开期间**将草稿应用到修订 N** 操作会隐藏，因为编辑器保留你审阅时的 revision；之后再把这批 ops 指向最新 revision。已审阅的历史草案不做 rebase：它会变为 stale，需要在新 revision 上重新提取。未知结果的重试保留 mutation id，不会重复创建条目 |
 |应用 返回 `QUOTA_EXCEEDED` | 超过 prompt、单条或存储/单批上限 | 检查高亮字段；减少候选或调高对应上限。active 条数没有单独上限 |
 | `charter_read` 返回 `UNAVAILABLE` | 插件存储未就绪或记录不可用 | 会话仍可正常使用；修复后重试 |
 | 会话头部没有「会话契约」 | 客户端 bundle 未加载/未注入，或当前是空白 Session | 检查 `dsh --profile web --dump-config` 中是否有 `charter` 行；先发送一条消息开始会话；刷新页面 |

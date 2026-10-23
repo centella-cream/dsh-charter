@@ -126,8 +126,10 @@ keys, profile data, or local screenshots containing private content.
 - Verify the README install command against the published artifact.
 - Remember the recorded residual risk (verification §4.5): an **unreadable outer JSON** charter record is treated
   as absent by the JSON storage backend and cannot be distinguished from a missing record through the plugin-side
-  API. Do not claim "corrupt data is always preserved" — that guarantee covers only an inner schema-invalid
-  record. Before a tag, re-read the immutable docs and keep this limitation stated there.
+  API. Do not claim "corrupt data is always preserved": the guarantee splits into an inner schema/consistency
+  invalid record (isolated and preserved by the plugin) versus an unreadable/malformed outer JSON document or
+  rejected outer version (known overwrite risk — stop the Host and restore from a backup). Before a tag, re-read
+  the immutable docs and keep this limitation stated there.
 - Update the compatibility matrix if a new DSH release was tested.
 - Leave `docs/archive/` untracked; it contains local historical design material only and is outside the npm
   `files` whitelist, so GitHub and npm stay consistent.

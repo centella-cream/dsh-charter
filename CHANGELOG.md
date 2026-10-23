@@ -49,7 +49,7 @@ Initial MVP.
   restart is still required for the new pending-import semantics.
 - Verified against DSH `0.2.1-rc.2` with no code changes required; the existing peer range and compatibility layer
   cover the release candidate.
-- 187 tests across core, host composition, fork, idempotency, quota, prompt boundary, Remote stream, history
+- 210 tests across core, host composition, fork, idempotency, quota, prompt boundary, Remote stream, history
   extraction, client reordering, compatibility, and decorator compatibility. Verified on DSH `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`,
   `0.2.1-rc.1`, and `0.2.1-rc.2`. The actual Web UI was exercised on `0.2.0-rc.2`: tab order, Chinese/English
   switching, objective and invariant editing, preview, Apply, and reload persistence.
@@ -266,4 +266,28 @@ Initial MVP.
   duplicate call ids by turn/step plus event order.
 - Narrow the stored-record preservation guarantee honestly: it covers an inner schema/consistency-invalid record;
   an unreadable outer JSON document is treated as absent by the JSON storage backend and remains a documented
-  residual risk (no plugin-side read-error API, no path-specific workaround).
+  residual risk (no plugin-side read-error API, no path-specific workaround). The user guide, design acceptance
+  clause, verification record, and release checklist now split the two cases and give the outer-unreadable
+  recovery (stop the Host, restore the file from a backup).
+- Advance the connection epoch on a terminal snapshot-stream failure before publishing the error, so in-flight
+  draft requests are invalidated while staged ops and the mutation id survive; a late Apply success can no longer
+  be accepted and Retry reuses the mutation id.
+- Refuse Rebase while an editor or a reviewed history draft owns another baseline: the Pane hides its Rebase
+  action through the same `rebaseAvailable` predicate and the store refuses the call, so an explicit conflict
+  entry cannot silently retarget the reviewed revision.
+- Capture `bootstrapBaseRevision` when a history draft is accepted; Apply sends that revision and admission
+  requires the live view to still match it with an empty charter, otherwise the draft becomes stale and must be
+  re-extracted rather than silently applied to a newer revision.
+- Preflight every staged edit batch through one shared `draftAdmission` (maxOps, projected maxItems, projected
+  maxPendingItems with the Host stepwise rule, and prompt-budget growth/shrink): the Pane Apply button and
+  `applyDraft` agree, and an inadmissible batch never reaches the Remote.
+- Render the single sorted projected list for working rows instead of active-then-pending groups, so a pending
+  order-1 row stays above an active order-2 row and accepting it does not reorder the list.
+- Treat the first lifecycle fingerprint reported after an older Host as a lifecycle transition only for an empty
+  draft; dirty work is reset (section preserved) instead of being claimed into the new lifecycle.
+- Tighten the compaction checker: strict seq-ordered start→summary→end attempt state machine (no out-of-order or
+  duplicate-id PASS), modern `charter_read` producing-call authentication (source seqs must identify exactly one
+  earlier charter_read call matching toolCallId/turn/step), strict argument parsing (only missing/plain
+  object/`standing`), WAIT exit 3 when no post-compaction activity exists (FAIL only for execution without a
+  runtime snapshot), checkpoint association only by compactionId with an id-less-only fallback, and a transcript
+  parser that rejects middle corruption with its line number instead of skipping lines.

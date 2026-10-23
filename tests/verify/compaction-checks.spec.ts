@@ -6,6 +6,8 @@ import {
   evaluateCompactionTranscript,
   isValidCharterReadEvidence,
   postCompactionCharterReads,
+  readCompactionLifecycles,
+  resolveCharterReadCalls,
   sha256Text,
 } from '../../scripts/verify/compaction-checks.mjs'
 
@@ -297,14 +299,21 @@ describe('authenticated charter_read evidence', () => {
     expect(isValidCharterReadEvidence({ ...base, callSeq: 130 })).toBe(true)
   })
 
-  it('parses the requested view from call arguments', () => {
+  it('parses the requested view strictly; only missing/plain objects are default', () => {
     expect(charterReadArgumentsView(undefined)).toBeUndefined()
-    expect(charterReadArgumentsView('')).toBeUndefined()
     expect(charterReadArgumentsView({})).toBeUndefined()
+    expect(charterReadArgumentsView('{}')).toBeUndefined()
+    expect(charterReadArgumentsView({ other: 1 })).toBeUndefined()
     expect(charterReadArgumentsView('{"view":"standing"}')).toBe('standing')
     expect(charterReadArgumentsView({ view: 'standing' })).toBe('standing')
     expect(charterReadArgumentsView('{"view":"all"}')).toBe('all')
-    expect(charterReadArgumentsView('not-json')).toBe('invalid-arguments')
+    // Malformed shapes are rejected, never treated as the default view.
+    for (const invalid of ['', 'not-json', 'null', '[]', '42', 'true', '{"view":42}', '{"view":null}']) {
+      expect(charterReadArgumentsView(invalid)).toBe('invalid-arguments')
+    }
+    for (const invalid of [null, [], 42, true, false]) {
+      expect(charterReadArgumentsView(invalid as never)).toBe('invalid-arguments')
+    }
   })
 })
 
@@ -385,5 +394,245 @@ describe('compaction checker success criteria', () => {
       verification: 'unchecked',
       progress: null,
     })
+  })
+})
+
+describe('strict compaction lifecycle state machine', () => {
+  function attempt(id: string, baseSeq: number, options: { readonly error?: string } = {}): TestEvent[] {
+    const loop = compactionLifecycle(id, baseSeq, baseSeq * 10)
+    if (options.error === undefined) return loop
+    const end = loop.at(-1)!
+    return [
+      ...loop.slice(0, -1),
+      { ...end, data: { ...end.data, error: options.error } },
+    ]
+  }
+
+  it('never treats an end before its start as evidence', () => {
+    const events: TestEvent[] = [
+      { type: 'compaction/end', seq: 1, time: 1, data: { compactionId: 'out-of-order' } },
+      { type: 'compaction/start', seq: 2, time: 2, data: { compactionId: 'out-of-order' } },
+      { type: 'compaction/summary', seq: 3, time: 3, data: { compactionId: 'out-of-order' } },
+    ]
+    const report = evaluate(events)
+    expect(report.latestCompaction).toBeNull()
+    expect(report.status).toBe('wait')
+    expect(report.exitCode).toBe(3)
+  })
+
+  it('ignores a summary that appears before the start opens its attempt', () => {
+    const events: TestEvent[] = [
+      { type: 'compaction/summary', seq: 1, time: 1, data: { compactionId: 'before-start' } },
+      { type: 'compaction/start', seq: 2, time: 2, data: { compactionId: 'before-start' } },
+      { type: 'compaction/end', seq: 3, time: 3, data: { compactionId: 'before-start' } },
+    ]
+    const lifecycles = readCompactionLifecycles(events)
+    expect(lifecycles.successful).toHaveLength(0)
+    expect(evaluate(events).status).toBe('wait')
+  })
+
+  it('treats a same-id retry as an independent attempt and ignores the failed one', () => {
+    const events = [
+      ...attempt('retry', 10, { error: 'summary generation failed' }),
+      ...attempt('retry', 20),
+    ]
+    const lifecycles = readCompactionLifecycles(events)
+    expect(lifecycles.successful).toHaveLength(1)
+    expect(lifecycles.successful[0]).toMatchObject({ id: 'retry', startSeq: 20, endSeq: 23 })
+    const report = evaluate(events)
+    expect(report.latestCompaction).toMatchObject({ id: 'retry', startSeq: 20, endSeq: 23 })
+    expect(report.compactions.filter(compaction => compaction.id === 'retry')).toHaveLength(2)
+  })
+
+  it('keeps a valid sequence successful', () => {
+    const lifecycles = readCompactionLifecycles(compactionLifecycle('valid', 10, 1_000))
+    expect(lifecycles.successful).toHaveLength(1)
+    expect(lifecycles.successful[0]).toMatchObject({ startSeq: 10, summarySeq: 11, endSeq: 13, ok: true })
+  })
+})
+
+describe('modern charter_read producing-call authentication', () => {
+  function modernFixture(options: {
+    readonly calls: TestEvent[]
+    readonly result: TestEvent
+  }): { events: TestEvent[]; resultSeq: number } {
+    return {
+      events: [
+        ...compactionLifecycle('auth-compaction', 10, 1_000),
+        runtimeSnapshot(14),
+        ...options.calls,
+        options.result,
+      ],
+      resultSeq: options.result.seq,
+    }
+  }
+
+  function resultFor(events: TestEvent[], seq: number) {
+    return resolveCharterReadCalls(events).results.find(result => result.seq === seq)
+  }
+
+  it('accepts exactly one matching producing call', () => {
+    const fixture = modernFixture({
+      calls: [charterReadCall(15, 4, 'call-auth')],
+      result: charterReadResult(16, 4, 'call-auth', { sourceEventSeqs: [15] }),
+    })
+    expect(resultFor(fixture.events, fixture.resultSeq)).toMatchObject({
+      authenticated: true,
+      resolution: 'sourceEventSeqs',
+      callSeq: 15,
+    })
+    expect(evaluate(fixture.events).status).toBe('pass')
+  })
+
+  it('rejects source seqs that reference another tool call', () => {
+    const bashCall: TestEvent = {
+      type: 'tool/call',
+      seq: 16,
+      time: 3_016,
+      data: { turn: 4, step: 1, callId: 'call-bash', name: 'bash', arguments: '{}' },
+    }
+    const fixture = modernFixture({
+      calls: [charterReadCall(15, 4, 'call-auth'), bashCall],
+      result: charterReadResult(17, 4, 'call-auth', { sourceEventSeqs: [15, 16] }),
+    })
+    expect(resultFor(fixture.events, fixture.resultSeq)).toMatchObject({
+      authenticated: false,
+      authError: 'source-seqs-reference-other-tool',
+    })
+    expect(evaluate(fixture.events).status).toBe('fail')
+  })
+
+  it('rejects a toolCallId / turn / step mismatch with the producing call', () => {
+    const mismatchedId = modernFixture({
+      calls: [charterReadCall(15, 4, 'call-auth')],
+      result: charterReadResult(16, 4, 'call-other', { sourceEventSeqs: [15] }),
+    })
+    expect(resultFor(mismatchedId.events, mismatchedId.resultSeq)).toMatchObject({
+      authenticated: false,
+      authError: 'tool-call-id-mismatch',
+    })
+    const mismatchedTurn = modernFixture({
+      calls: [charterReadCall(15, 4, 'call-auth')],
+      result: charterReadResult(16, 5, 'call-auth', { sourceEventSeqs: [15] }),
+    })
+    expect(resultFor(mismatchedTurn.events, mismatchedTurn.resultSeq)).toMatchObject({
+      authenticated: false,
+      authError: 'turn-mismatch',
+    })
+    const callWithStep: TestEvent = {
+      type: 'tool/call',
+      seq: 15,
+      time: 3_015,
+      data: { turn: 4, step: 2, callId: 'call-auth', name: 'charter_read', arguments: '{}' },
+    }
+    const mismatchedStep = modernFixture({
+      calls: [callWithStep],
+      result: charterReadResult(16, 4, 'call-auth', { sourceEventSeqs: [15] }),
+    })
+    expect(resultFor(mismatchedStep.events, mismatchedStep.resultSeq)).toMatchObject({
+      authenticated: false,
+      authError: 'step-mismatch',
+    })
+  })
+
+  it('rejects source seqs that are not finite integers earlier than the result', () => {
+    const fixture = modernFixture({
+      calls: [charterReadCall(15, 4, 'call-auth'), charterReadCall(18, 4, 'call-late')],
+      result: charterReadResult(17, 4, 'call-auth', { sourceEventSeqs: [18] }),
+    })
+    expect(resultFor(fixture.events, fixture.resultSeq)).toMatchObject({
+      authenticated: false,
+      authError: 'invalid-source-seqs',
+    })
+    const nonInteger = modernFixture({
+      calls: [charterReadCall(15, 4, 'call-auth')],
+      result: charterReadResult(16, 4, 'call-auth', { sourceEventSeqs: [15.5] }),
+    })
+    expect(resultFor(nonInteger.events, nonInteger.resultSeq)).toMatchObject({
+      authenticated: false,
+      authError: 'invalid-source-seqs',
+    })
+  })
+
+  it('rejects ambiguous or non-charter_read producing calls', () => {
+    const ambiguous = modernFixture({
+      calls: [charterReadCall(15, 4, 'call-a'), charterReadCall(16, 4, 'call-b')],
+      result: charterReadResult(17, 4, 'call-a', { sourceEventSeqs: [15, 16] }),
+    })
+    expect(resultFor(ambiguous.events, ambiguous.resultSeq)).toMatchObject({
+      authenticated: false,
+      authError: 'source-seqs-ambiguous',
+    })
+    const bashCall: TestEvent = {
+      type: 'tool/call',
+      seq: 15,
+      time: 3_015,
+      data: { turn: 4, step: 1, callId: 'call-bash', name: 'bash', arguments: '{}' },
+    }
+    const noCharter = modernFixture({
+      calls: [bashCall],
+      result: charterReadResult(16, 4, 'call-bash', { sourceEventSeqs: [15] }),
+    })
+    expect(resultFor(noCharter.events, noCharter.resultSeq)).toMatchObject({
+      authenticated: false,
+      authError: 'source-seqs-reference-other-tool',
+    })
+  })
+})
+
+describe('post-compaction activity gating', () => {
+  it('returns WAIT (exit 3) when no request activity followed the compaction', () => {
+    const report = evaluate(compactionLifecycle('idle-compaction', 10, 1_000))
+    expect(report.verdicts.noPostCompactionActivity).toBe(true)
+    expect(report.verdicts.postCompactionExecutionWithoutSnapshot).toBe(false)
+    expect(report.status).toBe('wait')
+    expect(report.exitCode).toBe(3)
+    expect(report.verdictLines.find(line => line.label === 'charter survives compaction'))
+      .toMatchObject({ state: 'WAIT' })
+    expect(JSON.parse(JSON.stringify(report))).toMatchObject({ status: 'wait', exitCode: 3 })
+  })
+})
+
+describe('checkpoint association by compactionId', () => {
+  it('never associates a checkpoint belonging to another compactionId', () => {
+    const events = [
+      ...evidenceFixture(),
+      {
+        type: 'user/message',
+        seq: 20,
+        time: 5_020,
+        data: {
+          source: { kind: 'compact-checkpoint', compactionId: 'some-other-compaction' },
+          content: [{ type: 'text', text: `other summary that leaks: ${PROMPT}` }],
+        },
+      },
+    ]
+    const report = evaluate(events)
+    expect(report.verdicts.checkpointLeaksCharter).toBe(false)
+    expect(report.verification.warnings).toEqual([])
+    expect(report.checkpoints.some(checkpoint => checkpoint.leaksCharter)).toBe(false)
+  })
+
+  it('allows a positional fallback only for an id-less legacy checkpoint', () => {
+    const events: TestEvent[] = [
+      { type: 'compaction/start', seq: 10, time: 1_000, data: { compactionId: 'legacy-compaction' } },
+      { type: 'compaction/summary', seq: 11, time: 1_001, data: { compactionId: 'legacy-compaction' } },
+      { type: 'compaction/end', seq: 12, time: 1_002, data: { compactionId: 'legacy-compaction' } },
+      {
+        type: 'user/message',
+        seq: 13,
+        time: 1_003,
+        data: {
+          source: { kind: 'compact-checkpoint' },
+          content: [{ type: 'text', text: `id-less summary that leaks: ${PROMPT}` }],
+        },
+      },
+      runtimeSnapshot(14),
+      charterReadCall(15, 4, 'call-legacy'),
+      charterReadResult(16, 4, 'call-legacy', { sourceEventSeqs: [15] }),
+    ]
+    const report = evaluate(events)
+    expect(report.verdicts.checkpointLeaksCharter).toBe(true)
+    expect(report.verification.warnings).toHaveLength(1)
   })
 })

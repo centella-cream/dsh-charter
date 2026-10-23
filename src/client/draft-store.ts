@@ -7,6 +7,7 @@ import type {
   CharterView,
 } from '../host/types.js'
 import type { CharterSessionSource } from './store.js'
+import { draftAdmission } from './admission.js'
 import { opTargets } from './preview.js'
 import {
   buildBootstrapPlan,
@@ -93,6 +94,8 @@ export interface CharterDraftState {
   readonly bootstrapObjective: string
   readonly bootstrapItems: readonly BootstrapDraftItem[]
   readonly bootstrapProblem: BootstrapProblem | null
+  /** View revision captured when the reviewed history draft was accepted. */
+  readonly bootstrapBaseRevision: number | null
   readonly attempt: DraftAttempt | null
 }
 
@@ -132,6 +135,7 @@ function initialState(sessionId: SessionId): CharterDraftState {
     bootstrapObjective: '',
     bootstrapItems: [],
     bootstrapProblem: null,
+    bootstrapBaseRevision: null,
     attempt: null,
   }
 }
@@ -166,7 +170,11 @@ export class CharterDraft {
    */
   bindLifecycle(lifecycle: string | undefined): void {
     if (lifecycle === undefined || this.state.lifecycle === lifecycle) return
-    if (this.state.lifecycle === null) {
+    // The first fingerprint after an older Host (which reported none) is a
+    // lifecycle transition: an empty draft simply adopts it, but dirty work was
+    // reviewed against the unknown old lifecycle and must not be claimed by the
+    // new one.
+    if (this.state.lifecycle === null && this.isEmpty) {
       this.update({ lifecycle })
       return
     }
@@ -422,6 +430,20 @@ export class CharterDraft {
     if (this.state.saving || view.status !== 'ready') return
     const baseRevision = this.state.baseRevision
     if (baseRevision === null || this.state.ops.length === 0) return
+    // The Pane disables Apply from the same pure preflight; repeat it here so a
+    // programmatic call cannot reach the Remote with a batch the Host must
+    // reject (or that would overwrite a budget decision).
+    const admission = draftAdmission(view, this.state.ops)
+    if (!admission.ok) {
+      this.update({
+        feedback: {
+          kind: 'error',
+          code: 'QUOTA_EXCEEDED',
+          ...(admission.reason === undefined ? {} : { detail: admission.reason }),
+        },
+      })
+      return
+    }
     const source = this.resolveSource()
     if (source === undefined) {
       this.update({ feedback: { kind: 'connection' } })
@@ -486,12 +508,12 @@ export class CharterDraft {
 
   /** Retarget the staged draft at the latest revision after a conflict. */
   rebase(view: CharterView): void {
-    if (this.state.saving || this.state.bootstrapSaving) return
+    if (!rebaseAvailable(this.state)) return
     if (this.state.baseRevision === null || view.status !== 'ready') return
     // Explicit conflict resolution is the only place the frozen baseline moves.
     this.update({
       baseRevision: view.revision,
-      editorBaseRevision: this.state.editor === null ? null : view.revision,
+      editorBaseRevision: null,
       attempt: null,
       feedback: null,
     })
@@ -601,6 +623,9 @@ export class CharterDraft {
       this.update({
         bootstrapPhase: 'draft',
         bootstrap: proposal,
+        // Freeze the revision the extraction was requested against: the
+        // eventual Apply must use it, never a newer view revision.
+        bootstrapBaseRevision: requestedRevision,
         bootstrapObjective: proposal.objective ?? '',
         bootstrapItems: [
           ...proposal.invariants.map((text, index) => ({
@@ -635,6 +660,30 @@ export class CharterDraft {
       bootstrapObjective: '',
       bootstrapItems: [],
       bootstrapProblem: null,
+      bootstrapBaseRevision: null,
+      attempt: null,
+    })
+  }
+
+  /**
+   * A live view moved away from the reviewed history draft. The proposal was
+   * extracted against the old empty state, so it must be re-extracted rather
+   * than silently applied to the new revision.
+   */
+  markBootstrapStale(view: CharterView): void {
+    if (this.state.bootstrapPhase !== 'draft' || this.state.bootstrapBaseRevision === null) return
+    const stale = view.revision !== this.state.bootstrapBaseRevision
+      || view.objective !== null
+      || view.items.length > 0
+    if (!stale) return
+    this.bootstrapGeneration += 1
+    this.update({
+      bootstrapPhase: 'failed',
+      bootstrapProblem: { kind: 'stale' },
+      bootstrap: null,
+      bootstrapObjective: '',
+      bootstrapItems: [],
+      bootstrapBaseRevision: null,
       attempt: null,
     })
   }
@@ -642,6 +691,16 @@ export class CharterDraft {
   async applyBootstrap(view: CharterView): Promise<void> {
     if (view.status !== 'ready' || this.state.bootstrap === null || this.state.bootstrapSaving) return
     if (this.state.ops.length > 0 || this.state.editor !== null) return
+    const baseRevision = this.state.bootstrapBaseRevision
+    // Admission is gated on the extraction baseline: a different revision or a
+    // non-empty charter means the reviewed draft no longer describes the state.
+    if (baseRevision === null
+      || view.revision !== baseRevision
+      || view.objective !== null
+      || view.items.length > 0) {
+      this.markBootstrapStale(view)
+      return
+    }
     const plan = this.bootstrapPlan(view)
     if (plan.ops.length === 0) return
     const source = this.resolveSource()
@@ -654,12 +713,13 @@ export class CharterDraft {
     // reviewed plan and the same base revision; otherwise it would silently
     // apply stale selections.
     const reusable = previous !== undefined
-      && previous.request.baseRevision === view.revision
+      && previous.request.baseRevision === baseRevision
       && JSON.stringify(previous.request.ops) === JSON.stringify(plan.ops)
     const request = reusable ? previous.request : {
       sessionId: this.state.sessionId,
       mutationId: mutationId(),
-      baseRevision: view.revision,
+      // Always send the extraction baseline, never the current view revision.
+      baseRevision,
       ops: plan.ops,
     }
     this.update({
@@ -699,6 +759,7 @@ export class CharterDraft {
           bootstrapPhase: 'dismissed',
           bootstrapObjective: '',
           bootstrapItems: [],
+          bootstrapBaseRevision: null,
           feedback: plan.pending > 0
             ? {
                 kind: 'bootstrapSaved',
@@ -766,3 +827,15 @@ function nextItemOrder(view: CharterView, ops: readonly CharterOp[]): number {
 
 /** The synthetic or persisted id a staged operation targets (shared with preview). */
 export { opTargets }
+
+/**
+ * A staged edit batch may be retargeted only while no editor and no reviewed
+ * history draft owns a different baseline. The Pane uses the same predicate, so
+ * the visible Rebase action and the store cannot disagree.
+ */
+export function rebaseAvailable(state: Pick<
+  CharterDraftState,
+  'editor' | 'bootstrap' | 'saving' | 'bootstrapSaving'
+>): boolean {
+  return state.editor === null && state.bootstrap === null && !state.saving && !state.bootstrapSaving
+}

@@ -39,7 +39,7 @@
 - 新浏览器 client 可以兼容仍在运行旧 Host 的 view snapshot（旧 Host 仍带 active 条数字段），避免 host/client
   revision 不一致时「会话契约」白屏；新的 pending 导入语义仍需要完整重启 Host 才生效。
 - 已针对 DSH `0.2.1-rc.2` 验证，无需代码改动；现有 peer range 和兼容层已覆盖该 release candidate。
-- 187 个测试，覆盖内核、Host 组合、fork、幂等、配额、prompt 边界、Remote stream、历史抽取、客户端 tab
+- 210 个测试，覆盖内核、Host 组合、fork、幂等、配额、prompt 边界、Remote stream、历史抽取、客户端 tab
   排序和装饰器兼容。已在 DSH `0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-rc.1`、`0.2.1-rc.2` 上验证。
   真实 Web UI 在 `0.2.0-rc.2` 上验证了标签顺序、中英文切换、目标/约束编辑、预览、Apply 和刷新持久化。
 
@@ -205,3 +205,23 @@
   判为 FAIL，并让 legacy 重复 call id 按 turn/step + 事件顺序配对。
 - 诚实收窄存储保留保证：只覆盖内部 schema/一致性不合法的记录；外层 JSON 不可读的文档会被 JSON storage backend
   当作不存在，仍是已记录的残留风险（插件侧没有读取错误 API，也不做路径特判）。
+  用户手册、设计验收条款、验证记录和发布清单现在把两类情况拆开说明，并给出外层不可读的恢复方式（停止 Host，
+  从备份恢复文件）。
+- 终止的 snapshot stream 失败时先推进 connection epoch 再发布 error：在途草稿请求被失效，但暂存 ops 与 mutation
+  id 保留；迟到的 Apply 成功不再被接受，Retry 复用同一 mutation id。
+- 编辑器或已审阅历史草案持有其他 baseline 时拒绝 Rebase：Pane 通过同一个 `rebaseAvailable` 谓词隐藏 Rebase
+  操作，store 也拒绝该调用，显式解决冲突时不会静默改到审阅过的 revision。
+- 审阅历史草案被接受时捕获 `bootstrapBaseRevision`；Apply 使用该 revision，且准入要求当前 view 仍匹配它、
+  objective/items 仍为空，否则草案变为 stale 并要求重新提取，绝不静默应用到更新的 revision。
+- 所有暂存编辑批次统一走共享 `draftAdmission`（maxOps、投影后 maxItems、投影后 maxPendingItems 的 Host 逐步
+  规则、以及 prompt 预算增长/缩短规则）：Pane 的 Apply 按钮与 `applyDraft` 判断一致，不可准入的批次不会到达
+  Remote。
+- 工作行按单一已排序投影列表渲染，而不是 active 后接 pending 分组：pending 的 order-1 行保持排在 active 的
+  order-2 行之前，接受它也不会重排列表。
+- 旧 Host 没有 fingerprint 时，首次收到 fingerprint 只对空草稿生效；有未保存内容时按 lifecycle 变更重置
+  （保留 section），不把旧工作认领到新 lifecycle。
+- 收紧 compaction checker：严格按 seq 排序的 start→summary→end attempt 状态机（乱序或重复 id 不会 PASS）；
+  现代 `charter_read` producing-call 认证（source seqs 必须恰好指向一个更早的 charter_read call，且
+  toolCallId/turn/step 匹配）；严格解析 arguments（只有缺省/普通对象/`standing` 有效）；压缩后没有请求活动时
+  返回 WAIT exit 3（只有已执行请求但无 runtime 快照才是 FAIL）；checkpoint 只按 compactionId 关联、仅对无 id
+  的 checkpoint 做 positional fallback；transcript parser 遇到中间损坏会带行号拒绝而不是跳过。

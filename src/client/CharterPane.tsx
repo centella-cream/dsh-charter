@@ -22,6 +22,8 @@ import type {
   DraftFeedback,
 } from './draft-store.js'
 import { CHARTER_LOCALE_NS, type CharterLocaleKey } from './locales.js'
+import { draftAdmission } from './admission.js'
+import { rebaseAvailable } from './draft-store.js'
 import {
   activeItems,
   itemCounts,
@@ -30,6 +32,7 @@ import {
   projectView,
   promptBudgetAdmission,
   utf8Bytes,
+  visibleItems,
   type ProjectedItem,
 } from './preview.js'
 import { buildBootstrapPlan, firstDraftTextIssue, type BootstrapPlan } from './bootstrap-plan.js'
@@ -583,6 +586,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
     bootstrapObjective,
     bootstrapItems,
     bootstrapProblem,
+    bootstrapBaseRevision,
   } = draftState
   const [showHistoryItems, setShowHistoryItems] = useState(false)
   const [visibleCandidates, setVisibleCandidates] = useState(40)
@@ -605,6 +609,10 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   }, [view?.lifecycle, draft])
 
   useEffect(() => {
+    if (view !== null && bootstrapPhase === 'draft') draft.markBootstrapStale(view)
+  }, [view, bootstrapPhase, draft])
+
+  useEffect(() => {
     if (editor === null) triggerRef.current?.focus?.()
   }, [editor])
 
@@ -616,11 +624,14 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   const counts = itemCounts(projectedItems)
   const activeInvariants = activeItems(invariants)
   const pendingInvariants = pendingItems(invariants)
-  const currentInvariants = [...activeInvariants, ...pendingInvariants]
+  // The Pane renders the single sorted projected list (filtered to the working
+  // rows), never active-then-pending groups: an order-1 pending row must stay
+  // above an order-2 active row just as the prompt renders it.
+  const currentInvariants = visibleItems(invariants)
   const historyInvariants = invariants.filter(item => item.lifecycle !== 'current' || item.review === 'rejected')
   const activeDeliverables = activeItems(deliverables)
   const pendingDeliverables = pendingItems(deliverables)
-  const currentDeliverables = [...activeDeliverables, ...pendingDeliverables]
+  const currentDeliverables = visibleItems(deliverables)
   const historyDeliverables = deliverables.filter(item => item.lifecycle !== 'current' || item.review === 'rejected')
   const successorOf = (item: ProjectedItem): ProjectedItem | undefined =>
     item.supersededBy === undefined ? undefined : projectedItems.find(candidate => candidate.id === item.supersededBy)
@@ -655,6 +666,12 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   const bootstrapTextIssue = bootstrapPhase === 'draft' && bootstrap !== null
     ? firstDraftTextIssue(bootstrapObjective, bootstrapItems)
     : undefined
+  const bootstrapStale = bootstrapPhase === 'draft'
+    && (bootstrapBaseRevision === null
+      || view === null
+      || view.revision !== bootstrapBaseRevision
+      || view.objective !== null
+      || view.items.length > 0)
   const canApplyBootstrap = bootstrap !== null
     && bootstrapPhase === 'draft'
     && state.status === 'ready'
@@ -666,6 +683,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
     && !bootstrapItemsOver
     && !bootstrapBudgetOver
     && !bootstrapStorageOver
+    && !bootstrapStale
     && bootstrapTextIssue === undefined
 
   if (state.status === 'connecting' && view === null) {
@@ -687,12 +705,19 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   }
 
   const online = state.status === 'ready'
-  const revisionConflict = baseRevision !== null && view.revision !== baseRevision
+  // Only an edit batch can be rebased; a history draft has its own extraction
+  // baseline and is re-extracted instead (see bootstrap stale handling).
+  const revisionConflict = ops.length > 0 && baseRevision !== null && view.revision !== baseRevision
   const editable = view.status === 'ready' && !saving && !bootstrapSaving && online && editor === null && state.status === 'ready'
   const promptBudget = promptBudgetAdmission(view.promptText, preview, view.limits.maxPromptBytes)
   const previewBytes = promptBudget.previewBytes
   const contextOver = promptBudget.over
   const contextBlocksApply = promptBudget.blocksApply
+  // Same pure preflight as `applyDraft`, so the button and the store cannot
+  // disagree about maxOps/maxItems/maxPendingItems/prompt admission.
+  const admission = draftAdmission(view, ops)
+  const applyBlocked = !admission.ok
+  const canRebaseNow = rebaseAvailable(draftState)
   const budgetPercent = Math.min(100, Math.round((previewBytes / view.limits.maxPromptBytes) * 100))
   const message = feedbackText(feedback, t)
   const messageDetail = feedbackDetail(feedback)
@@ -707,19 +732,28 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   const draftOpen = bootstrapPhase === 'draft'
   // One consolidated budget alert with one remedy: a blocking staged draft wins,
   // then the stored over-budget state, then an admitted over-budget render.
-  const budgetNotice = contextBlocksApply
-    ? {
-        tone: 'danger' as const,
-        text: t('budget.contextOver', { limit: formatBytes(t, view.limits.maxPromptBytes) }),
-      }
-    : overBudget
-      ? { tone: 'warning' as const, text: t('status.overBudget') }
-      : contextOver
+  const budgetNotice = admission.reason === 'max-ops'
+    ? { tone: 'danger' as const, text: t('budget.opsOver', { limit: String(view.limits.maxOps) }) }
+    : admission.reason === 'max-items'
+      ? { tone: 'danger' as const, text: t('budget.itemsOver', { limit: String(view.limits.maxItems) }) }
+      : admission.reason === 'max-pending'
         ? {
-            tone: 'warning' as const,
-            text: promptBudget.shrinking ? t('budget.shrinking') : t('budget.notGrowing'),
+            tone: 'danger' as const,
+            text: t('budget.pendingOver', { limit: String(view.limits.maxPendingItems) }),
           }
-        : null
+        : contextBlocksApply
+          ? {
+              tone: 'danger' as const,
+              text: t('budget.contextOver', { limit: formatBytes(t, view.limits.maxPromptBytes) }),
+            }
+          : overBudget
+            ? { tone: 'warning' as const, text: t('status.overBudget') }
+            : contextOver
+              ? {
+                  tone: 'warning' as const,
+                  text: promptBudget.shrinking ? t('budget.shrinking') : t('budget.notGrowing'),
+                }
+              : null
 
   const goSection = (next: CharterSection): void => draft.setSection(next)
   const queue = (op: CharterOp): void => {
@@ -831,13 +865,16 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
         {revisionConflict && (
           <div className="charter-notice charter-notice--warning">
             <span role="alert">{t('notice.conflict', { from: baseRevision ?? 0, to: view.revision })}</span>
-            <ActionButton
-              variant="outline"
-              disabled={saving || bootstrapSaving}
-              onClick={() => draft.rebase(view)}
-            >
-              {t('conflict.rebase', { revision: view.revision })}
-            </ActionButton>
+            {canRebaseNow
+              ? (
+                  <ActionButton
+                    variant="outline"
+                    onClick={() => draft.rebase(view)}
+                  >
+                    {t('conflict.rebase', { revision: view.revision })}
+                  </ActionButton>
+                )
+              : <span>{t('conflict.rebaseBlocked')}</span>}
           </div>
         )}
         {budgetNotice !== null && (
@@ -899,7 +936,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                     </ActionButton>
                     <ActionButton
                       variant="primary"
-                      disabled={ops.length === 0 || !editable || revisionConflict || contextBlocksApply || disconnected}
+                      disabled={ops.length === 0 || !editable || revisionConflict || applyBlocked || disconnected}
                       onClick={applyDraft}
                       busy={saving}
                     >

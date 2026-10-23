@@ -571,7 +571,7 @@ uninstall smoke; fault injection and side-by-side domain migration remain open.
 
 Current evidence:
 
-- 187 tests across 17 core, host, client, and verification-helper test files;
+- 210 tests across 17 core, host, client, and verification-helper test files;
 - Typecheck, build, and tests pass on DSH `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-rc.1`, and
   `0.2.1-rc.2`;
 - Real profile install/boot on `0.1.7-rc.2` and `0.2.0-rc.2`;
@@ -592,9 +592,14 @@ Current evidence:
 
 ### 14.2 Persistence and concurrency
 
-Regression coverage additionally requires: one schema-invalid record degrades only its own Session; an
-unavailable record is never overwritten; initialization retry publishes a final ready frame; lowering a budget
-yields an over-budget view whose shrinking edits converge; non-viable limits are clamped.
+Regression coverage additionally requires: one **inner** schema/consistency-invalid record degrades only its own
+Session and is never overwritten by the plugin; initialization retry publishes a final ready frame; lowering a
+budget yields an over-budget view whose shrinking edits converge; non-viable limits are clamped. The
+"never overwritten" clause explicitly does **not** cover an unreadable/malformed **outer** JSON document or an
+outer version stamp the storage backend rejects: that backend reads the file as absent, so the plugin cannot
+distinguish it from a missing record and a later initialization may overwrite it. That is a known residual risk
+(operational recovery: stop the Host and restore the file from a backup), documented in verification §4.5 and the
+user guide troubleshooting table.
 
 1. Two edits with the same baseRevision: exactly one succeeds.
 2. A successful write with a lost response replays by mutation id.

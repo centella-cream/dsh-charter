@@ -55,8 +55,8 @@ export interface CompactionLifecycleEntry {
   readonly startSeq: number | undefined
   readonly startTime: number | undefined
   readonly summarySeq: number | undefined
-  readonly endSeq: number
-  readonly endTime: number
+  readonly endSeq: number | undefined
+  readonly endTime: number | undefined
   readonly sourceCommandId: string | undefined
   readonly ok: boolean
   readonly error: string | undefined
@@ -74,9 +74,11 @@ export function readCompactionLifecycles(events: readonly { readonly type?: stri
 
 export interface ResolvedCharterReadCall {
   readonly seq: number
-  readonly callSeq: number
+  readonly callSeq: number | undefined
   readonly callId: string | undefined
-  readonly resolution: string
+  readonly resolution: string | undefined
+  readonly authenticated: boolean
+  readonly authError?: string
   readonly argumentsView: string | undefined
   readonly isError: boolean
   readonly invalid?: boolean
@@ -105,12 +107,12 @@ export interface CompactionTranscriptReport {
   }
   readonly compactions: readonly {
     readonly id: string
-    readonly seq: number
-    readonly time: number
+    readonly seq: number | undefined
+    readonly time: number | undefined
     readonly startSeq: number | undefined
     readonly startTime: number | undefined
     readonly summarySeq: number | undefined
-    readonly endSeq: number
+    readonly endSeq: number | undefined
     readonly ok: boolean
     readonly error: string | undefined
     readonly sourceCommandId: string | undefined
@@ -144,6 +146,7 @@ export interface CompactionTranscriptReport {
   readonly systemPromptClean: boolean | undefined
   readonly charterReadCalled: boolean
   readonly postCompactionActivity: number
+  readonly noPostCompactionActivity: boolean
   readonly postCompactionExecutionWithoutSnapshot: boolean
   readonly verdicts: Record<string, boolean | undefined>
   readonly verification: CompactionEvaluation
@@ -160,3 +163,12 @@ export function evaluateCompactionTranscript(input: {
   readonly marker?: string
   readonly promptPrefix?: string
 }): CompactionTranscriptReport
+
+export interface TranscriptParseResult {
+  readonly events: readonly Record<string, unknown>[]
+  readonly errors: readonly { readonly line: number; readonly message: string }[]
+  readonly tornTailLine: number | undefined
+  readonly complete: boolean
+}
+
+export function parseTranscript(source: string): TranscriptParseResult
