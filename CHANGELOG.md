@@ -49,7 +49,7 @@ Initial MVP.
   restart is still required for the new pending-import semantics.
 - Verified against DSH `0.2.1-rc.2` with no code changes required; the existing peer range and compatibility layer
   cover the release candidate.
-- 252 tests across core, host composition, fork, idempotency, quota, prompt boundary, Remote stream, history
+- 256 tests across core, host composition, fork, idempotency, quota, prompt boundary, Remote stream, history
   extraction, client reordering, compatibility, and decorator compatibility. Verified on DSH `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`,
   `0.2.1-rc.1`, and `0.2.1-rc.2`. The actual Web UI was exercised on `0.2.0-rc.2`: tab order, Chinese/English
   switching, objective and invariant editing, preview, Apply, and reload persistence.
@@ -330,3 +330,22 @@ Initial MVP.
 - Correct the release documentation: CI runs `npm run check` plus the normal `npm run smoke:package`, while the
   exact-artifact check is the local release gate after building the final tarball and before tag/push/publish; a
   separate release workflow would be needed to run it in CI.
+- Unify the unknown-outcome attempt lifecycle for edit and bootstrap with one persisted
+  `{request, sourceGeneration, status: in-flight|unknown}` state: transport failures and every UNAVAILABLE
+  (including source-not-attached/remote unavailable) become unknown without clearing mutationId/baseRevision/ops,
+  all request-changing actions and ordinary discard/dismiss are locked, Retry always resends the exact retained
+  request before conflict/admission checks, and a separate confirmed **Abandon unknown request** action is the only
+  way to clear the attempt; stream frames during an in-flight/unknown bootstrap Apply only mark needs-stale and keep
+  the replayable payload visible. Tests drive the real controller/store paths (lost M1 + detached source +
+  UNAVAILABLE → exact replay applies once; bootstrap stream-first + transport error → visible replayable draft).
+- Replace the package-smoke `tar -v` text parsing with a structured Node ustar/PAX reader (node:zlib + 512-byte
+  header parsing, checksum verification, GNU longname/longlink and PAX paths; regular files/directories only;
+  rejects links/special/absolute/traversal/backslash/outside-package/duplicate/truncated/bad-checksum members), read
+  `package/package.json` from the parsed archive before installing, and cover it with JS-built GNU/BSD/PAX fixture
+  archives — Ubuntu GNU tar/`LC_ALL` differences no longer affect parsing, and both normal and exact-artifact smoke
+  pass on the real final tarball.
+- Release prerequisites/known limitations documented accurately: public repo + remote, restored metadata, verified
+  private security reporting, public Node 22.19/24 CI (check + normal smoke only), one final tarball build,
+  exact-artifact smoke + SHA + fresh-profile UI check on that same file, final annotated tag, then GitHub Release
+  and `npm publish --tag next` reusing that tarball; accepted non-blocking limitations are disclosed in
+  verification §9.

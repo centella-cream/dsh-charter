@@ -19,17 +19,14 @@ export function parseArgs(argv: readonly string[]): {
   readonly sha256: string | undefined
 }
 
-export interface TarMember {
-  readonly path: string
-  readonly type: string
-}
-
-export function parseTarVerbose(output: string): readonly TarMember[]
-
-export function validateTarMembers(members: readonly TarMember[]): {
-  readonly files: Set<string>
+export interface ParsedTarball {
+  readonly files: Map<string, Buffer>
+  readonly directories: Set<string>
+  readonly modes: Map<string, number>
   readonly members: number
 }
+
+export function parseTarball(tarball: Buffer): ParsedTarball
 
 export function validatePackedManifest(
   packed: Record<string, unknown>,

@@ -14,7 +14,7 @@
 | 验证项 | 结果 |
 | --- | --- |
 | TypeScript 严格类型检查（5 个 DSH 版本） | 通过 |
-| Vitest（5 个本地可用版本 × 252 tests） | 通过 |
+| Vitest（5 个本地可用版本 × 256 tests） | 通过 |
 | Host ESM 构建 + 浏览器单文件 bundle | 通过 |
 | Remote 装饰器/资源 smoke | 通过（0.1.7/0.2.0 按预期无资源声明） |
 | 浏览器 factory bundle 物化与 `apply` smoke | 通过 |
@@ -25,10 +25,10 @@
 | 从压缩摘要生成历史草案 | 通过：core 解析器（含真实 bullet-only 摘要格式）+ composition 真实 Session 事件；见 4.4 |
 | 单记录损坏隔离 | 对**内部** schema 不合法记录通过（只禁用其 Session 并保留原文）；外层 JSON 不可读是已记录的残留风险，不在此保证内；见 4.5 |
 | 预算收紧与收敛 | 通过：调低预算后显示 `overBudget`、停止注入、缩小编辑可收敛；不可用配置被 clamp；见 4.5 |
-| Session 级客户端草稿 | 通过：binding 卸载/重挂载后草稿存活；共享 `editReplayPending` 在未知结果 Apply 未解决时锁住 stage/unstage/编辑器/discard，Pane 在冲突/准入失败时仍启用显式 **Retry last Apply** 并原样 replay（同 mutationId/baseRevision/ops），确定性回复后才清除 attempt；bootstrap replay 先于 stale/准入、锁住候选编辑、显式 Retry，RPC 未决期间流变化只标记 needs-stale 而保留可见 payload，显式 Dismiss 才做完整清理；attempt 未解决或编辑器/历史草案占用 baseline 时 Rebase 被阻止；编辑器 revision baseline 冻结；历史草案按提取 revision 门禁并单路径 stale 清理；原子 lifecycle-bind-then-extract 与 lifecycle 失效/重新提取；共享 `draftAdmission`（maxOps/maxItems/maxPendingItems/prompt + objective/item 字段预算）与 bootstrap store 预检；单一投影显示顺序；lifecycle fingerprint 转换；bootstrap 不抢占 section；见 4.5 |
+| Session 级客户端草稿 | 通过：edit 与 bootstrap 共用**一个**持久 attempt 类型 `{request, sourceGeneration, status: in-flight|unknown}`；传输失败与任何 UNAVAILABLE（含 source 未 attach/remote 不可用）转为 unknown 且绝不清除 mutationId/baseRevision/ops，只有成功或确定性业务码才解决；unknown 期间所有 request-changing 操作（stage/unstage/编辑器/objective/候选/选择/rebase/普通 Discard/Dismiss）都 no-op，Pane 在冲突/准入失败时仍启用 **Retry last Apply**，并提供单独的确认式 **Abandon unknown request**（只有它能清除 attempt）；流帧不会 half-clean（needs-stale + 可见可 replay payload，显式 abandon/dismiss 才完整清理）；attempt 未解决或编辑器/历史草案占用 baseline 时 Rebase 被阻止；编辑器 revision baseline 冻结；历史草案按提取 revision 门禁；原子 lifecycle-bind-then-extract；共享 `draftAdmission` 与 bootstrap store 预检；单一投影显示顺序；lifecycle fingerprint 转换；bootstrap 不抢占 section；见 4.5 |
 | 客户端 source 恢复与 retry | 通过：重试收到相同 revision 时恢复 `ready` 并清除 watchdog；终止的 snapshot stream 被 dispose，Retry 会重建它（首个快照前后均有覆盖）；见 4.5 |
 | 运行期 schema 重新校验 | 通过：mount 后把记录改成非法 schema，只有该 Session 不可用且原始记录保留；见 4.6 |
-| 打包产物可安装性 | 通过：本地 `npm run smoke:package`（tarball 内容、exports/文件、packed `core` import、client bundle；Host/Remote 运行时 import 由工作区 build smoke 覆盖）；exact-artifact `--artifact/--sha256` 模式校验 SHA-256、校验每个 tar member（仅 package/ 下普通文件/目录，拒绝绝对路径/穿越/链接/特殊类型/重复）与 tar 内 packed manifest（身份与 files/exports/dependencies/peers/engines 必须与工作树一致），再对确切字节执行同样的 consumer 检查且不 build/pack；见第 2 节 |
+| 打包产物可安装性 | 通过：本地 `npm run smoke:package`（tarball 内容、exports/文件、packed `core` import、client bundle；Host/Remote 运行时 import 由工作区 build smoke 覆盖）；exact-artifact `--artifact/--sha256` 模式校验 SHA-256、用**结构化 Node ustar/PAX 解析器**读取 archive（512 字节 header、checksum 校验、GNU longname/longlink、PAX path；只接受普通文件/目录，拒绝 symlink/hardlink/字符/块/fifo、绝对/穿越/反斜杠/package 外路径、重复、截断/越界数据、坏 checksum）并校验 archive 内 packed manifest（身份与 files/exports/dependencies/peers/engines 必须与工作树一致），再对确切字节执行同样的 consumer 检查且不 build/pack；不解析任何平台 `tar -v` 文本；见第 2 节 |
 | Compaction checker 退出条件 | 通过：纯函数 fixture 覆盖严格生命周期状态机；现代 `charter_read` 认证要求 `sourceEventSeqs` 恰好指向一个更早的 `charter_read` call 且 toolCallId/turn/step 全部存在并精确相等（缺失/不匹配/malformed 一律拒绝，不回退 legacy、不做 wildcard）；严格 arguments；活动门禁；成功证据之后的**所有**后续 attempt（任一 landed-failed ⇒ FAIL，即使后面还有未 landing 的 attempt；任一 open ⇒ WAIT）；同 id retry 的 checkpoint 按 attempt seq 区间关联；transcript envelope 校验（对象/type/seq/time/data/严格递增）带行号拒绝中间损坏；WAIT 内部一致（pending gate 时 `verification.evaluated=false`、failures 为空、无 FAIL verdict line，只有已评估的 active evidence 才可 FAIL）；失败 end 不作证据、commit 落在 start/end 之间需重新 compaction、快照丢失、checkpoint 泄漏 warning、OPEN attempt 渲染；并断言 exit code/JSON verdict/text/warnings；见 4.7 |
 | 陈旧异步草稿结果 | 通过：edit/bootstrap 结果按 source/generation/请求身份围栏；空草稿和 idle 草稿会回收；见 4.7 |
 | 真实模型 + compaction 端到端 | **2026-10-22 实测 PASS**（一个匿名评估会话）：326 条历史消息 / 约 228k tokens 被压缩，revision 1 会话契约存活，压缩后快照与 `charter_read` 均验证（见 8.4） |
@@ -44,17 +44,19 @@ npm test
 
 - typecheck 通过；
 - build 通过；
-- 19 个测试文件、252 个测试全部通过（来自 `npm test`，即 build 后运行 `vitest run`）；
+- 19 个测试文件、256 个测试全部通过（来自 `npm test`，即 build 后运行 `vitest run`）；
 - `remote-smoke` 断言 `watch,bootstrap,edit`、stream mode 和 Session resource；
 - `client-smoke` 断言单文件 factory bundle、外部依赖白名单、不引用 Node-only `Buffer`、`apply` 注册
   tab/pane/Remote contribution。
 - `smoke:package` 构建并打包 tarball、校验必需文件和文件 mode 以及所有 `exports` 目标、拒绝泄漏的工作区文件，
   把 tarball 安装到一个**空 consumer 项目**（只使用其声明依赖），再加载 packed `dsh-charter/core` 入口与
   client bundle。exact-artifact 模式（`--artifact <tgz> --sha256 <sums>`）不 build、不 pack：校验给定 archive 的
-  SHA-256、校验每个 tar member（仅 package/ 下普通文件/目录，拒绝绝对路径/穿越/链接/特殊类型/重复）与 tar 内
-  packed manifest（身份与 files/exports/dependencies/peers/engines 必须与工作树一致；packed manifest 作为
-  export/dependency 检查的来源），再对确切字节执行同样的 consumer 检查。`npm pack --json` 解析支持 object、
-  以包名为 key 的 object 与单元素数组（npm 10/11/12）。
+  SHA-256，用**结构化 Node ustar/PAX 解析器**读取 gzip archive（512 字节 header、checksum 校验、GNU
+  longname/longlink、PAX path；只接受普通文件/目录，拒绝 symlink/hardlink/字符/块/fifo、绝对/穿越/反斜杠/
+  package 外路径、重复、截断/越界数据、坏 checksum）并校验 archive 内 packed manifest（身份与
+  files/exports/dependencies/peers/engines 必须与工作树一致；packed manifest 作为 export/dependency 检查的
+  来源），再对确切字节执行同样的 consumer 检查。不解析任何平台 `tar -v` 文本（Ubuntu GNU tar/`LC_ALL` 差异与
+  解析无关）。`npm pack --json` 解析支持 object、以包名为 key 的 object 与单元素数组（npm 10/11/12）。
 
 CI（`.github/workflows/ci.yml`）对 Node `22.19.0` 与 Node `24` 运行 `npm run check` 和
 `npm run smoke:package`；本文档记录的本地门禁运行于 Node `v22.23.1`。
@@ -74,13 +76,13 @@ CI（`.github/workflows/ci.yml`）对 Node `22.19.0` 与 Node `24` 运行 `npm r
 | `tests/host/watch.spec.ts` | opening snapshot、竞态、去重、abort、装饰器兼容、resource-scope 能力检测 |
 | `tests/host/actor.spec.ts` | principal 感知策略：现代运行时缺失 principal 拒绝、仅旧版 owner 回退、非 owner 记录、按版本选择的 `resolveRemoteActor` |
 | `tests/host/remote.spec.ts` | Remote 描述符、wire schema、旧 Host view snapshot、零 pending 上限 |
-| `tests/client/store.spec.ts` | 提交后立即接受 view、忽略陈旧/重复 revision、opening snapshot 单调、权威不可用降级、attach 重试、相同快照的 retry 恢复与 watchdog 清除、终止 stream 在 Retry 时重建（首快照前后）、终止失败先推进 connection epoch 且迟到 Apply 成功被拒绝、保留 mutation id 的 retry、待生效 attach 在 stream 启动前被取消、共享 source lease/引用计数、旧 lease no-op、忽略其他 Session 的 stream 帧 |
+| `tests/client/store.spec.ts` | 提交后立即接受 view、忽略陈旧/重复 revision、opening snapshot 单调、权威不可用降级、attach 重试、相同快照的 retry 恢复与 watchdog 清除、终止 stream 在 Retry 时重建（首快照前后）、终止失败先推进 connection epoch 且迟到 Apply 成功被拒绝、保留 mutation id 的 retry、真实 controller 下的未知结果 edit 恢复（已提交但丢失的 M1 → source 脱离 → UNAVAILABLE 保留 exact request 并锁住编辑 → 重新 attach 后 replay 同 mutationId、最终只有一个 committed item）、待生效 attach 在 stream 启动前被取消、共享 source lease/引用计数、旧 lease no-op、忽略其他 Session 的 stream 帧 |
 | `tests/client/bootstrap-plan.spec.ts` | 溢出候选仍在一个 plan 中；O(1) 增量字节核算，覆盖 3,000 全 active、混合、2,000 CRLF/NFD 用例；base objective 已超预算时返回全 pending 计划且不触发 quadratic fallback（`usedExactFallback`/`exactRenders` 诊断）；逐候选结果；bootstrap 结果分类（draft/discard/stale/unavailable） |
-| `tests/client/draft.spec.ts` / `draft-store.spec.ts` | Session 绑定的请求构造（A 的 ops 不会为 B 构造请求）；binding 卸载/重挂载后草稿存活；未知结果 edit Apply 锁住所有编辑（stage/unstage/add/editor/文本 setter/discard no-op 且不丢 attempt）并可显式 replay（同 mutationId）；bootstrap replay 先于 stale/限额/plan 检查、候选编辑锁定、成功反馈计数来自 retained request；流变化与 RPC 未决期间保留可见 payload，显式 dismiss 完整清理；重试复用 mutation id；编辑器打开时拒绝冲突 rebase；冻结的编辑器 revision baseline；历史草案按提取 revision 门禁（stale → 重新提取 → Apply 使用捕获的 baseline）；共享 `draftAdmission` 预检（maxOps/maxItems/maxPendingItems/prompt 增长与逐步缩小；`applyDraft` 不调用 Remote 即拒绝）；归一化准入上限（NFC contraction/expansion、CRLF/LF、边界）；unstage 后的 order 分配；lifecycle null→fingerprint 转换（空草稿 bind、脏草稿 reset）；陈旧异步结果不能覆盖新的 draft/source/lifecycle；bootstrap 不抢占 section |
+| `tests/client/draft.spec.ts` / `draft-store.spec.ts` | Session 绑定的请求构造（A 的 ops 不会为 B 构造请求）；binding 卸载/重挂载后草稿存活；统一的 `{request, sourceGeneration, status}` attempt 生命周期：传输/UNAVAILABLE 转为 unknown 且不清 mutationId/baseRevision/ops、所有 request-changing 操作被锁、replay 先于 admission、确定性业务错误解决并解锁、显式 abandon 是唯一清除路径（unknown 期间普通 dismiss/discard 被锁）、bootstrap 先流帧后传输错误保留可见可 replay payload 并重发 exact request（成功反馈来自 retained request）；attempt 未解决时 Rebase 被阻止；编辑器打开时拒绝冲突 rebase；冻结的编辑器 revision baseline；历史草案按提取 revision 门禁；原子 lifecycle-bind-then-extract；共享 `draftAdmission`；归一化准入上限；unstage 后的 order 分配；lifecycle null→fingerprint 转换；陈旧异步结果不能覆盖新的 draft/source/lifecycle；bootstrap 不抢占 section |
 | `tests/client/preview.spec.ts` | 投影后的 draft 行（add/edit/accept/progress/supersede/purge）；purge 预览会解除后继的 supersedes 关联；committed fixture 下两种 purge 顺序都保留直接暂存后继的 Unstage，只有纯派生行才隐藏；渲染器一致性与 pending 排除；pending/active 行按单一投影顺序显示（接受后保持顺序）；按 order（而非 Host id）排序渲染；prompt 预算的 Apply 准入（缩短、同字节、增长、预算内四种渲染） |
 | `tests/verify/compaction-checks.spec.ts` | compaction checker fixture：严格生命周期状态机（合法序列、失败 end、end-before-start、summary-before-start、同 id retry）；现代 `charter_read` producing-call 认证（合法；identity 字段缺失 toolCallId/turn/step 或 call 侧缺失、不匹配、source seq 非有限/≥result、歧义/非 charter call）与 legacy 重复 callId 配对；严格 arguments（缺省/普通对象/standing 有效，其他 malformed 形状全部拒绝）；活动门禁（无活动 = WAIT，执行但无 runtime 快照 = FAIL）；成功证据之后所有后续 attempt（landed-failed 后跟 unlanded 仍 FAIL、open = WAIT、未 landing 保留 PASS、后续成功需新证据）；checkpoint 按 attempt seq 区间关联（同 id retry 不继承旧 checkpoint）；WAIT 内部一致（`evaluated=false`、failures 空、无 FAIL line，仅 active evidence 可 FAIL）；system prompt 污染；commit 落在 start/end 之间需重新 compaction；断言 exit code/JSON verdict/文本/warnings；紧凑 standing 投影一致 |
 | `tests/verify/transcript-parser.spec.ts` | CLI fixture：末尾 torn line（append 未完成）被忽略；中间损坏行与完整的末尾损坏行都会带行号失败，绝不 PASS；非法 event envelope（null/数字/数组/缺字段/重复或倒序 seq/缺 data/time）同样带行号且无 Node stack |
-| `tests/verify/package-smoke.spec.ts` | pack JSON 解析：object/以包名为 key 的 object/单元素数组（完整输出解析）、SHA sums 解析与 exact-artifact digest 校验（匹配 + 不匹配 + 缺失条目）、tar member 安全校验（绝对路径/穿越/链接/特殊类型/重复/package 外）与真实 symlink/bad-manifest archive、tar 内 packed manifest 的身份/files/exports/dependencies/peers/engines 与工作树一致性校验、artifact 模式参数配对 |
+| `tests/verify/package-smoke.spec.ts` | pack JSON 解析：object/以包名为 key 的 object/单元素数组（完整输出解析）、SHA sums 解析与 exact-artifact digest 校验（匹配 + 不匹配 + 缺失条目）、用 JS 构造的 GNU/BSD ustar、PAX 长路径、GNU longname archive 验证结构化 Node tar 解析，并拒绝 symlink/hardlink/fifo/重复/穿越/绝对/package 外/坏 checksum/截断数据、tar 内 packed manifest 的身份/files/exports/dependencies/peers/engines 与工作树一致性校验、artifact 模式参数配对 |
 
 ## 3. 跨版本矩阵
 
@@ -106,13 +108,13 @@ npm run build
 
 | 版本 | typecheck | build | Vitest | remote smoke | client smoke |
 | --- | --- | --- | --- | --- | --- |
-| `0.1.7-rc.2` | 通过 | 通过 | 252/252 | 通过（无 resources 警告） | 通过 |
-| `0.2.0-rc.1` | 通过 | 通过 | 252/252 | 通过（无 resources 警告） | 通过 |
-| `0.2.0-rc.2` | 通过 | 通过 | 252/252 | 通过（无 resources 警告） | 通过 |
-| `0.2.1-rc.1` | 通过 | 通过 | 252/252 | 通过 | 通过 |
-| `0.2.1-rc.2` | 通过 | 通过 | 252/252 | 通过 | 通过 |
+| `0.1.7-rc.2` | 通过 | 通过 | 256/256 | 通过（无 resources 警告） | 通过 |
+| `0.2.0-rc.1` | 通过 | 通过 | 256/256 | 通过（无 resources 警告） | 通过 |
+| `0.2.0-rc.2` | 通过 | 通过 | 256/256 | 通过（无 resources 警告） | 通过 |
+| `0.2.1-rc.1` | 通过 | 通过 | 256/256 | 通过 | 通过 |
+| `0.2.1-rc.2` | 通过 | 通过 | 256/256 | 通过 | 通过 |
 
-最终 `0.1.0-rc.1` 树在 2026-10-22 重新跑过：每个版本均为 19 个测试文件 / 252 个测试，且 build 内含 remote/client
+最终 `0.1.0-rc.1` 树在 2026-10-22 重新跑过：每个版本均为 19 个测试文件 / 256 个测试，且 build 内含 remote/client
 smoke 断言。
 
 这个五版本矩阵是**本地证据**：版本目录和驱动脚本位于被 git 忽略的 `.tmp/`，公开 CI 不会复现它。CI
@@ -252,23 +254,31 @@ UI 的自动草案面板依赖客户端 `useEffect` 和 Remote bootstrap；8.4 �
   pending order-1 行保持在 active order-2 行之前，接受后也不重排。
 - **生命周期 fingerprint 转换**：绑定旧 Host（无 fingerprint）的草稿首次收到 fingerprint 时，空草稿只 bind；
   非空草稿按 lifecycle 变更重置（保留 section），不把旧工作认领到新 lifecycle。
-- **Replay 先于 admission 及其 UI 锁**：`applyDraft` 先解析可重试的未知结果 attempt，并原样重发已存请求
-  （同一 mutationId/baseRevision/ops），不再执行当前 admission/limit 检查，因此已提交但响应丢失的批次在重连后
-  view 已包含它、或限额收紧时既不会丢失也不会重复；只有新批次才走共享 admission。导出的
-  `editReplayPending(state)` 是 store 与 Pane 共用的唯一谓词：为 true 时 stage/unstage/add/save-editor/
-  open-editor/文本 setter/discard 全部 no-op，attempt/ops/baseRevision 保持不变；Pane 显示显式
-  **Retry last Apply** 按钮，在 revision conflict 或 fresh admission 失败时仍可用（点击即 replay），同时禁用
-  其他编辑与 Discard 并显示恢复提示。`rebaseAvailable` 也要求 `attempt === null`；确定性 replay 回复
-  （如 revision conflict）清除 attempt 并解锁编辑，传输失败则保持 replay pending。
+- **edit 与 bootstrap 统一的未知结果 attempt 状态机**：一个持久 attempt 类型
+  `{request, sourceGeneration, status: 'in-flight' | 'unknown'}` 同时服务 edit Apply 与 bootstrap Apply（不再
+  从 feedback 文案推断）。传输异常或任何 `UNAVAILABLE` 结果——包括 source 未 attach、Remote 不可用——把
+  in-flight 转为 unknown 且绝不清除 mutationId/baseRevision/ops；只有成功或确定性业务码
+  （REVISION_CONFLICT、QUOTA_EXCEEDED、INVALID_ARGUMENT 等）才解决/清除。unknown 期间所有 request-changing
+  操作都被锁住：edit stage/unstage/add/save-editor/open-editor/文本 setter、bootstrap objective/候选/选择编辑、
+  Rebase、普通 Discard 与普通 Dismiss。Pane 由同一组导出的
+  `editReplayPending`/`bootstrapReplayPending`/`unknownAttempt` 谓词驱动：**Retry last Apply** 在 revision
+  conflict 或 fresh admission 失败时仍可用，并在任何检查前原样重发 retained request；单独的
+  **Abandon unknown request** 带确认步骤，是唯一清除 unknown attempt 的路径（保留已暂存 ops / 已审阅 bootstrap
+  payload）。流帧不会 half-clean：in-flight/unknown bootstrap Apply 期间收到非空 frame 只设置 needs-stale 并保留
+  payload/attempt/base；成功才完整清理；未知错误留下可审阅/可 replay 的草案；显式 abandon/dismiss 才完整清理并
+  推进 generation。测试走真实 controller/store 路径：已提交但响应丢失的 M1 + source 脱离 + replay UNAVAILABLE
+  保留 exact request 并锁住所有编辑；重新 attach 后 replay 同 mutationId，Host receipt 只应用一次；确定性
+  conflict 解决并解锁；bootstrap 先流帧后传输错误保持可见可 replay 并重发 exact request。
 - **Bootstrap lifecycle、清理、预检、replay 与原子状态**：Pane 在同一 effect 内先 bind lifecycle 再
   `ensureBootstrap`；旧 Host 首次收到真实 fingerprint 时，会使在未知 lifecycle 下启动的 extraction 失效并为已
   定义 lifecycle 重新提取；切换 lifecycle 会丢弃旧 extraction，只接受新 lifecycle 的结果。已审阅草案遇到远端
   view 非空时走单一 stale/dismiss 清理路径（objective/items/base/attempt/generation 全部清除，`isEmpty` 为
   true）——但 Apply 在途或 replay-pending 时只标记 `bootstrapNeedsStale`，已审阅 payload 与 attempt 保持可见。
   任何 fresh Remote 调用之前，`applyBootstrap` 会执行与 Pane 相同的文本校验与扩展 admission。bootstrap Apply
-  结果未知时，`bootstrapReplayPending` 锁住 objective/候选/选择编辑并执行同样的 replay-before-stale/admission
+  结果未知时，共享 unknown-attempt 状态锁住 objective/候选/选择编辑并执行同样的 replay-before-stale/admission
   规则：Retry 原样重发 retained request（同 mutationId/baseRevision/ops），成功反馈计数来自 retained request
-  （绝不重新 plan），传输失败保持可见可 replay 草案，显式 Dismiss 是唯一完整清理（含 saving/attempt）。
+  （绝不重新 plan），传输/UNAVAILABLE 保持可见可 replay 草案，普通 Dismiss 被锁住，确认式
+  **Abandon unknown request**（或 attempt 解决后再 Dismiss）是唯一清除 attempt 并做完整清理的路径。
 - **字段预算**：共享 admission 同时镜像 Host 的 `maxObjectiveBytes`/`maxItemBytes` 规则：超限时允许 unchanged
   或严格缩短，拒绝新增、增长或等字节但内容不同的值（`max-objective`/`max-item` 原因）；`applyDraft` 对此类
   批次直接拒绝、不调用 Remote。
@@ -747,9 +757,9 @@ seq **31825**，位于 compaction seq 31801 与 runtime 快照 seq 31810 之后�
 - 真实模型实测：2026-10-22，运行于 Desktop/Web runtime DSH `0.2.0-rc.2`（`dsh` CLI `0.2.0-rc.2`）。这次
   运行发生在上述完整重启 Desktop **之前**；当时仍在运行的进程加载的是重启前的 Host bundle，因此
   `charter_read` 结果带有 legacy debug 字段。
-- compiled-bundle build commit：`d0dedd2a3beac38b217fa361a063a13e01e14165`——通过门禁的源码树，Host ESM 与浏览器 bundle 由它构建。
-  该树的门禁：`npm run check`（typecheck + build + 19 个测试文件 / 252 个测试）、`npm run smoke:package`、本地
-  五版本矩阵（每个版本 19 个文件 / 252 个测试）；另外用 compaction checker 对已记录的真实 transcript 复跑
+- compiled-bundle build commit：`PENDING_BUILD_COMMIT`——通过门禁的源码树，Host ESM 与浏览器 bundle 由它构建。
+  该树的门禁：`npm run check`（typecheck + build + 19 个测试文件 / 256 个测试）、`npm run smoke:package`、本地
+  五版本矩阵（每个版本 19 个文件 / 256 个测试）；另外用 compaction checker 对已记录的真实 transcript 复跑
   （PASS）。
 - archive/evidence-tree commit：build commit 的直接子 commit，只添加本证据记录并刷新 tracked digest。打包的
   `dsh-charter-0.1.0-rc.1.tgz` 同时包含 build commit 构建的 bundle **和**证据树中 package 可见的文档，因此不能
@@ -762,12 +772,30 @@ seq **31825**，位于 compaction seq 31801 与 runtime 快照 seq 31810 之后�
 - 剩余手工检查：重启 Desktop 后重新打开会话契约 tab 一次，确认当前 bundle/tool ABI——这次重启后复核**不在**
   上述实测记录中，且只在发布稳定 `latest` 前必需，不影响以 `next` 发布本预发布。
 
-## 9. 未支持的验证项
+## 9. 未支持的验证项与已接受的非阻塞限制
 
 - 多进程共享 storage 的实时同步：`domain/changed` 只在单进程内可见，本插件按单 Host 进程部署设计。
 - 真实模型是否遵守会话契约：会话契约是声明，不承诺模型行为。
 - 永久审计：history/mutation 回执有界，不构成审计。
 - 配额真实样本校准：默认值是产品初值。
+
+已接受的非阻塞限制（本轮 RC 评审后刻意不再修复，均不声称已关闭）：
+
+- **legacy transcript 严格性缺口**：没有 `sourceEventSeqs` 的旧 transcript 回退到 turn/step/callId + 事件顺序，
+  对抗性地复用身份的旧 transcript 无法像现代路径一样完整认证。
+- **compaction 序列边界**：容忍 seq gap；不同 id 的重叠 compaction start 不建模为同一条链；无 id checkpoint
+  的 positional fallback 本质上是 best-effort 归因。
+- **WAIT 诊断措辞**：WAIT verdict 的 detail 是面向人的提示，不是机器协议；组合 gate 时措辞可能较粗。
+- **artifact smoke 固化残余**：结构化 tar reader 校验 header/path/type/checksum 与 packed manifest，但不额外
+  canonicalize 列表之外的异形路径编码、不检查 `.env` 类运行时文件，manifest 比较是所选字段的 JSON 深度相等
+  而非完整 semver 审计。
+- **外层 JSON 平台风险**：不可读/损坏的外层 JSON 记录（或外层 version 被拒绝）会被 JSON storage backend 当作
+  不存在；插件无法与缺失记录区分，之后初始化可能覆盖它（运营恢复：停止 Host 并从备份恢复）。内部 schema/
+  一致性不合法记录仍被隔离并保留。
+- **mutation receipt 保留窗口**：幂等 replay 依赖有界的 recent-mutation 回执窗口；超出窗口被淘汰后无法按 id
+  识别，会被当作新请求。
+- **文档计数漂移**：verification/locale 文本计数是手工同步的；未来新增测试而未更新叙述会留下小幅漂移（测试
+  套件本身是事实来源）。
 
 ## 10. 清理
 

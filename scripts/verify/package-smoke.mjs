@@ -14,6 +14,7 @@
 import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync } from 'node:fs'
+import { gunzipSync } from 'node:zlib'
 import { tmpdir } from 'node:os'
 import { basename, join, resolve } from 'node:path'
 
@@ -98,51 +99,161 @@ export function parseArgs(argv) {
   return args
 }
 
-/**
- * Parse `tar -tvzf` output into member records. Only the leading type character
- * and the member path are needed for security validation.
- */
-export function parseTarVerbose(output) {
-  const members = []
-  for (const line of String(output).split('\n')) {
-    if (line.trim() === '') continue
-    const type = line[0]
-    const match = /\s[A-Z][a-z]{2}\s+\d{1,2}\s+(?:\d{2}:\d{2}|\d{4})\s+(.*)$/u.exec(line)
-    let name = match === null ? line.split(/\s+/u).slice(6).join(' ') : match[1]
-    const link = name.indexOf(' -> ')
-    if (link >= 0) name = name.slice(0, link)
-    members.push({ path: name, type })
+const TAR_BLOCK = 512
+
+function tarString(bytes, offset, length) {
+  let end = offset
+  const limit = offset + length
+  while (end < limit && bytes[end] !== 0) end += 1
+  return bytes.toString('utf8', offset, end)
+}
+
+function tarNumber(bytes, offset, length) {
+  // Octal field, optionally base-256 (GNU extension used for large sizes).
+  if ((bytes[offset] & 0x80) !== 0) {
+    let value = 0n
+    for (let index = offset + 1; index < offset + length; index += 1) {
+      value = (value << 8n) | BigInt(bytes[index])
+    }
+    return Number(value)
   }
-  return members
+  const text = tarString(bytes, offset, length).replace(/\0.*$/u, '').trim()
+  if (text === '') return 0
+  if (!/^[0-7]+$/u.test(text)) throw new Error(`invalid tar numeric field ${JSON.stringify(text)}`)
+  return Number.parseInt(text, 8)
+}
+
+function tarChecksumOk(header) {
+  const stored = tarNumber(header, 148, 8)
+  let unsigned = 0
+  let signed = 0
+  for (let index = 0; index < TAR_BLOCK; index += 1) {
+    const byte = index >= 148 && index < 156 ? 32 : header[index]
+    unsigned += byte
+    signed += byte > 127 ? byte - 256 : byte
+  }
+  return stored === unsigned || stored === signed
+}
+
+function parsePaxRecords(buffer) {
+  const fields = {}
+  let offset = 0
+  while (offset < buffer.length) {
+    const space = buffer.indexOf(0x20, offset)
+    if (space < 0) break
+    const length = Number.parseInt(buffer.toString('utf8', offset, space), 10)
+    if (!Number.isFinite(length) || length <= 0) throw new Error('invalid PAX record length')
+    const end = offset + length
+    if (end > buffer.length) throw new Error('truncated PAX record')
+    const record = buffer.toString('utf8', space + 1, end - 1)
+    const equals = record.indexOf('=')
+    if (equals < 0) throw new Error('invalid PAX record')
+    fields[record.slice(0, equals)] = record.slice(equals + 1)
+    offset = end
+  }
+  return fields
+}
+
+function normalizeMemberPath(path) {
+  if (typeof path !== 'string' || path === '') throw new Error('tar member has an empty path')
+  if (path.startsWith('/') || /^[A-Za-z]:/u.test(path)) throw new Error(`tar member has an absolute path: ${path}`)
+  if (path.includes('\\')) throw new Error(`tar member contains a backslash: ${path}`)
+  const segments = path.split('/').filter(segment => segment !== '')
+  if (segments.some(segment => segment === '..' || segment === '.')) {
+    throw new Error(`tar member traverses directories: ${path}`)
+  }
+  if (!(path === 'package' || path.startsWith('package/'))) {
+    throw new Error(`tar member is outside package/: ${path}`)
+  }
+  return path.endsWith('/') ? path.slice(0, -1) : path
 }
 
 /**
- * Reject archives that the consumer step cannot safely treat as "only this
- * package": traversal, absolute paths, links/special members, duplicates or
- * anything outside `package/`.
+ * Parse a gzipped tarball with a structured Node reader (no shelling out to a
+ * platform `tar`): 512-byte ustar/PAX headers, checksum verification, GNU
+ * longname/longlink and PAX path handling. Only regular files and directories
+ * under `package/` are accepted; links, special files, traversal/absolute
+ * paths, duplicates, truncation/out-of-bounds data and corrupt checksums are
+ * rejected. All file bytes are held in memory so `package/package.json` can be
+ * validated before anything is installed.
  */
-export function validateTarMembers(members) {
+export function parseTarball(tarball) {
+  const bytes = gunzipSync(tarball)
+  const files = new Map()
+  const directories = new Set()
+  const modes = new Map()
   const seen = new Set()
-  const files = new Set()
-  for (const member of members) {
-    const path = member.path
-    if (typeof path !== 'string' || path === '') throw new Error('tar member has an empty path')
-    if (path.startsWith('/') || /^[A-Za-z]:/u.test(path)) throw new Error(`tar member has an absolute path: ${path}`)
-    if (path.includes('\\')) throw new Error(`tar member contains a backslash: ${path}`)
-    const segments = path.split('/')
-    if (segments.some(segment => segment === '..' || segment === '.')) {
-      throw new Error(`tar member traverses directories: ${path}`)
+  let offset = 0
+  let longName
+  let longLink
+  let pax = {}
+  let nextPax = {}
+  while (offset < bytes.length) {
+    if (offset + TAR_BLOCK > bytes.length) throw new Error('truncated tar header')
+    const header = bytes.subarray(offset, offset + TAR_BLOCK)
+    if (header.every(byte => byte === 0)) break
+    if (!tarChecksumOk(header)) throw new Error('tar header checksum mismatch')
+    const typeflag = String.fromCharCode(header[156] === 0 ? 48 : header[156])
+    const size = tarNumber(header, 124, 12)
+    if (!Number.isSafeInteger(size) || size < 0) throw new Error('tar member has an invalid size')
+    const dataOffset = offset + TAR_BLOCK
+    const dataEnd = dataOffset + size
+    const nextOffset = dataOffset + Math.ceil(size / TAR_BLOCK) * TAR_BLOCK
+    if (dataEnd > bytes.length || nextOffset > bytes.length) {
+      throw new Error('tar member data is truncated/out of bounds')
     }
-    if (!(path === 'package' || path.startsWith('package/'))) {
-      throw new Error(`tar member is outside package/: ${path}`)
+    const data = bytes.subarray(dataOffset, dataEnd)
+    if (typeflag === 'x') {
+      nextPax = parsePaxRecords(data)
+      offset = nextOffset
+      continue
     }
+    if (typeflag === 'g') {
+      // Global PAX headers are not emitted by our packer; their content is not
+      // security-relevant for member names/sizes, so they advance the stream.
+      offset = nextOffset
+      continue
+    }
+    if (typeflag === 'L') {
+      longName = tarString(data, 0, data.length)
+      offset = nextOffset
+      continue
+    }
+    if (typeflag === 'K') {
+      longLink = tarString(data, 0, data.length)
+      offset = nextOffset
+      continue
+    }
+    const nameField = tarString(header, 0, 100)
+    const prefix = tarString(header, 345, 155)
+    const name = longName
+      ?? nextPax.path
+      ?? (prefix === '' ? nameField : `${prefix}/${nameField}`)
+    const linkname = longLink ?? nextPax.linkpath ?? tarString(header, 157, 100)
+    longName = undefined
+    longLink = undefined
+    pax = nextPax
+    nextPax = {}
+    const path = normalizeMemberPath(name)
     if (seen.has(path)) throw new Error(`tar member appears more than once: ${path}`)
     seen.add(path)
-    if (member.type === 'd') continue
-    if (member.type !== '-') throw new Error(`tar member is not a regular file or directory: ${path} (type ${member.type})`)
-    files.add(path.replace(/^package\//u, ''))
+    const mode = tarNumber(header, 100, 8)
+    if (typeflag === '1' || typeflag === '2') {
+      throw new Error(`tar member is a link, not a regular file: ${path} -> ${linkname}`)
+    }
+    if (typeflag !== '0' && typeflag !== '5') {
+      throw new Error(`tar member is not a regular file or directory: ${path} (type ${typeflag})`)
+    }
+    if (typeflag === '5') {
+      directories.add(path)
+    } else {
+      files.set(path.replace(/^package\//u, ''), data)
+      modes.set(path.replace(/^package\//u, ''), mode & 0o777)
+    }
+    pax = {}
+    offset = nextOffset
   }
-  return { files, members: members.length }
+  return { files, directories, modes, members: seen.size }
 }
 
 /**
@@ -187,13 +298,15 @@ function verifyArtifactContents({ artifact, consumer, emptyNpmrc, run }) {
     throw new Error(`artifact name ${basename(artifact)} does not match ${expectedFilename}`)
   }
 
-  // Security validation before any extraction/install: member list, types,
-  // duplicates and paths must all be a pure `package/` file+dir tree.
-  const verbose = run('tar', ['-tvzf', artifact])
-  const members = parseTarVerbose(verbose)
-  const { files } = validateTarMembers(members)
+  // Security validation before any extraction/install: structured Node tar
+  // parsing (headers/checksums/PAX) yields a pure `package/` file+dir tree and
+  // the packed manifest bytes in memory. No platform `tar` is involved.
+  const archive = parseTarball(readFileSync(artifact))
+  const files = new Set(archive.files.keys())
+  const packedManifestBytes = archive.files.get('package.json')
+  if (packedManifestBytes === undefined) throw new Error('packed artifact is missing package.json')
   const packedManifest = validatePackedManifest(
-    JSON.parse(run('tar', ['-xzOf', artifact, 'package/package.json'])),
+    JSON.parse(packedManifestBytes.toString('utf8')),
     manifest,
   )
   const required = new Set([
@@ -227,12 +340,13 @@ function verifyArtifactContents({ artifact, consumer, emptyNpmrc, run }) {
   const forbidden = [...files].filter(path => /^(src|tests|scripts|\.tmp)\//u.test(path))
   if (forbidden.length > 0) throw new Error(`packed artifact leaks workspace files: ${forbidden.join(', ')}`)
 
-  // Public files must not carry a 0600 mode from a local checkout.
-  const listing = verbose.split('\n')
+  // Public files must be 0644 in the archive (checked from parsed header modes).
   for (const path of ['package.json', 'README.md', 'README.zh.md', 'LICENSE', 'lib/client.js']) {
-    const line = listing.find(entry => entry.endsWith(` package/${path}`))
-    if (line === undefined) throw new Error(`no tar listing for ${path}`)
-    if (!line.startsWith('-rw-r--r--')) throw new Error(`${path} is not 0644 in the tarball: ${line.slice(0, 10)}`)
+    if (!files.has(path)) throw new Error(`packed artifact is missing ${path}`)
+    const mode = archive.modes.get(path)
+    if (mode === undefined || mode !== 0o644) {
+      throw new Error(`${path} is not 0644 in the tarball: ${mode === undefined ? 'no file mode' : `0${mode.toString(8)}`}`)
+    }
   }
 
   // A real empty consumer install: dependencies must resolve from the registry

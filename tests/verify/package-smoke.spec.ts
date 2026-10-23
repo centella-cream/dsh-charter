@@ -1,16 +1,15 @@
-import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { gzipSync } from 'node:zlib'
 import { afterAll, describe, expect, it } from 'vitest'
 import {
   parseArgs,
   parsePackOutput,
   parseSumsDigest,
-  parseTarVerbose,
+  parseTarball,
   validatePackedManifest,
-  validateTarMembers,
   verifyArtifactDigest,
 } from '../../scripts/verify/package-smoke.mjs'
 
@@ -87,13 +86,146 @@ describe('artifact-mode argument parsing', () => {
   })
 })
 
-function makeTar(root: string, name: string, args: string[]): string {
-  const artifact = join(root, name)
-  execFileSync('tar', ['-czf', artifact, ...args], { cwd: root })
-  return artifact
+const BLOCK = 512
+
+function octal(value: number, length: number): Buffer {
+  return Buffer.from(`${value.toString(8).padStart(length - 1, '0')}\0`, 'ascii')
 }
 
-describe('exact-artifact tar security validation', () => {
+function tarHeader(options: {
+  readonly name: string
+  readonly size?: number
+  readonly mode?: number
+  readonly typeflag?: string
+  readonly linkname?: string
+  readonly magic?: string
+  readonly version?: string
+  readonly prefix?: string
+  readonly corruptChecksum?: boolean
+}): Buffer {
+  const header = Buffer.alloc(BLOCK)
+  header.write(options.name.slice(0, 100), 0, 'utf8')
+  octal(options.mode ?? 0o644, 8).copy(header, 100)
+  octal(0, 8).copy(header, 108)
+  octal(0, 8).copy(header, 116)
+  octal(options.size ?? 0, 12).copy(header, 124)
+  octal(0, 12).copy(header, 136)
+  header.write('        ', 148, 'ascii')
+  header.write(options.typeflag ?? '0', 156, 'ascii')
+  header.write((options.linkname ?? '').slice(0, 100), 157, 'utf8')
+  header.write(options.magic ?? 'ustar\0', 257, 'ascii')
+  header.write(options.version ?? '00', 263, 'ascii')
+  header.write('user', 265, 'ascii')
+  header.write('group', 297, 'ascii')
+  octal(0, 8).copy(header, 329)
+  octal(0, 8).copy(header, 337)
+  header.write((options.prefix ?? '').slice(0, 155), 345, 'utf8')
+  let checksum = 0
+  for (const byte of header) checksum += byte
+  header.write(`${checksum.toString(8).padStart(6, '0')}\0 `, 148, 'ascii')
+  if (options.corruptChecksum === true) header[0] = (header[0]! + 1) % 256
+  return header
+}
+
+function tarEntry(options: Parameters<typeof tarHeader>[0] & { readonly data?: Buffer }): Buffer[] {
+  const data = options.data ?? Buffer.alloc(0)
+  const padding = Buffer.alloc((BLOCK - (data.length % BLOCK)) % BLOCK)
+  return [tarHeader({ ...options, size: data.length }), data, padding]
+}
+
+function tarArchive(entries: Buffer[][]): Buffer {
+  return gzipSync(Buffer.concat([...entries.flat(), Buffer.alloc(BLOCK * 2)]))
+}
+
+const MANIFEST = Buffer.from(JSON.stringify({
+  name: 'dsh-charter',
+  version: '0.1.0-rc.1',
+  exports: { '.': './lib/index.js' },
+  dependencies: {},
+  files: ['lib'],
+}))
+
+function validArchive(): Buffer {
+  return tarArchive([
+    tarEntry({ name: 'package/', typeflag: '5', mode: 0o755 }),
+    tarEntry({ name: 'package/package.json', data: MANIFEST }),
+    tarEntry({ name: 'package/lib/index.js', data: Buffer.from('export {}') }),
+  ])
+}
+
+describe('structured Node tar parsing for exact-artifact validation', () => {
+  it('parses a standard ustar archive and exposes files, dirs and 0644 modes', () => {
+    const parsed = parseTarball(validArchive())
+    expect([...parsed.files.keys()].sort()).toEqual(['lib/index.js', 'package.json'])
+    expect(parsed.directories.has('package')).toBe(true)
+    expect(parsed.modes.get('package.json')).toBe(0o644)
+    expect(JSON.parse(parsed.files.get('package.json')!.toString('utf8'))).toMatchObject({ name: 'dsh-charter' })
+  })
+
+  it('parses GNU-style ustar magic and PAX long paths', () => {
+    const gnu = tarArchive([
+      tarEntry({
+        name: 'package/gnu.txt',
+        magic: 'ustar ',
+        version: ' \0',
+        data: Buffer.from('gnu'),
+      }),
+    ])
+    expect([...parseTarball(gnu).files.keys()]).toEqual(['gnu.txt'])
+
+    const longPath = `package/${'deep/'.repeat(30)}file.txt`
+    const paxRecord = (key: string, value: string): Buffer => {
+      const body = `${key}=${value}\n`
+      let length = body.length + 2
+      while (`${length} ${body}`.length !== length) length = `${length} ${body}`.length
+      return Buffer.from(`${length} ${body}`, 'utf8')
+    }
+    const pax = tarArchive([
+      tarEntry({ name: 'PaxHeader', typeflag: 'x', data: Buffer.concat([paxRecord('path', longPath)]) }),
+      tarEntry({ name: 'package/placeholder', data: Buffer.from('pax') }),
+    ])
+    const parsed = parseTarball(pax)
+    expect(parsed.files.has(longPath.replace(/^package\//u, ''))).toBe(true)
+  })
+
+  it('parses GNU longname headers', () => {
+    const longPath = `package/${'x'.repeat(140)}.txt`
+    const archive = tarArchive([
+      tarEntry({ name: '././@LongLink', typeflag: 'L', data: Buffer.from(`${longPath}\0`, 'utf8') }),
+      tarEntry({ name: 'package/short', data: Buffer.from('long') }),
+    ])
+    const parsed = parseTarball(archive)
+    expect([...parsed.files.keys()]).toEqual([longPath.replace(/^package\//u, '')])
+  })
+
+  it('rejects links, special members, duplicates, traversal, absolute and outside-package paths', () => {
+    const reject = (archive: Buffer, pattern: RegExp) => {
+      expect(() => parseTarball(archive)).toThrow(pattern)
+    }
+    reject(tarArchive([tarEntry({ name: 'package/link', typeflag: '2', linkname: 'package/package.json' })]), /link/)
+    reject(tarArchive([tarEntry({ name: 'package/hard', typeflag: '1', linkname: 'package/package.json' })]), /link/)
+    reject(tarArchive([tarEntry({ name: 'package/fifo', typeflag: '6' })]), /not a regular file or directory/)
+    reject(tarArchive([
+      tarEntry({ name: 'package/package.json', data: MANIFEST }),
+      tarEntry({ name: 'package/package.json', data: MANIFEST }),
+    ]), /more than once/)
+    reject(tarArchive([tarEntry({ name: 'package/../evil', data: Buffer.from('x') })]), /traverses/)
+    reject(tarArchive([tarEntry({ name: '/etc/passwd', data: Buffer.from('x') })]), /absolute/)
+    reject(tarArchive([tarEntry({ name: 'other/file', data: Buffer.from('x') })]), /outside package/)
+  })
+
+  it('rejects corrupt checksums and truncated member data', () => {
+    expect(() => parseTarball(tarArchive([
+      tarEntry({ name: 'package/package.json', data: MANIFEST, corruptChecksum: true }),
+    ]))).toThrow(/checksum/)
+    // Declared size larger than the available data blocks.
+    const header = tarHeader({ name: 'package/package.json', size: 4096 })
+    expect(() => parseTarball(gzipSync(Buffer.concat([header, Buffer.alloc(BLOCK)]))))
+      .toThrow(/truncated|out of bounds/)
+  })
+})
+
+describe('packed manifest validation against the working tree', () => {
   const expected = {
     name: 'dsh-charter',
     version: '0.1.0-rc.1',
@@ -104,34 +236,8 @@ describe('exact-artifact tar security validation', () => {
     files: ['lib'],
   }
 
-  it('accepts a pure package/ file+dir tree', () => {
-    const members = [
-      { path: 'package/', type: 'd' },
-      { path: 'package/package.json', type: '-' },
-      { path: 'package/lib/index.js', type: '-' },
-    ]
-    const result = validateTarMembers(members)
-    expect([...result.files].sort()).toEqual(['lib/index.js', 'package.json'])
-  })
-
-  it('rejects traversal, absolute paths, outside-package members, links and duplicates', () => {
-    const reject = (members: Array<{ path: string; type: string }>, pattern: RegExp) => {
-      expect(() => validateTarMembers(members)).toThrow(pattern)
-    }
-    reject([{ path: 'package/../evil', type: '-' }], /traverses/)
-    reject([{ path: '/etc/passwd', type: '-' }], /absolute/)
-    reject([{ path: 'other/file', type: '-' }], /outside package/)
-    reject([{ path: 'package/link', type: 'l' }], /not a regular file/)
-    reject([{ path: 'package/hard', type: 'h' }], /not a regular file/)
-    reject([{ path: 'package/pipe', type: 'p' }], /not a regular file/)
-    reject([{ path: 'package/README.md', type: '-' }, { path: 'package/README.md', type: '-' }], /more than once/)
-  })
-
-  it('rejects a packed manifest whose identity/files/metadata disagree', () => {
-    const packed = {
-      ...expected,
-      files: [...expected.files],
-    }
+  it('accepts a matching packed manifest and rejects disagreements', () => {
+    const packed = { ...expected, files: [...expected.files] }
     expect(validatePackedManifest(packed, expected)).toMatchObject({ name: 'dsh-charter' })
     expect(() => validatePackedManifest({ ...packed, name: 'other' }, expected)).toThrow(/identity/)
     expect(() => validatePackedManifest({ ...packed, files: ['other'] }, expected)).toThrow(/files whitelist/)
@@ -139,27 +245,5 @@ describe('exact-artifact tar security validation', () => {
     expect(() => validatePackedManifest({ ...packed, dependencies: [] }, expected)).toThrow(/dependencies/)
     expect(() => validatePackedManifest({ ...packed, peerDependencies: { x: '1' } }, expected)).toThrow(/peerDependencies/)
     expect(() => validatePackedManifest(null as never, expected)).toThrow(/not an object/)
-  })
-
-  it('parses real tar listings and rejects a real symlink member', () => {
-    const root = workdir()
-    mkdirSync(join(root, 'package'))
-    writeFileSync(join(root, 'package/README.md'), 'readme')
-    symlinkSync('README.md', join(root, 'package/link'))
-    const artifact = makeTar(root, 'symlink.tgz', ['package'])
-    const verbose = execFileSync('tar', ['-tvzf', artifact], { encoding: 'utf8' })
-    const members = parseTarVerbose(verbose)
-    expect(() => validateTarMembers(members)).toThrow(/not a regular file/)
-  })
-
-  it('rejects a real archive whose packed manifest is wrong', () => {
-    const root = workdir()
-    mkdirSync(join(root, 'package'))
-    writeFileSync(join(root, 'package/package.json'), JSON.stringify({ name: 'wrong', version: '0.0.0' }))
-    const artifact = makeTar(root, 'bad-manifest.tgz', ['package'])
-    const packed = JSON.parse(
-      execFileSync('tar', ['-xzOf', artifact, 'package/package.json'], { encoding: 'utf8' }),
-    )
-    expect(() => validatePackedManifest(packed, expected)).toThrow(/identity/)
   })
 })

@@ -21,19 +21,29 @@ git remote -v            # must be empty or must not contain this repository yet
 A local-only marker such as `v0.1.0-rc.1-build` may be used for internal traceability; it is never pushed and is
 not the release tag.
 
-Prepare the repository first:
+Prepare the repository and public gates first:
 
 1. create the public repository (owner/name agreed by the maintainer) and add it as `origin`;
 2. restore `repository`, `homepage`, and `bugs` in `package.json` to that URL and commit the metadata change;
-3. update every mutable release-state statement that changed (repository metadata, public CI status, release
-   prerequisites), rerun `npm run check` and `npm run smoke:package`, and commit the documentation refresh in the
-   same metadata/CI-status/documentation-update commit;
-4. push `main` only — do not push tags yet (`git push origin main`; do not use `--follow-tags`);
-5. wait for the public CI in `.github/workflows/ci.yml` to be green on that commit (Node 22.19.0 and 24 matrix).
+3. enable and verify **private security reporting** for the repository (security advisories/private reporting
+   must work before the code is public);
+4. update every mutable release-state statement that changed (repository metadata, public CI status, release
+   prerequisites), rerun `npm run check` and the normal `npm run smoke:package`, and commit the documentation
+   refresh in the same metadata/CI-status/documentation-update commit;
+5. push `main` only — do not push tags yet (`git push origin main`; do not use `--follow-tags`);
+6. run the public CI in `.github/workflows/ci.yml` on Node `22.19.0` and `24` and wait for it to be green on that
+   commit (CI runs `npm run check` and the normal `npm run smoke:package` only; exact-artifact mode is not a CI job).
 
-The tag is created later, on the final verified commit (§4), only after the digest commit is on `main` and green
-in public CI; pushing it before verification would make the release archive depend on a tree that has not been
-gated.
+Then, in order: build the release tarball **once** from that final source, run the exact-artifact smoke
+(`npm run smoke:package -- --artifact dist/dsh-charter-0.1.0-rc.1.tgz --sha256 SHA256SUMS`, which also verifies the
+SHA-256) and a fresh-profile UI check on that same file, then create the final annotated `v0.1.0-rc.1` tag, and make
+the GitHub Release and `npm publish --tag next` reuse that same verified tarball. The tag is created only after the
+digest commit is on `main` and green in public CI; pushing it before verification would make the release archive
+depend on a tree that has not been gated.
+
+Accepted non-blocking limitations (legacy transcript strictness, compaction sequence edge cases, WAIT diagnostic
+wording, artifact-smoke hardening residuals, outer-JSON platform risk, mutation-receipt retention, doc count
+drift) are disclosed in verification §9 and are not release blockers; do not claim them closed.
 
 ## 2. Preconditions
 

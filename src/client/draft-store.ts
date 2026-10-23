@@ -65,11 +65,19 @@ export interface BootstrapProblem {
   readonly detail?: string
 }
 
+/**
+ * One persisted request attempt. `in-flight` means the RPC is still awaited;
+ * `unknown` means the outcome is genuinely unknown (transport failure, source
+ * detached/unavailable) and the exact request must be replayed or explicitly
+ * abandoned — never silently dropped or replaced. Edit and bootstrap share this
+ * one lifecycle.
+ */
 interface DraftAttempt {
   readonly kind: 'edit' | 'bootstrap'
   readonly request: import('../core/schemas.js').CharterEditRequest
   /** Connection epoch the request was sent through. */
   readonly sourceGeneration: number
+  readonly status: 'in-flight' | 'unknown'
 }
 
 export interface CharterDraftState {
@@ -116,31 +124,26 @@ function sameOp(left: CharterOp, right: CharterOp): boolean {
   return JSON.stringify(left) === JSON.stringify(right)
 }
 
-/**
- * The last edit Apply has an unknown outcome: the staged batch is frozen and
- * must be replayed verbatim before anything else may change it.
- */
-export function editReplayPending(state: Pick<
-  CharterDraftState,
-  'attempt' | 'saving' | 'feedback'
->): boolean {
-  return state.attempt?.kind === 'edit' && !state.saving && state.feedback?.kind === 'connection'
+/** The last edit Apply has an unknown outcome and must be replayed/abandoned. */
+export function editReplayPending(state: Pick<CharterDraftState, 'attempt'>): boolean {
+  return state.attempt?.kind === 'edit' && state.attempt.status === 'unknown'
 }
 
-/** The last bootstrap Apply has an unknown outcome and must be replayed. */
-export function bootstrapReplayPending(state: Pick<
-  CharterDraftState,
-  'attempt' | 'bootstrapSaving' | 'bootstrapProblem'
->): boolean {
-  return state.attempt?.kind === 'bootstrap'
-    && !state.bootstrapSaving
-    && state.bootstrapProblem?.kind === 'save-failed'
-    && state.bootstrapProblem.code === 'UNAVAILABLE'
+/** The last bootstrap Apply has an unknown outcome and must be replayed/abandoned. */
+export function bootstrapReplayPending(state: Pick<CharterDraftState, 'attempt'>): boolean {
+  return state.attempt?.kind === 'bootstrap' && state.attempt.status === 'unknown'
 }
 
-/** Lock every draft edit while an unknown-outcome request is unresolved. */
+/** Either kind of unknown-outcome attempt is unresolved. */
+export function unknownAttempt(state: Pick<CharterDraftState, 'attempt'>):
+  | DraftAttempt
+  | undefined {
+  return state.attempt?.status === 'unknown' ? state.attempt : undefined
+}
+
+/** Lock every draft edit while any unknown-outcome request is unresolved. */
 function replayLocked(state: CharterDraftState): boolean {
-  return editReplayPending(state) || bootstrapReplayPending(state)
+  return unknownAttempt(state) !== undefined
 }
 
 function initialState(sessionId: SessionId): CharterDraftState {
@@ -251,13 +254,19 @@ export class CharterDraft {
    */
   invalidateSource(): void {
     this.asyncGeneration += 1
+    const attempt = this.state.attempt
     if (this.state.saving) {
-      // Keep the same mutation id so a retry through the new source replays
-      // the already-sent request instead of duplicating it.
-      this.update({ saving: false, feedback: { kind: 'connection' } })
+      // The connection epoch changed under an in-flight edit: the outcome is now
+      // unknown. Keep the exact request/mutation id for an idempotent replay.
+      this.update({
+        saving: false,
+        attempt: attempt?.kind === 'edit' ? { ...attempt, status: 'unknown' } : attempt,
+        feedback: { kind: 'connection' },
+      })
     } else if (this.state.bootstrapSaving) {
       this.update({
         bootstrapSaving: false,
+        attempt: attempt?.kind === 'bootstrap' ? { ...attempt, status: 'unknown' } : attempt,
         bootstrapProblem: { kind: 'save-failed', code: 'UNAVAILABLE' },
       })
     }
@@ -335,6 +344,26 @@ export class CharterDraft {
       feedback: null,
       attempt: null,
     })
+  }
+
+  /**
+   * Explicit, confirmed recovery decision: give up on an unknown-outcome
+   * request and unlock editing. This is the ONLY action that clears an unknown
+   * attempt; ordinary discard/dismiss stay locked so recovery evidence cannot be
+   * dropped by accident. Staged ops / the reviewed payload are preserved.
+   */
+  abandonUnknown(): boolean {
+    const attempt = unknownAttempt(this.state)
+    if (attempt === undefined) return false
+    this.asyncGeneration += 1
+    if (attempt.kind === 'bootstrap') this.bootstrapGeneration += 1
+    this.update({
+      saving: false,
+      bootstrapSaving: false,
+      attempt: null,
+      ...(attempt.kind === 'edit' ? { feedback: null } : { bootstrapProblem: null }),
+    })
+    return true
   }
 
   openEditor(editor: DraftEditor, view: CharterView): void {
@@ -463,12 +492,8 @@ export class CharterDraft {
 
   /** A request may be retried only when the previous attempt failed with an unknown outcome. */
   private retryableRequest(kind: 'edit' | 'bootstrap'): DraftAttempt | undefined {
-    const attempt = this.state.attempt
-    if (attempt === null || attempt.kind !== kind) return undefined
-    const unknownOutcome = kind === 'edit'
-      ? editReplayPending(this.state)
-      : bootstrapReplayPending(this.state)
-    return unknownOutcome ? attempt : undefined
+    const attempt = unknownAttempt(this.state)
+    return attempt !== undefined && attempt.kind === kind ? attempt : undefined
   }
 
   async applyDraft(view: CharterView): Promise<void> {
@@ -480,6 +505,7 @@ export class CharterDraft {
     // limits would now reject a fresh batch — otherwise a committed-but-lost
     // request would be dropped or duplicated.
     const previous = this.retryableRequest('edit')
+    if (previous === undefined && unknownAttempt(this.state) !== undefined) return
     if (previous === undefined) {
       // Only a fresh request runs the shared admission preflight. The Pane
       // disables Apply from the same pure function.
@@ -509,7 +535,7 @@ export class CharterDraft {
     this.update({
       saving: true,
       feedback: null,
-      attempt: { kind: 'edit', request, sourceGeneration: source.connectionGeneration },
+      attempt: { kind: 'edit', request, sourceGeneration: source.connectionGeneration, status: 'in-flight' },
     })
     const generation = this.asyncGeneration
     const sourceGeneration = source.connectionGeneration
@@ -543,16 +569,29 @@ export class CharterDraft {
             : { kind: 'saved', revision: result.committedRevision },
         })
       } else {
+        // Any UNAVAILABLE (including source-not-attached/remote unavailable) is
+        // an unknown outcome: keep the exact request replayable. Only a
+        // deterministic business code resolves the attempt.
+        const unresolved = result.code === 'UNAVAILABLE'
         this.update({
           saving: false,
-          attempt: null,
-          feedback: { kind: 'error', code: result.code, ...(result.message === undefined ? {} : { detail: result.message }) },
+          attempt: unresolved
+            ? { kind: 'edit', request, sourceGeneration, status: 'unknown' }
+            : null,
+          feedback: unresolved
+            ? { kind: 'connection' }
+            : { kind: 'error', code: result.code, ...(result.message === undefined ? {} : { detail: result.message }) },
         })
       }
     } catch (error) {
       if (!current()) return
       console.error('charter: edit request failed', error)
-      this.update({ saving: false, feedback: { kind: 'connection' } })
+      const attempt = this.state.attempt
+      this.update({
+        saving: false,
+        attempt: attempt?.kind === 'edit' ? { ...attempt, status: 'unknown' } : attempt,
+        feedback: { kind: 'connection' },
+      })
     }
   }
 
@@ -574,12 +613,12 @@ export class CharterDraft {
   // ------------------------------------------------------------------
 
   setBootstrapObjective(value: string): void {
-    if (this.state.bootstrapSaving || bootstrapReplayPending(this.state)) return
+    if (this.state.bootstrapSaving || replayLocked(this.state)) return
     this.update({ bootstrapObjective: value, attempt: null, bootstrapProblem: null })
   }
 
   updateBootstrapItem(id: string, patch: Partial<BootstrapDraftItem>): void {
-    if (this.state.bootstrapSaving || bootstrapReplayPending(this.state)) return
+    if (this.state.bootstrapSaving || replayLocked(this.state)) return
     this.update({
       bootstrapItems: this.state.bootstrapItems.map(item => item.id === id ? { ...item, ...patch } : item),
       attempt: null,
@@ -588,7 +627,7 @@ export class CharterDraft {
   }
 
   setAllBootstrapSelected(selected: boolean): void {
-    if (this.state.bootstrapSaving || bootstrapReplayPending(this.state)) return
+    if (this.state.bootstrapSaving || replayLocked(this.state)) return
     this.update({
       bootstrapItems: this.state.bootstrapItems.map(item => ({ ...item, selected })),
       attempt: null,
@@ -604,6 +643,18 @@ export class CharterDraft {
   ensureBootstrap(view: CharterView, connectionReady: boolean): void {
     if (!connectionReady || view.status !== 'ready') return
     if (view.objective !== null || view.items.length > 0) {
+      // A stream frame must never half-clean an in-flight/unknown Apply: keep the
+      // visible replayable payload and only remember that the view moved.
+      if (this.state.bootstrapSaving || replayLocked(this.state)) {
+        if (this.state.bootstrapPhase === 'draft' && !this.state.bootstrapNeedsStale) {
+          this.update({ bootstrapNeedsStale: true })
+        }
+        return
+      }
+      if (this.state.bootstrapPhase === 'draft') {
+        this.markBootstrapStale(view)
+        return
+      }
       if (this.state.bootstrapPhase !== 'idle' && this.state.bootstrapPhase !== 'dismissed') {
         this.update({ bootstrapPhase: 'dismissed', bootstrap: null, bootstrapProblem: null })
       }
@@ -708,6 +759,9 @@ export class CharterDraft {
 
   /** Explicit dismissal: one full cleanup of the draft and any replay evidence. */
   dismissBootstrap(): void {
+    // Ordinary dismiss never discards unknown-outcome recovery evidence; the
+    // explicit abandonUnknown() action is the only path that clears the attempt.
+    if (unknownAttempt(this.state)?.kind === 'bootstrap') return
     this.bootstrapGeneration += 1
     this.update({
       bootstrapPhase: 'dismissed',
@@ -808,14 +862,23 @@ export class CharterDraft {
   private async replayBootstrap(retained: DraftAttempt): Promise<void> {
     const source = this.resolveSource()
     if (source === undefined) {
-      this.update({ bootstrapSaving: false, bootstrapProblem: { kind: 'save-failed', code: 'UNAVAILABLE' } })
+      this.update({
+        bootstrapSaving: false,
+        attempt: { ...retained, status: 'unknown' },
+        bootstrapProblem: { kind: 'save-failed', code: 'UNAVAILABLE' },
+      })
       return
     }
     const request = retained.request
     this.update({
       bootstrapSaving: true,
       bootstrapProblem: null,
-      attempt: { kind: 'bootstrap', request, sourceGeneration: source.connectionGeneration },
+      attempt: {
+        kind: 'bootstrap',
+        request,
+        sourceGeneration: source.connectionGeneration,
+        status: 'in-flight',
+      },
     })
     const generation = this.asyncGeneration
     const candidateGeneration = this.bootstrapGeneration
@@ -841,6 +904,12 @@ export class CharterDraft {
       if (result.view !== undefined) source.accept(result.view)
       if (result.ok) {
         this.finishBootstrapSuccess(result.committedRevision, request)
+      } else if (result.code === 'UNAVAILABLE') {
+        this.update({
+          bootstrapSaving: false,
+          attempt: { kind: 'bootstrap', request, sourceGeneration, status: 'unknown' },
+          bootstrapProblem: { kind: 'save-failed', code: 'UNAVAILABLE' },
+        })
       } else {
         this.update({
           bootstrapSaving: false,
@@ -857,8 +926,10 @@ export class CharterDraft {
       console.error('charter: bootstrap replay failed', error)
       // The outcome is still unknown: keep the visible reviewed payload and the
       // replayable attempt so an explicit Retry can recover.
+      const attempt = this.state.attempt
       this.update({
         bootstrapSaving: false,
+        attempt: attempt?.kind === 'bootstrap' ? { ...attempt, status: 'unknown' } : attempt,
         bootstrapProblem: { kind: 'save-failed', code: 'UNAVAILABLE' },
       })
     }
@@ -874,6 +945,7 @@ export class CharterDraft {
       await this.replayBootstrap(retained)
       return
     }
+    if (unknownAttempt(this.state) !== undefined) return
     if (this.state.bootstrap === null) return
     if (this.state.ops.length > 0 || this.state.editor !== null) return
     const baseRevision = this.state.bootstrapBaseRevision
@@ -925,7 +997,12 @@ export class CharterDraft {
     this.update({
       bootstrapSaving: true,
       bootstrapProblem: null,
-      attempt: { kind: 'bootstrap', request, sourceGeneration: source.connectionGeneration },
+      attempt: {
+        kind: 'bootstrap',
+        request,
+        sourceGeneration: source.connectionGeneration,
+        status: 'in-flight',
+      },
     })
     const generation = this.asyncGeneration
     const candidateGeneration = this.bootstrapGeneration
@@ -953,6 +1030,12 @@ export class CharterDraft {
       if (result.view !== undefined) source.accept(result.view)
       if (result.ok) {
         this.finishBootstrapSuccess(result.committedRevision, request)
+      } else if (result.code === 'UNAVAILABLE') {
+        this.update({
+          bootstrapSaving: false,
+          attempt: { kind: 'bootstrap', request, sourceGeneration, status: 'unknown' },
+          bootstrapProblem: { kind: 'save-failed', code: 'UNAVAILABLE' },
+        })
       } else {
         this.update({
           bootstrapSaving: false,
@@ -968,8 +1051,10 @@ export class CharterDraft {
       if (!current()) return
       console.error('charter: bootstrap apply failed', error)
       // Unknown outcome: keep the reviewed payload and the replayable attempt.
+      const attempt = this.state.attempt
       this.update({
         bootstrapSaving: false,
+        attempt: attempt?.kind === 'bootstrap' ? { ...attempt, status: 'unknown' } : attempt,
         bootstrapProblem: { kind: 'save-failed', code: 'UNAVAILABLE' },
       })
     }
