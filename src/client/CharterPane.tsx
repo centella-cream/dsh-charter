@@ -594,6 +594,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   } = draftState
   const [showHistoryItems, setShowHistoryItems] = useState(false)
   const [visibleCandidates, setVisibleCandidates] = useState(40)
+  const [confirmAbandon, setConfirmAbandon] = useState(false)
   const triggerRef = useRef<HTMLElement | null>(null)
   const statusRef = useRef<HTMLDivElement | null>(null)
 
@@ -717,6 +718,10 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   // is recovered through an explicit Retry, never through fresh edits.
   const editReplay = editReplayPending(draftState)
   const bootstrapReplay = bootstrapReplayPending(draftState)
+  const unknownReplay = editReplay || bootstrapReplay
+  useEffect(() => {
+    if (!unknownReplay) setConfirmAbandon(false)
+  }, [unknownReplay])
   const editable = view.status === 'ready'
     && !saving
     && !bootstrapSaving
@@ -789,6 +794,15 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   }
   const applyDraft = (): void => {
     void draft.applyDraft(view).finally(() => statusRef.current?.focus())
+  }
+  const abandonUnknown = (): void => {
+    if (!confirmAbandon) {
+      setConfirmAbandon(true)
+      return
+    }
+    draft.abandonUnknown()
+    setConfirmAbandon(false)
+    statusRef.current?.focus()
   }
   const applyBootstrapDraft = (): void => {
     void draft.applyBootstrap(view).finally(() => statusRef.current?.focus())
@@ -954,9 +968,17 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                         ? t('footer.applying')
                         : bootstrapReplay ? t('footer.retryApply') : t('bootstrap.apply')}
                     </ActionButton>
-                    <ActionButton disabled={bootstrapSaving} onClick={() => draft.dismissBootstrap()}>
+                    <ActionButton
+                      disabled={bootstrapSaving || bootstrapReplay}
+                      onClick={() => draft.dismissBootstrap()}
+                    >
                       {t('bootstrap.discard')}
                     </ActionButton>
+                    {unknownReplay && (
+                      <ActionButton variant="outline" onClick={abandonUnknown}>
+                        {confirmAbandon ? t('footer.abandonConfirm') : t('footer.abandon')}
+                      </ActionButton>
+                    )}
                   </>
                 )
               : (
@@ -979,6 +1001,11 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                         ? t('footer.applying')
                         : editReplay ? t('footer.retryApply') : t('footer.apply')}
                     </ActionButton>
+                    {unknownReplay && (
+                      <ActionButton variant="outline" onClick={abandonUnknown}>
+                        {confirmAbandon ? t('footer.abandonConfirm') : t('footer.abandon')}
+                      </ActionButton>
+                    )}
                   </>
                 )}
           </div>
@@ -1483,9 +1510,17 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                           ? t('footer.applying')
                           : bootstrapReplay ? t('footer.retryApply') : t('bootstrap.apply')}
                       </ActionButton>
-                      <ActionButton disabled={bootstrapSaving} onClick={() => draft.dismissBootstrap()}>
+                      <ActionButton
+                        disabled={bootstrapSaving || bootstrapReplay}
+                        onClick={() => draft.dismissBootstrap()}
+                      >
                         {t('bootstrap.discard')}
                       </ActionButton>
+                      {unknownReplay && (
+                        <ActionButton variant="outline" onClick={abandonUnknown}>
+                          {confirmAbandon ? t('footer.abandonConfirm') : t('footer.abandon')}
+                        </ActionButton>
+                      )}
                     </div>
                   </section>
                 )}

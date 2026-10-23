@@ -39,7 +39,7 @@
 - 新浏览器 client 可以兼容仍在运行旧 Host 的 view snapshot（旧 Host 仍带 active 条数字段），避免 host/client
   revision 不一致时「会话契约」白屏；新的 pending 导入语义仍需要完整重启 Host 才生效。
 - 已针对 DSH `0.2.1-rc.2` 验证，无需代码改动；现有 peer range 和兼容层已覆盖该 release candidate。
-- 252 个测试，覆盖内核、Host 组合、fork、幂等、配额、prompt 边界、Remote stream、历史抽取、客户端 tab
+- 256 个测试，覆盖内核、Host 组合、fork、幂等、配额、prompt 边界、Remote stream、历史抽取、客户端 tab
   排序和装饰器兼容。已在 DSH `0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-rc.1`、`0.2.1-rc.2` 上验证。
   真实 Web UI 在 `0.2.0-rc.2` 上验证了标签顺序、中英文切换、目标/约束编辑、预览、Apply 和刷新持久化。
 
@@ -256,3 +256,19 @@
   FAIL verdict line，只有已评估的 active evidence 才能 FAIL）。
 - 修正发布文档：CI 运行 `npm run check` 与普通 `npm run smoke:package`；exact-artifact 检查是构建最终 tarball
   之后、打 tag/推送/发布之前的本地发布门禁，若要放进 CI 需要单独的 release workflow。
+- edit 与 bootstrap 共用统一的未知结果 attempt 生命周期（持久 `{request, sourceGeneration, status:
+  in-flight|unknown}`）：传输失败与任何 UNAVAILABLE（含 source 未 attach/remote 不可用）转为 unknown 且不清
+  mutationId/baseRevision/ops；unknown 期间所有 request-changing 操作与普通 discard/dismiss 被锁；Retry 在任何
+  conflict/admission 检查前原样重发 retained request；单独的确认式 **Abandon unknown request** 是唯一清除
+  attempt 的路径；in-flight/unknown bootstrap Apply 期间的流帧只标记 needs-stale 并保留可见可 replay payload。
+  测试走真实 controller/store 路径（丢失 M1 + source 脱离 + UNAVAILABLE → exact replay 只应用一次；bootstrap
+  先流帧后传输错误 → 可见可 replay 草案）。
+- package-smoke 用结构化 Node ustar/PAX 解析器替换 `tar -v` 文本解析（node:zlib + 512 字节 header、checksum
+  校验、GNU longname/longlink 与 PAX path；只接受普通文件/目录；拒绝链接/特殊类型/绝对/穿越/反斜杠/package 外/
+  重复/截断/坏 checksum 成员），安装前从解析出的 archive 读取 `package/package.json`，并用 JS 构造的
+  GNU/BSD/PAX 测试 archive 覆盖——Ubuntu GNU tar/`LC_ALL` 差异不再影响解析，normal 与 exact-artifact smoke 均在
+  真实最终 tarball 上通过。
+- 发布前置条件/已知限制文档化：公开仓库 + remote、恢复元数据、验证私有安全报告、公开 Node 22.19/24 CI（仅
+  check + normal smoke）、只构建一次最终 tarball、对同一文件做 exact-artifact smoke + SHA + fresh-profile UI
+  检查、最终 annotated tag，然后 GitHub Release 与 `npm publish --tag next` 复用该 tarball；已接受的非阻塞限制
+  在验证记录第 9 节披露。

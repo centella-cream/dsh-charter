@@ -18,17 +18,26 @@ git remote -v            # 应为空，或尚不包含该仓库
 
 如需内部追溯，可使用只在本地存在的标记 tag（例如 `v0.1.0-rc.1-build`）；它绝不推送，也不是发布 tag。
 
-先准备仓库：
+先准备仓库与公开门禁：
 
 1. 创建公开仓库（owner/name 由维护者确定）并添加为 `origin`；
 2. 把 `package.json` 的 `repository`、`homepage`、`bugs` 恢复为该 URL，并提交该元数据修改；
-3. 更新所有发生变化的可变发布状态描述（仓库元数据、公开 CI 状态、发布前置项），重跑 `npm run check` 与
-   `npm run smoke:package`，并把文档刷新并入同一个元数据/CI状态/文档更新 commit；
-4. 只推送 `main`，此时不要推 tag（`git push origin main`；不要用 `--follow-tags`）；
-5. 等待 `.github/workflows/ci.yml` 在该 commit 上为绿色（Node 22.19.0 与 24 矩阵）。
+3. 启用并验证仓库的**私有安全报告**（security advisories/private reporting）在代码公开前可用；
+4. 更新所有发生变化的可变发布状态描述（仓库元数据、公开 CI 状态、发布前置项），重跑 `npm run check` 与
+   **普通** `npm run smoke:package`，并把文档刷新并入同一个元数据/CI状态/文档更新 commit；
+5. 只推送 `main`，此时不要推 tag（`git push origin main`；不要用 `--follow-tags`）；
+6. 在 Node `22.19.0` 与 `24` 上运行 `.github/workflows/ci.yml` 的公开 CI，并等待该 commit 变绿（CI 只运行
+   `npm run check` 与普通 `npm run smoke:package`；exact-artifact 模式不是 CI job）。
 
-tag 在后续（§4）的最终已验证 commit 上创建，并且只有在 digest commit 已进入 `main`、公开 CI 在该 commit 上
+随后按顺序：从最终源码**只构建一次**发布 tarball，对同一文件运行 exact-artifact smoke
+（`npm run smoke:package -- --artifact dist/dsh-charter-0.1.0-rc.1.tgz --sha256 SHA256SUMS`，同时校验 SHA-256）
+并在同一文件上做 fresh-profile UI 检查，然后创建最终 annotated `v0.1.0-rc.1` tag，GitHub Release 与
+`npm publish --tag next` 复用同一份已验证 tarball。tag 只有在 digest commit 已进入 `main`、公开 CI 在该 commit
 通过之后才创建；在验证前推 tag 会让发布产物依赖未经门禁的树。
+
+已接受的非阻塞限制（legacy transcript 严格性、compaction 序列边界、WAIT 诊断措辞、artifact-smoke 固化残余、
+外层 JSON 平台风险、mutation receipt 保留窗口、文档计数漂移）在验证记录第 9 节披露，不是发布阻塞项；不要声称
+这些限制已关闭。
 
 ## 2. 发布前检查
 

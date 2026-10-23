@@ -38,13 +38,18 @@ import type { CharterEditRequest } from '../../src/core/schemas.js'
 import type { CharterEditResult, CharterView } from '../../src/host/types.js'
 import { CharterClientController, CharterSessionSource } from '../../src/client/store.js'
 
-function view(revision: number, promptText = '', sessionId = 'session-1'): CharterView {
+function view(
+  revision: number,
+  promptText = '',
+  sessionId = 'session-1',
+  items: CharterView['items'] = [],
+): CharterView {
   return {
     status: 'ready',
     sessionId,
     revision,
     objective: null,
-    items: [],
+    items: [...items],
     promptText,
     overBudget: false,
     promptDigest: promptText === ''
@@ -585,6 +590,98 @@ describe('client charter source', () => {
       feedback: { kind: 'saved', revision: 2 },
     })
 
+    lease.release()
+    await controller.dispose()
+  })
+
+  it('keeps an unknown edit attempt through detach/UNAVAILABLE and replays it exactly once', async () => {
+    const controller = new CharterClientController(streamContext())
+    const sessionId = SessionId('session-unknown-edit')
+    const lease = controller.acquire(sessionId)
+    const requests: CharterEditRequest[] = []
+    const remoteOne = {
+      edit: async (request: CharterEditRequest) => {
+        requests.push(request)
+        throw new Error('connection lost after the Host committed M1')
+      },
+    } as never
+    controller.attach(remoteOne)
+    await tick()
+    const stream = mockClass.instances.at(-1)
+    if (stream === undefined) throw new Error('no stream was created')
+    stream.options.replace({ value: view(1, 'one', 'session-unknown-edit') })
+    lease.draft.stage(view(1, 'one', 'session-unknown-edit'), {
+      type: 'item.add',
+      item: { clientRef: 'm1', kind: 'invariant', text: 'Exactly once', order: 0 },
+    })
+    await lease.draft.applyDraft(view(1, 'one', 'session-unknown-edit'))
+    expect(lease.draft.getSnapshot().attempt).toMatchObject({ status: 'unknown' })
+    const unknown = lease.draft.getSnapshot().attempt
+    const committedOps = lease.draft.getSnapshot().ops
+    const baseRevision = lease.draft.getSnapshot().baseRevision
+
+    // Source detached: Retry's source.edit returns business UNAVAILABLE, which
+    // must keep the attempt unknown with the exact same request/mutation id.
+    controller.detach(remoteOne)
+    await lease.draft.applyDraft(view(1, 'one', 'session-unknown-edit'))
+    expect(lease.draft.getSnapshot().attempt).toMatchObject({ status: 'unknown' })
+    expect(lease.draft.getSnapshot().attempt?.request.mutationId)
+      .toBe(unknown?.request.mutationId)
+    expect(lease.draft.getSnapshot().ops).toBe(committedOps)
+    expect(lease.draft.getSnapshot().baseRevision).toBe(baseRevision)
+    // All request-changing actions stay locked.
+    lease.draft.stage(view(1, 'one', 'session-unknown-edit'), {
+      type: 'item.add',
+      item: { clientRef: 'm2', kind: 'invariant', text: 'Second', order: 2 },
+    })
+    lease.draft.unstage('draft:m1')
+    lease.draft.addItem(view(1, 'one', 'session-unknown-edit'), 'invariant', 'Another', () => undefined)
+    lease.draft.discard()
+    lease.draft.rebase(view(2, 'two', 'session-unknown-edit'))
+    expect(lease.draft.getSnapshot().attempt).toMatchObject({ status: 'unknown' })
+    expect(lease.draft.getSnapshot().ops).toBe(committedOps)
+
+    // Reattach and replay: the Host receipt is replayed, applying exactly once.
+    const committedItem = {
+      id: 'host-m1',
+      kind: 'invariant' as const,
+      text: 'Exactly once',
+      review: 'accepted' as const,
+      lifecycle: 'current' as const,
+      verification: { state: 'unchecked' as const },
+      origin: 'user' as const,
+      order: 1,
+      createdRevision: 2,
+    }
+    const remoteTwo = {
+      edit: async (request: CharterEditRequest) => {
+        requests.push(request)
+        return {
+          ok: true as const,
+          value: {
+            ok: true,
+            replayed: true,
+            committedRevision: 2,
+            ids: { 'draft:m1': 'host-m1' },
+            view: view(2, 'two', 'session-unknown-edit', [committedItem]),
+          },
+        }
+      },
+    } as never
+    controller.attach(remoteTwo)
+    await tick()
+    await lease.draft.applyDraft(view(2, 'two', 'session-unknown-edit', [committedItem]))
+    expect(requests).toHaveLength(2)
+    expect(requests[1]).toEqual(requests[0])
+    expect(new Set(requests.map(request => request.mutationId)).size).toBe(1)
+    expect(lease.draft.getSnapshot()).toMatchObject({
+      attempt: null,
+      ops: [],
+      feedback: { kind: 'replayed' },
+    })
+    // Exactly one committed item exists after the replay; no duplicate M2.
+    expect(lease.source.getSnapshot().view?.items).toHaveLength(1)
+    expect(lease.source.getSnapshot().view?.items[0]?.id).toBe('host-m1')
     lease.release()
     await controller.dispose()
   })

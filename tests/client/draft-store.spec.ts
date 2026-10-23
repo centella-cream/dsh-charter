@@ -865,11 +865,13 @@ describe('per-Session draft ownership', () => {
       item: { clientRef: 'm1', kind: 'invariant', text: 'Conflict', order: 0 },
     })
     await draft.applyDraft(view(1))
+    expect(editReplayPending(draft.getSnapshot())).toBe(true)
     expect(rebaseAvailable(draft.getSnapshot())).toBe(false)
     await draft.applyDraft(view(1))
     expect(requests).toHaveLength(2)
     expect(draft.getSnapshot().feedback).toMatchObject({ kind: 'error', code: 'REVISION_CONFLICT' })
     expect(draft.getSnapshot().attempt).toBeNull()
+    expect(editReplayPending(draft.getSnapshot())).toBe(false)
     expect(rebaseAvailable(draft.getSnapshot())).toBe(true)
   })
 
@@ -1301,7 +1303,27 @@ describe('per-Session draft ownership', () => {
     expect(bootstrapReplayPending(draft.getSnapshot())).toBe(true)
     expect(draft.isEmpty).toBe(false)
 
-    // Explicit dismiss is the single full cleanup.
+    // Ordinary dismiss is locked while the outcome is unknown.
+    draft.dismissBootstrap()
+    expect(draft.getSnapshot()).toMatchObject({
+      bootstrapPhase: 'draft',
+      bootstrap: expect.anything(),
+      attempt: expect.objectContaining({ status: 'unknown' }),
+    })
+    expect(draft.isEmpty).toBe(false)
+
+    // Only the explicit abandon decision clears the unknown attempt; the
+    // reviewed payload remains visible/reviewable afterwards.
+    expect(draft.abandonUnknown()).toBe(true)
+    expect(draft.getSnapshot()).toMatchObject({
+      bootstrapPhase: 'draft',
+      bootstrap: expect.anything(),
+      bootstrapBaseRevision: 0,
+      attempt: null,
+    })
+    expect(bootstrapReplayPending(draft.getSnapshot())).toBe(false)
+
+    // After abandoning, ordinary dismiss is the single full cleanup.
     draft.dismissBootstrap()
     expect(draft.getSnapshot()).toMatchObject({
       bootstrapPhase: 'dismissed',
@@ -1314,6 +1336,70 @@ describe('per-Session draft ownership', () => {
       attempt: null,
     })
     expect(draft.isEmpty).toBe(true)
+  })
+
+  it('retries the exact bootstrap request after a stream-first transport error', async () => {
+    let rejectFirst: ((error: Error) => void) | undefined
+    const first = new Promise<never>((_resolve, reject) => { rejectFirst = reject })
+    const requests: CharterEditRequest[] = []
+    let calls = 0
+    const fake = source({
+      edit: async request => {
+        requests.push(request)
+        calls += 1
+        if (calls === 1) return first
+        return { ok: true, replayed: true, committedRevision: 2, ids: {}, view: view(2) }
+      },
+      snapshot: () => ({ status: 'ready', view: view(0), error: null }),
+      bootstrap: async () => ({
+        available: true,
+        proposal: {
+          objective: 'Reviewed objective',
+          invariants: ['Keep it'],
+          deliverables: [],
+          source: { summarySeq: 1, at: 1 },
+        },
+      }),
+    })
+    const draft = new CharterDraft(sessionId, () => fake)
+    draft.bindLifecycle('life-bootstrap-stream-retry')
+    draft.ensureBootstrap(view(0), true)
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(draft.getSnapshot().bootstrapPhase).toBe('draft')
+    const applying = draft.applyBootstrap(view(0))
+    await new Promise(resolve => setTimeout(resolve, 0))
+    // A stream frame arrives first: no half-clean, only needs-stale.
+    const nonEmpty = view(0, { items: [committedInvariant({ id: 'external', text: 'External', order: 1 })] })
+    draft.ensureBootstrap(nonEmpty, true)
+    expect(draft.getSnapshot()).toMatchObject({
+      bootstrapPhase: 'draft',
+      bootstrapSaving: true,
+      bootstrapNeedsStale: true,
+    })
+    expect(draft.getSnapshot().bootstrap).not.toBeNull()
+    rejectFirst!(new Error('transport lost'))
+    await applying
+    expect(draft.getSnapshot()).toMatchObject({
+      bootstrapPhase: 'draft',
+      bootstrapSaving: false,
+      attempt: expect.objectContaining({ status: 'unknown' }),
+      bootstrapNeedsStale: true,
+    })
+    expect(draft.isEmpty).toBe(false)
+    // Retry (after the view moved) must still resend the exact retained request.
+    await draft.applyBootstrap(nonEmpty)
+    expect(requests).toHaveLength(2)
+    expect(requests[1]).toEqual(requests[0])
+    expect(draft.getSnapshot().bootstrapPhase).toBe('dismissed')
+    expect(draft.getSnapshot().attempt).toBeNull()
+    expect(draft.isEmpty).toBe(true)
+  })
+
+  it('abandons an unknown request only through the explicit decision', () => {
+    const draft = new CharterDraft(sessionId, () => undefined)
+    expect(draft.abandonUnknown()).toBe(false)
+    draft.bindLifecycle('life-abandon-idle')
+    expect(draft.abandonUnknown()).toBe(false)
   })
 
   it('does not steal the current section when a draft arrives while editing', async () => {
