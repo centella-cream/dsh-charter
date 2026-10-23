@@ -785,7 +785,7 @@ Evidence timeline for this pre-release:
 - Recorded real-model run: 2026-10-22 on the Desktop/Web runtime DSH `0.2.0-rc.2` (`dsh` CLI `0.2.0-rc.2`).
   The run happened **before** the full Desktop restart described above; the process that served it was still
   running the pre-restart Host bundle, which is why the `charter_read` result carried legacy debug fields.
-- Compiled-bundle build commit: `PENDING_BUILD_COMMIT` — the gated source tree whose Host ESM and browser
+- Compiled-bundle build commit: `46ff671f008dc6e431a4324bbeeef22798f967f4` — the gated source tree whose Host ESM and browser
   bundles were built. Gates on that tree: `npm run check` (typecheck + build + 18 test files / 210 tests),
   `npm run smoke:package`, and the local five-version matrix (18 files / 210 tests on every version); the
   compaction checker was also re-run against the recorded real transcript (PASS).
