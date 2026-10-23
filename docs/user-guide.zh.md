@@ -33,7 +33,7 @@ dsh --profile web --dump-config | grep -n "charter" || true
 - Node.js **`^22.19.0 || >=24.0.0`**。
 - Web 或 Desktop profile。
 
-### 2.2 已验证的本地 tarball（预发布回退）
+### 2.2 离线 / 本地 tarball 回退
 
 ```bash
 npm install
@@ -43,17 +43,19 @@ dsh plugin --profile web add ./dsh-charter-0.1.0-rc.1.tgz
 ```
 
 Desktop 若支持本地插件导入，可在 Plugins 页面安装同一个 tarball；否则通过 Desktop profile 自己的包管理器
-安装（`dsh plugin --profile desktop` 会被 Electron app 拒绝）。profile 依赖是本地 `file:` 路径。
+安装（`dsh plugin --profile desktop` 会被 Electron app 拒绝）。profile 依赖是本地 `file:` 路径。registry 可达时
+优先使用 §2.3 的 npm 安装。
 
-### 2.3 Registry 安装（`next` 发布后）— Web profile 按版本或 tag
+### 2.3 npm / Registry 安装（推荐）— Web profile 按版本或 tag
 
 ```bash
 dsh plugin --profile web add dsh-charter@0.1.0-rc.1   # 精确版本：可复现
 dsh plugin --profile web add dsh-charter@next         # 最新预发布
 ```
 
-维护者发布 `next` dist-tag 后，`0.1.0-rc.1` 位于 `next` 下，而不是 `latest`；只有在稳定版发布之后才使用
-`@latest`。如果还没有列出该 tag，请先构建并安装上面的已验证本地 tarball。固定明确版本可以让 profile 可复现。
+`0.1.0-rc.1` 已发布到 `next` dist-tag。npm 目前也会把这个首个 RC 暴露在 `latest` 下，因为 npm 会给新包的首次
+发布自动设置 `latest`；稳定版发布会替换它。预发布安装请使用精确版本或 `@next`；只有 registry 不可达时才使用上面的
+离线 tarball 回退。固定明确版本可以让 profile 可复现。
 
 重启 `dsh web`，或让 HMR 重新组合 profile，然后刷新页面。profile 的 `package.json` 会增加依赖和 bundle
 选择：

@@ -100,8 +100,9 @@ Host 在 `session/created` 时初始化记录，并在首次 prompt 前的 `agen
 
 ## 安装
 
-> **安装渠道。** 维护者发布 `next` dist-tag 后，可按精确版本或预发布渠道安装（`@0.1.0-rc.1` / `@next`）。
-> 如果 registry 中还没有列出 `next` tag，请安装从本 checkout 构建并验证过的本地 tarball。
+`dsh-charter@0.1.0-rc.1` 已发布到 npm registry。预发布渠道是 `next`；需要可复现 profile 时固定精确版本。
+npm 目前也会把这个首个 RC 暴露在 `latest` 下，因为 npm 会给新包的首次发布自动设置 `latest`——稳定版发布后
+会替换它。不要依赖 `@latest` 安装预发布版。
 
 ### 环境要求
 
@@ -110,22 +111,7 @@ Host 在 `session/created` 时初始化记录，并在首次 prompt 前的 `agen
 - Node.js **`^22.19.0 || >=24.0.0`**。
 - Web 或 Desktop profile。
 
-### 已验证的本地 tarball（预发布回退）
-
-在 checkout 中：
-
-```bash
-npm install
-npm run build
-npm pack                         # dsh-charter-0.1.0-rc.1.tgz
-dsh plugin --profile web add ./dsh-charter-0.1.0-rc.1.tgz
-```
-
-Desktop 若支持本地插件导入，可在 Plugins 页面安装同一个 tarball；否则通过 Desktop profile 自己的包管理器
-安装。`dsh plugin --profile desktop` 会被拥有该 profile 的 Electron app 拒绝。源码开发流程见
-[CONTRIBUTING.zh.md](CONTRIBUTING.zh.md)；不要把 `git clone` 当作普通用户的安装方式。
-
-### Registry 安装（`next` 发布之后）
+### 从 npm 安装（推荐）
 
 #### Web profile — 按版本或预发布 tag 安装
 
@@ -134,25 +120,45 @@ dsh plugin --profile web add dsh-charter@0.1.0-rc.1   # 精确版本：可复现
 dsh plugin --profile web add dsh-charter@next         # 最新预发布
 ```
 
-维护者发布 `next` dist-tag 后，`0.1.0-rc.1` 位于 `next` 下，而不是 `latest`；只有在稳定版发布之后才使用
-`@latest`。如果还没有列出该 tag，请先构建并安装上面的已验证本地 tarball。推荐固定明确版本，保证 profile
-可复现。
+固定精确版本可以保证 profile 可复现；`@next` 跟踪最新预发布。`@latest` 不是预发布渠道，稳定版出现后会指向
+稳定版。registry 不可达时，使用下面的离线 tarball 回退方式。
 
 重启 `dsh web`（或等待 profile HMR 重新组合），然后刷新页面。profile 的 `package.json` 会增加依赖和
 bundle 选择。
 
 #### Desktop — 从 Plugins 安装
 
-如果你的 Desktop 版本已接入公开插件目录，且 `dsh-charter` 已发布到该目录，打开 **Desktop → Plugins**，
-搜索 **`dsh-charter`**，点击 **Install**；已安装时点击 **Update**。Desktop 管理插件生命周期并热更新新的
-bundle。否则使用上面的本地 tarball 路径。
+如果你的 Desktop 版本已接入公开插件目录，打开 **Desktop → Plugins**，搜索 **`dsh-charter`**，点击
+**Install**；已安装时点击 **Update**。Desktop 管理插件生命周期并热更新新的 bundle。否则使用下面的离线
+tarball 回退方式。
+
+### 离线 / 本地 tarball 回退
+
+适用于离线/air-gapped 机器、只能导入本地插件的 Desktop 构建，或需要校验精确发布产物的场景。GitHub Release
+附带与 `npm publish` 完全相同的 tarball 和 `SHA256SUMS`。
+
+```bash
+# 在 checkout 中：
+npm install
+npm run build
+npm pack                         # dsh-charter-0.1.0-rc.1.tgz
+dsh plugin --profile web add ./dsh-charter-0.1.0-rc.1.tgz
+
+# 或下载 GitHub Release 的 tarball + SHA256SUMS 并校验：
+shasum -a 256 -c SHA256SUMS
+dsh plugin --profile web add ./dsh-charter-0.1.0-rc.1.tgz
+```
+
+`dsh plugin --profile desktop` 会被拥有该 profile 的 Electron app 拒绝；请使用 Desktop 的 Plugins 页面或该
+profile 自己的包管理器。源码开发流程见 [CONTRIBUTING.zh.md](CONTRIBUTING.zh.md)；不要把 `git clone` 当作普通
+用户的安装方式。
 
 ### 更新
 
-- **本地 tarball**：重新构建并重复本地安装命令；
-- **Web（registry 渠道）**：`dsh plugin --profile web add dsh-charter@next`，然后重启/刷新；固定版本的
-  profile 在稳定 `latest` 出现前继续使用显式的 `0.1.0-rc.1`；
-- **发布后的 Desktop**：Plugins → `dsh-charter` → **Update**，Desktop 会热更新。
+- **Web（npm）**：`dsh plugin --profile web add dsh-charter@next`，然后重启/刷新；固定版本 profile 继续使用
+  显式的 `0.1.0-rc.1`；
+- **本地 tarball**：重新构建/下载新 tarball，并重复本地安装命令；
+- **Desktop**：Plugins → `dsh-charter` → **Update**，Desktop 会热更新。
 
 ## 快速开始
 
@@ -301,8 +307,8 @@ npm run verify:compaction # 手工真实模型 compaction 校验（不在 check 
 
 Pre-1.0。DSH 插件 ABI 仍在演进；项目对上述版本做兼容验证，并刻意保持兼容层很小。公开仓库为 [centella-cream/dsh-charter](https://github.com/centella-cream/dsh-charter)。当前树是 `0.1.0-rc.1`
 预发布：真实模型 compaction 验收 **PASS 已于 2026-10-22 记录**（一个匿名评估会话；326 条消息 / 约 228k
-tokens 被压缩，revision 1 契约携带匹配 digest 存活——见验证记录第 8.4 节）。发布产物是从本树构建并验证过的
-本地 tarball；维护者发布后也会通过 npm 的 `next` dist-tag 提供。发布稳定 `latest` 前还有一项记录在 8.4 节的人工
+tokens 被压缩，revision 1 契约携带匹配 digest 存活——见验证记录第 8.4 节）。发布产物已通过 npm 的 `next` dist-tag 提供；GitHub Release 也附带同一份已验证 tarball。npm 目前也会把首个 RC 暴露在
+`latest` 下（首次发布行为）；预发布安装请使用精确版本 `0.1.0-rc.1` 或 `@next`。发布稳定 `latest` 前还有一项记录在 8.4 节的人工
 检查：重启 Desktop app 后重新打开会话契约 tab 一次，确认已安装的 bundle/tool ABI。CI
 （`.github/workflows/ci.yml`）在 Node `22.19.0` 与 `24` 上打包并 smoke 测试可安装产物；本地门禁证据记录在验证
 记录第 2 节。发布状态前置项、tag 顺序和确切的发布流程见 [docs/releasing.zh.md](docs/releasing.zh.md)。
