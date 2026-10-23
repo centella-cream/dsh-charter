@@ -95,6 +95,8 @@ export interface CharterDraftState {
   readonly bootstrapObjective: string
   readonly bootstrapItems: readonly BootstrapDraftItem[]
   readonly bootstrapProblem: BootstrapProblem | null
+  /** A stream frame made the reviewed draft stale while its RPC outcome was unknown. */
+  readonly bootstrapNeedsStale: boolean
   /** View revision captured when the reviewed history draft was accepted. */
   readonly bootstrapBaseRevision: number | null
   readonly attempt: DraftAttempt | null
@@ -112,6 +114,33 @@ function clientRef(): string {
 
 function sameOp(left: CharterOp, right: CharterOp): boolean {
   return JSON.stringify(left) === JSON.stringify(right)
+}
+
+/**
+ * The last edit Apply has an unknown outcome: the staged batch is frozen and
+ * must be replayed verbatim before anything else may change it.
+ */
+export function editReplayPending(state: Pick<
+  CharterDraftState,
+  'attempt' | 'saving' | 'feedback'
+>): boolean {
+  return state.attempt?.kind === 'edit' && !state.saving && state.feedback?.kind === 'connection'
+}
+
+/** The last bootstrap Apply has an unknown outcome and must be replayed. */
+export function bootstrapReplayPending(state: Pick<
+  CharterDraftState,
+  'attempt' | 'bootstrapSaving' | 'bootstrapProblem'
+>): boolean {
+  return state.attempt?.kind === 'bootstrap'
+    && !state.bootstrapSaving
+    && state.bootstrapProblem?.kind === 'save-failed'
+    && state.bootstrapProblem.code === 'UNAVAILABLE'
+}
+
+/** Lock every draft edit while an unknown-outcome request is unresolved. */
+function replayLocked(state: CharterDraftState): boolean {
+  return editReplayPending(state) || bootstrapReplayPending(state)
 }
 
 function initialState(sessionId: SessionId): CharterDraftState {
@@ -136,6 +165,7 @@ function initialState(sessionId: SessionId): CharterDraftState {
     bootstrapObjective: '',
     bootstrapItems: [],
     bootstrapProblem: null,
+    bootstrapNeedsStale: false,
     bootstrapBaseRevision: null,
     attempt: null,
   }
@@ -249,15 +279,18 @@ export class CharterDraft {
   }
 
   setNewInvariant(value: string): void {
+    if (replayLocked(this.state)) return
     this.update({ newInvariant: value })
   }
 
   setNewDeliverable(value: string): void {
+    if (replayLocked(this.state)) return
     this.update({ newDeliverable: value })
   }
 
   stage(view: CharterView, op: CharterOp, fallbackBaseRevision?: number): void {
     if (view.status !== 'ready' || this.state.saving || this.state.bootstrapSaving) return
+    if (replayLocked(this.state)) return
     const ops = this.state.ops.some(existing => sameOp(existing, op))
       ? this.state.ops
       : [...this.state.ops, op]
@@ -275,7 +308,7 @@ export class CharterDraft {
   }
 
   unstage(itemId: string): void {
-    if (this.state.saving || this.state.bootstrapSaving) return
+    if (this.state.saving || this.state.bootstrapSaving || replayLocked(this.state)) return
     const ops = this.state.ops.filter(op => !opTargets(op, itemId))
     this.update({
       ops,
@@ -284,7 +317,10 @@ export class CharterDraft {
     })
   }
 
-  discard(): void {
+  discard(force = false): void {
+    // Discarding while an unknown-outcome request is unresolved would drop the
+    // only evidence needed for an idempotent replay; the Pane disables discard.
+    if (!force && replayLocked(this.state)) return
     this.asyncGeneration += 1
     this.update({
       ops: [],
@@ -302,6 +338,7 @@ export class CharterDraft {
   }
 
   openEditor(editor: DraftEditor, view: CharterView): void {
+    if (replayLocked(this.state)) return
     const text = editor.kind === 'objective'
       ? view.objective?.current.text ?? ''
       : editor.item.text
@@ -318,10 +355,12 @@ export class CharterDraft {
   }
 
   setEditorText(value: string): void {
+    if (replayLocked(this.state)) return
     this.update({ editorText: value })
   }
 
   setEditorReason(value: string): void {
+    if (replayLocked(this.state)) return
     this.update({ editorReason: value })
   }
 
@@ -337,6 +376,7 @@ export class CharterDraft {
 
   /** Validate and stage the open editor; keeps it open when the input is invalid. */
   saveEditor(view: CharterView): void {
+    if (replayLocked(this.state)) return
     const editor = this.state.editor
     if (editor === null || this.state.editorText.trim().length === 0) return
     // Validate and measure the normalized value the Host will actually store,
@@ -400,7 +440,7 @@ export class CharterDraft {
   }
 
   addItem(view: CharterView, kind: 'invariant' | 'deliverable', text: string, clear: () => void): void {
-    if (this.state.saving || this.state.bootstrapSaving) return
+    if (this.state.saving || this.state.bootstrapSaving || replayLocked(this.state)) return
     const inspection = inspectUserText(text)
     if (inspection.issue !== undefined) {
       this.update({ feedback: { kind: 'editorInvalid', issue: inspection.issue } })
@@ -426,9 +466,8 @@ export class CharterDraft {
     const attempt = this.state.attempt
     if (attempt === null || attempt.kind !== kind) return undefined
     const unknownOutcome = kind === 'edit'
-      ? this.state.feedback?.kind === 'connection'
-      : this.state.bootstrapProblem?.kind === 'save-failed'
-        && this.state.bootstrapProblem.code === 'UNAVAILABLE'
+      ? editReplayPending(this.state)
+      : bootstrapReplayPending(this.state)
     return unknownOutcome ? attempt : undefined
   }
 
@@ -535,12 +574,12 @@ export class CharterDraft {
   // ------------------------------------------------------------------
 
   setBootstrapObjective(value: string): void {
-    if (this.state.bootstrapSaving) return
+    if (this.state.bootstrapSaving || bootstrapReplayPending(this.state)) return
     this.update({ bootstrapObjective: value, attempt: null, bootstrapProblem: null })
   }
 
   updateBootstrapItem(id: string, patch: Partial<BootstrapDraftItem>): void {
-    if (this.state.bootstrapSaving) return
+    if (this.state.bootstrapSaving || bootstrapReplayPending(this.state)) return
     this.update({
       bootstrapItems: this.state.bootstrapItems.map(item => item.id === id ? { ...item, ...patch } : item),
       attempt: null,
@@ -549,7 +588,7 @@ export class CharterDraft {
   }
 
   setAllBootstrapSelected(selected: boolean): void {
-    if (this.state.bootstrapSaving) return
+    if (this.state.bootstrapSaving || bootstrapReplayPending(this.state)) return
     this.update({
       bootstrapItems: this.state.bootstrapItems.map(item => ({ ...item, selected })),
       attempt: null,
@@ -667,6 +706,7 @@ export class CharterDraft {
     }
   }
 
+  /** Explicit dismissal: one full cleanup of the draft and any replay evidence. */
   dismissBootstrap(): void {
     this.bootstrapGeneration += 1
     this.update({
@@ -675,7 +715,9 @@ export class CharterDraft {
       bootstrapObjective: '',
       bootstrapItems: [],
       bootstrapProblem: null,
+      bootstrapNeedsStale: false,
       bootstrapBaseRevision: null,
+      bootstrapSaving: false,
       attempt: null,
     })
   }
@@ -683,7 +725,10 @@ export class CharterDraft {
   /**
    * A live view moved away from the reviewed history draft. The proposal was
    * extracted against the old empty state, so it must be re-extracted rather
-   * than silently applied to the new revision.
+   * than silently applied to the new revision. While an Apply is in flight (or
+   * its outcome is unknown) the payload must stay visible and replayable: only
+   * remember that the view moved, and let the RPC outcome or an explicit
+   * dismiss decide what happens next.
    */
   markBootstrapStale(view: CharterView): void {
     if (this.state.bootstrapPhase !== 'draft' || this.state.bootstrapBaseRevision === null) return
@@ -691,6 +736,10 @@ export class CharterDraft {
       || view.objective !== null
       || view.items.length > 0
     if (!stale) return
+    if (this.state.bootstrapSaving || bootstrapReplayPending(this.state)) {
+      if (!this.state.bootstrapNeedsStale) this.update({ bootstrapNeedsStale: true })
+      return
+    }
     this.bootstrapGeneration += 1
     this.update({
       bootstrapPhase: 'failed',
@@ -698,13 +747,134 @@ export class CharterDraft {
       bootstrap: null,
       bootstrapObjective: '',
       bootstrapItems: [],
+      bootstrapNeedsStale: false,
       bootstrapBaseRevision: null,
+      bootstrapSaving: false,
       attempt: null,
     })
   }
 
+  /** Counts derived from the retained request (never from a fresh re-plan). */
+  private bootstrapRequestCounts(request: import('../core/schemas.js').CharterEditRequest): {
+    readonly active: number
+    readonly pending: number
+    readonly pendingInvariants: number
+    readonly pendingDeliverables: number
+  } {
+    let active = 0
+    let pending = 0
+    let pendingInvariants = 0
+    let pendingDeliverables = 0
+    for (const op of request.ops) {
+      if (op.type === 'item.add') active += 1
+      else if (op.type === 'item.propose') {
+        pending += 1
+        if (op.item.kind === 'invariant') pendingInvariants += 1
+        else pendingDeliverables += 1
+      }
+    }
+    return { active, pending, pendingInvariants, pendingDeliverables }
+  }
+
+  private finishBootstrapSuccess(
+    committedRevision: number,
+    request: import('../core/schemas.js').CharterEditRequest,
+  ): void {
+    const counts = this.bootstrapRequestCounts(request)
+    this.update({
+      bootstrapSaving: false,
+      attempt: null,
+      bootstrap: null,
+      bootstrapPhase: 'dismissed',
+      bootstrapObjective: '',
+      bootstrapItems: [],
+      bootstrapProblem: null,
+      bootstrapNeedsStale: false,
+      bootstrapBaseRevision: null,
+      feedback: counts.pending > 0
+        ? {
+            kind: 'bootstrapSaved',
+            active: counts.active,
+            pending: counts.pending,
+            revision: committedRevision,
+          }
+        : { kind: 'saved', revision: committedRevision },
+      ...(counts.pendingInvariants > 0
+        ? { section: 'invariants' as const }
+        : counts.pendingDeliverables > 0 ? { section: 'deliverables' as const } : {}),
+    })
+  }
+
+  private async replayBootstrap(retained: DraftAttempt): Promise<void> {
+    const source = this.resolveSource()
+    if (source === undefined) {
+      this.update({ bootstrapSaving: false, bootstrapProblem: { kind: 'save-failed', code: 'UNAVAILABLE' } })
+      return
+    }
+    const request = retained.request
+    this.update({
+      bootstrapSaving: true,
+      bootstrapProblem: null,
+      attempt: { kind: 'bootstrap', request, sourceGeneration: source.connectionGeneration },
+    })
+    const generation = this.asyncGeneration
+    const candidateGeneration = this.bootstrapGeneration
+    const sourceGeneration = source.connectionGeneration
+    const current = (): boolean => this.asyncGeneration === generation
+      && this.bootstrapGeneration === candidateGeneration
+      && this.resolveSource() === source
+      && source.connectionGeneration === sourceGeneration
+    try {
+      const result = await source.edit(request)
+      if (!current()) {
+        if (this.asyncGeneration === generation
+          && this.resolveSource() === source
+          && source.connectionGeneration === sourceGeneration
+          && this.state.bootstrapSaving) {
+          this.update({
+            bootstrapSaving: false,
+            bootstrapProblem: { kind: 'save-failed', code: 'UNAVAILABLE' },
+          })
+        }
+        return
+      }
+      if (result.view !== undefined) source.accept(result.view)
+      if (result.ok) {
+        this.finishBootstrapSuccess(result.committedRevision, request)
+      } else {
+        this.update({
+          bootstrapSaving: false,
+          attempt: null,
+          bootstrapProblem: {
+            kind: 'save-failed',
+            code: result.code,
+            ...(result.message === undefined ? {} : { detail: result.message }),
+          },
+        })
+      }
+    } catch (error) {
+      if (!current()) return
+      console.error('charter: bootstrap replay failed', error)
+      // The outcome is still unknown: keep the visible reviewed payload and the
+      // replayable attempt so an explicit Retry can recover.
+      this.update({
+        bootstrapSaving: false,
+        bootstrapProblem: { kind: 'save-failed', code: 'UNAVAILABLE' },
+      })
+    }
+  }
+
   async applyBootstrap(view: CharterView): Promise<void> {
-    if (view.status !== 'ready' || this.state.bootstrap === null || this.state.bootstrapSaving) return
+    if (view.status !== 'ready' || this.state.bootstrapSaving) return
+    // Unknown-outcome replay comes FIRST: resend the retained request before any
+    // stale/text/plan/limit checks, because the Host may already have committed
+    // it and a fresh admission failure must not block recovery.
+    const retained = this.retryableRequest('bootstrap')
+    if (retained !== undefined) {
+      await this.replayBootstrap(retained)
+      return
+    }
+    if (this.state.bootstrap === null) return
     if (this.state.ops.length > 0 || this.state.editor !== null) return
     const baseRevision = this.state.bootstrapBaseRevision
     // Admission is gated on the extraction baseline: a different revision or a
@@ -745,14 +915,7 @@ export class CharterDraft {
       this.update({ bootstrapProblem: { kind: 'save-failed', code: 'UNAVAILABLE' } })
       return
     }
-    const previous = this.retryableRequest('bootstrap')
-    // A retained request is replayable only if it still describes exactly the
-    // reviewed plan and the same base revision; otherwise it would silently
-    // apply stale selections.
-    const reusable = previous !== undefined
-      && previous.request.baseRevision === baseRevision
-      && JSON.stringify(previous.request.ops) === JSON.stringify(plan.ops)
-    const request = reusable ? previous.request : {
+    const request: import('../core/schemas.js').CharterEditRequest = {
       sessionId: this.state.sessionId,
       mutationId: mutationId(),
       // Always send the extraction baseline, never the current view revision.
@@ -789,37 +952,26 @@ export class CharterDraft {
       }
       if (result.view !== undefined) source.accept(result.view)
       if (result.ok) {
-        this.update({
-          bootstrapSaving: false,
-          attempt: null,
-          bootstrap: null,
-          bootstrapPhase: 'dismissed',
-          bootstrapObjective: '',
-          bootstrapItems: [],
-          bootstrapBaseRevision: null,
-          feedback: plan.pending > 0
-            ? {
-                kind: 'bootstrapSaved',
-                active: plan.active,
-                pending: plan.pending,
-                revision: result.committedRevision,
-              }
-            : { kind: 'saved', revision: result.committedRevision },
-          ...(plan.pendingInvariants > 0
-            ? { section: 'invariants' as const }
-            : plan.pendingDeliverables > 0 ? { section: 'deliverables' as const } : {}),
-        })
+        this.finishBootstrapSuccess(result.committedRevision, request)
       } else {
         this.update({
           bootstrapSaving: false,
           attempt: null,
-          bootstrapProblem: { kind: 'save-failed', code: result.code, ...(result.message === undefined ? {} : { detail: result.message }) },
+          bootstrapProblem: {
+            kind: 'save-failed',
+            code: result.code,
+            ...(result.message === undefined ? {} : { detail: result.message }),
+          },
         })
       }
     } catch (error) {
       if (!current()) return
       console.error('charter: bootstrap apply failed', error)
-      this.update({ bootstrapSaving: false, bootstrapProblem: { kind: 'save-failed', code: 'UNAVAILABLE' } })
+      // Unknown outcome: keep the reviewed payload and the replayable attempt.
+      this.update({
+        bootstrapSaving: false,
+        bootstrapProblem: { kind: 'save-failed', code: 'UNAVAILABLE' },
+      })
     }
   }
 

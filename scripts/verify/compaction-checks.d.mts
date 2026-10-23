@@ -15,6 +15,7 @@ export interface CompactionEvidence {
 
 export interface CompactionEvaluation {
   readonly ok: boolean
+  readonly evaluated: boolean
   readonly failures: readonly string[]
   readonly warnings: readonly string[]
 }
@@ -148,6 +149,7 @@ export interface CompactionTranscriptReport {
   readonly postCompactionActivity: number
   readonly noPostCompactionActivity: boolean
   readonly laterCompactionAttempt: 'open' | 'landed-failed' | undefined
+  readonly pendingGate: 'blocked' | 'no-compaction' | 'charter-not-before-start' | 'open-attempt' | 'no-activity' | undefined
   readonly postCompactionExecutionWithoutSnapshot: boolean
   readonly verdicts: Record<string, boolean | undefined>
   readonly verification: CompactionEvaluation
@@ -173,3 +175,5 @@ export interface TranscriptParseResult {
 }
 
 export function parseTranscript(source: string): TranscriptParseResult
+
+export function eventEnvelopeError(event: unknown, previousSeq: number | undefined): string | undefined

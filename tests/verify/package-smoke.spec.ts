@@ -1,5 +1,6 @@
+import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, describe, expect, it } from 'vitest'
@@ -7,6 +8,9 @@ import {
   parseArgs,
   parsePackOutput,
   parseSumsDigest,
+  parseTarVerbose,
+  validatePackedManifest,
+  validateTarMembers,
   verifyArtifactDigest,
 } from '../../scripts/verify/package-smoke.mjs'
 
@@ -80,5 +84,82 @@ describe('artifact-mode argument parsing', () => {
     expect(() => parseArgs(['--sha256', 'SHA256SUMS'])).toThrow(/together/)
     expect(() => parseArgs(['--artifact'])).toThrow(/missing value/)
     expect(() => parseArgs(['--unknown'])).toThrow(/unknown argument/)
+  })
+})
+
+function makeTar(root: string, name: string, args: string[]): string {
+  const artifact = join(root, name)
+  execFileSync('tar', ['-czf', artifact, ...args], { cwd: root })
+  return artifact
+}
+
+describe('exact-artifact tar security validation', () => {
+  const expected = {
+    name: 'dsh-charter',
+    version: '0.1.0-rc.1',
+    exports: { '.': './lib/index.js' },
+    dependencies: { zod: '^3.0.0' },
+    peerDependencies: {},
+    engines: { node: '>=22' },
+    files: ['lib'],
+  }
+
+  it('accepts a pure package/ file+dir tree', () => {
+    const members = [
+      { path: 'package/', type: 'd' },
+      { path: 'package/package.json', type: '-' },
+      { path: 'package/lib/index.js', type: '-' },
+    ]
+    const result = validateTarMembers(members)
+    expect([...result.files].sort()).toEqual(['lib/index.js', 'package.json'])
+  })
+
+  it('rejects traversal, absolute paths, outside-package members, links and duplicates', () => {
+    const reject = (members: Array<{ path: string; type: string }>, pattern: RegExp) => {
+      expect(() => validateTarMembers(members)).toThrow(pattern)
+    }
+    reject([{ path: 'package/../evil', type: '-' }], /traverses/)
+    reject([{ path: '/etc/passwd', type: '-' }], /absolute/)
+    reject([{ path: 'other/file', type: '-' }], /outside package/)
+    reject([{ path: 'package/link', type: 'l' }], /not a regular file/)
+    reject([{ path: 'package/hard', type: 'h' }], /not a regular file/)
+    reject([{ path: 'package/pipe', type: 'p' }], /not a regular file/)
+    reject([{ path: 'package/README.md', type: '-' }, { path: 'package/README.md', type: '-' }], /more than once/)
+  })
+
+  it('rejects a packed manifest whose identity/files/metadata disagree', () => {
+    const packed = {
+      ...expected,
+      files: [...expected.files],
+    }
+    expect(validatePackedManifest(packed, expected)).toMatchObject({ name: 'dsh-charter' })
+    expect(() => validatePackedManifest({ ...packed, name: 'other' }, expected)).toThrow(/identity/)
+    expect(() => validatePackedManifest({ ...packed, files: ['other'] }, expected)).toThrow(/files whitelist/)
+    expect(() => validatePackedManifest({ ...packed, exports: null }, expected)).toThrow(/exports/)
+    expect(() => validatePackedManifest({ ...packed, dependencies: [] }, expected)).toThrow(/dependencies/)
+    expect(() => validatePackedManifest({ ...packed, peerDependencies: { x: '1' } }, expected)).toThrow(/peerDependencies/)
+    expect(() => validatePackedManifest(null as never, expected)).toThrow(/not an object/)
+  })
+
+  it('parses real tar listings and rejects a real symlink member', () => {
+    const root = workdir()
+    mkdirSync(join(root, 'package'))
+    writeFileSync(join(root, 'package/README.md'), 'readme')
+    symlinkSync('README.md', join(root, 'package/link'))
+    const artifact = makeTar(root, 'symlink.tgz', ['package'])
+    const verbose = execFileSync('tar', ['-tvzf', artifact], { encoding: 'utf8' })
+    const members = parseTarVerbose(verbose)
+    expect(() => validateTarMembers(members)).toThrow(/not a regular file/)
+  })
+
+  it('rejects a real archive whose packed manifest is wrong', () => {
+    const root = workdir()
+    mkdirSync(join(root, 'package'))
+    writeFileSync(join(root, 'package/package.json'), JSON.stringify({ name: 'wrong', version: '0.0.0' }))
+    const artifact = makeTar(root, 'bad-manifest.tgz', ['package'])
+    const packed = JSON.parse(
+      execFileSync('tar', ['-xzOf', artifact, 'package/package.json'], { encoding: 'utf8' }),
+    )
+    expect(() => validatePackedManifest(packed, expected)).toThrow(/identity/)
   })
 })

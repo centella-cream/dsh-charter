@@ -319,7 +319,7 @@ describe('authenticated charter_read evidence', () => {
 
 describe('compaction checker success criteria', () => {
   it('passes only when compaction survived and all required evidence is true', () => {
-    expect(evaluateCompactionEvidence(pass)).toEqual({ ok: true, failures: [], warnings: [] })
+    expect(evaluateCompactionEvidence(pass)).toEqual({ ok: true, evaluated: true, failures: [], warnings: [] })
   })
 
   it('fails a dirty system prompt even when the charter survives compaction', () => {
@@ -577,6 +577,245 @@ describe('later landed compaction attempts', () => {
   })
 })
 
+describe('all later compaction attempts after the evidence', () => {
+  it('fails when an earlier landed-failed attempt is followed by an unlanded one', () => {
+    const events = [
+      ...evidenceFixture(),
+      // landed failed attempt (checkpoint inside its interval)
+      { type: 'compaction/start', seq: 20, time: 4_000, data: { compactionId: 'attempt-a' } },
+      { type: 'compaction/summary', seq: 21, time: 4_001, data: { compactionId: 'attempt-a' } },
+      {
+        type: 'user/message',
+        seq: 22,
+        time: 4_002,
+        data: {
+          source: { kind: 'compact-checkpoint', compactionId: 'attempt-a' },
+          content: [{ type: 'text', text: 'landed failed summary' }],
+        },
+      },
+      { type: 'compaction/end', seq: 23, time: 4_003, data: { compactionId: 'attempt-a', error: 'failed' } },
+      // a newer unlanded failed attempt must not mask the landed one
+      { type: 'compaction/start', seq: 30, time: 5_000, data: { compactionId: 'attempt-b' } },
+      { type: 'compaction/summary', seq: 31, time: 5_001, data: { compactionId: 'attempt-b' } },
+      { type: 'compaction/end', seq: 32, time: 5_002, data: { compactionId: 'attempt-b', error: 'failed' } },
+    ]
+    const report = evaluate(events)
+    expect(report.verdicts.laterCompactionAttempt).toBe('landed-failed')
+    expect(report.status).toBe('fail')
+    expect(report.verification).toMatchObject({ ok: false, evaluated: true })
+  })
+
+  it('keeps the earlier PASS only when no later attempt landed a checkpoint', () => {
+    const events = [
+      ...evidenceFixture(),
+      { type: 'compaction/start', seq: 20, time: 4_000, data: { compactionId: 'unlanded' } },
+      { type: 'compaction/summary', seq: 21, time: 4_001, data: { compactionId: 'unlanded' } },
+      { type: 'compaction/end', seq: 22, time: 4_002, data: { compactionId: 'unlanded', error: 'failed' } },
+    ]
+    const report = evaluate(events)
+    expect(report.verdicts.laterCompactionAttempt).toBeUndefined()
+    expect(report.status).toBe('pass')
+  })
+
+  it('requires new evidence after a later landing attempt with a new successful compaction', () => {
+    const events = [
+      ...evidenceFixture(),
+      // landed failed attempt, then a successful compaction with no new evidence
+      { type: 'compaction/start', seq: 20, time: 4_000, data: { compactionId: 'failed' } },
+      { type: 'compaction/summary', seq: 21, time: 4_001, data: { compactionId: 'failed' } },
+      {
+        type: 'user/message',
+        seq: 22,
+        time: 4_002,
+        data: {
+          source: { kind: 'compact-checkpoint', compactionId: 'failed' },
+          content: [{ type: 'text', text: 'landed failed summary' }],
+        },
+      },
+      { type: 'compaction/end', seq: 23, time: 4_003, data: { compactionId: 'failed', error: 'failed' } },
+      ...compactionLifecycle('newer-success', 30, 5_000),
+    ]
+    const report = evaluate(events)
+    expect(report.latestCompaction).toMatchObject({ id: 'newer-success' })
+    expect(report.verdicts.pendingGate).toBe('no-activity')
+    expect(report.status).toBe('wait')
+    expect(report.exitCode).toBe(3)
+    expect(report.verification).toMatchObject({ ok: true, evaluated: false, failures: [] })
+
+    const withEvidence = [
+      ...events,
+      runtimeSnapshot(38),
+      charterReadCall(40, 5, 'call-new'),
+      charterReadResult(41, 5, 'call-new', { sourceEventSeqs: [40] }),
+    ]
+    const pass = evaluate(withEvidence)
+    expect(pass.verdicts.pendingGate).toBeUndefined()
+    expect(pass.status).toBe('pass')
+    expect(pass.exitCode).toBe(0)
+  })
+
+  it('associates same-id retry checkpoints by attempt interval', () => {
+    // Attempt 1 (same id) landed a checkpoint; attempt 2 is a failed retry with
+    // no checkpoint of its own. The old global-id set would wrongly mark it as
+    // landed and fail the earlier PASS.
+    const first = compactionLifecycle('same-id', 10, 1_000)
+    const retry = [
+      { type: 'compaction/start', seq: 20, time: 4_000, data: { compactionId: 'same-id' } },
+      { type: 'compaction/summary', seq: 21, time: 4_001, data: { compactionId: 'same-id' } },
+      { type: 'compaction/end', seq: 22, time: 4_002, data: { compactionId: 'same-id', error: 'failed' } },
+    ]
+    const events = [
+      ...first,
+      runtimeSnapshot(14),
+      charterReadCall(15, 4, 'call-same'),
+      charterReadResult(16, 4, 'call-same', { sourceEventSeqs: [15] }),
+      ...retry,
+    ]
+    const report = evaluate(events)
+    expect(report.verdicts.laterCompactionAttempt).toBeUndefined()
+    expect(report.status).toBe('pass')
+  })
+})
+
+describe('modern charter_read identity fields are mandatory', () => {
+  function identityFixture(options: {
+    readonly call?: Record<string, unknown>
+    readonly resultData?: Record<string, unknown>
+    readonly message?: Record<string, unknown>
+  }): TestEvent[] {
+    const call: TestEvent = {
+      type: 'tool/call',
+      seq: 15,
+      time: 3_015,
+      data: {
+        turn: 4,
+        step: 1,
+        callId: 'call-id',
+        name: 'charter_read',
+        arguments: '{"view":"standing"}',
+        ...options.call,
+      },
+    }
+    return [
+      ...compactionLifecycle('identity-compaction', 10, 1_000),
+      runtimeSnapshot(14),
+      call,
+      {
+        type: 'tool/result',
+        seq: 16,
+        time: 3_016,
+        sourceEventSeqs: [15],
+        data: {
+          turn: 4,
+          step: 1,
+          ...options.resultData,
+          message: {
+            role: 'tool',
+            toolCallId: 'call-id',
+            isError: false,
+            content: [{ type: 'text', text: JSON.stringify(READ_VIEW) }],
+            ...options.message,
+          },
+        },
+      },
+    ]
+  }
+
+  function authOf(events: TestEvent[]) {
+    return resolveCharterReadCalls(events).results.find(result => result.seq === 16)
+  }
+
+  it('requires toolCallId/turn/step on the modern result and producing call', () => {
+    const clearToolCallId = identityFixture({})
+    // Remove the identifying fields one at a time from an otherwise valid case.
+    const missingToolCallId = clearToolCallId.map(event => (event.type === 'tool/result'
+      ? { ...event, data: { ...event.data, message: { ...(event.data as { message: object }).message, toolCallId: undefined } } }
+      : event))
+    expect(authOf(missingToolCallId)).toMatchObject({ authenticated: false, authError: 'tool-call-id-missing' })
+    const missingTurn = clearToolCallId.map(event => (event.type === 'tool/result'
+      ? { ...event, data: { ...event.data, turn: undefined } }
+      : event))
+    expect(authOf(missingTurn)).toMatchObject({ authenticated: false, authError: 'turn-missing' })
+    const missingStep = clearToolCallId.map(event => (event.type === 'tool/result'
+      ? { ...event, data: { ...event.data, step: undefined } }
+      : event))
+    expect(authOf(missingStep)).toMatchObject({ authenticated: false, authError: 'step-missing' })
+    const missingCallIdentity = identityFixture({ call: { turn: undefined } })
+    expect(authOf(missingCallIdentity)).toMatchObject({ authenticated: false, authError: 'call-identity-missing' })
+    expect(authOf(identityFixture({}))).toMatchObject({ authenticated: true, resolution: 'sourceEventSeqs' })
+  })
+
+  it('never falls back to a wildcard match when identity fields are missing', () => {
+    const events = identityFixture({})
+      .map(event => (event.type === 'tool/result'
+        ? { ...event, data: { ...event.data, turn: undefined, step: undefined, message: { ...(event.data as { message: object }).message, toolCallId: undefined } } }
+        : event))
+    expect(authOf(events)).toMatchObject({ authenticated: false })
+    expect(evaluate(events).status).not.toBe('pass')
+  })
+})
+
+describe('WAIT internal consistency gates', () => {
+  function expectWaitReport(report: ReturnType<typeof evaluateCompactionTranscript>) {
+    expect(report.status).toBe('wait')
+    expect(report.exitCode).toBe(3)
+    expect(report.verification).toMatchObject({ ok: true, evaluated: false, failures: [] })
+    expect(report.verdictLines.some(line => line.state === 'FAIL')).toBe(false)
+    expect(JSON.parse(JSON.stringify(report))).toMatchObject({
+      status: 'wait',
+      exitCode: 3,
+      verification: { ok: true, evaluated: false, failures: [] },
+    })
+  }
+
+  it('keeps the no-compaction gate pending without evidence failures', () => {
+    const report = evaluate([])
+    expect(report.verdicts.pendingGate).toBe('no-compaction')
+    expect(report.verdicts.survivesCompaction).toBeUndefined()
+    expectWaitReport(report)
+  })
+
+  it('keeps the charter-after-start gate pending without evidence failures', () => {
+    const report = evaluate(evidenceFixture(), { committedAt: 1_002 })
+    expect(report.verdicts.pendingGate).toBe('charter-not-before-start')
+    expectWaitReport(report)
+  })
+
+  it('keeps an open later attempt pending without evidence failures', () => {
+    const events = [
+      ...evidenceFixture(),
+      { type: 'compaction/start', seq: 20, time: 4_000, data: { compactionId: 'open' } },
+    ]
+    const report = evaluate(events)
+    expect(report.verdicts.pendingGate).toBe('open-attempt')
+    expectWaitReport(report)
+  })
+
+  it('keeps the no-activity gate pending without evidence failures', () => {
+    const report = evaluate(compactionLifecycle('idle', 10, 1_000))
+    expect(report.verdicts.pendingGate).toBe('no-activity')
+    expectWaitReport(report)
+  })
+
+  it('lets only evaluated active evidence fail', () => {
+    const events = [
+      ...compactionLifecycle('active', 10, 1_000),
+      {
+        type: 'assistant/message',
+        seq: 14,
+        time: 2_014,
+        data: { turn: 4, step: 1, message: { role: 'assistant', content: [{ type: 'text', text: 'working' }] } },
+      },
+    ]
+    const report = evaluate(events)
+    expect(report.verification).toMatchObject({ ok: false, evaluated: true })
+    expect(report.verification.failures.length).toBeGreaterThan(0)
+    expect(report.verdictLines.some(line => line.state === 'FAIL')).toBe(true)
+    expect(report.status).toBe('fail')
+    expect(report.exitCode).toBe(1)
+  })
+})
+
 describe('strict compaction lifecycle state machine', () => {
   function attempt(id: string, baseSeq: number, options: { readonly error?: string } = {}): TestEvent[] {
     const loop = compactionLifecycle(id, baseSeq, baseSeq * 10)
@@ -766,7 +1005,7 @@ describe('post-compaction activity gating', () => {
     expect(report.verdicts.noPostCompactionActivity).toBe(true)
     expect(report.verdicts.postCompactionExecutionWithoutSnapshot).toBe(false)
     // No activity means no evidence was evaluated: WAIT, not a false failure.
-    expect(report.verification).toMatchObject({ ok: true, failures: [] })
+    expect(report.verification).toMatchObject({ ok: true, evaluated: false, failures: [] })
     expect(report.verdicts.survivesCompaction).toBeUndefined()
     expect(report.verdicts.injectedAfterCompaction).toBeUndefined()
     expect(report.verdicts.systemPromptClean).toBeUndefined()
@@ -778,7 +1017,7 @@ describe('post-compaction activity gating', () => {
     expect(JSON.parse(JSON.stringify(report))).toMatchObject({
       status: 'wait',
       exitCode: 3,
-      verification: { ok: true, failures: [] },
+      verification: { ok: true, evaluated: false, failures: [] },
     })
   })
 })

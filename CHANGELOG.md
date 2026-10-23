@@ -49,7 +49,7 @@ Initial MVP.
   restart is still required for the new pending-import semantics.
 - Verified against DSH `0.2.1-rc.2` with no code changes required; the existing peer range and compatibility layer
   cover the release candidate.
-- 232 tests across core, host composition, fork, idempotency, quota, prompt boundary, Remote stream, history
+- 252 tests across core, host composition, fork, idempotency, quota, prompt boundary, Remote stream, history
   extraction, client reordering, compatibility, and decorator compatibility. Verified on DSH `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`,
   `0.2.1-rc.1`, and `0.2.1-rc.2`. The actual Web UI was exercised on `0.2.0-rc.2`: tab order, Chinese/English
   switching, objective and invariant editing, preview, Apply, and reload persistence.
@@ -309,3 +309,24 @@ Initial MVP.
   archive's SHA-256 and runs the full consumer checks on those exact bytes without building or packing, and parse
   the full `npm pack --json` output (object, keyed object, or one-element array) instead of slicing from the first
   brace.
+- Lock all draft edits while an unknown-outcome Apply is unresolved through one shared `editReplayPending`
+  predicate: the Pane shows an enabled **Retry last Apply** that ignores revision conflict/fresh admission and
+  replays the exact stored request (same mutationId/baseRevision/ops), while stage/unstage/add/editor/discard are
+  no-ops and Rebase stays blocked until a deterministic reply clears the attempt.
+- Give bootstrap Apply the analogous unknown-outcome handling: replay the retained request before stale/text/plan/
+  limit checks, lock candidate/objective/selection edits, derive success feedback counts from the retained request,
+  keep the reviewed payload visible while a stream change arrives during an in-flight RPC (needs-stale marker
+  instead of a half-dismiss), and make explicit Dismiss the single full cleanup.
+- Harden the exact-artifact smoke against malicious/inconsistent tarballs: reject absolute/traversal paths,
+  links/special members, duplicate members and anything outside `package/`, read the packed `package.json` from the
+  archive and validate its identity/files/exports/dependencies/peers/engines against the working tree, then install
+  only that verified tree.
+- Tighten the compaction checker's release-blocking edges: inspect ALL attempts after the successful evidence (a
+  landed-failed attempt behind a newer unlanded one still FAILs; same-id retry checkpoints associate by attempt seq
+  interval), require the modern `charter_read` call's toolCallId/turn/step to be present and exactly equal, validate
+  transcript event envelopes (shape/type/seq/time/data/strict ordering) with line-numbered corruption, and make
+  WAIT states internally consistent (`verification.evaluated=false`, empty failures, no FAIL verdict lines; only
+  evaluated active evidence can FAIL).
+- Correct the release documentation: CI runs `npm run check` plus the normal `npm run smoke:package`, while the
+  exact-artifact check is the local release gate after building the final tarball and before tag/push/publish; a
+  separate release workflow would be needed to run it in CI.

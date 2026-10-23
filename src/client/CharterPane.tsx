@@ -23,7 +23,11 @@ import type {
 } from './draft-store.js'
 import { CHARTER_LOCALE_NS, type CharterLocaleKey } from './locales.js'
 import { draftAdmission } from './admission.js'
-import { rebaseAvailable } from './draft-store.js'
+import {
+  bootstrapReplayPending,
+  editReplayPending,
+  rebaseAvailable,
+} from './draft-store.js'
 import {
   activeItems,
   itemCounts,
@@ -709,7 +713,18 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   // Only an edit batch can be rebased; a history draft has its own extraction
   // baseline and is re-extracted instead (see bootstrap stale handling).
   const revisionConflict = ops.length > 0 && baseRevision !== null && view.revision !== baseRevision
-  const editable = view.status === 'ready' && !saving && !bootstrapSaving && online && editor === null && state.status === 'ready'
+  // Shared with the store: an unknown-outcome Apply freezes the whole draft and
+  // is recovered through an explicit Retry, never through fresh edits.
+  const editReplay = editReplayPending(draftState)
+  const bootstrapReplay = bootstrapReplayPending(draftState)
+  const editable = view.status === 'ready'
+    && !saving
+    && !bootstrapSaving
+    && online
+    && editor === null
+    && state.status === 'ready'
+    && !editReplay
+    && !bootstrapReplay
   const promptBudget = promptBudgetAdmission(view.promptText, preview, view.limits.maxPromptBytes)
   const previewBytes = promptBudget.previewBytes
   const contextOver = promptBudget.over
@@ -870,6 +885,11 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
             <span role="status">{notice}</span>
           </div>
         )}
+        {(editReplay || bootstrapReplay) && (
+          <div className="charter-notice charter-notice--warning">
+            <span role="alert">{t('footer.replayPending')}</span>
+          </div>
+        )}
         {revisionConflict && (
           <div className="charter-notice charter-notice--warning">
             <span role="alert">{t('notice.conflict', { from: baseRevision ?? 0, to: view.revision })}</span>
@@ -926,11 +946,13 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
               ? (
                   <>
                     <ActionButton
-                      disabled={!canApplyBootstrap}
+                      disabled={bootstrapReplay ? bootstrapSaving : !canApplyBootstrap}
                       onClick={applyBootstrapDraft}
                       busy={bootstrapSaving}
                     >
-                      {bootstrapSaving ? t('footer.applying') : t('bootstrap.apply')}
+                      {bootstrapSaving
+                        ? t('footer.applying')
+                        : bootstrapReplay ? t('footer.retryApply') : t('bootstrap.apply')}
                     </ActionButton>
                     <ActionButton disabled={bootstrapSaving} onClick={() => draft.dismissBootstrap()}>
                       {t('bootstrap.discard')}
@@ -939,16 +961,23 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                 )
               : (
                   <>
-                    <ActionButton disabled={ops.length === 0 || saving} onClick={() => { draft.discard(); statusRef.current?.focus() }}>
+                    <ActionButton
+                      disabled={ops.length === 0 || saving || editReplay}
+                      onClick={() => { draft.discard(); statusRef.current?.focus() }}
+                    >
                       {t('footer.discard')}
                     </ActionButton>
                     <ActionButton
                       variant="primary"
-                      disabled={ops.length === 0 || !editable || revisionConflict || applyBlocked || disconnected}
+                      disabled={editReplay
+                        ? saving
+                        : ops.length === 0 || !editable || revisionConflict || applyBlocked || disconnected}
                       onClick={applyDraft}
                       busy={saving}
                     >
-                      {saving ? t('footer.applying') : t('footer.apply')}
+                      {saving
+                        ? t('footer.applying')
+                        : editReplay ? t('footer.retryApply') : t('footer.apply')}
                     </ActionButton>
                   </>
                 )}
@@ -1341,8 +1370,8 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                     </span>
                     <div className="charter-bootstrap__summary">
                       <StatusTag tone="info">{t('bootstrap.summary', { active: bootstrapPlan.active, pending: bootstrapPlan.pending })}</StatusTag>
-                      <ActionButton disabled={bootstrapSaving} onClick={() => draft.setAllBootstrapSelected(true)}>{t('bootstrap.selectAll')}</ActionButton>
-                      <ActionButton disabled={bootstrapSaving} onClick={() => draft.setAllBootstrapSelected(false)}>{t('bootstrap.selectNone')}</ActionButton>
+                      <ActionButton disabled={bootstrapSaving || bootstrapReplay} onClick={() => draft.setAllBootstrapSelected(true)}>{t('bootstrap.selectAll')}</ActionButton>
+                      <ActionButton disabled={bootstrapSaving || bootstrapReplay} onClick={() => draft.setAllBootstrapSelected(false)}>{t('bootstrap.selectNone')}</ActionButton>
                     </div>
                     {view.objective === null && (
                       <label className="charter-bootstrap__field">
@@ -1350,7 +1379,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                         <textarea
                           value={bootstrapObjective}
                           rows={2}
-                          disabled={bootstrapSaving}
+                          disabled={bootstrapSaving || bootstrapReplay}
                           aria-label={t('bootstrap.objective')}
                           onChange={event => draft.setBootstrapObjective(event.target.value)}
                         />
@@ -1377,7 +1406,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                                 <input
                                   type="checkbox"
                                   checked={item.selected}
-                                  disabled={bootstrapSaving}
+                                  disabled={bootstrapSaving || bootstrapReplay}
                                   aria-label={t('bootstrap.includeAria', { index: index + 1 })}
                                   onChange={event => draft.updateBootstrapItem(item.id, { selected: event.target.checked })}
                                 />
@@ -1385,7 +1414,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                                   <textarea
                                     value={item.text}
                                     rows={2}
-                                    disabled={bootstrapSaving}
+                                    disabled={bootstrapSaving || bootstrapReplay}
                                     aria-label={t('bootstrap.editAria', { index: index + 1 })}
                                     onChange={event => draft.updateBootstrapItem(item.id, { text: event.target.value })}
                                   />
@@ -1446,11 +1475,13 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                     <div className="charter-bootstrap__actions">
                       <ActionButton
                         variant="primary"
-                        disabled={!canApplyBootstrap}
+                        disabled={bootstrapReplay ? bootstrapSaving : !canApplyBootstrap}
                         onClick={applyBootstrapDraft}
                         busy={bootstrapSaving}
                       >
-                        {bootstrapSaving ? t('footer.applying') : t('bootstrap.apply')}
+                        {bootstrapSaving
+                          ? t('footer.applying')
+                          : bootstrapReplay ? t('footer.retryApply') : t('bootstrap.apply')}
                       </ActionButton>
                       <ActionButton disabled={bootstrapSaving} onClick={() => draft.dismissBootstrap()}>
                         {t('bootstrap.discard')}

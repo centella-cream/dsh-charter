@@ -116,4 +116,30 @@ describe('transcript parsing refuses silent corruption', () => {
     expect(result.stderr).not.toContain('RangeError')
     expect(result.stdout).toContain('WAIT')
   })
+
+  it('rejects malformed event envelopes with line numbers and no stack', () => {
+    const cases: Array<{ readonly lines: string; readonly line: number }> = [
+      { lines: 'null\n', line: 1 },
+      { lines: '42\n', line: 1 },
+      { lines: '[]\n', line: 1 },
+      { lines: '{"type":"turn/start"}\n', line: 1 },
+      { lines: '{"type":"turn/start","seq":1,"time":1}\n', line: 1 },
+      { lines: '{"type":"turn/start","seq":1,"data":{}}\n', line: 1 },
+      { lines: `${VALID_LINE}\n${VALID_LINE}\n`, line: 2 },
+      {
+        lines: '{"type":"turn/start","seq":2,"time":1,"data":{}}\n'
+          + '{"type":"turn/start","seq":1,"time":2,"data":{}}\n',
+        line: 2,
+      },
+    ]
+    for (const fixture of cases) {
+      const { home, store } = fixtureHome()
+      writeFileSync(join(home, 'sessions', 'project', SESSION, 'session.v4.jsonl'), fixture.lines)
+      const result = runChecker(home, store)
+      expect(result.status).toBe(1)
+      expect(result.stderr).toContain('transcript is corrupt')
+      expect(result.stderr).toContain(`line ${fixture.line}`)
+      expect(result.stderr).not.toMatch(/at (Object\.|file:|ModuleJob)/)
+    }
+  })
 })

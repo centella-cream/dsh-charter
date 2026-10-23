@@ -126,7 +126,7 @@ export function evaluateCompactionEvidence(evidence) {
   if (evidence.checkpointLeaksCharter === true) {
     warnings.push('the compaction summary carries the charter or marker text; survival evidence is weaker')
   }
-  return { ok: failures.length === 0, failures, warnings }
+  return { ok: failures.length === 0, evaluated: true, failures, warnings }
 }
 
 // ---------------------------------------------------------------------------
@@ -283,17 +283,28 @@ export function resolveCharterReadCalls(events) {
         authError = 'source-seqs-reference-other-tool'
       } else if (uniqueCharterCalls.length !== 1) {
         authError = uniqueCharterCalls.length === 0 ? 'source-seqs-no-charter-read' : 'source-seqs-ambiguous'
-      } else if (message.toolCallId !== undefined && message.toolCallId !== uniqueCharterCalls[0].callId) {
-        authError = 'tool-call-id-mismatch'
-      } else if (uniqueCharterCalls[0].turn !== undefined && data.turn !== undefined
-        && uniqueCharterCalls[0].turn !== data.turn) {
-        authError = 'turn-mismatch'
-      } else if (uniqueCharterCalls[0].step !== undefined && data.step !== undefined
-        && uniqueCharterCalls[0].step !== data.step) {
-        authError = 'step-mismatch'
       } else {
-        call = uniqueCharterCalls[0]
-        resolution = 'sourceEventSeqs'
+        // Modern references are authenticated by identity: every field must be
+        // PRESENT and exactly equal; a wildcard match is not evidence.
+        const producing = uniqueCharterCalls[0]
+        if (producing.callId === undefined || producing.turn === undefined || producing.step === undefined) {
+          authError = 'call-identity-missing'
+        } else if (message.toolCallId === undefined) {
+          authError = 'tool-call-id-missing'
+        } else if (message.toolCallId !== producing.callId) {
+          authError = 'tool-call-id-mismatch'
+        } else if (data.turn === undefined) {
+          authError = 'turn-missing'
+        } else if (data.turn !== producing.turn) {
+          authError = 'turn-mismatch'
+        } else if (data.step === undefined) {
+          authError = 'step-missing'
+        } else if (data.step !== producing.step) {
+          authError = 'step-mismatch'
+        } else {
+          call = producing
+          resolution = 'sourceEventSeqs'
+        }
       }
     } else if (!modern) {
       // Legacy transcript without the field: pair by identity + event order.
@@ -353,6 +364,34 @@ export function resolveCharterReadCalls(events) {
  * checker can never PASS on a transcript whose dropped lines might hide the
  * evidence it is looking for.
  */
+function plainObject(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+/**
+ * Validate the transcript event envelope. A JSON-parseable line is not enough:
+ * a non-object, missing/garbage identity fields, an envelope mutation between
+ * lines, or a duplicate/out-of-order seq would make the evaluation unsound.
+ * The one recognized non-event line is the session metadata header stored as
+ * `{"type":"session", ...}` (it has no seq/time/data).
+ */
+export function eventEnvelopeError(event, previousSeq) {
+  if (!plainObject(event)) return 'event is not a JSON object'
+  if (typeof event.type !== 'string' || event.type === '') return 'event type is not a non-empty string'
+  if (event.type === 'session' && event.seq === undefined) return undefined
+  if (!Number.isSafeInteger(event.seq) || event.seq < 0) {
+    return 'event seq is not a non-negative safe integer'
+  }
+  if (previousSeq !== undefined && event.seq <= previousSeq) {
+    return 'event seq is not strictly increasing (duplicate or out-of-order)'
+  }
+  if (typeof event.time !== 'number' || !Number.isFinite(event.time)) {
+    return 'event time is not a finite number'
+  }
+  if (!plainObject(event.data)) return 'event data is not an object'
+  return undefined
+}
+
 export function parseTranscript(source) {
   const lines = source.split('\n')
   const events = []
@@ -363,11 +402,13 @@ export function parseTranscript(source) {
   }
   const endsWithNewline = source.endsWith('\n')
   let tornTailLine
+  let previousSeq
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index]
     if (line.trim() === '') continue
+    let event
     try {
-      events.push(JSON.parse(line))
+      event = JSON.parse(line)
     } catch (error) {
       const tornAllowed = index === finalNonEmpty && !endsWithNewline
       if (tornAllowed) {
@@ -378,7 +419,15 @@ export function parseTranscript(source) {
         line: index + 1,
         message: error instanceof Error ? error.message : String(error),
       })
+      continue
     }
+    const envelopeError = eventEnvelopeError(event, previousSeq)
+    if (envelopeError !== undefined) {
+      errors.push({ line: index + 1, message: envelopeError })
+      continue
+    }
+    if (event.type !== 'session' || event.seq !== undefined) previousSeq = event.seq
+    events.push(event)
   }
   return {
     events,
@@ -454,9 +503,14 @@ export function evaluateCompactionTranscript({ events, current, marker, promptPr
   // Associate the checkpoint by compactionId. A positional fallback is only
   // for legacy transcripts whose checkpoint carries no id at all; a checkpoint
   // explicitly belonging to another (e.g. failed) compaction is never used.
+  // Associate checkpoints by the attempt's seq interval, not a global id set:
+  // a same-id retry must not inherit an older attempt's checkpoint.
+  const checkpointWithin = (checkpoint, attempt) => checkpoint.seq > attempt.startSeq
+    && (attempt.endSeq === undefined || checkpoint.seq <= attempt.endSeq)
+    && (checkpoint.compactionId === undefined || checkpoint.compactionId === attempt.id)
   const latestCheckpoint = latestCompaction === undefined
     ? [...checkpoints].reverse().find(checkpoint => checkpoint.compactionId === undefined)
-    : checkpoints.filter(checkpoint => checkpoint.compactionId === latestCompaction.id).at(-1)
+    : [...checkpoints].reverse().find(checkpoint => checkpointWithin(checkpoint, latestCompaction))
       ?? [...checkpoints].reverse().find(checkpoint => checkpoint.compactionId === undefined
         && checkpoint.seq > latestCompaction.endSeq)
   const checkpointLeaksCharter = latestCheckpoint !== undefined && charterReady
@@ -554,60 +608,80 @@ export function evaluateCompactionTranscript({ events, current, marker, promptPr
     ? -1
     : compactions.indexOf(latestCompaction)
   const laterAttempts = latestSuccessfulIndex >= 0 ? compactions.slice(latestSuccessfulIndex + 1) : []
-  const landedCheckpointIds = new Set(
-    checkpoints.map(checkpoint => checkpoint.compactionId).filter(id => typeof id === 'string'),
-  )
-  let laterCompactionAttempt
-  if (latestCompaction !== undefined && laterAttempts.length > 0) {
-    const last = laterAttempts.at(-1)
-    if (last.endSeq === undefined) laterCompactionAttempt = 'open'
-    else if (!last.ok && landedCheckpointIds.has(last.id)) laterCompactionAttempt = 'landed-failed'
+  // EVERY later attempt matters: an earlier landed-failed one still replaced the
+  // surface even when a newer unlanded/open attempt follows it.
+  const attemptLandedCheckpoint = attempt => checkpoints.some(checkpoint => checkpointWithin(checkpoint, attempt))
+  let laterOpen = false
+  let laterLandedFailed = false
+  for (const attempt of laterAttempts) {
+    if (attempt.endSeq === undefined) laterOpen = true
+    else if (!attempt.ok && attemptLandedCheckpoint(attempt)) laterLandedFailed = true
   }
+  const laterCompactionAttempt = laterLandedFailed
+    ? 'landed-failed'
+    : laterOpen ? 'open' : undefined
 
+  // Pending gates only defer judgment: they must not be reported as evidence
+  // failures. Only an evaluated active-evidence check may produce a FAIL.
+  const pendingGate = !charterReady
+    ? 'blocked'
+    : latestCompaction === undefined
+      ? 'no-compaction'
+      : charterPredatesCompaction !== true
+        ? 'charter-not-before-start'
+        : laterCompactionAttempt === 'open'
+          ? 'open-attempt'
+          : noPostCompactionActivity
+            ? 'no-activity'
+            : undefined
+  const gated = pendingGate !== undefined && pendingGate !== 'blocked'
   const charterReadCalled = postCompactionCalls.length > 0
   const charterReadStanding = charterReady && matchedReads.length > 0 ? true : undefined
 
-  let verification = evaluateCompactionEvidence({
+  const rawVerification = evaluateCompactionEvidence({
     charterReady,
-    survivesCompaction,
-    systemPromptClean: effectiveSystemPromptClean,
-    charterReadStanding,
+    survivesCompaction: gated ? undefined : survivesCompaction,
+    systemPromptClean: gated ? undefined : effectiveSystemPromptClean,
+    charterReadStanding: gated ? undefined : charterReadStanding,
     checkpointLeaksCharter,
   })
-  if (noPostCompactionActivity) {
-    // Skip the final evidence evaluation: with no request after the compaction
-    // there are no evidence failures, only a WAIT.
-    verification = { ok: true, failures: [], warnings: verification.warnings }
-  }
-  if (postCompactionExecutionWithoutSnapshot) {
-    verification.ok = false
-    verification.failures = [
-      ...verification.failures,
-      'a post-compaction request executed without a new runtime-context snapshot',
-    ]
-  }
-  if (laterCompactionAttempt === 'landed-failed') {
-    verification.ok = false
-    verification.failures = [
-      ...verification.failures,
-      'a later failed compaction landed a checkpoint after the evidence; re-compact and re-read before claiming survival',
-    ]
+  let verification
+  if (gated) {
+    verification = { ok: true, evaluated: false, failures: [], warnings: rawVerification.warnings }
+  } else {
+    verification = { ...rawVerification, evaluated: true }
+    if (postCompactionExecutionWithoutSnapshot) {
+      verification.ok = false
+      verification.failures = [
+        ...verification.failures,
+        'a post-compaction request executed without a new runtime-context snapshot',
+      ]
+    }
+    if (laterCompactionAttempt === 'landed-failed') {
+      verification.ok = false
+      verification.failures = [
+        ...verification.failures,
+        'a later failed compaction landed a checkpoint after the evidence; re-compact and re-read before claiming survival',
+      ]
+    }
   }
 
   const verdicts = {
     charterReady,
-    injected,
-    digestMatch,
-    injectedAfterCompaction,
+    injected: gated ? undefined : injected,
+    digestMatch: gated ? undefined : digestMatch,
+    injectedAfterCompaction: gated ? undefined : injectedAfterCompaction,
     charterPredatesCompaction,
-    survivesCompaction,
+    survivesCompaction: gated ? undefined : survivesCompaction,
     checkpointLeaksCharter,
     markerPresent: marker === undefined ? undefined : promptText.includes(marker),
-    charterReadStanding,
-    systemPromptClean: effectiveSystemPromptClean,
+    charterReadStanding: gated ? undefined : charterReadStanding,
+    systemPromptClean: gated ? undefined : effectiveSystemPromptClean,
     noPostCompactionActivity,
     laterCompactionAttempt,
+    pendingGate,
     postCompactionExecutionWithoutSnapshot,
+    pendingGate,
   }
 
   const verdictLines = []
@@ -668,17 +742,19 @@ export function evaluateCompactionTranscript({ events, current, marker, promptPr
                         detail: 'post-compaction runtime context is missing the authoritative charter',
                       }
     verdictLines.push(one)
-    verdict(injected, 'latest runtime context carries charter:standing',
-      injected ? undefined : 'send a message, then run this check again')
-    verdict(digestMatch, 'injected text matches storage authority and promptDigest',
-      injected ? (digestMatch ? undefined : 'text/digest mismatch') : undefined)
+    verdict(verdicts.injected, 'latest runtime context carries charter:standing',
+      verdicts.injected === true ? undefined : 'send a message, then run this check again')
+    verdict(verdicts.digestMatch, 'injected text matches storage authority and promptDigest',
+      verdicts.injected === true
+        ? (verdicts.digestMatch === true ? undefined : 'text/digest mismatch')
+        : undefined)
     if (marker !== undefined) {
       verdict(verdicts.markerPresent, `marker ${JSON.stringify(marker)} is part of the charter`)
     }
-    verdict(effectiveSystemPromptClean, 'system prompt carries no charter body',
-      effectiveSystemPromptClean ? undefined : 'a system-prompt snapshot contains the charter text')
-    verdict(charterReadStanding, 'authenticated post-compaction charter_read standing view matches the storage revision/objective',
-      charterReadStanding === true
+    verdict(verdicts.systemPromptClean, 'system prompt carries no charter body',
+      verdicts.systemPromptClean === true ? undefined : 'a system-prompt snapshot contains the charter text')
+    verdict(verdicts.charterReadStanding, 'authenticated post-compaction charter_read standing view matches the storage revision/objective',
+      verdicts.charterReadStanding === true
         ? undefined
         : latestCompaction === undefined
           ? 'run /compact, then call charter_read to record post-compaction evidence'
@@ -696,21 +772,18 @@ export function evaluateCompactionTranscript({ events, current, marker, promptPr
 
   let status
   let statusReason
-  if (!charterReady) {
+  if (pendingGate === 'blocked') {
     status = 'blocked'
     statusReason = 'establish the charter first (Charter tab, then Apply)'
-  } else if (latestCompaction === undefined) {
+  } else if (pendingGate !== undefined) {
     status = 'wait'
-    statusReason = 'no successful compaction lifecycle recorded yet; run /compact in the Session'
-  } else if (charterPredatesCompaction !== true) {
-    status = 'wait'
-    statusReason = 'the charter was not committed before the latest successful compaction started; run /compact again'
-  } else if (laterCompactionAttempt === 'open') {
-    status = 'wait'
-    statusReason = 'a later compaction attempt is still open; wait for it to finish and re-check'
-  } else if (noPostCompactionActivity) {
-    status = 'wait'
-    statusReason = 'no post-compaction request activity yet; send a message after the compaction'
+    statusReason = pendingGate === 'no-compaction'
+      ? 'no successful compaction lifecycle recorded yet; run /compact in the Session'
+      : pendingGate === 'charter-not-before-start'
+        ? 'the charter was not committed before the latest successful compaction started; run /compact again'
+        : pendingGate === 'open-attempt'
+          ? 'a later compaction attempt is still open; wait for it to finish and re-check'
+          : 'no post-compaction request activity yet; send a message after the compaction'
   } else if (verification.ok) {
     status = 'pass'
     statusReason = 'the real compaction kept the charter in the next request and all evidence checks passed'
@@ -778,6 +851,7 @@ export function evaluateCompactionTranscript({ events, current, marker, promptPr
     postCompactionActivity: activity.length,
     noPostCompactionActivity,
     laterCompactionAttempt,
+    pendingGate,
     postCompactionExecutionWithoutSnapshot,
     verdicts,
     verification,

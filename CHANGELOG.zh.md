@@ -39,7 +39,7 @@
 - 新浏览器 client 可以兼容仍在运行旧 Host 的 view snapshot（旧 Host 仍带 active 条数字段），避免 host/client
   revision 不一致时「会话契约」白屏；新的 pending 导入语义仍需要完整重启 Host 才生效。
 - 已针对 DSH `0.2.1-rc.2` 验证，无需代码改动；现有 peer range 和兼容层已覆盖该 release candidate。
-- 232 个测试，覆盖内核、Host 组合、fork、幂等、配额、prompt 边界、Remote stream、历史抽取、客户端 tab
+- 252 个测试，覆盖内核、Host 组合、fork、幂等、配额、prompt 边界、Remote stream、历史抽取、客户端 tab
   排序和装饰器兼容。已在 DSH `0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-rc.1`、`0.2.1-rc.2` 上验证。
   真实 Web UI 在 `0.2.0-rc.2` 上验证了标签顺序、中英文切换、目标/约束编辑、预览、Apply 和刷新持久化。
 
@@ -240,3 +240,19 @@
 - `smoke:package` 增加 exact-artifact 模式（`--artifact <tgz> --sha256 <sums>`）：校验给定 archive 的 SHA-256，
   并对这批确切字节执行完整 consumer 检查，不 build、不 pack；`npm pack --json` 改为完整解析（object、以包名
   为 key 的 object、或单元素数组），不再从第一个 `{` 截取。
+- 未知结果 Apply 未解决时通过共享 `editReplayPending` 锁住所有草稿编辑：Pane 显示可用的 **Retry last Apply**，
+  忽略 revision conflict/fresh admission 并原样 replay 已存请求（同 mutationId/baseRevision/ops）；
+  stage/unstage/add/编辑器/discard 均为 no-op，Rebase 在确定性回复清除 attempt 前保持阻止。
+- bootstrap Apply 采用同样的未知结果处理：在 stale/text/plan/limit 检查前 replay retained request、锁住
+  objective/候选/选择编辑、成功反馈计数来自 retained request；RPC 在途期间流变化只标记 needs-stale 而不
+  half-dismiss，保留已审阅 payload，显式 Dismiss 是唯一完整清理。
+- exact-artifact smoke 增加 tar 安全与一致性校验：拒绝绝对路径/穿越/链接/特殊成员/重复成员/package 外路径，
+  从 archive 内读取 `package.json` 并校验其身份/files/exports/dependencies/peers/engines 与工作树一致，
+  只安装这棵已验证的树。
+- 收紧 compaction checker 的 release-blocking 边界：检查成功证据之后的**所有** attempt（landed-failed 后面
+  跟更新的 unlanded attempt 仍 FAIL；同 id retry 的 checkpoint 按 attempt seq 区间关联）；现代
+  `charter_read` 的 toolCallId/turn/step 必须存在且精确相等；校验 transcript event envelope（形状/type/seq/
+  time/data/严格递增）并带行号报错；WAIT 状态内部一致（`verification.evaluated=false`、failures 为空、无
+  FAIL verdict line，只有已评估的 active evidence 才能 FAIL）。
+- 修正发布文档：CI 运行 `npm run check` 与普通 `npm run smoke:package`；exact-artifact 检查是构建最终 tarball
+  之后、打 tag/推送/发布之前的本地发布门禁，若要放进 CI 需要单独的 release workflow。
