@@ -3,7 +3,9 @@ import { SessionId } from '@deepseek-ai/dsh-session'
 import type { CharterEditRequest, CharterItem } from '../../src/core/schemas.js'
 import type { CharterBootstrapResult, CharterEditResult, CharterView } from '../../src/host/types.js'
 import type { CharterSessionSource } from '../../src/client/store.js'
-import { CharterDraft } from '../../src/client/draft-store.js'
+import { CharterDraft, rebaseAvailable } from '../../src/client/draft-store.js'
+import { draftAdmission } from '../../src/client/admission.js'
+import { previewPrompt } from '../../src/client/preview.js'
 import { utf8Bytes } from '../../src/core/limits.js'
 
 const sessionId = SessionId('draft-session')
@@ -599,6 +601,200 @@ describe('per-Session draft ownership', () => {
     draft.addItem(base, 'invariant', 'third', () => undefined)
     const orders = draft.getSnapshot().ops.map(op => op.type === 'item.add' ? op.item.order : -1)
     expect(orders).toEqual([1, 2])
+  })
+
+  it('rejects rebase while an editor is open and keeps the reviewed baseline', async () => {
+    const requests: CharterEditRequest[] = []
+    const fake = source({
+      edit: async request => {
+        requests.push(request)
+        return { ok: false, code: 'REVISION_CONFLICT', message: 'stale', currentRevision: 2, view: view(2) }
+      },
+    })
+    const draft = new CharterDraft(sessionId, () => fake)
+    draft.bindLifecycle('life-rebase-editor')
+    const item = committedInvariant({ id: 'item-rebase', text: 'Original', order: 1 })
+    const rev1 = view(1, { items: [item] })
+    draft.stage(rev1, { type: 'item.edit', itemId: 'item-rebase', text: 'Staged edit' })
+    draft.openEditor({ kind: 'edit', item }, rev1)
+    draft.setEditorText('Reviewed edit')
+    const rev2 = view(2, {
+      items: [{ ...item, text: 'Remote edit', verification: { state: 'verified', by: 'user' } }],
+    })
+    expect(rebaseAvailable(draft.getSnapshot())).toBe(false)
+    draft.rebase(rev2)
+    expect(draft.getSnapshot().baseRevision).toBe(1)
+    expect(draft.getSnapshot().editorBaseRevision).toBe(1)
+    // Saving the old edit keeps the frozen baseline; Apply still conflicts.
+    draft.saveEditor(rev2)
+    expect(draft.getSnapshot().ops.at(-1)).toMatchObject({ type: 'item.edit', text: 'Reviewed edit' })
+    await draft.applyDraft(rev2)
+    expect(requests[0]?.baseRevision).toBe(1)
+    expect(draft.getSnapshot().feedback).toMatchObject({ kind: 'error', code: 'REVISION_CONFLICT' })
+    expect(draft.getSnapshot().baseRevision).toBe(1)
+    // Only after closing the editor may an explicit rebase advance it.
+    draft.closeEditor()
+    expect(rebaseAvailable(draft.getSnapshot())).toBe(true)
+    draft.rebase(rev2)
+    expect(draft.getSnapshot().baseRevision).toBe(2)
+  })
+
+  it('applies a reviewed history draft only against its extraction revision', async () => {
+    const requests: CharterEditRequest[] = []
+    let liveRevision = 0
+    const fake = source({
+      edit: async request => {
+        requests.push(request)
+        return { ok: true, replayed: false, committedRevision: 4, ids: {}, view: view(4) }
+      },
+      snapshot: () => ({ status: 'ready', view: view(liveRevision), error: null }),
+      bootstrap: async () => ({
+        available: true,
+        proposal: {
+          objective: 'Draft objective',
+          invariants: ['Keep it'],
+          deliverables: [],
+          source: { summarySeq: 1, at: 1 },
+        },
+      }),
+    })
+    const draft = new CharterDraft(sessionId, () => fake)
+    draft.bindLifecycle('life-bootstrap-baseline')
+    draft.ensureBootstrap(view(0), true)
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(draft.getSnapshot().bootstrapPhase).toBe('draft')
+    expect(draft.getSnapshot().bootstrapBaseRevision).toBe(0)
+
+    // A new empty revision means the reviewed draft no longer describes the
+    // state: Apply must not send the current revision, and it becomes stale.
+    await draft.applyBootstrap(view(3))
+    expect(requests).toHaveLength(0)
+    expect(draft.getSnapshot()).toMatchObject({
+      bootstrapPhase: 'failed',
+      bootstrap: null,
+      bootstrapBaseRevision: null,
+      bootstrapProblem: { kind: 'stale' },
+    })
+
+    // Re-extraction captures the new revision; Apply sends that baseline.
+    liveRevision = 3
+    draft.retryBootstrap(view(3))
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(draft.getSnapshot().bootstrapBaseRevision).toBe(3)
+    await draft.applyBootstrap(view(3))
+    expect(requests).toHaveLength(1)
+    expect(requests[0]?.baseRevision).toBe(3)
+    expect(draft.getSnapshot().bootstrapPhase).toBe('dismissed')
+  })
+
+  it('marks a reviewed history draft stale when the live view stops being empty', async () => {
+    const fake = source({
+      edit: async () => ({ ok: false, code: 'UNAVAILABLE', message: 'unused' }),
+      bootstrap: async () => ({
+        available: true,
+        proposal: {
+          objective: 'Draft objective',
+          invariants: ['Keep it'],
+          deliverables: [],
+          source: { summarySeq: 1, at: 1 },
+        },
+      }),
+    })
+    const draft = new CharterDraft(sessionId, () => fake)
+    draft.bindLifecycle('life-bootstrap-stale')
+    draft.ensureBootstrap(view(0), true)
+    await new Promise(resolve => setTimeout(resolve, 0))
+    const item = committedInvariant({ id: 'external', text: 'External commit', order: 1 })
+    draft.markBootstrapStale(view(0, { items: [item] }))
+    expect(draft.getSnapshot()).toMatchObject({
+      bootstrapPhase: 'failed',
+      bootstrap: null,
+      bootstrapProblem: { kind: 'stale' },
+    })
+  })
+
+  it('preflights maxOps/maxItems/maxPendingItems and prompt growth in one draftAdmission', () => {
+    const small = (overrides: Partial<CharterView['limits']>) => view(1, {
+      limits: { ...view(1).limits, ...overrides },
+    })
+    const addOp = (clientRef: string, text = 'small') => ({
+      type: 'item.add' as const,
+      item: { clientRef, kind: 'invariant' as const, text, order: 0 },
+    })
+    // maxOps
+    expect(draftAdmission(small({ maxOps: 1 }), [addOp('a'), addOp('b')]))
+      .toMatchObject({ ok: false, reason: 'max-ops' })
+    // maxItems: existing + new exceeds a limit that was not already exceeded
+    const oneItem = view(1, { items: [committedInvariant({ id: 'existing', text: 'Existing', order: 1 })] })
+    const oneItemLimit = { ...oneItem, limits: { ...oneItem.limits, maxItems: 1 } }
+    expect(draftAdmission(oneItemLimit, [addOp('new')]))
+      .toMatchObject({ ok: false, reason: 'max-items' })
+    // Stepwise rule: an already over-limit view may still shrink.
+    const overItems = { ...oneItem, limits: { ...oneItem.limits, maxItems: 1 } }
+    expect(draftAdmission(overItems, [{ type: 'item.purge' as const, itemId: 'existing', confirmed: true }]))
+      .toMatchObject({ ok: true })
+    // maxPendingItems
+    const pendingItem = committedInvariant({ id: 'pending', text: 'Pending', order: 1, review: 'pending' })
+    const pendingView = view(1, {
+      items: [pendingItem],
+      limits: { ...view(1).limits, maxPendingItems: 1 },
+    })
+    expect(draftAdmission(pendingView, [{
+      type: 'item.propose' as const,
+      item: { clientRef: 'proposal', kind: 'invariant' as const, text: 'New proposal', order: 2 },
+    }])).toMatchObject({ ok: false, reason: 'max-pending' })
+    // Prompt growth over the budget blocks Apply; a shrinking render is admitted.
+    const tinyPrompt = small({ maxPromptBytes: 80 })
+    expect(draftAdmission(tinyPrompt, [
+      { type: 'item.add', item: { clientRef: 'big', kind: 'invariant', text: 'x'.repeat(200), order: 0 } },
+    ])).toMatchObject({ ok: false, reason: 'prompt' })
+    const overPrompt = view(1, {
+      items: [committedInvariant({ id: 'big', text: 'y'.repeat(200), order: 1 })],
+      promptText: 'y'.repeat(200),
+      limits: { ...view(1).limits, maxPromptBytes: 80 },
+    })
+    expect(previewPrompt(overPrompt, [])).toContain('y'.repeat(200))
+    expect(draftAdmission(overPrompt, [
+      { type: 'item.purge', itemId: 'big', confirmed: true },
+    ])).toMatchObject({ ok: true, prompt: { blocksApply: false } })
+  })
+
+  it('refuses an inadmissible batch in applyDraft without calling the Remote', async () => {
+    const requests: CharterEditRequest[] = []
+    const fake = source({
+      edit: async request => {
+        requests.push(request)
+        return { ok: true, replayed: false, committedRevision: 2, ids: {}, view: view(2) }
+      },
+    })
+    const base = view(1, { limits: { ...view(1).limits, maxOps: 1 } })
+    const draft = new CharterDraft(sessionId, () => fake)
+    draft.bindLifecycle('life-admission')
+    draft.stage(base, { type: 'item.add', item: { clientRef: 'a', kind: 'invariant', text: 'A', order: 0 } })
+    draft.stage(base, { type: 'item.add', item: { clientRef: 'b', kind: 'invariant', text: 'B', order: 1 } })
+    await draft.applyDraft(base)
+    expect(requests).toHaveLength(0)
+    expect(draft.getSnapshot().feedback).toMatchObject({ kind: 'error', code: 'QUOTA_EXCEEDED' })
+    expect(draft.getSnapshot().ops).toHaveLength(2)
+  })
+
+  it('binds the first lifecycle fingerprint only to an empty draft', () => {
+    const empty = new CharterDraft(sessionId, () => undefined)
+    empty.bindLifecycle(undefined)
+    empty.bindLifecycle('fingerprint-first')
+    expect(empty.getSnapshot()).toMatchObject({ lifecycle: 'fingerprint-first', ops: [] })
+
+    const dirty = new CharterDraft(sessionId, () => undefined)
+    dirty.bindLifecycle(undefined)
+    dirty.setSection('objective')
+    dirty.stage(view(2), { type: 'item.add', item: { clientRef: 'old', kind: 'invariant', text: 'Old', order: 0 } })
+    dirty.bindLifecycle('fingerprint-second')
+    expect(dirty.getSnapshot()).toMatchObject({
+      lifecycle: 'fingerprint-second',
+      section: 'objective',
+      ops: [],
+      baseRevision: null,
+    })
   })
 
   it('does not steal the current section when a draft arrives while editing', async () => {

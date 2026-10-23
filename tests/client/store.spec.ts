@@ -34,7 +34,8 @@ vi.mock('@deepseek-ai/dsh-api-gateway/client', () => {
   return { RemoteSnapshotStream }
 })
 import { RemoteSnapshotStream as MockRemoteSnapshotStream } from '@deepseek-ai/dsh-api-gateway/client'
-import type { CharterView } from '../../src/host/types.js'
+import type { CharterEditRequest } from '../../src/core/schemas.js'
+import type { CharterEditResult, CharterView } from '../../src/host/types.js'
 import { CharterClientController, CharterSessionSource } from '../../src/client/store.js'
 
 function view(revision: number, promptText = '', sessionId = 'session-1'): CharterView {
@@ -505,6 +506,87 @@ describe('client charter source', () => {
 
     second.resolveDispose()
     await source.dispose()
+  })
+
+  it('advances the connection epoch on terminal failure so a late Apply cannot clear the draft', async () => {
+    const controller = new CharterClientController(streamContext())
+    const sessionId = SessionId('session-terminal-race')
+    const lease = controller.acquire(sessionId)
+    const requests: CharterEditRequest[] = []
+    let releaseFirst: ((value: { ok: true; value: CharterEditResult }) => void) | undefined
+    const first = new Promise<{ ok: true; value: CharterEditResult }>(resolve => { releaseFirst = resolve })
+    let calls = 0
+    const remote = {
+      edit: async (request: CharterEditRequest) => {
+        requests.push(request)
+        calls += 1
+        if (calls === 1) return first
+        return {
+          ok: true as const,
+          value: {
+            ok: true,
+            replayed: false,
+            committedRevision: 2,
+            ids: {},
+            view: view(2, 'after retry', 'session-terminal-race'),
+          },
+        }
+      },
+    } as never
+    controller.attach(remote)
+    await tick()
+    const stream = mockClass.instances.at(-1)
+    if (stream === undefined) throw new Error('no stream was created')
+    stream.options.replace({ value: view(1, 'one', 'session-terminal-race') })
+    expect(lease.source.getSnapshot().status).toBe('ready')
+
+    lease.draft.stage(view(1, 'one', 'session-terminal-race'), {
+      type: 'item.add',
+      item: { clientRef: 'race-1', kind: 'invariant', text: 'Keep me', order: 0 },
+    })
+    const generationBefore = lease.source.connectionGeneration
+    const applied = lease.draft.applyDraft(view(1, 'one', 'session-terminal-race'))
+    await tick()
+    expect(lease.draft.getSnapshot().saving).toBe(true)
+
+    // The stream dies while the request is in flight: the terminal failure must
+    // advance the connection epoch and invalidate the draft request without
+    // clearing the staged ops or the mutation id.
+    stream.options.failed(new Error('stream ended during Apply'))
+    expect(lease.source.getSnapshot()).toMatchObject({ status: 'error' })
+    expect(lease.source.connectionGeneration).toBeGreaterThan(generationBefore)
+    expect(lease.draft.getSnapshot()).toMatchObject({
+      saving: false,
+      feedback: { kind: 'connection' },
+      ops: [expect.objectContaining({ type: 'item.add' })],
+    })
+
+    // The old request resolves successfully later: it must not be accepted.
+    releaseFirst!({
+      ok: true,
+      value: {
+        ok: true,
+        replayed: false,
+        committedRevision: 2,
+        ids: {},
+        view: view(2, 'late success', 'session-terminal-race'),
+      },
+    })
+    await applied
+    expect(lease.source.getSnapshot()).toMatchObject({ status: 'error', view: { revision: 1 } })
+    expect(lease.draft.getSnapshot().ops).toHaveLength(1)
+
+    // Retry reuses the mutation id through the rebuilt connection.
+    await lease.draft.applyDraft(view(1, 'one', 'session-terminal-race'))
+    expect(requests).toHaveLength(2)
+    expect(requests[1]?.mutationId).toBe(requests[0]?.mutationId)
+    expect(lease.draft.getSnapshot()).toMatchObject({
+      ops: [],
+      feedback: { kind: 'saved', revision: 2 },
+    })
+
+    lease.release()
+    await controller.dispose()
   })
 
   it('ignores stream frames for another Session', async () => {

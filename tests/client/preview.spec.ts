@@ -10,6 +10,7 @@ import {
   previewPrompt,
   projectView,
   promptBudgetAdmission,
+  visibleItems,
 } from '../../src/client/preview.js'
 
 const sessionId = SessionId('preview-session')
@@ -97,6 +98,22 @@ describe('projected draft view', () => {
     const prompt = previewPrompt(base, [])
     const payload = JSON.parse(prompt.slice(prompt.indexOf('{')))
     expect(payload.invariants).toEqual(['first', 'second'])
+  })
+
+  it('keeps the single projected display order for pending and active rows', () => {
+    const base = view({
+      items: [committedInvariant({ id: 'later', text: 'active later', order: 2 })],
+    })
+    const propose = {
+      type: 'item.propose' as const,
+      item: { clientRef: 'early', kind: 'invariant' as const, text: 'pending early', order: 1 },
+    }
+    const projected = projectView(base, [propose])
+    expect(visibleItems(projected.items).map(item => item.text)).toEqual(['pending early', 'active later'])
+    // Accepting the pending row must not reorder the display.
+    const accepted = projectView(base, [propose, { type: 'item.accept' as const, itemId: 'draft:early' }])
+    expect(visibleItems(accepted.items).map(item => item.text)).toEqual(['pending early', 'active later'])
+    expect(visibleItems(accepted.items)[0]?.review).toBe('accepted')
   })
 
   it('keeps the exact prompt renderer as the projection consumer', () => {

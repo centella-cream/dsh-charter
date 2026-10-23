@@ -337,6 +337,11 @@ export function displayItems<T extends { readonly id: string; readonly order: nu
     || (left.id < right.id ? -1 : left.id > right.id ? 1 : 0))
 }
 
+/** Working-list rows: current and not rejected, in the single projected order. */
+export function visibleItems(items: readonly ProjectedItem[]): ProjectedItem[] {
+  return items.filter(item => item.lifecycle === 'current' && item.review !== 'rejected')
+}
+
 /** Rows that are accepted and current: the model-visible working set. */
 export function activeItems(items: readonly ProjectedItem[]): ProjectedItem[] {
   return items.filter(item => item.lifecycle === 'current' && item.review === 'accepted')

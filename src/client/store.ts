@@ -277,6 +277,11 @@ export class CharterSessionSource implements CharterSource {
     this.snapshotStream = undefined
     this.stream = undefined
     this.clearWatchdog()
+    // Advance the connection epoch *before* publishing the error: controller
+    // listeners invalidate in-flight draft requests and keep the mutation id
+    // for a retry, while a late result from the dead stream must fail the
+    // source-generation guards and can never publish ready/clear the draft.
+    this.bumpConnection()
     this.publish({ ...this.state, status: 'error', error: messageOf(error) })
     const disposal = snapshots !== undefined ? snapshots.dispose() : stream?.dispose()
     void disposal?.catch(() => undefined)

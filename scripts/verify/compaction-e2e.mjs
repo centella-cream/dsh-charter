@@ -36,7 +36,7 @@ import { spawnSync } from 'node:child_process'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import { evaluateCompactionTranscript } from './compaction-checks.mjs'
+import { evaluateCompactionTranscript, parseTranscript } from './compaction-checks.mjs'
 
 const CHARTER_CONTEXT_NAME = 'charter:standing'
 const CHARTER_PROMPT_PREFIX = 'Current user-authored session charter.'
@@ -157,16 +157,17 @@ function readTranscript(path) {
 }
 
 function parseEvents(source) {
-  const events = []
-  for (const line of source.split('\n')) {
-    if (line.trim() === '') continue
-    try {
-      events.push(JSON.parse(line))
-    } catch {
-      // A torn tail line is possible while the Session is being appended to.
-    }
+  const parsed = parseTranscript(source)
+  if (!parsed.complete) {
+    const details = parsed.errors
+      .map(error => `line ${error.line}: ${error.message}`)
+      .join('\n')
+    fail(`transcript is corrupt; refusing to evaluate skipped lines:\n${details}`)
   }
-  return events
+  if (parsed.tornTailLine !== undefined) {
+    console.error(`compaction-e2e: ignoring torn tail line ${parsed.tornTailLine} (incomplete append)`)
+  }
+  return parsed.events
 }
 
 function messageText(content) {
