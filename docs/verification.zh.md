@@ -716,7 +716,7 @@ seq **31825**，位于 compaction seq 31801 与 runtime 快照 seq 31810 之后�
 - 真实模型实测：2026-10-22，运行于 Desktop/Web runtime DSH `0.2.0-rc.2`（`dsh` CLI `0.2.0-rc.2`）。这次
   运行发生在上述完整重启 Desktop **之前**；当时仍在运行的进程加载的是重启前的 Host bundle，因此
   `charter_read` 结果带有 legacy debug 字段。
-- compiled-bundle build commit：`PENDING_BUILD_COMMIT`——通过门禁的源码树，Host ESM 与浏览器 bundle 由它构建。
+- compiled-bundle build commit：`46ff671f008dc6e431a4324bbeeef22798f967f4`——通过门禁的源码树，Host ESM 与浏览器 bundle 由它构建。
   该树的门禁：`npm run check`（typecheck + build + 18 个测试文件 / 210 个测试）、`npm run smoke:package`、本地
   五版本矩阵（每个版本 18 个文件 / 210 个测试）；另外用 compaction checker 对已记录的真实 transcript 复跑
   （PASS）。
