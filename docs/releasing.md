@@ -53,7 +53,11 @@ npm run smoke:package
 `npm run check` must pass typecheck, build, Remote smoke, client smoke, and the full Vitest suite;
 `npm run smoke:package` additionally packs the tarball and verifies its required files, every `exports` target,
 the packed `core` import, and the packed client bundle (Host/Remote runtime imports are covered by the workspace
-build smokes). CI runs both on the pushed metadata commit. The recorded real-model compaction `PASS`
+build smokes). Once the release artifact exists, verify those exact bytes without rebuilding:
+`npm run smoke:package -- --artifact dist/dsh-charter-0.1.0-rc.1.tgz --sha256 SHA256SUMS` validates the artifact's
+SHA-256 against the supplied sums file, then runs the same manifest/files/modes/exports, empty-consumer install,
+packed `core` import, and client-bundle checks on that file; it never builds or packs. CI runs both on the pushed
+metadata commit. The recorded real-model compaction `PASS`
 (verification §8.4) is the acceptance evidence for the compaction-resilience claim; the manual command below is
 kept for a fresh target-profile re-run.
 
@@ -84,7 +88,9 @@ git push origin main
 ```
 
 Never create the release tag on a commit that is not reachable from the pushed, CI-green `main` (no
-tag-only/unpushed commits). `dist/` is gitignored and is never committed.
+tag-only/unpushed commits). Run the exact-artifact check above on the final `dist/` file before tagging; the
+GitHub release asset, the npm publish input, and the checksum file must all point at that same verified tarball —
+never rebuild after this point. `dist/` is gitignored and is never committed.
 
 Install that exact tarball into a fresh profile and verify it:
 

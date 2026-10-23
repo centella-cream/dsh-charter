@@ -39,7 +39,7 @@
 - 新浏览器 client 可以兼容仍在运行旧 Host 的 view snapshot（旧 Host 仍带 active 条数字段），避免 host/client
   revision 不一致时「会话契约」白屏；新的 pending 导入语义仍需要完整重启 Host 才生效。
 - 已针对 DSH `0.2.1-rc.2` 验证，无需代码改动；现有 peer range 和兼容层已覆盖该 release candidate。
-- 210 个测试，覆盖内核、Host 组合、fork、幂等、配额、prompt 边界、Remote stream、历史抽取、客户端 tab
+- 232 个测试，覆盖内核、Host 组合、fork、幂等、配额、prompt 边界、Remote stream、历史抽取、客户端 tab
   排序和装饰器兼容。已在 DSH `0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-rc.1`、`0.2.1-rc.2` 上验证。
   真实 Web UI 在 `0.2.0-rc.2` 上验证了标签顺序、中英文切换、目标/约束编辑、预览、Apply 和刷新持久化。
 
@@ -225,3 +225,18 @@
   toolCallId/turn/step 匹配）；严格解析 arguments（只有缺省/普通对象/`standing` 有效）；压缩后没有请求活动时
   返回 WAIT exit 3（只有已执行请求但无 runtime 快照才是 FAIL）；checkpoint 只按 compactionId 关联、仅对无 id
   的 checkpoint 做 positional fallback；transcript parser 遇到中间损坏会带行号拒绝而不是跳过。
+- 对可重试的未知结果 edit 请求先原样 replay（同一 mutationId/baseRevision/ops），再考虑当前 admission/limit
+  检查，确保已提交但响应丢失的批次既不丢失也不重复；attempt 未解决时阻止 Rebase，replay 返回确定性冲突后清除
+  attempt 并重新允许 Rebase。
+- bootstrap lifecycle 处理改为原子顺序：Pane 先 bind lifecycle 再开始 extraction；旧 Host 首次收到真实
+  fingerprint 时会使在未知 lifecycle 下启动的 extraction 失效并重新提取；切换 lifecycle 会丢弃旧结果、只接受
+  新结果；已审阅草案变为 stale 时走单一清理路径（objective/items/base/attempt/generation 全部清除，
+  `isEmpty` 为 true）。
+- bootstrap 草案在到达 Remote 前先经过 store 预检（共享 admission + 草案文本校验）；admission 增加 Host 的
+  objective/item 字段预算规则（超限时允许 unchanged 或严格缩短，拒绝新增、增长或等字节但内容不同的值）。
+- checker 后续修正：区分“缺少 sourceEventSeqs”与“存在但格式错误”（后者不得回退 legacy）；考虑其后的 landed
+  失败/未完成 compaction attempt（失败但已 landing checkpoint 时 FAIL，attempt 未完成时 WAIT）；无压缩后活动
+  的 WAIT 不再包含伪 evidence failure；CLI 正确渲染 OPEN 的 compaction attempt，而不是格式化缺失的 end time。
+- `smoke:package` 增加 exact-artifact 模式（`--artifact <tgz> --sha256 <sums>`）：校验给定 archive 的 SHA-256，
+  并对这批确切字节执行完整 consumer 检查，不 build、不 pack；`npm pack --json` 改为完整解析（object、以包名
+  为 key 的 object、或单元素数组），不再从第一个 `{` 截取。

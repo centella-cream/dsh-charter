@@ -245,15 +245,29 @@ export function resolveCharterReadCalls(events) {
     if (event.type !== 'tool/result') continue
     const data = event.data ?? {}
     const message = data.message ?? {}
-    const sourceEventSeqs = Array.isArray(event.sourceEventSeqs)
-      ? event.sourceEventSeqs
-      : Array.isArray(data.sourceEventSeqs)
-        ? data.sourceEventSeqs
-        : undefined
+    // Preserve the distinction between "absent" (legacy transcript) and
+    // "present but malformed" (a modern transcript we must not silently read
+    // through the legacy path). Object.hasOwn sees arrays/null/undefined values.
+    const topHas = Object.hasOwn(event, 'sourceEventSeqs')
+    const dataHas = Object.hasOwn(data, 'sourceEventSeqs')
+    const topValue = topHas ? event.sourceEventSeqs : undefined
+    const dataValue = dataHas ? data.sourceEventSeqs : undefined
+    const modern = topHas || dataHas
+    let shapeError
+    if (modern && topHas && dataHas) {
+      const identical = Array.isArray(topValue) && Array.isArray(dataValue)
+        && topValue.length === dataValue.length
+        && topValue.every((value, index) => value === dataValue[index])
+      if (!identical) shapeError = 'source-event-seqs-mismatch'
+    }
+    const sourceEventSeqs = topHas ? topValue : dataValue
+    if (modern && shapeError === undefined && !Array.isArray(sourceEventSeqs)) {
+      shapeError = 'invalid-source-seqs'
+    }
     let call
     let resolution
-    let authError
-    if (sourceEventSeqs !== undefined) {
+    let authError = shapeError
+    if (modern && shapeError === undefined) {
       const validSeqs = sourceEventSeqs.length > 0
         && sourceEventSeqs.every(seq => Number.isInteger(seq) && Number.isFinite(seq) && seq < event.seq)
       const referenced = sourceEventSeqs.map(seq => bySeq.get(seq))
@@ -281,7 +295,8 @@ export function resolveCharterReadCalls(events) {
         call = uniqueCharterCalls[0]
         resolution = 'sourceEventSeqs'
       }
-    } else {
+    } else if (!modern) {
+      // Legacy transcript without the field: pair by identity + event order.
       const callId = message.toolCallId ?? data.toolCallId
       const turn = data.turn
       const step = data.step
@@ -502,12 +517,23 @@ export function evaluateCompactionTranscript({ events, current, marker, promptPr
       || systemPromptSignals.some(signal => text.includes(signal)))
     : undefined
 
+  // "No request activity after the compaction" is not a failure mode: there is
+  // simply nothing to judge yet. Only an executed request without a runtime
+  // snapshot is a FAIL.
+  const activity = latestCompaction === undefined
+    ? []
+    : countedRequestActivity(order, latestCompaction.endSeq)
+  const noPostCompactionActivity = latestCompaction !== undefined && activity.length === 0
+  const postCompactionExecutionWithoutSnapshot = latestCompaction !== undefined
+    && activity.length > 0
+    && latestRuntime === undefined
+
   const injected = latestRuntime?.charterText !== undefined
   const digestMatch = injected
     && promptText !== ''
     && latestRuntime.charterText === promptText
     && sha256Text(latestRuntime.charterText) === promptDigest
-  const injectedAfterCompaction = latestCompaction === undefined
+  const injectedAfterCompaction = noPostCompactionActivity || latestCompaction === undefined
     ? undefined
     : latestRuntime !== undefined && latestRuntime.seq > latestCompaction.endSeq
   // The charter must predate the compaction START: a commit between start and
@@ -515,35 +541,56 @@ export function evaluateCompactionTranscript({ events, current, marker, promptPr
   const charterPredatesCompaction = latestCompaction === undefined || committedAt === undefined
     ? undefined
     : committedAt < latestCompaction.startTime
-  const survivesCompaction = charterPredatesCompaction === true
-    && injectedAfterCompaction === true
-    && injected && digestMatch
+  const survivesCompaction = noPostCompactionActivity
+    ? undefined
+    : charterPredatesCompaction === true && injectedAfterCompaction === true
+      && injected && digestMatch
+  const effectiveSystemPromptClean = noPostCompactionActivity ? undefined : systemPromptClean
 
-  const activity = latestCompaction === undefined
-    ? []
-    : countedRequestActivity(order, latestCompaction.endSeq)
-  // No post-compaction request activity at all means there is nothing to judge
-  // yet: WAIT. Only an executed request without a runtime snapshot is FAIL.
-  const noPostCompactionActivity = latestCompaction !== undefined && activity.length === 0
-  const postCompactionExecutionWithoutSnapshot = latestCompaction !== undefined
-    && activity.length > 0
-    && latestRuntime === undefined
+  // A later attempt after the successful evidence must be accounted for: an
+  // open attempt means wait; a failed attempt that still landed a checkpoint
+  // (summary message) replaced the surface and invalidates the earlier PASS.
+  const latestSuccessfulIndex = latestCompaction === undefined
+    ? -1
+    : compactions.indexOf(latestCompaction)
+  const laterAttempts = latestSuccessfulIndex >= 0 ? compactions.slice(latestSuccessfulIndex + 1) : []
+  const landedCheckpointIds = new Set(
+    checkpoints.map(checkpoint => checkpoint.compactionId).filter(id => typeof id === 'string'),
+  )
+  let laterCompactionAttempt
+  if (latestCompaction !== undefined && laterAttempts.length > 0) {
+    const last = laterAttempts.at(-1)
+    if (last.endSeq === undefined) laterCompactionAttempt = 'open'
+    else if (!last.ok && landedCheckpointIds.has(last.id)) laterCompactionAttempt = 'landed-failed'
+  }
 
   const charterReadCalled = postCompactionCalls.length > 0
   const charterReadStanding = charterReady && matchedReads.length > 0 ? true : undefined
 
-  const verification = evaluateCompactionEvidence({
+  let verification = evaluateCompactionEvidence({
     charterReady,
     survivesCompaction,
-    systemPromptClean,
+    systemPromptClean: effectiveSystemPromptClean,
     charterReadStanding,
     checkpointLeaksCharter,
   })
+  if (noPostCompactionActivity) {
+    // Skip the final evidence evaluation: with no request after the compaction
+    // there are no evidence failures, only a WAIT.
+    verification = { ok: true, failures: [], warnings: verification.warnings }
+  }
   if (postCompactionExecutionWithoutSnapshot) {
     verification.ok = false
     verification.failures = [
       ...verification.failures,
       'a post-compaction request executed without a new runtime-context snapshot',
+    ]
+  }
+  if (laterCompactionAttempt === 'landed-failed') {
+    verification.ok = false
+    verification.failures = [
+      ...verification.failures,
+      'a later failed compaction landed a checkpoint after the evidence; re-compact and re-read before claiming survival',
     ]
   }
 
@@ -557,8 +604,9 @@ export function evaluateCompactionTranscript({ events, current, marker, promptPr
     checkpointLeaksCharter,
     markerPresent: marker === undefined ? undefined : promptText.includes(marker),
     charterReadStanding,
-    systemPromptClean,
+    systemPromptClean: effectiveSystemPromptClean,
     noPostCompactionActivity,
+    laterCompactionAttempt,
     postCompactionExecutionWithoutSnapshot,
   }
 
@@ -578,35 +626,47 @@ export function evaluateCompactionTranscript({ events, current, marker, promptPr
             label: 'charter survives compaction',
             detail: 'the current charter was not committed before the latest successful compaction started; run /compact again',
           }
-        : noPostCompactionActivity
+        : laterCompactionAttempt === 'open'
           ? {
               state: 'WAIT',
               label: 'charter survives compaction',
-              detail: 'no post-compaction request activity yet; send a message',
+              detail: 'a later compaction attempt is still open; wait for it to finish and re-check',
             }
-          : postCompactionExecutionWithoutSnapshot
+          : laterCompactionAttempt === 'landed-failed'
             ? {
                 state: 'FAIL',
                 label: 'charter survives compaction',
-                detail: 'a request executed after the compaction without a runtime-context snapshot',
+                detail: 'a later failed compaction landed a checkpoint after the evidence; re-compact and re-read',
               }
-            : injectedAfterCompaction !== true
+            : noPostCompactionActivity
               ? {
                   state: 'WAIT',
                   label: 'charter survives compaction',
-                  detail: 'no post-compaction runtime-context snapshot yet; send a message',
+                  detail: 'no post-compaction request activity yet; send a message',
                 }
-              : survivesCompaction
+              : postCompactionExecutionWithoutSnapshot
                 ? {
-                    state: 'PASS',
-                    label: 'charter survives compaction',
-                    detail: `snapshot seq ${latestRuntime.seq} > compaction end seq ${latestCompaction.endSeq}`,
-                  }
-                : {
                     state: 'FAIL',
                     label: 'charter survives compaction',
-                    detail: 'post-compaction runtime context is missing the authoritative charter',
+                    detail: 'a request executed after the compaction without a runtime-context snapshot',
                   }
+                : injectedAfterCompaction !== true
+                  ? {
+                      state: 'WAIT',
+                      label: 'charter survives compaction',
+                      detail: 'no post-compaction runtime-context snapshot yet; send a message',
+                    }
+                  : survivesCompaction
+                    ? {
+                        state: 'PASS',
+                        label: 'charter survives compaction',
+                        detail: `snapshot seq ${latestRuntime.seq} > compaction end seq ${latestCompaction.endSeq}`,
+                      }
+                    : {
+                        state: 'FAIL',
+                        label: 'charter survives compaction',
+                        detail: 'post-compaction runtime context is missing the authoritative charter',
+                      }
     verdictLines.push(one)
     verdict(injected, 'latest runtime context carries charter:standing',
       injected ? undefined : 'send a message, then run this check again')
@@ -615,8 +675,8 @@ export function evaluateCompactionTranscript({ events, current, marker, promptPr
     if (marker !== undefined) {
       verdict(verdicts.markerPresent, `marker ${JSON.stringify(marker)} is part of the charter`)
     }
-    verdict(systemPromptClean, 'system prompt carries no charter body',
-      systemPromptClean ? undefined : 'a system-prompt snapshot contains the charter text')
+    verdict(effectiveSystemPromptClean, 'system prompt carries no charter body',
+      effectiveSystemPromptClean ? undefined : 'a system-prompt snapshot contains the charter text')
     verdict(charterReadStanding, 'authenticated post-compaction charter_read standing view matches the storage revision/objective',
       charterReadStanding === true
         ? undefined
@@ -645,6 +705,9 @@ export function evaluateCompactionTranscript({ events, current, marker, promptPr
   } else if (charterPredatesCompaction !== true) {
     status = 'wait'
     statusReason = 'the charter was not committed before the latest successful compaction started; run /compact again'
+  } else if (laterCompactionAttempt === 'open') {
+    status = 'wait'
+    statusReason = 'a later compaction attempt is still open; wait for it to finish and re-check'
   } else if (noPostCompactionActivity) {
     status = 'wait'
     statusReason = 'no post-compaction request activity yet; send a message after the compaction'
@@ -714,6 +777,7 @@ export function evaluateCompactionTranscript({ events, current, marker, promptPr
     charterReadCalled,
     postCompactionActivity: activity.length,
     noPostCompactionActivity,
+    laterCompactionAttempt,
     postCompactionExecutionWithoutSnapshot,
     verdicts,
     verification,

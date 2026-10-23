@@ -239,10 +239,19 @@ function main() {
     console.log(`promptDigest   ${report.charter.promptDigest || '(empty)'}`)
     console.log(`compactions    ${report.compactions.length === 0 ? 'none' : ''}`)
     for (const compaction of report.compactions) {
+      // An attempt without an end is still OPEN; only a finite endTime may be
+      // formatted as a timestamp (start-only attempts must not throw).
+      const open = compaction.endSeq === undefined
+      const seq = open ? compaction.startSeq : compaction.endSeq
+      const time = open ? compaction.startTime : compaction.time
+      const timeText = typeof time === 'number' && Number.isFinite(time) ? stamp(time) : '(unknown time)'
+      const state = open
+        ? '  OPEN (no end yet)'
+        : `${compaction.ok ? '' : `  INVALID/FAILED (${compaction.error ?? 'missing start/summary'})`}`
       console.log(
-        `  seq ${compaction.endSeq}  ${stamp(compaction.time)}  `
+        `  seq ${seq ?? '?'}  ${timeText}  `
         + `source ${compaction.sourceCommandId === undefined ? 'automatic' : compaction.sourceCommandId}`
-        + `${compaction.ok ? '' : `  INVALID/FAILED (${compaction.error ?? 'missing start/summary'})`}`,
+        + state,
       )
     }
     console.log(`requests       ${report.requests} logged request header(s)`

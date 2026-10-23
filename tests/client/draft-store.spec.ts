@@ -797,6 +797,332 @@ describe('per-Session draft ownership', () => {
     })
   })
 
+  it('replays a retryable lost request verbatim before any current admission check', async () => {
+    const requests: CharterEditRequest[] = []
+    const fake = source({
+      edit: async request => {
+        requests.push(request)
+        if (requests.length === 1) throw new Error('connection lost after the Host committed')
+        return { ok: true, replayed: true, committedRevision: 2, ids: {}, view: view(2) }
+      },
+    })
+    const draft = new CharterDraft(sessionId, () => fake)
+    draft.bindLifecycle('life-replay')
+    draft.stage(view(1), {
+      type: 'item.add',
+      item: { clientRef: 'm1', kind: 'invariant', text: 'Exactly once', order: 0 },
+    })
+    await draft.applyDraft(view(1))
+    expect(draft.getSnapshot().feedback).toEqual({ kind: 'connection' })
+    expect(rebaseAvailable(draft.getSnapshot())).toBe(false)
+    draft.rebase(view(1))
+    expect(draft.getSnapshot().baseRevision).toBe(1)
+
+    // The reconnected view already contains the committed item and has a
+    // tighter maxItems, so a fresh add would be rejected by admission.
+    const committedItem = committedInvariant({ id: 'host-1', text: 'Exactly once', order: 1 })
+    const reconnect = view(2, {
+      items: [committedItem],
+      limits: { ...view(2).limits, maxItems: 1 },
+    })
+    expect(draftAdmission(reconnect, draft.getSnapshot().ops))
+      .toMatchObject({ ok: false, reason: 'max-items' })
+    draft.rebase(reconnect)
+    expect(draft.getSnapshot().baseRevision).toBe(1)
+
+    await draft.applyDraft(reconnect)
+    expect(requests).toHaveLength(2)
+    expect(requests[1]).toEqual(requests[0])
+    expect(draft.getSnapshot().feedback).toEqual({ kind: 'replayed' })
+    expect(draft.getSnapshot().ops).toHaveLength(0)
+    // Only the one committed item exists; no second mutation id was minted.
+    expect(new Set(requests.map(request => request.mutationId)).size).toBe(1)
+    expect(draft.getSnapshot().attempt).toBeNull()
+  })
+
+  it('clears a replay attempt on a deterministic conflict so Rebase becomes available', async () => {
+    const requests: CharterEditRequest[] = []
+    let first = true
+    const fake = source({
+      edit: async request => {
+        requests.push(request)
+        if (first) {
+          first = false
+          throw new Error('lost')
+        }
+        return { ok: false, code: 'REVISION_CONFLICT', message: 'stale', currentRevision: 2, view: view(2) }
+      },
+    })
+    const draft = new CharterDraft(sessionId, () => fake)
+    draft.bindLifecycle('life-replay-conflict')
+    draft.stage(view(1), {
+      type: 'item.add',
+      item: { clientRef: 'm1', kind: 'invariant', text: 'Conflict', order: 0 },
+    })
+    await draft.applyDraft(view(1))
+    expect(rebaseAvailable(draft.getSnapshot())).toBe(false)
+    await draft.applyDraft(view(1))
+    expect(requests).toHaveLength(2)
+    expect(draft.getSnapshot().feedback).toMatchObject({ kind: 'error', code: 'REVISION_CONFLICT' })
+    expect(draft.getSnapshot().attempt).toBeNull()
+    expect(rebaseAvailable(draft.getSnapshot())).toBe(true)
+  })
+
+  it('invalidates a bootstrap extraction started under an unknown lifecycle and re-extracts', async () => {
+    let releaseFirst: ((value: CharterBootstrapResult) => void) | undefined
+    let releaseSecond: ((value: CharterBootstrapResult) => void) | undefined
+    const first = new Promise<CharterBootstrapResult>(resolve => { releaseFirst = resolve })
+    const second = new Promise<CharterBootstrapResult>(resolve => { releaseSecond = resolve })
+    let calls = 0
+    const fake = source({
+      edit: async () => ({ ok: false, code: 'UNAVAILABLE', message: 'unused' }),
+      bootstrap: () => {
+        calls += 1
+        return calls === 1 ? first : second
+      },
+    })
+    const draft = new CharterDraft(sessionId, () => fake)
+    draft.bindLifecycle(undefined)
+    draft.ensureBootstrap(view(0), true)
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(draft.getSnapshot().bootstrapPhase).toBe('checking')
+
+    // First real fingerprint arrives while the extraction is in flight: the old
+    // request belongs to the unknown lifecycle and must be discarded.
+    draft.bindLifecycle('lifecycle-defined')
+    expect(draft.getSnapshot()).toMatchObject({ lifecycle: 'lifecycle-defined', bootstrapPhase: 'idle' })
+    releaseFirst!({
+      available: true,
+      proposal: { objective: 'Old lifecycle', invariants: ['Old'], deliverables: [], source: { summarySeq: 1, at: 1 } },
+    })
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(draft.getSnapshot().bootstrapPhase).toBe('idle')
+    expect(draft.getSnapshot().bootstrap).toBeNull()
+
+    // The Pane effect runs ensure again for the defined lifecycle.
+    draft.ensureBootstrap(view(0), true)
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(draft.getSnapshot().bootstrapPhase).toBe('checking')
+    releaseSecond!({
+      available: true,
+      proposal: { objective: 'New lifecycle', invariants: ['New'], deliverables: [], source: { summarySeq: 1, at: 1 } },
+    })
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(draft.getSnapshot().bootstrapPhase).toBe('draft')
+    expect(draft.getSnapshot().bootstrap?.objective).toBe('New lifecycle')
+    expect(calls).toBe(2)
+  })
+
+  it('discards an A extraction and accepts only the B extraction after a lifecycle switch', async () => {
+    const releases: Array<(value: CharterBootstrapResult) => void> = []
+    const promises: Promise<CharterBootstrapResult>[] = []
+    for (let index = 0; index < 2; index += 1) {
+      promises.push(new Promise<CharterBootstrapResult>(resolve => { releases.push(resolve) }))
+    }
+    let calls = 0
+    const fake = source({
+      edit: async () => ({ ok: false, code: 'UNAVAILABLE', message: 'unused' }),
+      bootstrap: () => {
+        calls += 1
+        return promises[calls - 1]!
+      },
+    })
+    const draft = new CharterDraft(sessionId, () => fake)
+    draft.bindLifecycle('lifecycle-a')
+    draft.ensureBootstrap(view(0), true)
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(draft.getSnapshot().bootstrapPhase).toBe('checking')
+
+    // Switch A -> B while A is checking: A's result must be discarded, B's
+    // extraction requested and only B accepted.
+    draft.bindLifecycle('lifecycle-b')
+    expect(draft.getSnapshot()).toMatchObject({ lifecycle: 'lifecycle-b', bootstrapPhase: 'idle' })
+    draft.ensureBootstrap(view(0), true)
+    await new Promise(resolve => setTimeout(resolve, 0))
+    releases[0]!({
+      available: true,
+      proposal: { objective: 'From A', invariants: ['A'], deliverables: [], source: { summarySeq: 1, at: 1 } },
+    })
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(draft.getSnapshot().bootstrapPhase).toBe('checking')
+    expect(draft.getSnapshot().bootstrap).toBeNull()
+    releases[1]!({
+      available: true,
+      proposal: { objective: 'From B', invariants: ['B'], deliverables: [], source: { summarySeq: 1, at: 1 } },
+    })
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(draft.getSnapshot().bootstrapPhase).toBe('draft')
+    expect(draft.getSnapshot().bootstrap?.objective).toBe('From B')
+    expect(calls).toBe(2)
+  })
+
+  it('fully cleans up a reviewed draft when the live view becomes non-empty', async () => {
+    const fake = source({
+      edit: async () => ({ ok: false, code: 'UNAVAILABLE', message: 'unused' }),
+      bootstrap: async () => ({
+        available: true,
+        proposal: { objective: 'Draft objective', invariants: ['Keep it'], deliverables: [], source: { summarySeq: 1, at: 1 } },
+      }),
+    })
+    const draft = new CharterDraft(sessionId, () => fake)
+    draft.bindLifecycle('life-cleanup')
+    draft.ensureBootstrap(view(0), true)
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(draft.getSnapshot().bootstrapPhase).toBe('draft')
+    expect(draft.isEmpty).toBe(false)
+
+    const item = committedInvariant({ id: 'external', text: 'External commit', order: 1 })
+    draft.markBootstrapStale(view(0, { items: [item] }))
+    expect(draft.getSnapshot()).toMatchObject({
+      bootstrapPhase: 'failed',
+      bootstrap: null,
+      bootstrapObjective: '',
+      bootstrapItems: [],
+      bootstrapBaseRevision: null,
+      attempt: null,
+      bootstrapProblem: { kind: 'stale' },
+    })
+    expect(draft.isEmpty).toBe(true)
+    // No hidden payload survives the single cleanup path.
+    expect(draft.getSnapshot().bootstrap).toBeNull()
+    expect(draft.getSnapshot().bootstrapObjective).toBe('')
+    expect(draft.getSnapshot().bootstrapItems).toEqual([])
+  })
+
+  it('preflights bootstrap invalid text in the store before any Remote call', async () => {
+    const requests: CharterEditRequest[] = []
+    const bootSource = source({
+      edit: async request => {
+        requests.push(request)
+        return { ok: true, replayed: false, committedRevision: 2, ids: {}, view: view(2) }
+      },
+      snapshot: () => ({ status: 'ready', view: view(1), error: null }),
+      bootstrap: async () => ({
+        available: true,
+        proposal: {
+          objective: 'Draft objective',
+          invariants: ['bad\u0000control'],
+          deliverables: [],
+          source: { summarySeq: 1, at: 1 },
+        },
+      }),
+    })
+    const draft = new CharterDraft(sessionId, () => bootSource)
+    draft.bindLifecycle('life-bootstrap-preflight')
+    draft.ensureBootstrap(view(1), true)
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(draft.getSnapshot().bootstrapPhase).toBe('draft')
+    await draft.applyBootstrap(view(1))
+    expect(requests).toHaveLength(0)
+    expect(draft.getSnapshot().bootstrapProblem).toMatchObject({
+      kind: 'save-failed',
+      code: 'INVALID_ARGUMENT',
+    })
+    // The reviewed draft stays reviewable.
+    expect(draft.getSnapshot().bootstrap).not.toBeNull()
+  })
+
+  it('rejects bootstrap plans that exceed the shared limit preflight without calling the Remote', async () => {
+    const requests: CharterEditRequest[] = []
+    const tightView = view(1, { limits: { ...view(1).limits, maxItems: 1 } })
+    const fake = source({
+      edit: async request => {
+        requests.push(request)
+        return { ok: true, replayed: false, committedRevision: 2, ids: {}, view: view(2) }
+      },
+      snapshot: () => ({ status: 'ready', view: tightView, error: null }),
+      bootstrap: async () => ({
+        available: true,
+        proposal: {
+          objective: 'Draft objective',
+          invariants: ['First invariant', 'Second invariant'],
+          deliverables: [],
+          source: { summarySeq: 1, at: 1 },
+        },
+      }),
+    })
+    const draft = new CharterDraft(sessionId, () => fake)
+    draft.bindLifecycle('life-bootstrap-limits')
+    draft.ensureBootstrap(tightView, true)
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(draft.getSnapshot().bootstrapPhase).toBe('draft')
+    await draft.applyBootstrap(tightView)
+    expect(requests).toHaveLength(0)
+    expect(draft.getSnapshot().bootstrapProblem).toMatchObject({
+      kind: 'save-failed',
+      code: 'QUOTA_EXCEEDED',
+    })
+    expect(draft.getSnapshot().bootstrap).not.toBeNull()
+  })
+
+  it('admits objective and item fields with the Host stepwise shrink rule', () => {
+    const bigObjective = 'o'.repeat(100)
+    const objectiveView = view(1, {
+      objective: {
+        original: { text: bigObjective, setAtRevision: 1 },
+        current: { text: bigObjective, setAtRevision: 1 },
+      },
+      limits: { ...view(1).limits, maxObjectiveBytes: 50 },
+    })
+    // Unchanged over-limit objective is admitted; growth and equal-byte-different
+    // text are rejected; a strict shrink is admitted.
+    expect(draftAdmission(objectiveView, [
+      { type: 'objective.redirect', text: bigObjective },
+    ])).toMatchObject({ ok: true })
+    expect(draftAdmission(objectiveView, [
+      { type: 'objective.redirect', text: 'o'.repeat(101) },
+    ])).toMatchObject({ ok: false, reason: 'max-objective' })
+    expect(draftAdmission(objectiveView, [
+      { type: 'objective.redirect', text: 'x'.repeat(100) },
+    ])).toMatchObject({ ok: false, reason: 'max-objective' })
+    expect(draftAdmission(objectiveView, [
+      { type: 'objective.redirect', text: 'o'.repeat(90) },
+    ])).toMatchObject({ ok: true })
+
+    const bigItem = committedInvariant({ id: 'big', text: 'i'.repeat(100), order: 1 })
+    const itemView = view(1, {
+      items: [bigItem],
+      limits: { ...view(1).limits, maxItemBytes: 50 },
+    })
+    expect(draftAdmission(itemView, [
+      { type: 'item.edit', itemId: 'big', text: 'i'.repeat(100) },
+    ])).toMatchObject({ ok: true })
+    expect(draftAdmission(itemView, [
+      { type: 'item.edit', itemId: 'big', text: 'i'.repeat(101) },
+    ])).toMatchObject({ ok: false, reason: 'max-item' })
+    expect(draftAdmission(itemView, [
+      { type: 'item.edit', itemId: 'big', text: 'j'.repeat(100) },
+    ])).toMatchObject({ ok: false, reason: 'max-item' })
+    expect(draftAdmission(itemView, [
+      { type: 'item.edit', itemId: 'big', text: 'i'.repeat(80) },
+    ])).toMatchObject({ ok: true })
+    // A new over-limit item is always rejected.
+    expect(draftAdmission(itemView, [
+      { type: 'item.add', item: { clientRef: 'new', kind: 'invariant', text: 'k'.repeat(60), order: 2 } },
+    ])).toMatchObject({ ok: false, reason: 'max-item' })
+  })
+
+  it('refuses a field-budget violation in applyDraft without calling the Remote', async () => {
+    const requests: CharterEditRequest[] = []
+    const fake = source({
+      edit: async request => {
+        requests.push(request)
+        return { ok: true, replayed: false, committedRevision: 2, ids: {}, view: view(2) }
+      },
+    })
+    const bigItem = committedInvariant({ id: 'big', text: 'i'.repeat(100), order: 1 })
+    const constrained = view(1, {
+      items: [bigItem],
+      limits: { ...view(1).limits, maxItemBytes: 50 },
+    })
+    const draft = new CharterDraft(sessionId, () => fake)
+    draft.bindLifecycle('life-field-budget')
+    draft.stage(constrained, { type: 'item.edit', itemId: 'big', text: 'i'.repeat(120) })
+    await draft.applyDraft(constrained)
+    expect(requests).toHaveLength(0)
+    expect(draft.getSnapshot().feedback).toMatchObject({ kind: 'error', code: 'QUOTA_EXCEEDED' })
+  })
+
   it('does not steal the current section when a draft arrives while editing', async () => {
     const fakeSource = source({
       edit: async () => ({ ok: false, code: 'UNAVAILABLE', message: 'unused' }),

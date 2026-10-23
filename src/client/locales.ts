@@ -231,7 +231,7 @@ const en = {
   'bootstrap.idle': 'No history draft has been loaded. Use Check again to read the latest compaction history.',
 
   'conflict.rebase': 'Apply draft to revision {revision}',
-  'conflict.rebaseBlocked': 'Close the open editor to rebase this draft; the editor keeps the revision you reviewed.',
+  'conflict.rebaseBlocked': 'Close the open editor or resolve the in-flight request before rebasing; the editor keeps the revision you reviewed.',
   'bootstrap.includeAria': 'Include candidate {index}',
   'bootstrap.editAria': 'Edit candidate {index} text',
   'editor.reasonLabel': 'Redirect reason',
@@ -469,7 +469,7 @@ const zh: Record<CharterLocaleKey, string> = {
   'bootstrap.idle': '尚未加载历史草案。请点击重新检查以读取最近的压缩历史。',
 
   'conflict.rebase': '将草稿应用到修订 {revision}',
-  'conflict.rebaseBlocked': '请先关闭打开的编辑器再 rebase；编辑器保留你审阅时的修订。',
+  'conflict.rebaseBlocked': '请先关闭打开的编辑器或解决在途请求再 rebase；编辑器保留你审阅时的修订。',
   'bootstrap.includeAria': '包含候选 {index}',
   'bootstrap.editAria': '编辑候选 {index} 的文本',
   'editor.reasonLabel': '调整原因',
