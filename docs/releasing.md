@@ -145,6 +145,10 @@ keys, profile data, or local screenshots containing private content.
 ## 5. Post-release
 
 - Verify the README install command against the published artifact.
+- First-publish npm behavior (recorded for `0.1.0-rc.1`): npm assigns `latest` to a package's first published
+  version, so `latest` points at the RC until a stable release replaces it; `@next` and the exact version remain
+  the pre-release channels. The install docs in the published rc.1 tarball predate this observation; the
+  repository README was corrected after release and the next release must ship the corrected wording.
 - Remember the recorded residual risk (verification §4.5): an **unreadable outer JSON** charter record is treated
   as absent by the JSON storage backend and cannot be distinguished from a missing record through the plugin-side
   API. Do not claim "corrupt data is always preserved": the guarantee splits into an inner schema/consistency

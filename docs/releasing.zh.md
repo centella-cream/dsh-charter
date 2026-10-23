@@ -132,6 +132,9 @@ npm publish dist/dsh-charter-0.1.0-rc.1.tgz --access public --tag next
 ## 5. 发布后
 
 - 用已发布产物验证 README 安装命令；
+- npm 首次发布行为（针对 `0.1.0-rc.1` 记录）：npm 会给新包的首次发布自动设置 `latest`，因此稳定版发布前
+  `latest` 会指向该 RC；预发布渠道仍应使用 `@next` 或精确版本。已发布 rc.1 tarball 中的安装文档早于这一观察，
+  仓库 README 已在发布后修正；下一版本必须携带修正后的措辞；
 - 记住已记录的残留风险（验证记录 4.5）：**外层 JSON 不可读**的契约记录会被 JSON storage backend 当作不存在，
   插件侧 API 无法将其与"记录缺失"区分。不要宣称"损坏数据总是被保留"：保证需区分内部 schema/一致性不合法
   记录（插件隔离并保留）与外层 JSON malformed/不可读或外层 version 被拒绝（已知覆盖风险，需停止 Host 并从

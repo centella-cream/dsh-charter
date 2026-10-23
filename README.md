@@ -108,9 +108,10 @@ The browser registers a `conversation.view` entry; the pane and `charter.watch` 
 
 ## Install
 
-> **Install channels.** Once the maintainer publishes the `next` dist-tag, install the exact version or the
-> pre-release channel (`@0.1.0-rc.1` / `@next`). If the `next` tag is not listed in your registry yet, install the
-> verified local tarball built from this checkout.
+`dsh-charter@0.1.0-rc.1` is published to the npm registry. The canonical pre-release channel is `next`; pin the
+exact version for reproducible profiles. npm also currently exposes this first RC under `latest` because npm
+assigns `latest` to a package's first publish — a stable `latest` will replace it later. Do not rely on `@latest`
+for a pre-release.
 
 ### Requirements
 
@@ -120,24 +121,7 @@ The browser registers a `conversation.view` entry; the pane and `charter.watch` 
 - Node.js **`^22.19.0 || >=24.0.0`**.
 - A Web or Desktop profile.
 
-### Verified local tarball (pre-release fallback)
-
-From a checkout:
-
-```bash
-npm install
-npm run build
-npm pack                         # dsh-charter-0.1.0-rc.1.tgz
-dsh plugin --profile web add ./dsh-charter-0.1.0-rc.1.tgz
-```
-
-For Desktop, use the Plugins page when your build offers local plugin import; otherwise add the tarball through the
-Desktop profile's own package manager. `dsh plugin --profile desktop` is intentionally refused by the Electron
-app that owns that profile.
-Source-level development is described in [CONTRIBUTING.md](CONTRIBUTING.md); do not use `git clone` as the
-normal installation method.
-
-### Registry install (after the `next` publish)
+### Install from npm (recommended)
 
 #### Web profile — install by version or pre-release tag
 
@@ -146,27 +130,46 @@ dsh plugin --profile web add dsh-charter@0.1.0-rc.1   # exact version: reproduci
 dsh plugin --profile web add dsh-charter@next         # newest pre-release
 ```
 
-After the maintainer publishes the `next` dist-tag, install `dsh-charter@0.1.0-rc.1` (exact and reproducible) or
-`dsh-charter@next` (newest pre-release). The pre-release is published under `next`, never under `latest`; use
-`@latest` only after a stable release exists. If the tag is not listed yet, use the verified local tarball above.
-Pin an explicit version for reproducible profiles.
+Use the exact version for reproducible profiles, or `@next` to track the newest pre-release. `@latest` is not the
+pre-release channel; it will point at a stable release once one exists. If the registry is unreachable, use the
+offline tarball fallback below.
 
-Restart `dsh web` (or let profile HMR recompose), then refresh the page. The profile `package.json` gains the
+Restart `dsh web` (or let profile HMR recompose), then refresh the page. The profile's `package.json` gains the
 dependency and bundle entry.
 
 #### Desktop — install from Plugins
 
-If your Desktop build exposes the public plugin catalog and `dsh-charter` has been published there, open
-**Desktop → Plugins**, search for **`dsh-charter`**, and click **Install** (or **Update** when already
-installed). Desktop owns the plugin lifecycle and hot-applies the new bundle. Otherwise use the local tarball
-path above.
+If your Desktop build exposes the public plugin catalog, open **Desktop → Plugins**, search for
+**`dsh-charter`**, and click **Install** (or **Update** when already installed). Desktop owns the plugin
+lifecycle and hot-applies the new bundle. Otherwise use the offline tarball fallback below.
+
+### Offline / local tarball fallback
+
+Use this path for air-gapped machines, Desktop builds that only import local plugins, or verifying the exact
+release artifact. The GitHub Release ships the same tarball and `SHA256SUMS` used by `npm publish`.
+
+```bash
+# From a checkout:
+npm install
+npm run build
+npm pack                         # dsh-charter-0.1.0-rc.1.tgz
+dsh plugin --profile web add ./dsh-charter-0.1.0-rc.1.tgz
+
+# Or download the GitHub Release tarball + SHA256SUMS and verify:
+shasum -a 256 -c SHA256SUMS
+dsh plugin --profile web add ./dsh-charter-0.1.0-rc.1.tgz
+```
+
+`dsh plugin --profile desktop` is intentionally refused by the Electron app that owns that profile; use the
+Desktop Plugins page or that profile's package manager. Source-level development is described in
+[CONTRIBUTING.md](CONTRIBUTING.md); do not use `git clone` as the normal installation method.
 
 ### Update
 
-- **Local tarball:** rebuild and repeat the local install command.
-- **Web (registry channel):** `dsh plugin --profile web add dsh-charter@next`, then restart/refresh; pinned
-  profiles keep their explicit `0.1.0-rc.1` entry until a stable `latest` exists.
-- **Desktop after release:** Plugins → `dsh-charter` → **Update**; Desktop hot-applies it.
+- **Web (npm):** `dsh plugin --profile web add dsh-charter@next`, then restart/refresh. Pinned profiles keep
+  their explicit `0.1.0-rc.1` entry.
+- **Local tarball:** rebuild/download the new tarball and repeat the local install command.
+- **Desktop:** Plugins → `dsh-charter` → **Update**; Desktop hot-applies it.
 
 ## Quick start
 
@@ -326,9 +329,8 @@ security reports, follow [SECURITY.md](SECURITY.md).
 Pre-1.0. The DSH plugin ABI is still moving; compatibility is tested against the versions above, and the design
 keeps the compatibility layer deliberately small. The public repository is [centella-cream/dsh-charter](https://github.com/centella-cream/dsh-charter). This tree is the `0.1.0-rc.1` pre-release: the real-model
 compaction acceptance **PASS is recorded on 2026-10-22** on an anonymized evaluation Session (326 messages /
-~228k tokens shadowed, revision-1 charter survived with matching digest — see verification §8.4). The release is
-distributed as a verified local tarball built from this tree and, once the maintainer publishes it, through the
-`next` dist-tag on npm. One manual check recorded in §8.4 is required before a stable `latest` release: restart
+~228k tokens shadowed, revision-1 charter survived with matching digest — see verification §8.4). The release is available from the npm registry under the `next` dist-tag; the GitHub Release also ships the same verified
+tarball. npm currently also exposes this first RC under `latest` (first-publish behavior); use exact `0.1.0-rc.1` or `@next` for pre-release installs. One manual check recorded in §8.4 is required before a stable `latest` release: restart
 the Desktop app and reopen the Charter tab once to confirm the installed bundle/tool ABI. CI
 (`.github/workflows/ci.yml`) packs and smoke-tests the installable artifact on Node `22.19.0` and `24`; the local
 gate evidence is recorded in verification §2. Release-state prerequisites, tag ordering, and the exact publish

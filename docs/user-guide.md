@@ -34,7 +34,7 @@ For a Web or Desktop profile the plugin registers:
 - Node.js **`^22.19.0 || >=24.0.0`**.
 - A Web or Desktop profile.
 
-### 2.2 Verified local tarball (pre-release fallback)
+### 2.2 Offline / local tarball fallback
 
 ```bash
 npm install
@@ -45,18 +45,19 @@ dsh plugin --profile web add ./dsh-charter-0.1.0-rc.1.tgz
 
 For Desktop, use the Plugins page if local import is available; otherwise install the tarball through the Desktop
 profile's own package manager (`dsh plugin --profile desktop` is refused by the Electron app). The profile
-dependency is a local `file:` path.
+dependency is a local `file:` path. Prefer npm install in §2.3 when the registry is reachable.
 
-### 2.3 Registry install (after the `next` publish) — Web profile by version or tag
+### 2.3 npm / Registry install (recommended) — Web profile by version or tag
 
 ```bash
 dsh plugin --profile web add dsh-charter@0.1.0-rc.1   # exact version: reproducible
 dsh plugin --profile web add dsh-charter@next         # newest pre-release
 ```
 
-After the maintainer publishes the `next` dist-tag, `0.1.0-rc.1` is available under `next`, not `latest`; use
-`@latest` only after a stable release exists. If the tag is not listed yet, build and install the verified local
-tarball above. Pin an explicit version for reproducible profiles.
+`0.1.0-rc.1` is published under the `next` dist-tag. npm currently also exposes this first RC under `latest`
+because npm assigns `latest` to a new package's first publish; a stable `latest` will replace it later. Use the
+exact version or `@next` for pre-release installs, and use the offline tarball fallback above only when the
+registry is unreachable. Pin an explicit version for reproducible profiles.
 
 Restart `dsh web`, or let profile HMR recompose, then refresh the page. The profile's `package.json` gains the
 dependency and bundle selection:
