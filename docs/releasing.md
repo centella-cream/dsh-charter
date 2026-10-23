@@ -8,35 +8,32 @@ move a tag that has already been pushed and never re-pack the archive after tagg
 
 ## 1. External prerequisite — public repository setup
 
-Release state is dynamic; this checklist is the only place that records it. At the time of writing the public
-GitHub repository may not exist yet, `package.json` `repository`, `homepage`, and `bugs` are intentionally absent,
-and nothing may have been pushed or published. Before starting, **delete any provisional local release tag**
-created while staging the RC — a tag created before repository metadata and public CI must not survive:
+The public GitHub repository is <https://github.com/centella-cream/dsh-charter> (created). This tree restores
+`package.json` `repository`, `homepage`, and `bugs` for that repository; configure `origin` to it if the checkout
+does not already have one. Release state below is dynamic and must be re-checked before every release. If a
+provisional local `v0.1.0-rc.1` tag still exists from staging, delete it before the metadata/CI commit — no tag may
+survive unless it was created after the public gates:
 
 ```bash
-git tag -d v0.1.0-rc.1   # only if it exists; it was never pushed (confirm: no matching remote tag)
-git remote -v            # must be empty or must not contain this repository yet
+git tag -d v0.1.0-rc.1   # only if it exists; it was never pushed
+git remote -v            # origin must point at the public repository
 ```
 
 A local-only marker such as `v0.1.0-rc.1-build` may be used for internal traceability; it is never pushed and is
 not the release tag.
 
-**Maintainer GitHub account candidate:** `https://github.com/centella-cream` (recorded here only). No repository,
-remote, `package.json` `repository`/`homepage`/`bugs` metadata, push, or publish exists yet; those stay absent until
-an actual public repository is created in the step below.
-
 Prepare the repository and public gates first:
 
-1. create the public repository (owner/name agreed by the maintainer) and add it as `origin`;
-2. restore `repository`, `homepage`, and `bugs` in `package.json` to that URL and commit the metadata change;
+1. verify `origin` points at `https://github.com/centella-cream/dsh-charter` (public repository already created);
+2. confirm `repository`, `homepage`, and `bugs` in `package.json` point at that URL (restored in this tree);
 3. enable and verify **private security reporting** for the repository (security advisories/private reporting
-   must work before the code is public);
+   must work before publishing);
 4. update every mutable release-state statement that changed (repository metadata, public CI status, release
    prerequisites), rerun `npm run check` and the normal `npm run smoke:package`, and commit the documentation
    refresh in the same metadata/CI-status/documentation-update commit;
 5. push `main` only — do not push tags yet (`git push origin main`; do not use `--follow-tags`);
-6. run the public CI in `.github/workflows/ci.yml` on Node `22.19.0` and `24` and wait for it to be green on that
-   commit (CI runs `npm run check` and the normal `npm run smoke:package` only; exact-artifact mode is not a CI job).
+6. wait for the public CI in `.github/workflows/ci.yml` to be green on Node `22.19.0` and `24` for that commit
+   (CI runs `npm run check` and the normal `npm run smoke:package` only; exact-artifact mode is not a CI job).
 
 Then, in order: build the release tarball **once** from that final source, run the exact-artifact smoke
 (`npm run smoke:package -- --artifact dist/dsh-charter-0.1.0-rc.1.tgz --sha256 SHA256SUMS`, which also verifies the

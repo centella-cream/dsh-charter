@@ -1,6 +1,7 @@
 # dsh-charter
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![GitHub](https://img.shields.io/badge/GitHub-centella--cream%2Fdsh--charter-181717?logo=github)](https://github.com/centella-cream/dsh-charter)
 [![DSH](https://img.shields.io/badge/DSH-5%20verified%20RC%20versions-4b6bfb)](docs/design/compatibility.zh.md)
 [![Node](https://img.shields.io/badge/node-%5E22.19%20%7C%7C%20%3E%3D24-339933)](package.json)
 [![Status: preview](https://img.shields.io/badge/status-preview-orange)](#状态)
@@ -237,7 +238,7 @@ bundle。否则使用上面的本地 tarball 路径。
 
 “支持”表示该版本通过 typecheck、build、测试以及 Remote/client smoke。真实交互式 Web UI 在 `0.2.0-rc.2`
 上验证；其他版本是 API/build 级验证。真实模型 compaction 端到端已于 **2026-10-22 记录 PASS**（一个匿名评估
-会话；326 条消息 / 约 228k tokens 被压缩，revision 1 契约携带匹配 digest 存活；见验证记录第 8.4 节）。当前剩余发布阻塞是公开仓库与 dist-tag 等发布前置项，不再是 compaction 证据。完整矩阵和降级说明见
+会话；326 条消息 / 约 228k tokens 被压缩，revision 1 契约携带匹配 digest 存活；见验证记录第 8.4 节）。公开发布仍待公开 CI、npm `next` dist-tag 与发布流程等前置项，不再是 compaction 证据。完整矩阵和降级说明见
 [兼容文档](docs/design/compatibility.zh.md)。`0.1.7`/`0.2.0` 没有 per-Peer Remote 资源授权，只能在可信
 单操作者环境使用。
 
@@ -298,7 +299,7 @@ npm run verify:compaction # 手工真实模型 compaction 校验（不在 check 
 
 ## 状态
 
-Pre-1.0。DSH 插件 ABI 仍在演进；项目对上述版本做兼容验证，并刻意保持兼容层很小。当前树是 `0.1.0-rc.1`
+Pre-1.0。DSH 插件 ABI 仍在演进；项目对上述版本做兼容验证，并刻意保持兼容层很小。公开仓库为 [centella-cream/dsh-charter](https://github.com/centella-cream/dsh-charter)。当前树是 `0.1.0-rc.1`
 预发布：真实模型 compaction 验收 **PASS 已于 2026-10-22 记录**（一个匿名评估会话；326 条消息 / 约 228k
 tokens 被压缩，revision 1 契约携带匹配 digest 存活——见验证记录第 8.4 节）。发布产物是从本树构建并验证过的
 本地 tarball；维护者发布后也会通过 npm 的 `next` dist-tag 提供。发布稳定 `latest` 前还有一项记录在 8.4 节的人工

@@ -1,6 +1,7 @@
 # dsh-charter
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![GitHub](https://img.shields.io/badge/GitHub-centella--cream%2Fdsh--charter-181717?logo=github)](https://github.com/centella-cream/dsh-charter)
 [![DSH](https://img.shields.io/badge/DSH-5%20verified%20RC%20versions-4b6bfb)](docs/design/compatibility.md)
 [![Node](https://img.shields.io/badge/node-%5E22.19%20%7C%7C%20%3E%3D24-339933)](package.json)
 [![Status: preview](https://img.shields.io/badge/status-preview-orange)](#status)
@@ -323,7 +324,7 @@ security reports, follow [SECURITY.md](SECURITY.md).
 ## Status
 
 Pre-1.0. The DSH plugin ABI is still moving; compatibility is tested against the versions above, and the design
-keeps the compatibility layer deliberately small. This tree is the `0.1.0-rc.1` pre-release: the real-model
+keeps the compatibility layer deliberately small. The public repository is [centella-cream/dsh-charter](https://github.com/centella-cream/dsh-charter). This tree is the `0.1.0-rc.1` pre-release: the real-model
 compaction acceptance **PASS is recorded on 2026-10-22** on an anonymized evaluation Session (326 messages /
 ~228k tokens shadowed, revision-1 charter survived with matching digest — see verification §8.4). The release is
 distributed as a verified local tarball built from this tree and, once the maintainer publishes it, through the
