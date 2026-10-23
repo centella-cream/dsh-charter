@@ -686,6 +686,72 @@ describe('client charter source', () => {
     await controller.dispose()
   })
 
+  it('keeps the exact request across repeated UNAVAILABLE replays and clears only on success', async () => {
+    const controller = new CharterClientController(streamContext())
+    const sessionId = SessionId('session-unknown-unavailable')
+    const lease = controller.acquire(sessionId)
+    const requests: CharterEditRequest[] = []
+    let call = 0
+    const remote = {
+      edit: async (request: CharterEditRequest) => {
+        requests.push(request)
+        call += 1
+        if (call === 1) throw new Error('lost after commit')
+        if (call <= 3) {
+          // The remote itself answers UNAVAILABLE (e.g. storage not ready):
+          // still an unknown outcome, never a definitive failure.
+          return { ok: true as const, value: { ok: false, code: 'UNAVAILABLE', message: 'storage not ready' } }
+        }
+        return {
+          ok: true as const,
+          value: {
+            ok: true,
+            replayed: true,
+            committedRevision: 2,
+            ids: { 'draft:m1': 'host-m1' },
+            view: view(2, 'two', 'session-unknown-unavailable'),
+          },
+        }
+      },
+    } as never
+    controller.attach(remote)
+    await tick()
+    const stream = mockClass.instances.at(-1)
+    if (stream === undefined) throw new Error('no stream was created')
+    stream.options.replace({ value: view(1, 'one', 'session-unknown-unavailable') })
+    lease.draft.stage(view(1, 'one', 'session-unknown-unavailable'), {
+      type: 'item.add',
+      item: { clientRef: 'm1', kind: 'invariant', text: 'Once', order: 0 },
+    })
+    await lease.draft.applyDraft(view(1, 'one', 'session-unknown-unavailable'))
+    expect(lease.draft.getSnapshot().attempt).toMatchObject({ status: 'unknown' })
+    const original = lease.draft.getSnapshot().attempt
+
+    // Repeated UNAVAILABLE replays must keep the same credentials.
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      await lease.draft.applyDraft(view(1, 'one', 'session-unknown-unavailable'))
+      expect(lease.draft.getSnapshot().attempt).toMatchObject({ status: 'unknown' })
+      expect(lease.draft.getSnapshot().attempt?.request.mutationId).toBe(original?.request.mutationId)
+      expect(lease.draft.getSnapshot().attempt?.request.baseRevision).toBe(original?.request.baseRevision)
+      expect(lease.draft.getSnapshot().attempt?.request.ops).toEqual(original?.request.ops)
+      expect(lease.draft.getSnapshot().ops).toEqual(original?.request.ops)
+    }
+    expect(requests).toHaveLength(3)
+    expect(new Set(requests.map(request => request.mutationId)).size).toBe(1)
+
+    // Only a definitive success resolves the attempt and applies exactly once.
+    await lease.draft.applyDraft(view(1, 'one', 'session-unknown-unavailable'))
+    expect(requests).toHaveLength(4)
+    expect(requests[3]).toEqual(requests[0])
+    expect(lease.draft.getSnapshot()).toMatchObject({
+      attempt: null,
+      ops: [],
+      feedback: { kind: 'replayed' },
+    })
+    lease.release()
+    await controller.dispose()
+  })
+
   it('ignores stream frames for another Session', async () => {
     const controller = new CharterClientController(streamContext())
     const lease = controller.acquire(SessionId('session-1'))

@@ -39,7 +39,7 @@
 - 新浏览器 client 可以兼容仍在运行旧 Host 的 view snapshot（旧 Host 仍带 active 条数字段），避免 host/client
   revision 不一致时「会话契约」白屏；新的 pending 导入语义仍需要完整重启 Host 才生效。
 - 已针对 DSH `0.2.1-rc.2` 验证，无需代码改动；现有 peer range 和兼容层已覆盖该 release candidate。
-- 256 个测试，覆盖内核、Host 组合、fork、幂等、配额、prompt 边界、Remote stream、历史抽取、客户端 tab
+- 260 个测试，覆盖内核、Host 组合、fork、幂等、配额、prompt 边界、Remote stream、历史抽取、客户端 tab
   排序和装饰器兼容。已在 DSH `0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-rc.1`、`0.2.1-rc.2` 上验证。
   真实 Web UI 在 `0.2.0-rc.2` 上验证了标签顺序、中英文切换、目标/约束编辑、预览、Apply 和刷新持久化。
 
@@ -268,6 +268,12 @@
   重复/截断/坏 checksum 成员），安装前从解析出的 archive 读取 `package/package.json`，并用 JS 构造的
   GNU/BSD/PAX 测试 archive 覆盖——Ubuntu GNU tar/`LC_ALL` 差异不再影响解析，normal 与 exact-artifact smoke 均在
   真实最终 tarball 上通过。
+- edit 与 bootstrap replay 的未知结果分类集中化：任何 UNAVAILABLE 结果（包括 source 脱离或 `ok:false` 的
+  UNAVAILABLE 回复）与任何传输异常都转为 `unknown`；attempt 清除审计保证 generation/lifecycle/source 变化保留
+  精确的 mutationId/base/ops，view 帧不再能丢掉可 replay 的 attempt。Pane 改为单一 `syncView` effect + 单一
+  store 方法（bind lifecycle → ensure bootstrap → 原子 reconcile 已审阅草案），因此 in-flight 或 replay-pending
+  的 bootstrap Apply 绝不会变得不可见；`ensureBootstrap` 只负责启动抽取，所有 dismissal/cleanup 由原子 reconcile
+  路径拥有（Retry/Abandon 保持可见，unknown 期间普通 dismiss 保持锁定）。
 - 发布前置条件/已知限制文档化：公开仓库 + remote、恢复元数据、验证私有安全报告、公开 Node 22.19/24 CI（仅
   check + normal smoke）、只构建一次最终 tarball、对同一文件做 exact-artifact smoke + SHA + fresh-profile UI
   检查、最终 annotated tag，然后 GitHub Release 与 `npm publish --tag next` 复用该 tarball；已接受的非阻塞限制

@@ -146,6 +146,16 @@ function replayLocked(state: CharterDraftState): boolean {
   return unknownAttempt(state) !== undefined
 }
 
+/**
+ * The single classification of a non-ok edit result: `UNAVAILABLE` (source not
+ * attached, remote unavailable, transient storage failure) is NEVER a
+ * definitive answer — the request may have committed, so the attempt stays
+ * unknown with its exact credentials. Every other business code is definitive.
+ */
+function isUnknownOutcomeResult(result: { readonly ok: false; readonly code: string }): boolean {
+  return result.code === 'UNAVAILABLE'
+}
+
 function initialState(sessionId: SessionId): CharterDraftState {
   return {
     sessionId,
@@ -204,6 +214,28 @@ export class CharterDraft {
    */
   bindLifecycle(lifecycle: string | undefined): void {
     if (lifecycle === undefined || this.state.lifecycle === lifecycle) return
+    // An unresolved attempt must survive view/lifecycle frames: its exact
+    // mutation credentials are the only way to replay idempotently. Bind the
+    // fingerprint but keep the payload/attempt visible (reconcile marks stale).
+    if (this.state.attempt !== null) {
+      // Invalidate the in-flight outcome of the old lifecycle while keeping the
+      // exact attempt/payload: a late success must not be accepted, and the
+      // request stays replayable/abandonable in the new lifecycle.
+      this.bootstrapGeneration += 1
+      this.asyncGeneration += 1
+      this.update({
+        lifecycle,
+        saving: false,
+        bootstrapSaving: false,
+        ...(this.state.bootstrapPhase === 'draft' && !this.state.bootstrapNeedsStale
+          ? { bootstrapNeedsStale: true }
+          : {}),
+        ...(this.state.attempt?.kind === 'edit'
+          ? { feedback: { kind: 'connection' } }
+          : { bootstrapProblem: { kind: 'save-failed', code: 'UNAVAILABLE' } }),
+      })
+      return
+    }
     // The first fingerprint after an older Host (which reported none) is a
     // lifecycle transition: an empty draft simply adopts it, but dirty work was
     // reviewed against the unknown old lifecycle and must not be claimed by the
@@ -547,13 +579,16 @@ export class CharterDraft {
     try {
       const result = await source.edit(request)
       if (!current()) {
-        // A local change replaced the request's ops while it was in flight.
-        // Never leave the draft stuck in `saving`; do not touch the newer ops.
-        if (this.asyncGeneration === generation
-          && this.resolveSource() === source
-          && source.connectionGeneration === sourceGeneration
-          && this.state.saving) {
-          this.update({ saving: false, attempt: null, feedback: { kind: 'connection' } })
+        // The source/generation/lifecycle moved under the request: the outcome
+        // is unknown, so keep the exact attempt (never clear mutation
+        // credentials). Only the attempt that matches this request is touched.
+        const attempt = this.state.attempt
+        if (attempt?.kind === 'edit' && attempt.request.mutationId === request.mutationId) {
+          this.update({
+            saving: false,
+            attempt: { ...attempt, status: 'unknown' },
+            feedback: { kind: 'connection' },
+          })
         }
         return
       }
@@ -572,7 +607,7 @@ export class CharterDraft {
         // Any UNAVAILABLE (including source-not-attached/remote unavailable) is
         // an unknown outcome: keep the exact request replayable. Only a
         // deterministic business code resolves the attempt.
-        const unresolved = result.code === 'UNAVAILABLE'
+        const unresolved = isUnknownOutcomeResult(result)
         this.update({
           saving: false,
           attempt: unresolved
@@ -641,25 +676,10 @@ export class CharterDraft {
 
   /** Ask for a draft when the Session is empty and no attempt has been made yet. */
   ensureBootstrap(view: CharterView, connectionReady: boolean): void {
+    // This method only STARTS an extraction; every reactive dismissal/cleanup is
+    // owned by reconcileBootstrapView, so it can never half-clean live work.
     if (!connectionReady || view.status !== 'ready') return
-    if (view.objective !== null || view.items.length > 0) {
-      // A stream frame must never half-clean an in-flight/unknown Apply: keep the
-      // visible replayable payload and only remember that the view moved.
-      if (this.state.bootstrapSaving || replayLocked(this.state)) {
-        if (this.state.bootstrapPhase === 'draft' && !this.state.bootstrapNeedsStale) {
-          this.update({ bootstrapNeedsStale: true })
-        }
-        return
-      }
-      if (this.state.bootstrapPhase === 'draft') {
-        this.markBootstrapStale(view)
-        return
-      }
-      if (this.state.bootstrapPhase !== 'idle' && this.state.bootstrapPhase !== 'dismissed') {
-        this.update({ bootstrapPhase: 'dismissed', bootstrap: null, bootstrapProblem: null })
-      }
-      return
-    }
+    if (view.objective !== null || view.items.length > 0) return
     if (this.state.bootstrapPhase !== 'idle') return
     void this.runBootstrap(view)
   }
@@ -784,16 +804,8 @@ export class CharterDraft {
    * remember that the view moved, and let the RPC outcome or an explicit
    * dismiss decide what happens next.
    */
-  markBootstrapStale(view: CharterView): void {
-    if (this.state.bootstrapPhase !== 'draft' || this.state.bootstrapBaseRevision === null) return
-    const stale = view.revision !== this.state.bootstrapBaseRevision
-      || view.objective !== null
-      || view.items.length > 0
-    if (!stale) return
-    if (this.state.bootstrapSaving || bootstrapReplayPending(this.state)) {
-      if (!this.state.bootstrapNeedsStale) this.update({ bootstrapNeedsStale: true })
-      return
-    }
+  /** One full stale cleanup for a reviewed draft; never called mid-flight. */
+  private markBootstrapStaleCleanup(): void {
     this.bootstrapGeneration += 1
     this.update({
       bootstrapPhase: 'failed',
@@ -806,6 +818,53 @@ export class CharterDraft {
       bootstrapSaving: false,
       attempt: null,
     })
+  }
+
+  /**
+   * Public view-reaction helper (also used by tests): an in-flight/unknown Apply
+   * only marks needs-stale and keeps the visible payload; a settled reviewed
+   * draft is fully cleaned up.
+   */
+  markBootstrapStale(view: CharterView): void {
+    if (this.state.bootstrapPhase !== 'draft' || this.state.bootstrapBaseRevision === null) return
+    const stale = view.revision !== this.state.bootstrapBaseRevision
+      || view.objective !== null
+      || view.items.length > 0
+    if (!stale) return
+    if (this.state.bootstrapSaving || this.state.attempt !== null) {
+      if (!this.state.bootstrapNeedsStale) this.update({ bootstrapNeedsStale: true })
+      return
+    }
+    this.markBootstrapStaleCleanup()
+  }
+
+  /**
+   * The single atomic view-reaction for the Pane: lifecycle bind first, then
+   * bootstrap extraction start, then reconcile a reviewed draft against the
+   * current view. No other method performs dismissal/stale cleanup reactively,
+   * so an in-flight/unknown Apply can never become invisible.
+   */
+  syncView(view: CharterView, connectionReady: boolean): void {
+    this.bindLifecycle(view.lifecycle)
+    this.ensureBootstrap(view, connectionReady)
+    this.reconcileBootstrapView(view)
+  }
+
+  /** Keep a reviewed draft coherent with the view without hiding live work. */
+  reconcileBootstrapView(view: CharterView): void {
+    if (view.status !== 'ready') return
+    if (this.state.bootstrapPhase !== 'draft') return
+    const baseRevision = this.state.bootstrapBaseRevision
+    const stale = baseRevision === null
+      || view.revision !== baseRevision
+      || view.objective !== null
+      || view.items.length > 0
+    if (!stale) return
+    if (this.state.bootstrapSaving || this.state.attempt !== null) {
+      if (!this.state.bootstrapNeedsStale) this.update({ bootstrapNeedsStale: true })
+      return
+    }
+    this.markBootstrapStaleCleanup()
   }
 
   /** Counts derived from the retained request (never from a fresh re-plan). */
@@ -890,12 +949,12 @@ export class CharterDraft {
     try {
       const result = await source.edit(request)
       if (!current()) {
-        if (this.asyncGeneration === generation
-          && this.resolveSource() === source
-          && source.connectionGeneration === sourceGeneration
-          && this.state.bootstrapSaving) {
+        // Preserve the exact attempt across source/generation/lifecycle changes.
+        const attempt = this.state.attempt
+        if (attempt?.kind === 'bootstrap' && attempt.request.mutationId === request.mutationId) {
           this.update({
             bootstrapSaving: false,
+            attempt: { ...attempt, status: 'unknown' },
             bootstrapProblem: { kind: 'save-failed', code: 'UNAVAILABLE' },
           })
         }
@@ -904,7 +963,7 @@ export class CharterDraft {
       if (result.view !== undefined) source.accept(result.view)
       if (result.ok) {
         this.finishBootstrapSuccess(result.committedRevision, request)
-      } else if (result.code === 'UNAVAILABLE') {
+      } else if (isUnknownOutcomeResult(result)) {
         this.update({
           bootstrapSaving: false,
           attempt: { kind: 'bootstrap', request, sourceGeneration, status: 'unknown' },
@@ -1014,14 +1073,12 @@ export class CharterDraft {
     try {
       const result = await source.edit(request)
       if (!current()) {
-        // A local change replaced the request's ops while it was in flight.
-        // Never leave the draft stuck in `saving`; do not touch the newer ops.
-        if (this.asyncGeneration === generation
-          && this.resolveSource() === source
-          && source.connectionGeneration === sourceGeneration
-          && this.state.bootstrapSaving) {
+        // Preserve the exact attempt across source/generation/lifecycle changes.
+        const attempt = this.state.attempt
+        if (attempt?.kind === 'bootstrap' && attempt.request.mutationId === request.mutationId) {
           this.update({
             bootstrapSaving: false,
+            attempt: { ...attempt, status: 'unknown' },
             bootstrapProblem: { kind: 'save-failed', code: 'UNAVAILABLE' },
           })
         }
@@ -1030,7 +1087,7 @@ export class CharterDraft {
       if (result.view !== undefined) source.accept(result.view)
       if (result.ok) {
         this.finishBootstrapSuccess(result.committedRevision, request)
-      } else if (result.code === 'UNAVAILABLE') {
+      } else if (isUnknownOutcomeResult(result)) {
         this.update({
           bootstrapSaving: false,
           attempt: { kind: 'bootstrap', request, sourceGeneration, status: 'unknown' },

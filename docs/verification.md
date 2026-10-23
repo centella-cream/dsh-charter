@@ -15,7 +15,7 @@ HTML live under `.tmp/` and are excluded from the published package.
 | Item | Result |
 | --- | --- |
 | Strict TypeScript check (5 DSH versions) | Pass |
-| Vitest (5 locally available versions × 256 tests) | Pass |
+| Vitest (5 locally available versions × 260 tests) | Pass |
 | Host ESM build + browser single-file bundle | Pass |
 | Remote decorator/resource smoke | Pass (0.1.7/0.2.0 have no resource declaration, as expected) |
 | Browser factory-bundle materialization and `apply` smoke | Pass |
@@ -45,7 +45,7 @@ Results:
 
 - typecheck passes;
 - build passes;
-- 19 test files, 256 tests pass (from `npm test`, which builds and then runs `vitest run`);
+- 19 test files, 260 tests pass (from `npm test`, which builds and then runs `vitest run`);
 - `remote-smoke` asserts `watch,bootstrap,edit`, stream mode, and Session resource;
 - `client-smoke` asserts the single-file factory bundle, external-dependency allowlist, no Node-only `Buffer`
   reference, and `apply` registering the tab/pane/Remote contribution;
@@ -114,13 +114,13 @@ Results:
 
 | Version | typecheck | build | Vitest | remote smoke | client smoke |
 | --- | --- | --- | --- | --- | --- |
-| `0.1.7-rc.2` | Pass | Pass | 256/256 | Pass (no-resources warning) | Pass |
-| `0.2.0-rc.1` | Pass | Pass | 256/256 | Pass (no-resources warning) | Pass |
-| `0.2.0-rc.2` | Pass | Pass | 256/256 | Pass (no-resources warning) | Pass |
-| `0.2.1-rc.1` | Pass | Pass | 256/256 | Pass | Pass |
-| `0.2.1-rc.2` | Pass | Pass | 256/256 | Pass | Pass |
+| `0.1.7-rc.2` | Pass | Pass | 260/260 | Pass (no-resources warning) | Pass |
+| `0.2.0-rc.1` | Pass | Pass | 260/260 | Pass (no-resources warning) | Pass |
+| `0.2.0-rc.2` | Pass | Pass | 260/260 | Pass (no-resources warning) | Pass |
+| `0.2.1-rc.1` | Pass | Pass | 260/260 | Pass | Pass |
+| `0.2.1-rc.2` | Pass | Pass | 260/260 | Pass | Pass |
 
-Re-run on the final `0.1.0-rc.1` tree on 2026-10-22: each version reports 19 test files / 256 tests, and build
+Re-run on the final `0.1.0-rc.1` tree on 2026-10-22: each version reports 19 test files / 260 tests, and build
 includes the remote/client smoke assertions.
 
 This five-version matrix is **local evidence**: its version directories and driver script live in the gitignored
@@ -293,7 +293,12 @@ only static review:
   generation. Tests use the real controller/store paths: committed-but-lost M1 + detached source + replay
   UNAVAILABLE keeps the exact request and locks every edit; reattach replays the same mutation id and the Host
   receipt applies exactly once; a deterministic conflict resolves and unlocks; bootstrap stream-first + transport
-  error stays visible/replayable and retries the exact request.
+  error stays visible/replayable and retries the exact request. Classification is centralized: every UNAVAILABLE
+  result (including a detached source or an ok:false UNAVAILABLE reply) and every transport throw become unknown;
+  the attempt-clearing audit guarantees that generation/lifecycle/source changes update only attempts matching the
+  request's mutationId and never drop the credentials. Only the Pane's single `syncView` effect (store-side
+  bindLifecycle → ensure bootstrap → reconcileBootstrapView) reacts to views; `ensureBootstrap` only starts
+  extraction and every reactive dismissal/cleanup is atomic, so a replay lock can never become invisible.
 - **Bootstrap lifecycle, cleanup, preflight, replay, and atomic state.** The Pane binds the lifecycle before
   calling `ensureBootstrap` (one effect), a first real fingerprint invalidates an extraction started under the
   unknown lifecycle and starts a new one for the defined lifecycle, and a lifecycle switch discards the previous
@@ -839,9 +844,9 @@ Evidence timeline for this pre-release:
 - Recorded real-model run: 2026-10-22 on the Desktop/Web runtime DSH `0.2.0-rc.2` (`dsh` CLI `0.2.0-rc.2`).
   The run happened **before** the full Desktop restart described above; the process that served it was still
   running the pre-restart Host bundle, which is why the `charter_read` result carried legacy debug fields.
-- Compiled-bundle build commit: `2a084906d43b794db563457b10052a492b14a09d` — the gated source tree whose Host ESM and browser
-  bundles were built. Gates on that tree: `npm run check` (typecheck + build + 19 test files / 256 tests),
-  `npm run smoke:package`, and the local five-version matrix (19 files / 256 tests on every version); the
+- Compiled-bundle build commit: `PENDING_BUILD_COMMIT` — the gated source tree whose Host ESM and browser
+  bundles were built. Gates on that tree: `npm run check` (typecheck + build + 19 test files / 260 tests),
+  `npm run smoke:package`, and the local five-version matrix (19 files / 260 tests on every version); the
   compaction checker was also re-run against the recorded real transcript (PASS).
 - Archive/evidence-tree commit: the direct child of the build commit that adds this evidence record and the
   refreshed tracked digest. The packed `dsh-charter-0.1.0-rc.1.tgz` contains both the bundles built from the build
