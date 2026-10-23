@@ -10,9 +10,9 @@ English | [中文](README.zh.md)
 
 > **Compaction rewrites history. Your commitments don't.**
 
-`dsh-charter` is a durable, user-owned task contract for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness).
-Goals, hard constraints, and deliverables stay visible across context compaction — and stay editable at any
-time. The English UI keeps the product name **Charter**; the Chinese UI calls it **会话契约**.
+`dsh-charter` is a durable, user-owned task contract for
+[DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). Goals, hard constraints, and
+deliverables stay visible across context compaction — and remain editable at any time.
 
 ![dsh-charter tab in a real Web profile](docs/assets/charter-pane.en.png)
 

@@ -10,9 +10,8 @@
 
 > **压缩会改写历史，但你的约定不会。**
 
-`dsh-charter` 是给 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的持久、用户所有的
-会话契约。目标、硬约束和交付物在上下文压缩后仍然可见，并且随时可编辑。英文界面沿用 **Charter**，中文界面
-使用 **会话契约**。
+`dsh-charter` 为 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 提供持久、用户所有的
+「会话契约」：目标、硬约束和交付物在上下文压缩后仍然可见，并且随时可编辑。
 
 ![真实 Web profile 中的 dsh-charter 标签页](docs/assets/charter-pane.png)
 
