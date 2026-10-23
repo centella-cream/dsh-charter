@@ -49,7 +49,7 @@ Initial MVP.
   restart is still required for the new pending-import semantics.
 - Verified against DSH `0.2.1-rc.2` with no code changes required; the existing peer range and compatibility layer
   cover the release candidate.
-- 210 tests across core, host composition, fork, idempotency, quota, prompt boundary, Remote stream, history
+- 232 tests across core, host composition, fork, idempotency, quota, prompt boundary, Remote stream, history
   extraction, client reordering, compatibility, and decorator compatibility. Verified on DSH `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`,
   `0.2.1-rc.1`, and `0.2.1-rc.2`. The actual Web UI was exercised on `0.2.0-rc.2`: tab order, Chinese/English
   switching, objective and invariant editing, preview, Apply, and reload persistence.
@@ -291,3 +291,21 @@ Initial MVP.
   object/`standing`), WAIT exit 3 when no post-compaction activity exists (FAIL only for execution without a
   runtime snapshot), checkpoint association only by compactionId with an id-less-only fallback, and a transcript
   parser that rejects middle corruption with its line number instead of skipping lines.
+- Replay a retryable unknown-outcome edit request verbatim (same mutationId/baseRevision/ops) before any current
+  admission or limit check, so a committed-but-lost batch is never dropped or duplicated; Rebase is blocked while
+  an attempt is unresolved and becomes available again after a deterministic replay conflict clears it.
+- Make bootstrap lifecycle handling atomic: the Pane binds the lifecycle before starting extraction, a first real
+  lifecycle fingerprint invalidates an extraction started under the unknown lifecycle and re-extracts, switching
+  lifecycles discards the previous result and accepts only the new one, and a reviewed draft that becomes stale is
+  cleaned up through one path (objective/items/base/attempt/generation cleared, `isEmpty` true).
+- Preflight bootstrap drafts in the store before any Remote call (shared admission + draft text validation), and
+  extend admission with the Host's objective/item field budgets (unchanged or strict shrink admitted while over
+  limit; new, grown, or equal-byte-different values rejected).
+- Checker follow-ups: distinguish an absent `sourceEventSeqs` from a present-but-malformed one (no legacy
+  fallback), account for later landed failed/open compaction attempts (FAIL when a failed attempt landed a
+  checkpoint, WAIT while an attempt is still open), keep no-activity WAIT free of false evidence failures, and
+  render OPEN compaction attempts in the CLI instead of formatting a missing end time.
+- Add an exact-artifact `smoke:package` mode (`--artifact <tgz> --sha256 <sums>`) that validates the supplied
+  archive's SHA-256 and runs the full consumer checks on those exact bytes without building or packing, and parse
+  the full `npm pack --json` output (object, keyed object, or one-element array) instead of slicing from the first
+  brace.

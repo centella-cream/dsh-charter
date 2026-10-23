@@ -14,7 +14,7 @@
 | 验证项 | 结果 |
 | --- | --- |
 | TypeScript 严格类型检查（5 个 DSH 版本） | 通过 |
-| Vitest（5 个本地可用版本 × 210 tests） | 通过 |
+| Vitest（5 个本地可用版本 × 232 tests） | 通过 |
 | Host ESM 构建 + 浏览器单文件 bundle | 通过 |
 | Remote 装饰器/资源 smoke | 通过（0.1.7/0.2.0 按预期无资源声明） |
 | 浏览器 factory bundle 物化与 `apply` smoke | 通过 |
@@ -44,7 +44,7 @@ npm test
 
 - typecheck 通过；
 - build 通过；
-- 18 个测试文件、210 个测试全部通过（来自 `npm test`，即 build 后运行 `vitest run`）；
+- 19 个测试文件、232 个测试全部通过（来自 `npm test`，即 build 后运行 `vitest run`）；
 - `remote-smoke` 断言 `watch,bootstrap,edit`、stream mode 和 Session resource；
 - `client-smoke` 断言单文件 factory bundle、外部依赖白名单、不引用 Node-only `Buffer`、`apply` 注册
   tab/pane/Remote contribution。
@@ -101,13 +101,13 @@ npm run build
 
 | 版本 | typecheck | build | Vitest | remote smoke | client smoke |
 | --- | --- | --- | --- | --- | --- |
-| `0.1.7-rc.2` | 通过 | 通过 | 210/210 | 通过（无 resources 警告） | 通过 |
-| `0.2.0-rc.1` | 通过 | 通过 | 210/210 | 通过（无 resources 警告） | 通过 |
-| `0.2.0-rc.2` | 通过 | 通过 | 210/210 | 通过（无 resources 警告） | 通过 |
-| `0.2.1-rc.1` | 通过 | 通过 | 210/210 | 通过 | 通过 |
-| `0.2.1-rc.2` | 通过 | 通过 | 210/210 | 通过 | 通过 |
+| `0.1.7-rc.2` | 通过 | 通过 | 232/232 | 通过（无 resources 警告） | 通过 |
+| `0.2.0-rc.1` | 通过 | 通过 | 232/232 | 通过（无 resources 警告） | 通过 |
+| `0.2.0-rc.2` | 通过 | 通过 | 232/232 | 通过（无 resources 警告） | 通过 |
+| `0.2.1-rc.1` | 通过 | 通过 | 232/232 | 通过 | 通过 |
+| `0.2.1-rc.2` | 通过 | 通过 | 232/232 | 通过 | 通过 |
 
-最终 `0.1.0-rc.1` 树在 2026-10-22 重新跑过：每个版本均为 18 个测试文件 / 210 个测试，且 build 内含 remote/client
+最终 `0.1.0-rc.1` 树在 2026-10-22 重新跑过：每个版本均为 19 个测试文件 / 232 个测试，且 build 内含 remote/client
 smoke 断言。
 
 这个五版本矩阵是**本地证据**：版本目录和驱动脚本位于被 git 忽略的 `.tmp/`，公开 CI 不会复现它。CI
@@ -247,6 +247,18 @@ UI 的自动草案面板依赖客户端 `useEffect` 和 Remote bootstrap；8.4 �
   pending order-1 行保持在 active order-2 行之前，接受后也不重排。
 - **生命周期 fingerprint 转换**：绑定旧 Host（无 fingerprint）的草稿首次收到 fingerprint 时，空草稿只 bind；
   非空草稿按 lifecycle 变更重置（保留 section），不把旧工作认领到新 lifecycle。
+- **Replay 先于 admission**：`applyDraft` 先解析可重试的未知结果 attempt，并原样重发已存请求
+  （同一 mutationId/baseRevision/ops），不再执行当前 admission/limit 检查，因此已提交但响应丢失的批次在重连后
+  view 已包含它、或限额收紧时既不会丢失也不会重复；只有新批次才走共享 admission。`rebaseAvailable` 要求
+  `attempt === null`，所以结果未决期间 Rebase 被阻止，确定性 replay 冲突清除 attempt 后恢复可用。
+- **Bootstrap lifecycle、清理与预检**：Pane 在同一 effect 内先 bind lifecycle 再 `ensureBootstrap`；旧 Host 首次
+  收到真实 fingerprint 时，会使在未知 lifecycle 下启动的 extraction 失效并为已定义 lifecycle 重新提取；切换
+  lifecycle 会丢弃旧 extraction，只接受新 lifecycle 的结果。已审阅草案遇到远端 view 非空时走单一 stale/dismiss
+  清理路径（objective/items/base/attempt/generation 全部清除，`isEmpty` 为 true）。任何 Remote 调用之前，
+  `applyBootstrap` 会执行与 Pane 相同的文本校验与扩展 admission。
+- **字段预算**：共享 admission 同时镜像 Host 的 `maxObjectiveBytes`/`maxItemBytes` 规则：超限时允许 unchanged
+  或严格缩短，拒绝新增、增长或等字节但内容不同的值（`max-objective`/`max-item` 原因）；`applyDraft` 对此类
+  批次直接拒绝、不调用 Remote。
 - **规划规模**：bootstrap planner 使用与精确渲染一致的 O(1) 增量字节核算；用 2,000 个混合候选和 3,000 个全
   active 候选测试，返回逐候选 active/pending 结果，并保留最终精确渲染作为预算校验/回退。
 
@@ -281,14 +293,16 @@ UI 的自动草案面板依赖客户端 `useEffect` 和 Remote bootstrap；8.4 �
 - **Compaction checker（fixture）**：event→report 判定是 `scripts/verify/compaction-checks.mjs` 中的纯函数；
   `tests/verify/compaction-checks.spec.ts` 用普通事件数组断言 exit code、JSON verdict、文本 verdict 与 warnings。
   覆盖：严格按 seq 排序的 start→summary→end attempt 状态机（合法序列、失败 end、end-before-start、
-  summary-before-start、同 id retry 相互独立）；现代 `charter_read` producing-call 认证（top-level
-  `sourceEventSeqs` 必须恰好指向一个更早的 `charter_read` call，且 toolCallId/turn/step 匹配；引用其他 tool、
-  歧义、不匹配、source seq ≥ result 都拒绝；legacy turn/step/callId 回退保留）；严格 arguments（缺省/普通
-  对象/`view:"standing"` 有效，其他 malformed 形状拒绝）；活动门禁（压缩后完全没有请求活动 → WAIT exit 3，
-  只有已执行请求但无 runtime 快照 → FAIL）；checkpoint 只按 `compactionId` 关联，无 id 的 legacy checkpoint 才
-  用 positional fallback；更新的失败 end 不作为证据；charter commit 落在 start/end 之间需要重新 compaction；
-  transcript parser 遇到中间损坏带行号拒绝（只有末尾 torn line 可容忍）。fixtures 断言 exit code/JSON
-  verdict/文本/warnings；transcript reader 构造与 Host 相同的紧凑 standing 投影
+  summary-before-start、同 id retry 相互独立）；现代 `charter_read` producing-call 认证——**存在**
+  `sourceEventSeqs` 时（含 malformed 值、top-level/data 不一致）一律走现代分支、不回退 legacy，且必须恰好指向
+  一个更早的 `charter_read` call、toolCallId/turn/step 匹配；字段缺失时才用 legacy 回退；严格 arguments
+  （缺省/普通对象/`view:"standing"` 有效）；活动门禁（压缩后完全没有请求活动 → WAIT exit 3，且
+  `verification.ok`/failures 不出现伪失败；只有已执行请求但无 runtime 快照 → FAIL）；其后 compaction
+  attempt（未完成 → WAIT；失败但已 landing checkpoint → FAIL；失败未 landing 保留先前 PASS；其后成功需要新的
+  压缩后证据）；checkpoint 只按 `compactionId` 关联，无 id 的 legacy checkpoint 才用 positional fallback；
+  OPEN attempt 渲染不格式化缺失的 end time；charter commit 落在 start/end 之间需要重新 compaction；transcript
+  parser 遇到中间损坏带行号拒绝（只有末尾 torn line 可容忍）。fixtures 断言 exit code/JSON verdict/文本/
+  warnings；transcript reader 构造与 Host 相同的紧凑 standing 投影
   （`kind`/`text`/`verification`/`progress`），所有必需证据都参与退出码；只有 WAIT/BLOCKED 状态会在评估前
   短路。
 - **草稿异步围栏**：edit 和 bootstrap Apply 捕获 `asyncGeneration`、source 实例及其单调 connection epoch、
@@ -716,9 +730,9 @@ seq **31825**，位于 compaction seq 31801 与 runtime 快照 seq 31810 之后�
 - 真实模型实测：2026-10-22，运行于 Desktop/Web runtime DSH `0.2.0-rc.2`（`dsh` CLI `0.2.0-rc.2`）。这次
   运行发生在上述完整重启 Desktop **之前**；当时仍在运行的进程加载的是重启前的 Host bundle，因此
   `charter_read` 结果带有 legacy debug 字段。
-- compiled-bundle build commit：`46ff671f008dc6e431a4324bbeeef22798f967f4`——通过门禁的源码树，Host ESM 与浏览器 bundle 由它构建。
-  该树的门禁：`npm run check`（typecheck + build + 18 个测试文件 / 210 个测试）、`npm run smoke:package`、本地
-  五版本矩阵（每个版本 18 个文件 / 210 个测试）；另外用 compaction checker 对已记录的真实 transcript 复跑
+- compiled-bundle build commit：`PENDING_BUILD_COMMIT`——通过门禁的源码树，Host ESM 与浏览器 bundle 由它构建。
+  该树的门禁：`npm run check`（typecheck + build + 19 个测试文件 / 232 个测试）、`npm run smoke:package`、本地
+  五版本矩阵（每个版本 19 个文件 / 232 个测试）；另外用 compaction checker 对已记录的真实 transcript 复跑
   （PASS）。
 - archive/evidence-tree commit：build commit 的直接子 commit，只添加本证据记录并刷新 tracked digest。打包的
   `dsh-charter-0.1.0-rc.1.tgz` 同时包含 build commit 构建的 bundle **和**证据树中 package 可见的文档，因此不能

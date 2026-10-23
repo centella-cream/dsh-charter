@@ -47,7 +47,10 @@ npm run smoke:package
 
 `npm run check` 必须通过 typecheck、build、Remote smoke、client smoke 和完整 Vitest；
 `npm run smoke:package` 另外会打包 tarball 并校验必需文件、所有 `exports` 目标、packed `core` import 和 packed
-client bundle（Host/Remote 运行时 import 由工作区 build smoke 覆盖）。CI 在推送的元数据 commit 上同时运行两者。
+client bundle（Host/Remote 运行时 import 由工作区 build smoke 覆盖）。发布产物生成后，用 exact-artifact 模式验证
+这批确切字节而不重新打包：`npm run smoke:package -- --artifact dist/dsh-charter-0.1.0-rc.1.tgz --sha256 SHA256SUMS`
+会先按提供的 sums 文件校验 SHA-256，再对同一文件执行 manifest/files/modes/exports、空 consumer 安装、packed
+`core` import 与 client bundle 检查；它绝不 build 或 pack。CI 在推送的元数据 commit 上同时运行两者。
 已记录的真实模型 compaction `PASS`（验证记录 8.4）就是 compaction 韧性声明的验收证据；下面的手工命令保留
 用于在目标 profile 重新跑一次。
 
@@ -76,8 +79,9 @@ git push origin main
 # 等待该确切 commit 的公开 CI 通过
 ```
 
-绝不能在尚未推送、或公开 CI 未通过的 commit 上创建发布 tag（不要制造只在 tag 上可达的 commit）。`dist/`
-不进 git，也永远不提交 tarball。
+绝不能在尚未推送、或公开 CI 未通过的 commit 上创建发布 tag（不要制造只在 tag 上可达的 commit）。打 tag 前先对
+最终 `dist/` 文件运行上面的 exact-artifact 检查；GitHub release 附件、npm publish 输入与校验和文件必须都是这个
+已验证的同一 tarball——此后绝不再重新构建。`dist/` 不进 git，也永远不提交 tarball。
 
 用该 tarball 在全新 profile 中安装并验证：
 

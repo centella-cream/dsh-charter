@@ -397,6 +397,186 @@ describe('compaction checker success criteria', () => {
   })
 })
 
+describe('sourceEventSeqs presence and malformed shapes', () => {
+  function malformedFixture(value: unknown, where: 'top' | 'data'): { events: TestEvent[]; resultSeq: number } {
+    const resultSeq = 16
+    const base: TestEvent = {
+      type: 'tool/result',
+      seq: resultSeq,
+      time: 3_016,
+      data: {
+        turn: 4,
+        step: 1,
+        message: {
+          role: 'tool',
+          toolCallId: 'call-auth',
+          isError: false,
+          content: [{ type: 'text', text: JSON.stringify(READ_VIEW) }],
+        },
+      },
+    }
+    const event = where === 'top'
+      ? { ...base, sourceEventSeqs: value as never }
+      : { ...base, data: { ...base.data, sourceEventSeqs: value } }
+    return {
+      events: [
+        ...compactionLifecycle('malformed-compaction', 10, 1_000),
+        runtimeSnapshot(14),
+        charterReadCall(15, 4, 'call-auth'),
+        event,
+      ],
+      resultSeq,
+    }
+  }
+
+  function resultFor(events: TestEvent[], seq: number) {
+    return resolveCharterReadCalls(events).results.find(result => result.seq === seq)
+  }
+
+  it('rejects malformed present sourceEventSeqs instead of falling back to legacy pairing', () => {
+    for (const value of ['not-an-array', { seq: 15 }, null, 42, true]) {
+      for (const where of ['top', 'data'] as const) {
+        const fixture = malformedFixture(value, where)
+        expect(resultFor(fixture.events, fixture.resultSeq)).toMatchObject({
+          authenticated: false,
+          authError: 'invalid-source-seqs',
+        })
+        // A legacy callId pairing would have passed here; it must not be used.
+        expect(evaluate(fixture.events).status).not.toBe('pass')
+      }
+    }
+  })
+
+  it('rejects a top-level/data sourceEventSeqs mismatch', () => {
+    const base: TestEvent = {
+      type: 'tool/result',
+      seq: 16,
+      time: 3_016,
+      sourceEventSeqs: [15],
+      data: {
+        turn: 4,
+        step: 1,
+        sourceEventSeqs: [16],
+        message: {
+          role: 'tool',
+          toolCallId: 'call-auth',
+          isError: false,
+          content: [{ type: 'text', text: JSON.stringify(READ_VIEW) }],
+        },
+      },
+    }
+    const events = [
+      ...compactionLifecycle('mismatch-compaction', 10, 1_000),
+      runtimeSnapshot(14),
+      charterReadCall(15, 4, 'call-auth'),
+      base,
+    ]
+    expect(resultFor(events, 16)).toMatchObject({
+      authenticated: false,
+      authError: 'source-event-seqs-mismatch',
+    })
+    expect(evaluate(events).status).not.toBe('pass')
+  })
+
+  it('accepts identical top-level and data sourceEventSeqs', () => {
+    const base: TestEvent = {
+      type: 'tool/result',
+      seq: 16,
+      time: 3_016,
+      sourceEventSeqs: [15],
+      data: {
+        turn: 4,
+        step: 1,
+        sourceEventSeqs: [15],
+        message: {
+          role: 'tool',
+          toolCallId: 'call-auth',
+          isError: false,
+          content: [{ type: 'text', text: JSON.stringify(READ_VIEW) }],
+        },
+      },
+    }
+    const events = [
+      ...compactionLifecycle('identical-compaction', 10, 1_000),
+      runtimeSnapshot(14),
+      charterReadCall(15, 4, 'call-auth'),
+      base,
+    ]
+    expect(resultFor(events, 16)).toMatchObject({ authenticated: true, resolution: 'sourceEventSeqs' })
+  })
+})
+
+describe('later landed compaction attempts', () => {
+  function withFailedLandedAttempt(options: { readonly checkpoint?: boolean } = {}): TestEvent[] {
+    return [
+      ...evidenceFixture(),
+      { type: 'compaction/start', seq: 20, time: 4_000, data: { compactionId: 'later-compaction' } },
+      { type: 'compaction/summary', seq: 21, time: 4_001, data: { compactionId: 'later-compaction' } },
+      ...(options.checkpoint === false ? [] : [{
+        type: 'user/message',
+        seq: 22,
+        time: 4_002,
+        data: {
+          source: { kind: 'compact-checkpoint', compactionId: 'later-compaction' },
+          content: [{ type: 'text', text: 'later landed checkpoint' }],
+        },
+      }]),
+      {
+        type: 'compaction/end',
+        seq: 23,
+        time: 4_003,
+        data: { compactionId: 'later-compaction', error: 'summary generation failed' },
+      },
+    ]
+  }
+
+  it('fails when a later failed compaction landed a checkpoint', () => {
+    const report = evaluate(withFailedLandedAttempt())
+    expect(report.verdicts.laterCompactionAttempt).toBe('landed-failed')
+    expect(report.status).toBe('fail')
+    expect(report.exitCode).toBe(1)
+    expect(report.verification.ok).toBe(false)
+    expect(report.verification.failures).toContain(
+      'a later failed compaction landed a checkpoint after the evidence; re-compact and re-read before claiming survival',
+    )
+    expect(report.verdictLines.find(line => line.label === 'charter survives compaction'))
+      .toMatchObject({ state: 'FAIL' })
+  })
+
+  it('waits when a later compaction attempt is still open', () => {
+    const events = [
+      ...evidenceFixture(),
+      { type: 'compaction/start', seq: 20, time: 4_000, data: { compactionId: 'open-compaction' } },
+    ]
+    const report = evaluate(events)
+    expect(report.verdicts.laterCompactionAttempt).toBe('open')
+    expect(report.status).toBe('wait')
+    expect(report.exitCode).toBe(3)
+    expect(report.verdictLines.find(line => line.label === 'charter survives compaction'))
+      .toMatchObject({ state: 'WAIT' })
+  })
+
+  it('keeps the earlier PASS when the later failed attempt landed no checkpoint', () => {
+    const report = evaluate(withFailedLandedAttempt({ checkpoint: false }))
+    expect(report.verdicts.laterCompactionAttempt).toBeUndefined()
+    expect(report.status).toBe('pass')
+    expect(report.exitCode).toBe(0)
+  })
+
+  it('waits for post-evidence after a later successful compaction', () => {
+    const events = [
+      ...evidenceFixture(),
+      ...compactionLifecycle('newer-success', 30, 5_000),
+    ]
+    const report = evaluate(events)
+    expect(report.latestCompaction).toMatchObject({ id: 'newer-success' })
+    // The newer compaction has no post-compaction activity yet.
+    expect(report.verdicts.noPostCompactionActivity).toBe(true)
+    expect(report.status).toBe('wait')
+    expect(report.exitCode).toBe(3)
+  })
+})
+
 describe('strict compaction lifecycle state machine', () => {
   function attempt(id: string, baseSeq: number, options: { readonly error?: string } = {}): TestEvent[] {
     const loop = compactionLifecycle(id, baseSeq, baseSeq * 10)
@@ -581,15 +761,25 @@ describe('modern charter_read producing-call authentication', () => {
 })
 
 describe('post-compaction activity gating', () => {
-  it('returns WAIT (exit 3) when no request activity followed the compaction', () => {
+  it('returns WAIT (exit 3) with no evidence failures when no request activity followed the compaction', () => {
     const report = evaluate(compactionLifecycle('idle-compaction', 10, 1_000))
     expect(report.verdicts.noPostCompactionActivity).toBe(true)
     expect(report.verdicts.postCompactionExecutionWithoutSnapshot).toBe(false)
+    // No activity means no evidence was evaluated: WAIT, not a false failure.
+    expect(report.verification).toMatchObject({ ok: true, failures: [] })
+    expect(report.verdicts.survivesCompaction).toBeUndefined()
+    expect(report.verdicts.injectedAfterCompaction).toBeUndefined()
+    expect(report.verdicts.systemPromptClean).toBeUndefined()
+    expect(report.verdicts.charterReadStanding).toBeUndefined()
     expect(report.status).toBe('wait')
     expect(report.exitCode).toBe(3)
     expect(report.verdictLines.find(line => line.label === 'charter survives compaction'))
       .toMatchObject({ state: 'WAIT' })
-    expect(JSON.parse(JSON.stringify(report))).toMatchObject({ status: 'wait', exitCode: 3 })
+    expect(JSON.parse(JSON.stringify(report))).toMatchObject({
+      status: 'wait',
+      exitCode: 3,
+      verification: { ok: true, failures: [] },
+    })
   })
 })
 

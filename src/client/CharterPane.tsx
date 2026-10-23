@@ -601,12 +601,13 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   }, [release])
 
   useEffect(() => {
-    if (view !== null) draft.ensureBootstrap(view, state.status === 'ready')
+    if (view === null) return
+    // Lifecycle first, extraction second: a bind can invalidate an extraction
+    // started under a different (or unknown) lifecycle, after which this effect
+    // starts the extraction for the current lifecycle.
+    draft.bindLifecycle(view.lifecycle)
+    draft.ensureBootstrap(view, state.status === 'ready')
   }, [view, state.status, draft])
-
-  useEffect(() => {
-    draft.bindLifecycle(view?.lifecycle)
-  }, [view?.lifecycle, draft])
 
   useEffect(() => {
     if (view !== null && bootstrapPhase === 'draft') draft.markBootstrapStale(view)
@@ -734,26 +735,33 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   // then the stored over-budget state, then an admitted over-budget render.
   const budgetNotice = admission.reason === 'max-ops'
     ? { tone: 'danger' as const, text: t('budget.opsOver', { limit: String(view.limits.maxOps) }) }
-    : admission.reason === 'max-items'
-      ? { tone: 'danger' as const, text: t('budget.itemsOver', { limit: String(view.limits.maxItems) }) }
-      : admission.reason === 'max-pending'
-        ? {
-            tone: 'danger' as const,
-            text: t('budget.pendingOver', { limit: String(view.limits.maxPendingItems) }),
-          }
-        : contextBlocksApply
-          ? {
-              tone: 'danger' as const,
-              text: t('budget.contextOver', { limit: formatBytes(t, view.limits.maxPromptBytes) }),
-            }
-          : overBudget
-            ? { tone: 'warning' as const, text: t('status.overBudget') }
-            : contextOver
+    : admission.reason === 'max-objective'
+      ? {
+          tone: 'danger' as const,
+          text: t('budget.objectiveOver', { limit: formatBytes(t, view.limits.maxObjectiveBytes) }),
+        }
+      : admission.reason === 'max-item'
+        ? { tone: 'danger' as const, text: t('budget.itemOver', { limit: formatBytes(t, view.limits.maxItemBytes) }) }
+        : admission.reason === 'max-items'
+          ? { tone: 'danger' as const, text: t('budget.itemsOver', { limit: String(view.limits.maxItems) }) }
+          : admission.reason === 'max-pending'
+            ? {
+                tone: 'danger' as const,
+                text: t('budget.pendingOver', { limit: String(view.limits.maxPendingItems) }),
+              }
+            : contextBlocksApply
               ? {
-                  tone: 'warning' as const,
-                  text: promptBudget.shrinking ? t('budget.shrinking') : t('budget.notGrowing'),
+                  tone: 'danger' as const,
+                  text: t('budget.contextOver', { limit: formatBytes(t, view.limits.maxPromptBytes) }),
                 }
-              : null
+              : overBudget
+                ? { tone: 'warning' as const, text: t('status.overBudget') }
+                : contextOver
+                  ? {
+                      tone: 'warning' as const,
+                      text: promptBudget.shrinking ? t('budget.shrinking') : t('budget.notGrowing'),
+                    }
+                  : null
 
   const goSection = (next: CharterSection): void => draft.setSection(next)
   const queue = (op: CharterOp): void => {

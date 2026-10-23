@@ -147,6 +147,7 @@ export interface CompactionTranscriptReport {
   readonly charterReadCalled: boolean
   readonly postCompactionActivity: number
   readonly noPostCompactionActivity: boolean
+  readonly laterCompactionAttempt: 'open' | 'landed-failed' | undefined
   readonly postCompactionExecutionWithoutSnapshot: boolean
   readonly verdicts: Record<string, boolean | undefined>
   readonly verification: CompactionEvaluation

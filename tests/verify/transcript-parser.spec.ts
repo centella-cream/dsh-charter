@@ -37,6 +37,15 @@ function runChecker(home: string, store: string) {
   ], { encoding: 'utf8' })
 }
 
+function runCheckerText(home: string, store: string) {
+  return spawnSync(process.execPath, [
+    SCRIPT,
+    '--session', SESSION,
+    '--home', home,
+    '--store', store,
+  ], { encoding: 'utf8' })
+}
+
 const VALID_LINE = '{"type":"turn/start","seq":1,"time":1,"data":{"turn":1}}'
 
 afterAll(() => {
@@ -78,5 +87,33 @@ describe('transcript parsing refuses silent corruption', () => {
     expect(result.status).toBe(1)
     expect(result.stderr).toContain('transcript is corrupt')
     expect(result.stderr).toContain('line 2')
+  })
+
+  it('renders an OPEN compaction attempt without RangeError and waits', () => {
+    const { home, store } = fixtureHome()
+    writeFileSync(store, JSON.stringify({
+      version: 1,
+      record: {
+        recordSchemaVersion: 1,
+        identity: { createdAt: 0 },
+        current: {
+          revision: 1,
+          items: [],
+          promptText: 'x',
+          promptDigest: `sha256:${'0'.repeat(64)}`,
+        },
+        history: [],
+        recentMutations: [],
+      },
+    }))
+    writeFileSync(
+      join(home, 'sessions', 'project', SESSION, 'session.v4.jsonl'),
+      '{"type":"compaction/start","seq":10,"time":1000,"data":{"compactionId":"open-1"}}\n',
+    )
+    const result = runCheckerText(home, store)
+    expect(result.status).toBe(3)
+    expect(result.stdout).toContain('OPEN')
+    expect(result.stderr).not.toContain('RangeError')
+    expect(result.stdout).toContain('WAIT')
   })
 })

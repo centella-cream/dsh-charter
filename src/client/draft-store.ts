@@ -12,6 +12,7 @@ import { opTargets } from './preview.js'
 import {
   buildBootstrapPlan,
   classifyBootstrapOutcome,
+  firstDraftTextIssue,
   type BootstrapDraftItem,
   type BootstrapPlan,
 } from './bootstrap-plan.js'
@@ -174,7 +175,12 @@ export class CharterDraft {
     // lifecycle transition: an empty draft simply adopts it, but dirty work was
     // reviewed against the unknown old lifecycle and must not be claimed by the
     // new one.
-    if (this.state.lifecycle === null && this.isEmpty) {
+    // An in-flight extraction belongs to the lifecycle it started under; it
+    // must be invalidated (not merely re-bound) when the first real fingerprint
+    // arrives, and the Pane then starts a fresh extraction for this lifecycle.
+    const extractionInFlight = this.state.bootstrapPhase === 'checking'
+      || this.state.bootstrapSaving
+    if (this.state.lifecycle === null && this.isEmpty && !extractionInFlight) {
       this.update({ lifecycle })
       return
     }
@@ -430,26 +436,31 @@ export class CharterDraft {
     if (this.state.saving || view.status !== 'ready') return
     const baseRevision = this.state.baseRevision
     if (baseRevision === null || this.state.ops.length === 0) return
-    // The Pane disables Apply from the same pure preflight; repeat it here so a
-    // programmatic call cannot reach the Remote with a batch the Host must
-    // reject (or that would overwrite a budget decision).
-    const admission = draftAdmission(view, this.state.ops)
-    if (!admission.ok) {
-      this.update({
-        feedback: {
-          kind: 'error',
-          code: 'QUOTA_EXCEEDED',
-          ...(admission.reason === undefined ? {} : { detail: admission.reason }),
-        },
-      })
-      return
+    // Resolve a retryable unknown-outcome request FIRST: it must be replayed
+    // verbatim (same mutationId/baseRevision/ops) even when the current view or
+    // limits would now reject a fresh batch — otherwise a committed-but-lost
+    // request would be dropped or duplicated.
+    const previous = this.retryableRequest('edit')
+    if (previous === undefined) {
+      // Only a fresh request runs the shared admission preflight. The Pane
+      // disables Apply from the same pure function.
+      const admission = draftAdmission(view, this.state.ops)
+      if (!admission.ok) {
+        this.update({
+          feedback: {
+            kind: 'error',
+            code: 'QUOTA_EXCEEDED',
+            ...(admission.reason === undefined ? {} : { detail: admission.reason }),
+          },
+        })
+        return
+      }
     }
     const source = this.resolveSource()
     if (source === undefined) {
       this.update({ feedback: { kind: 'connection' } })
       return
     }
-    const previous = this.retryableRequest('edit')
     const request = previous?.request ?? {
       sessionId: this.state.sessionId,
       mutationId: mutationId(),
@@ -581,9 +592,13 @@ export class CharterDraft {
     const asyncGeneration = this.asyncGeneration
     const sourceGeneration = source.connectionGeneration
     const requestedRevision = view.revision
+    // The extraction request is only valid for the lifecycle it was issued
+    // under; a lifecycle bind invalidates it even when source/generations match.
+    const requestedLifecycle = this.state.lifecycle
     this.update({ bootstrapPhase: 'checking', bootstrapProblem: null, feedback: null })
     const current = (): boolean => generation === this.bootstrapGeneration
       && this.asyncGeneration === asyncGeneration
+      && this.state.lifecycle === requestedLifecycle
       && source.sessionId === this.state.sessionId
       && this.resolveSource() === source
       && source.connectionGeneration === sourceGeneration
@@ -703,6 +718,28 @@ export class CharterDraft {
     }
     const plan = this.bootstrapPlan(view)
     if (plan.ops.length === 0) return
+    // Preflight the reviewed draft through the same text validation and shared
+    // admission the Pane uses, before any Remote call: an invalid character or
+    // limit failure must keep the draft reviewable instead of round-tripping a
+    // request the Host is known to reject.
+    const textIssue = firstDraftTextIssue(this.state.bootstrapObjective, this.state.bootstrapItems)
+    if (textIssue !== undefined) {
+      this.update({
+        bootstrapProblem: { kind: 'save-failed', code: 'INVALID_ARGUMENT', detail: textIssue.issue },
+      })
+      return
+    }
+    const admission = draftAdmission(view, plan.ops)
+    if (!admission.ok) {
+      this.update({
+        bootstrapProblem: {
+          kind: 'save-failed',
+          code: 'QUOTA_EXCEEDED',
+          ...(admission.reason === undefined ? {} : { detail: admission.reason }),
+        },
+      })
+      return
+    }
     const source = this.resolveSource()
     if (source === undefined) {
       this.update({ bootstrapProblem: { kind: 'save-failed', code: 'UNAVAILABLE' } })
@@ -835,7 +872,11 @@ export { opTargets }
  */
 export function rebaseAvailable(state: Pick<
   CharterDraftState,
-  'editor' | 'bootstrap' | 'saving' | 'bootstrapSaving'
+  'editor' | 'bootstrap' | 'saving' | 'bootstrapSaving' | 'attempt'
 >): boolean {
-  return state.editor === null && state.bootstrap === null && !state.saving && !state.bootstrapSaving
+  return state.editor === null
+    && state.bootstrap === null
+    && state.attempt === null
+    && !state.saving
+    && !state.bootstrapSaving
 }

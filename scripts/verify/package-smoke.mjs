@@ -1,53 +1,108 @@
-// Verify the packed tarball as a real consumer would: pack it, assert its
-// contents/modes, install it into an empty project, load the pure `core` entry,
-// and check the client bundle. Importing the Host/Remote Runtime entries needs
-// the Host peer graph, so that is covered by the workspace build's
-// remote-smoke/client-smoke, not by this empty consumer.
+// Verify the packed tarball as a real consumer would: pack it (or, in artifact
+// mode, reuse an already-built exact tarball), assert its contents/modes,
+// install it into an empty project, load the pure `core` entry, and check the
+// client bundle. Importing the Host/Remote Runtime entries needs the Host peer
+// graph, so that is covered by the workspace build's remote-smoke/client-smoke,
+// not by this empty consumer.
+//
+// Normal mode (`npm run smoke:package`) builds and packs.
+// Artifact mode (`npm run smoke:package -- --artifact <tgz> --sha256 <sums>`)
+// never builds or packs: it validates the supplied archive against the supplied
+// SHA-256 sums file and runs the same consumer checks on those exact bytes, so
+// release docs, the GitHub release asset, and `npm publish` can reuse the very
+// file that passed this check.
 import { execFileSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { basename, join, resolve } from 'node:path'
 
 const root = resolve(import.meta.dirname, '../..')
-const work = mkdtempSync(join(tmpdir(), 'dsh-charter-pack-'))
-const packDir = join(work, 'pack')
-const consumer = join(work, 'consumer')
-const emptyNpmrc = join(work, 'empty.npmrc')
-// Developer npm config may include project-scoped options that npm rejects in
-// a temporary consumer (for example allow-scripts). Isolate the smoke.
-const cleanEnv = { ...process.env, NO_COLOR: '1' }
-for (const key of Object.keys(cleanEnv)) {
-  if (/^npm_config_(userconfig|allow_scripts)$/iu.test(key)) delete cleanEnv[key]
-}
-cleanEnv.NPM_CONFIG_USERCONFIG = emptyNpmrc
-cleanEnv.NPM_CONFIG_ALLOW_SCRIPTS = ''
-writeFileSync(emptyNpmrc, '')
 
-function run(command, args, options = {}) {
-  const output = execFileSync(command, args, {
-    cwd: root,
-    encoding: 'utf8',
-    env: cleanEnv,
-    ...options,
-  })
-  return typeof output === 'string' ? output.trim() : ''
+/**
+ * Parse `npm pack --json` output. npm 10/11/12 emit either a single object or a
+ * one-element array, with trailing whitespace/newlines; the full trimmed output
+ * is parsed as JSON (never sliced from the first brace, which would turn a
+ * valid array into an invalid fragment).
+ */
+export function parsePackOutput(packOutput) {
+  const trimmed = String(packOutput).trim()
+  if (trimmed === '') throw new Error('npm pack returned no JSON output')
+  let parsed
+  try {
+    parsed = JSON.parse(trimmed)
+  } catch (error) {
+    throw new Error(
+      `npm pack did not return parseable JSON; full output starts with ${JSON.stringify(trimmed.slice(0, 200))}: ${error instanceof Error ? error.message : String(error)}`,
+    )
+  }
+  // npm 10/11 may emit one object; this npm 12 emits an object keyed by package
+  // name; other versions emit a one-element array. Accept each shape.
+  let entries
+  if (Array.isArray(parsed)) entries = parsed
+  else if (parsed !== null && typeof parsed === 'object' && Object.hasOwn(parsed, 'filename')) entries = [parsed]
+  else if (parsed !== null && typeof parsed === 'object') entries = Object.values(parsed)
+  else throw new Error(`npm pack JSON is not an object or array: ${trimmed.slice(0, 120)}`)
+  const artifacts = entries.filter(entry => entry !== null
+    && typeof entry === 'object'
+    && typeof entry.filename === 'string')
+  if (artifacts.length !== 1) throw new Error(`expected exactly one packed artifact, got ${artifacts.length}`)
+  return artifacts[0]
 }
 
-try {
-  run('mkdir', ['-p', packDir, consumer])
-  // Build first so pack can skip prepack and keep --json machine-readable.
-  run('npm', ['run', 'build'], { stdio: 'ignore' })
-  const packOutput = run('npm', ['pack', '--json', '--ignore-scripts', '--pack-destination', packDir])
-  const start = packOutput.indexOf('{')
-  if (start < 0) throw new Error(`npm pack did not return JSON: ${packOutput.slice(0, 200)}`)
-  const parsed = JSON.parse(packOutput.slice(start))
-  const packed = Array.isArray(parsed) ? parsed : Object.values(parsed)
-  if (packed.length !== 1) throw new Error('expected exactly one packed artifact')
-  const artifactInfo = packed[0]
-  const artifact = join(packDir, artifactInfo.filename)
+/**
+ * Resolve the expected SHA-256 for `filename` from `sums` (the tracked
+ * `sha256sum`-style file). Exactly one matching entry is required.
+ */
+export function parseSumsDigest(sums, filename) {
+  const expected = basename(filename)
+  const matches = []
+  for (const line of String(sums).split('\n')) {
+    const trimmed = line.trim()
+    if (trimmed === '') continue
+    const match = /^([a-f0-9]{64})\s+\*?(.+)$/u.exec(trimmed)
+    if (match === null) continue
+    if (basename(match[2].trim()) === expected) matches.push(match[1])
+  }
+  if (matches.length === 0) throw new Error(`no SHA-256 entry for ${expected} in the supplied sums file`)
+  if (matches.length > 1) throw new Error(`more than one SHA-256 entry for ${expected} in the supplied sums file`)
+  return matches[0]
+}
+
+/** Validate an existing artifact against the supplied sums file; no build/pack. */
+export function verifyArtifactDigest(artifact, sumsFile) {
+  if (!existsSync(artifact)) throw new Error(`artifact does not exist: ${artifact}`)
+  const expected = parseSumsDigest(readFileSync(sumsFile, 'utf8'), artifact)
+  const actual = createHash('sha256').update(readFileSync(artifact)).digest('hex')
+  if (actual !== expected) {
+    throw new Error(`artifact SHA-256 mismatch: sums file says ${expected}, actual bytes hash to ${actual}`)
+  }
+  return { actual, expected }
+}
+
+/** Parse `--artifact <tgz>` / `--sha256 <sums>` (both or neither). */
+export function parseArgs(argv) {
+  const args = { artifact: undefined, sha256: undefined }
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index]
+    if (arg !== '--artifact' && arg !== '--sha256') throw new Error(`unknown argument: ${arg}`)
+    const value = argv[index + 1]
+    if (value === undefined) throw new Error(`missing value for ${arg}`)
+    if (arg === '--artifact') args.artifact = value
+    else args.sha256 = value
+    index += 1
+  }
+  if ((args.artifact === undefined) !== (args.sha256 === undefined)) {
+    throw new Error('--artifact and --sha256 must be passed together')
+  }
+  return args
+}
+
+function verifyArtifactContents({ artifact, consumer, emptyNpmrc, run }) {
   const manifest = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
-  if (artifactInfo.name !== manifest.name || artifactInfo.version !== manifest.version) {
-    throw new Error(`packed identity mismatch: ${artifactInfo.name}@${artifactInfo.version}`)
+  const expectedFilename = `${manifest.name}-${manifest.version}.tgz`
+  if (basename(artifact) !== expectedFilename) {
+    throw new Error(`artifact name ${basename(artifact)} does not match ${expectedFilename}`)
   }
 
   const entries = run('tar', ['-tzf', artifact]).split('\n').filter(Boolean)
@@ -119,11 +174,67 @@ try {
   for (const path of ['lib/index.js', 'lib/remote.js', 'lib/index.d.ts', 'lib/remote.d.ts']) {
     if (!existsSync(join(installed, path))) throw new Error(`consumer install is missing ${path}`)
   }
+  return files
+}
 
-  console.log(
-    `package-smoke: ${artifactInfo.filename} (${files.size} files) installs in an empty consumer, `
-    + 'dependencies resolve, root/remote exports and files exist, packed core import loads, client bundle is valid',
-  )
-} finally {
-  rmSync(work, { recursive: true, force: true })
+async function main() {
+  const args = parseArgs(process.argv.slice(2))
+  const work = mkdtempSync(join(tmpdir(), 'dsh-charter-pack-'))
+  const packDir = join(work, 'pack')
+  const consumer = join(work, 'consumer')
+  const emptyNpmrc = join(work, 'empty.npmrc')
+  // Developer npm config may include project-scoped options that npm rejects in
+  // a temporary consumer (for example allow-scripts). Isolate the smoke.
+  const cleanEnv = { ...process.env, NO_COLOR: '1' }
+  for (const key of Object.keys(cleanEnv)) {
+    if (/^npm_config_(userconfig|allow_scripts)$/iu.test(key)) delete cleanEnv[key]
+  }
+  cleanEnv.NPM_CONFIG_USERCONFIG = emptyNpmrc
+  cleanEnv.NPM_CONFIG_ALLOW_SCRIPTS = ''
+  writeFileSync(emptyNpmrc, '')
+  const run = (command, runArgs, options = {}) => {
+    const output = execFileSync(command, runArgs, {
+      cwd: root,
+      encoding: 'utf8',
+      env: cleanEnv,
+      ...options,
+    })
+    return typeof output === 'string' ? output.trim() : ''
+  }
+
+  try {
+    run('mkdir', ['-p', packDir, consumer])
+    let artifact
+    let digestNote
+    if (args.artifact !== undefined) {
+      // Exact-artifact mode: never build or pack; validate these exact bytes.
+      artifact = resolve(args.artifact)
+      const { actual } = verifyArtifactDigest(artifact, resolve(args.sha256))
+      digestNote = `sha256 ${actual} matched ${basename(resolve(args.sha256))}`
+    } else {
+      // Build first so pack can skip prepack and keep --json machine-readable.
+      run('npm', ['run', 'build'], { stdio: 'ignore' })
+      const artifactInfo = parsePackOutput(
+        run('npm', ['pack', '--json', '--ignore-scripts', '--pack-destination', packDir]),
+      )
+      artifact = join(packDir, artifactInfo.filename)
+      const manifest = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
+      if (artifactInfo.name !== manifest.name || artifactInfo.version !== manifest.version) {
+        throw new Error(`packed identity mismatch: ${artifactInfo.name}@${artifactInfo.version}`)
+      }
+      digestNote = 'freshly packed'
+    }
+    const files = verifyArtifactContents({ artifact, consumer, emptyNpmrc, run })
+    const mode = args.artifact === undefined ? '' : ' (exact existing artifact; no build/pack)'
+    console.log(
+      `package-smoke: ${basename(artifact)} (${files.size} files, ${digestNote})${mode} installs in an empty consumer, `
+      + 'dependencies resolve, root/remote exports and files exist, packed core import loads, client bundle is valid',
+    )
+  } finally {
+    rmSync(work, { recursive: true, force: true })
+  }
+}
+
+if (process.argv[1] !== undefined && resolve(process.argv[1]) === resolve(import.meta.filename)) {
+  await main()
 }
