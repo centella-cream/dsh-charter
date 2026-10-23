@@ -68,6 +68,14 @@
     "compaction",
     "runtime-context"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/centella-cream/dsh-charter.git"
+  },
+  "homepage": "https://github.com/centella-cream/dsh-charter#readme",
+  "bugs": {
+    "url": "https://github.com/centella-cream/dsh-charter/issues"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json && node scripts/build/copy-build-assets.mjs && tsdown && node scripts/build/inline-client-css.mjs && node scripts/build/copy-declarations.mjs && node scripts/verify/remote-smoke.mjs && node scripts/verify/client-smoke.mjs",
     "typecheck": "tsc --noEmit",

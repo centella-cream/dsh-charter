@@ -7,30 +7,27 @@ CI，再构建已验证产物，然后打 tag，最后发布。已推送的 tag 
 
 ## 1. 外部前置条件 — 公开仓库准备
 
-发布状态是动态的，只有这份清单记录它。撰写本文时公开 GitHub 仓库可能尚不存在、`package.json` 的
-`repository`、`homepage`、`bugs` 仍故意留空、也尚未 push/publish。开始前必须**删除暂存 RC 期间创建的临时
-本地发布 tag**——在仓库元数据和公开 CI 就位前创建的 tag 不能保留：
+公开 GitHub 仓库已创建：<https://github.com/centella-cream/dsh-charter>。本树已把 `package.json` 的
+`repository`、`homepage`、`bugs` 指向该仓库；如果 checkout 还没有 `origin`，请先配置。下面的发布状态是动态的，
+每次发布前都必须重新核对。如果暂存 RC 期间还留有临时本地 `v0.1.0-rc.1` tag，请在元数据/CI commit 前删除——
+除非 tag 是在公开门禁之后创建，否则不能保留：
 
 ```bash
-git tag -d v0.1.0-rc.1   # 仅当它存在；它从未被推送（确认远端没有同名 tag）
-git remote -v            # 应为空，或尚不包含该仓库
+git tag -d v0.1.0-rc.1   # 仅当它存在；它从未被推送
+git remote -v            # origin 必须指向公开仓库
 ```
 
 如需内部追溯，可使用只在本地存在的标记 tag（例如 `v0.1.0-rc.1-build`）；它绝不推送，也不是发布 tag。
 
-**维护者 GitHub 账号候选：** `https://github.com/centella-cream`（仅记录在此）。目前没有仓库、remote、
-`package.json` 的 `repository`/`homepage`/`bugs` 元数据、push 或 publish；它们会保持缺失，直到下面步骤真正创建
-公开仓库。
-
 先准备仓库与公开门禁：
 
-1. 创建公开仓库（owner/name 由维护者确定）并添加为 `origin`；
-2. 把 `package.json` 的 `repository`、`homepage`、`bugs` 恢复为该 URL，并提交该元数据修改；
-3. 启用并验证仓库的**私有安全报告**（security advisories/private reporting）在代码公开前可用；
+1. 确认 `origin` 指向 `https://github.com/centella-cream/dsh-charter`（公开仓库已创建）；
+2. 确认 `package.json` 的 `repository`、`homepage`、`bugs` 指向该 URL（本树已恢复）；
+3. 启用并验证仓库的**私有安全报告**（security advisories/private reporting）在发布前可用；
 4. 更新所有发生变化的可变发布状态描述（仓库元数据、公开 CI 状态、发布前置项），重跑 `npm run check` 与
    **普通** `npm run smoke:package`，并把文档刷新并入同一个元数据/CI状态/文档更新 commit；
 5. 只推送 `main`，此时不要推 tag（`git push origin main`；不要用 `--follow-tags`）；
-6. 在 Node `22.19.0` 与 `24` 上运行 `.github/workflows/ci.yml` 的公开 CI，并等待该 commit 变绿（CI 只运行
+6. 等待 `.github/workflows/ci.yml` 的公开 CI 在 Node `22.19.0` 与 `24` 上对该 commit 变绿（CI 只运行
    `npm run check` 与普通 `npm run smoke:package`；exact-artifact 模式不是 CI job）。
 
 随后按顺序：从最终源码**只构建一次**发布 tarball，对同一文件运行 exact-artifact smoke

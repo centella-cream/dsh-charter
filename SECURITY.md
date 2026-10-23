@@ -12,7 +12,7 @@ lifecycle identity matches; run them in a trusted single-operator environment.
 
 **Do not open a public issue for a suspected vulnerability.**
 
-Contact the maintainers through the repository's private security advisory channel (GitHub Security Advisories)
+Report through the repository's private security advisory channel: <https://github.com/centella-cream/dsh-charter/security/advisories/new>
 with:
 
 - affected version/commit;

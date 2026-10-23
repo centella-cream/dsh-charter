@@ -20,11 +20,8 @@ first so the compatibility and migration impact can be discussed.
 
 ## Development setup
 
-The `git clone` URL below becomes valid once the public repository exists; until then, use the checkout you
-already have and skip the clone line.
-
 ```bash
-git clone https://github.com/zhangyuze/dsh-charter.git
+git clone https://github.com/centella-cream/dsh-charter.git
 cd dsh-charter
 npm install
 npm run check

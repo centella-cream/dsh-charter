@@ -11,7 +11,7 @@ DSH `0.1.7` / `0.2.0` 只能校验 Session 是否 live、lifecycle identity 是�
 
 **疑似漏洞不要开公开 issue。**
 
-请通过仓库的 GitHub Security Advisories 私密渠道联系维护者，并提供：
+请通过仓库的 GitHub Security Advisories 私密渠道报告：<https://github.com/centella-cream/dsh-charter/security/advisories/new>，并提供：
 
 - 受影响版本/commit；
 - DSH 版本和 profile 类型；
