@@ -53,11 +53,15 @@ npm run smoke:package
 `npm run check` must pass typecheck, build, Remote smoke, client smoke, and the full Vitest suite;
 `npm run smoke:package` additionally packs the tarball and verifies its required files, every `exports` target,
 the packed `core` import, and the packed client bundle (Host/Remote runtime imports are covered by the workspace
-build smokes). Once the release artifact exists, verify those exact bytes without rebuilding:
-`npm run smoke:package -- --artifact dist/dsh-charter-0.1.0-rc.1.tgz --sha256 SHA256SUMS` validates the artifact's
-SHA-256 against the supplied sums file, then runs the same manifest/files/modes/exports, empty-consumer install,
-packed `core` import, and client-bundle checks on that file; it never builds or packs. CI runs both on the pushed
-metadata commit. The recorded real-model compaction `PASS`
+build smokes). CI runs `npm run check` plus the normal `npm run smoke:package` on the pushed metadata commit; it
+does not run exact-artifact mode. The exact-artifact check is the **local release gate after building the final
+tarball** and before the tag/push/publish step: once the release artifact exists, verify those exact bytes without
+rebuilding with
+`npm run smoke:package -- --artifact dist/dsh-charter-0.1.0-rc.1.tgz --sha256 SHA256SUMS`. It validates the
+artifact's SHA-256 against the supplied sums file, validates every tar member and the packed manifest, then runs
+the same manifest/files/modes/exports, empty-consumer install, packed `core` import, and client-bundle checks on
+that file; it never builds or packs. If exact-artifact verification is wanted in CI, add a separate release
+workflow that consumes the published artifact — the current CI does not. The recorded real-model compaction `PASS`
 (verification §8.4) is the acceptance evidence for the compaction-resilience claim; the manual command below is
 kept for a fresh target-profile re-run.
 

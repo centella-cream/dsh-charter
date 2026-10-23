@@ -3,7 +3,12 @@ import { SessionId } from '@deepseek-ai/dsh-session'
 import type { CharterEditRequest, CharterItem } from '../../src/core/schemas.js'
 import type { CharterBootstrapResult, CharterEditResult, CharterView } from '../../src/host/types.js'
 import type { CharterSessionSource } from '../../src/client/store.js'
-import { CharterDraft, rebaseAvailable } from '../../src/client/draft-store.js'
+import {
+  CharterDraft,
+  bootstrapReplayPending,
+  editReplayPending,
+  rebaseAvailable,
+} from '../../src/client/draft-store.js'
 import { draftAdmission } from '../../src/client/admission.js'
 import { previewPrompt } from '../../src/client/preview.js'
 import { utf8Bytes } from '../../src/core/limits.js'
@@ -1121,6 +1126,194 @@ describe('per-Session draft ownership', () => {
     await draft.applyDraft(constrained)
     expect(requests).toHaveLength(0)
     expect(draft.getSnapshot().feedback).toMatchObject({ kind: 'error', code: 'QUOTA_EXCEEDED' })
+  })
+
+  it('locks every edit action while an edit replay is pending and retries exactly once', async () => {
+    const requests: CharterEditRequest[] = []
+    let first = true
+    const fake = source({
+      edit: async request => {
+        requests.push(request)
+        if (first) {
+          first = false
+          throw new Error('lost after commit')
+        }
+        return { ok: true, replayed: true, committedRevision: 2, ids: {}, view: view(2) }
+      },
+    })
+    const draft = new CharterDraft(sessionId, () => fake)
+    draft.bindLifecycle('life-replay-lock')
+    const rev1 = view(1)
+    draft.stage(rev1, {
+      type: 'item.add',
+      item: { clientRef: 'm1', kind: 'invariant', text: 'Once', order: 0 },
+    })
+    await draft.applyDraft(rev1)
+    expect(editReplayPending(draft.getSnapshot())).toBe(true)
+    // A conflicting reconnected view does not turn the retry into a fresh batch.
+    const conflictView = view(2, {
+      items: [committedInvariant({ id: 'host-1', text: 'Once', order: 1 })],
+      limits: { ...view(2).limits, maxItems: 1 },
+    })
+    expect(editReplayPending(draft.getSnapshot())).toBe(true)
+    const before = draft.getSnapshot()
+    draft.stage(conflictView, {
+      type: 'item.add',
+      item: { clientRef: 'm2', kind: 'invariant', text: 'Second', order: 2 },
+    })
+    draft.unstage('draft:m1')
+    draft.addItem(conflictView, 'invariant', 'Another', () => undefined)
+    draft.openEditor({ kind: 'objective' }, conflictView)
+    draft.setEditorText('typing')
+    draft.discard()
+    draft.rebase(conflictView)
+    expect(draft.getSnapshot()).toMatchObject({
+      attempt: before.attempt,
+      ops: before.ops,
+      baseRevision: before.baseRevision,
+      editor: null,
+    })
+    expect(rebaseAvailable(draft.getSnapshot())).toBe(false)
+
+    await draft.applyDraft(conflictView)
+    expect(requests).toHaveLength(2)
+    expect(requests[1]).toEqual(requests[0])
+    expect(draft.getSnapshot()).toMatchObject({ ops: [], attempt: null, feedback: { kind: 'replayed' } })
+    expect(editReplayPending(draft.getSnapshot())).toBe(false)
+    // Edits and rebase unlock only after the replay resolved.
+    draft.stage(conflictView, {
+      type: 'item.add',
+      item: { clientRef: 'm3', kind: 'invariant', text: 'After', order: 2 },
+    })
+    expect(draft.getSnapshot().ops).toHaveLength(1)
+  })
+
+  it('replays a bootstrap request before fresh stale/admission checks', async () => {
+    const requests: CharterEditRequest[] = []
+    let first = true
+    const fake = source({
+      edit: async request => {
+        requests.push(request)
+        if (first) {
+          first = false
+          throw new Error('lost after the Host committed the bootstrap')
+        }
+        return { ok: true, replayed: true, committedRevision: 2, ids: {}, view: view(2) }
+      },
+      snapshot: () => ({ status: 'ready', view: view(0, { limits: { ...view(0).limits, maxPromptBytes: 200 } }), error: null }),
+      bootstrap: async () => ({
+        available: true,
+        proposal: {
+          objective: 'Reviewed objective',
+          invariants: ['First candidate invariant', 'Second candidate invariant'],
+          deliverables: ['First candidate deliverable'],
+          source: { summarySeq: 1, at: 1 },
+        },
+      }),
+    })
+    const baseView = view(0, { limits: { ...view(0).limits, maxPromptBytes: 200 } })
+    const draft = new CharterDraft(sessionId, () => fake)
+    draft.bindLifecycle('life-bootstrap-replay')
+    draft.ensureBootstrap(baseView, true)
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(draft.getSnapshot().bootstrapPhase).toBe('draft')
+    await draft.applyBootstrap(baseView)
+    expect(bootstrapReplayPending(draft.getSnapshot())).toBe(true)
+    // The reviewed payload stays visible and replayable.
+    expect(draft.getSnapshot()).toMatchObject({
+      bootstrapPhase: 'draft',
+      bootstrapBaseRevision: 0,
+      bootstrapSaving: false,
+    })
+    expect(draft.getSnapshot().bootstrap).not.toBeNull()
+    const before = draft.getSnapshot()
+    draft.setBootstrapObjective('changed')
+    draft.updateBootstrapItem(before.bootstrapItems[0]!.id, { selected: false })
+    draft.setAllBootstrapSelected(false)
+    expect(draft.getSnapshot()).toMatchObject({
+      bootstrapObjective: before.bootstrapObjective,
+      bootstrapItems: before.bootstrapItems,
+    })
+
+    // Tightened limits/plan would reject a fresh batch; replay must still send
+    // the exact retained request and succeed.
+    const tightened = view(0, { limits: { ...view(0).limits, maxOps: 1, maxItems: 1, maxPromptBytes: 50 } })
+    await draft.applyBootstrap(tightened)
+    expect(requests).toHaveLength(2)
+    expect(requests[1]).toEqual(requests[0])
+    expect(draft.getSnapshot().bootstrapPhase).toBe('dismissed')
+    expect(draft.getSnapshot().bootstrap).toBeNull()
+    expect(draft.getSnapshot().attempt).toBeNull()
+    // Feedback counts come from the retained request, not a fresh re-plan.
+    const retainedProposals = requests[0]!.ops.filter(op => op.type === 'item.propose').length
+    if (retainedProposals > 0) {
+      expect(draft.getSnapshot().feedback).toMatchObject({ kind: 'bootstrapSaved' })
+    }
+    expect(draft.isEmpty).toBe(true)
+  })
+
+  it('keeps a bootstrap draft visible across a stream change until the RPC outcome is known', async () => {
+    let rejectApply: ((error: Error) => void) | undefined
+    const pending = new Promise<never>((_resolve, reject) => { rejectApply = reject })
+    const fake = source({
+      edit: () => pending,
+      snapshot: () => ({ status: 'ready', view: view(0), error: null }),
+      bootstrap: async () => ({
+        available: true,
+        proposal: {
+          objective: 'Reviewed objective',
+          invariants: ['Keep it'],
+          deliverables: [],
+          source: { summarySeq: 1, at: 1 },
+        },
+      }),
+    })
+    const draft = new CharterDraft(sessionId, () => fake)
+    draft.bindLifecycle('life-bootstrap-stream')
+    draft.ensureBootstrap(view(0), true)
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(draft.getSnapshot().bootstrapPhase).toBe('draft')
+    const applying = draft.applyBootstrap(view(0))
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(draft.getSnapshot().bootstrapSaving).toBe(true)
+
+    // A non-empty view arrives while the RPC is in flight: do not half-dismiss.
+    const nonEmpty = view(0, { items: [committedInvariant({ id: 'external', text: 'External', order: 1 })] })
+    draft.markBootstrapStale(nonEmpty)
+    expect(draft.getSnapshot()).toMatchObject({
+      bootstrapPhase: 'draft',
+      bootstrapSaving: true,
+      bootstrapNeedsStale: true,
+    })
+    expect(draft.getSnapshot().bootstrap).not.toBeNull()
+
+    rejectApply!(new Error('transport lost after the frame'))
+    await applying
+    expect(draft.getSnapshot()).toMatchObject({
+      bootstrapPhase: 'draft',
+      bootstrapSaving: false,
+      bootstrapNeedsStale: true,
+      bootstrapBaseRevision: 0,
+      bootstrapProblem: { kind: 'save-failed', code: 'UNAVAILABLE' },
+    })
+    expect(draft.getSnapshot().bootstrap).not.toBeNull()
+    expect(draft.getSnapshot().attempt).not.toBeNull()
+    expect(bootstrapReplayPending(draft.getSnapshot())).toBe(true)
+    expect(draft.isEmpty).toBe(false)
+
+    // Explicit dismiss is the single full cleanup.
+    draft.dismissBootstrap()
+    expect(draft.getSnapshot()).toMatchObject({
+      bootstrapPhase: 'dismissed',
+      bootstrap: null,
+      bootstrapObjective: '',
+      bootstrapItems: [],
+      bootstrapBaseRevision: null,
+      bootstrapNeedsStale: false,
+      bootstrapSaving: false,
+      attempt: null,
+    })
+    expect(draft.isEmpty).toBe(true)
   })
 
   it('does not steal the current section when a draft arrives while editing', async () => {

@@ -98,6 +98,88 @@ export function parseArgs(argv) {
   return args
 }
 
+/**
+ * Parse `tar -tvzf` output into member records. Only the leading type character
+ * and the member path are needed for security validation.
+ */
+export function parseTarVerbose(output) {
+  const members = []
+  for (const line of String(output).split('\n')) {
+    if (line.trim() === '') continue
+    const type = line[0]
+    const match = /\s[A-Z][a-z]{2}\s+\d{1,2}\s+(?:\d{2}:\d{2}|\d{4})\s+(.*)$/u.exec(line)
+    let name = match === null ? line.split(/\s+/u).slice(6).join(' ') : match[1]
+    const link = name.indexOf(' -> ')
+    if (link >= 0) name = name.slice(0, link)
+    members.push({ path: name, type })
+  }
+  return members
+}
+
+/**
+ * Reject archives that the consumer step cannot safely treat as "only this
+ * package": traversal, absolute paths, links/special members, duplicates or
+ * anything outside `package/`.
+ */
+export function validateTarMembers(members) {
+  const seen = new Set()
+  const files = new Set()
+  for (const member of members) {
+    const path = member.path
+    if (typeof path !== 'string' || path === '') throw new Error('tar member has an empty path')
+    if (path.startsWith('/') || /^[A-Za-z]:/u.test(path)) throw new Error(`tar member has an absolute path: ${path}`)
+    if (path.includes('\\')) throw new Error(`tar member contains a backslash: ${path}`)
+    const segments = path.split('/')
+    if (segments.some(segment => segment === '..' || segment === '.')) {
+      throw new Error(`tar member traverses directories: ${path}`)
+    }
+    if (!(path === 'package' || path.startsWith('package/'))) {
+      throw new Error(`tar member is outside package/: ${path}`)
+    }
+    if (seen.has(path)) throw new Error(`tar member appears more than once: ${path}`)
+    seen.add(path)
+    if (member.type === 'd') continue
+    if (member.type !== '-') throw new Error(`tar member is not a regular file or directory: ${path} (type ${member.type})`)
+    files.add(path.replace(/^package\//u, ''))
+  }
+  return { files, members: members.length }
+}
+
+/**
+ * Validate the manifest STORED IN THE TARBALL: it is the authoritative source
+ * for exports/dependencies, and its identity/files/metadata must match the
+ * working tree that produced it (the working-tree manifest is only the expected
+ * identity for the artifact name/version).
+ */
+export function validatePackedManifest(packed, expected) {
+  if (packed === null || typeof packed !== 'object' || Array.isArray(packed)) {
+    throw new Error('packed package/package.json is not an object')
+  }
+  if (packed.name !== expected.name || packed.version !== expected.version) {
+    throw new Error(`packed manifest identity ${packed.name}@${packed.version} does not match ${expected.name}@${expected.version}`)
+  }
+  if (typeof packed.exports !== 'object' || packed.exports === null || Array.isArray(packed.exports)) {
+    throw new Error('packed manifest has no exports object')
+  }
+  if (packed.dependencies !== undefined
+    && (typeof packed.dependencies !== 'object' || packed.dependencies === null || Array.isArray(packed.dependencies))) {
+    throw new Error('packed manifest dependencies is not an object')
+  }
+  if (!Array.isArray(packed.files) || packed.files.some(entry => typeof entry !== 'string')) {
+    throw new Error('packed manifest has no files whitelist array')
+  }
+  const expectedFiles = Array.isArray(expected.files) ? expected.files : []
+  if (JSON.stringify(packed.files) !== JSON.stringify(expectedFiles)) {
+    throw new Error('packed manifest files whitelist differs from the working tree')
+  }
+  for (const key of ['exports', 'peerDependencies', 'engines', 'dependencies']) {
+    if (JSON.stringify(packed[key] ?? null) !== JSON.stringify(expected[key] ?? null)) {
+      throw new Error(`packed manifest ${key} differs from the working tree`)
+    }
+  }
+  return packed
+}
+
 function verifyArtifactContents({ artifact, consumer, emptyNpmrc, run }) {
   const manifest = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
   const expectedFilename = `${manifest.name}-${manifest.version}.tgz`
@@ -105,8 +187,15 @@ function verifyArtifactContents({ artifact, consumer, emptyNpmrc, run }) {
     throw new Error(`artifact name ${basename(artifact)} does not match ${expectedFilename}`)
   }
 
-  const entries = run('tar', ['-tzf', artifact]).split('\n').filter(Boolean)
-  const files = new Set(entries.filter(entry => !entry.endsWith('/')).map(entry => entry.replace(/^package\//u, '')))
+  // Security validation before any extraction/install: member list, types,
+  // duplicates and paths must all be a pure `package/` file+dir tree.
+  const verbose = run('tar', ['-tvzf', artifact])
+  const members = parseTarVerbose(verbose)
+  const { files } = validateTarMembers(members)
+  const packedManifest = validatePackedManifest(
+    JSON.parse(run('tar', ['-xzOf', artifact, 'package/package.json'])),
+    manifest,
+  )
   const required = new Set([
     'package.json',
     'README.md',
@@ -127,7 +216,7 @@ function verifyArtifactContents({ artifact, consumer, emptyNpmrc, run }) {
   for (const path of required) {
     if (!files.has(path)) throw new Error(`packed artifact is missing ${path}`)
   }
-  for (const [subpath, target] of Object.entries(manifest.exports)) {
+  for (const [subpath, target] of Object.entries(packedManifest.exports)) {
     const targets = typeof target === 'string' ? [target] : Object.values(target)
     for (const value of targets) {
       if (typeof value !== 'string') continue
@@ -139,7 +228,7 @@ function verifyArtifactContents({ artifact, consumer, emptyNpmrc, run }) {
   if (forbidden.length > 0) throw new Error(`packed artifact leaks workspace files: ${forbidden.join(', ')}`)
 
   // Public files must not carry a 0600 mode from a local checkout.
-  const listing = run('tar', ['-tvzf', artifact]).split('\n')
+  const listing = verbose.split('\n')
   for (const path of ['package.json', 'README.md', 'README.zh.md', 'LICENSE', 'lib/client.js']) {
     const line = listing.find(entry => entry.endsWith(` package/${path}`))
     if (line === undefined) throw new Error(`no tar listing for ${path}`)
@@ -157,7 +246,7 @@ function verifyArtifactContents({ artifact, consumer, emptyNpmrc, run }) {
   ], { cwd: consumer })
   const installed = join(consumer, 'node_modules/dsh-charter')
   if (!existsSync(join(installed, 'lib/client.js'))) throw new Error('consumer install is missing the client bundle')
-  for (const dependency of Object.keys(manifest.dependencies ?? {})) {
+  for (const dependency of Object.keys(packedManifest.dependencies ?? {})) {
     if (!existsSync(join(consumer, 'node_modules', dependency, 'package.json'))) {
       throw new Error(`consumer install did not install runtime dependency ${dependency}`)
     }

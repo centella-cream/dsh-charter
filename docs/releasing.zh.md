@@ -47,10 +47,13 @@ npm run smoke:package
 
 `npm run check` 必须通过 typecheck、build、Remote smoke、client smoke 和完整 Vitest；
 `npm run smoke:package` 另外会打包 tarball 并校验必需文件、所有 `exports` 目标、packed `core` import 和 packed
-client bundle（Host/Remote 运行时 import 由工作区 build smoke 覆盖）。发布产物生成后，用 exact-artifact 模式验证
-这批确切字节而不重新打包：`npm run smoke:package -- --artifact dist/dsh-charter-0.1.0-rc.1.tgz --sha256 SHA256SUMS`
-会先按提供的 sums 文件校验 SHA-256，再对同一文件执行 manifest/files/modes/exports、空 consumer 安装、packed
-`core` import 与 client bundle 检查；它绝不 build 或 pack。CI 在推送的元数据 commit 上同时运行两者。
+client bundle（Host/Remote 运行时 import 由工作区 build smoke 覆盖）。CI 在推送的元数据 commit 上运行
+`npm run check` 与**普通模式**的 `npm run smoke:package`；它不运行 exact-artifact 模式。exact-artifact 检查是
+**本地发布门禁**：在构建最终 tarball 之后、打 tag/推送/发布之前，用
+`npm run smoke:package -- --artifact dist/dsh-charter-0.1.0-rc.1.tgz --sha256 SHA256SUMS` 验证这批确切字节而不重新
+打包。它会先按提供的 sums 文件校验 SHA-256、校验每个 tar member 与 packed manifest，再对同一文件执行
+manifest/files/modes/exports、空 consumer 安装、packed `core` import 与 client bundle 检查；绝不 build 或 pack。
+如果希望在 CI 中做 exact-artifact 验证，需要新增一个消费已发布产物的独立 release workflow——当前 CI 不做这件事。
 已记录的真实模型 compaction `PASS`（验证记录 8.4）就是 compaction 韧性声明的验收证据；下面的手工命令保留
 用于在目标 profile 重新跑一次。
 
