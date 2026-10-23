@@ -14,7 +14,7 @@
 | 验证项 | 结果 |
 | --- | --- |
 | TypeScript 严格类型检查（5 个 DSH 版本） | 通过 |
-| Vitest（5 个本地可用版本 × 256 tests） | 通过 |
+| Vitest（5 个本地可用版本 × 260 个测试） | 通过 |
 | Host ESM 构建 + 浏览器单文件 bundle | 通过 |
 | Remote 装饰器/资源 smoke | 通过（0.1.7/0.2.0 按预期无资源声明） |
 | 浏览器 factory bundle 物化与 `apply` smoke | 通过 |
@@ -44,7 +44,7 @@ npm test
 
 - typecheck 通过；
 - build 通过；
-- 19 个测试文件、256 个测试全部通过（来自 `npm test`，即 build 后运行 `vitest run`）；
+- 19 个测试文件、260 个测试全部通过（来自 `npm test`，即 build 后运行 `vitest run`）；
 - `remote-smoke` 断言 `watch,bootstrap,edit`、stream mode 和 Session resource；
 - `client-smoke` 断言单文件 factory bundle、外部依赖白名单、不引用 Node-only `Buffer`、`apply` 注册
   tab/pane/Remote contribution。
@@ -108,13 +108,13 @@ npm run build
 
 | 版本 | typecheck | build | Vitest | remote smoke | client smoke |
 | --- | --- | --- | --- | --- | --- |
-| `0.1.7-rc.2` | 通过 | 通过 | 256/256 | 通过（无 resources 警告） | 通过 |
-| `0.2.0-rc.1` | 通过 | 通过 | 256/256 | 通过（无 resources 警告） | 通过 |
-| `0.2.0-rc.2` | 通过 | 通过 | 256/256 | 通过（无 resources 警告） | 通过 |
-| `0.2.1-rc.1` | 通过 | 通过 | 256/256 | 通过 | 通过 |
-| `0.2.1-rc.2` | 通过 | 通过 | 256/256 | 通过 | 通过 |
+| `0.1.7-rc.2` | 通过 | 通过 | 260/260 | 通过（无 resources 警告） | 通过 |
+| `0.2.0-rc.1` | 通过 | 通过 | 260/260 | 通过（无 resources 警告） | 通过 |
+| `0.2.0-rc.2` | 通过 | 通过 | 260/260 | 通过（无 resources 警告） | 通过 |
+| `0.2.1-rc.1` | 通过 | 通过 | 260/260 | 通过 | 通过 |
+| `0.2.1-rc.2` | 通过 | 通过 | 260/260 | 通过 | 通过 |
 
-最终 `0.1.0-rc.1` 树在 2026-10-22 重新跑过：每个版本均为 19 个测试文件 / 256 个测试，且 build 内含 remote/client
+最终 `0.1.0-rc.1` 树在 2026-10-22 重新跑过：每个版本均为 19 个测试文件 / 260 个测试，且 build 内含 remote/client
 smoke 断言。
 
 这个五版本矩阵是**本地证据**：版本目录和驱动脚本位于被 git 忽略的 `.tmp/`，公开 CI 不会复现它。CI
@@ -268,7 +268,11 @@ UI 的自动草案面板依赖客户端 `useEffect` 和 Remote bootstrap；8.4 �
   payload/attempt/base；成功才完整清理；未知错误留下可审阅/可 replay 的草案；显式 abandon/dismiss 才完整清理并
   推进 generation。测试走真实 controller/store 路径：已提交但响应丢失的 M1 + source 脱离 + replay UNAVAILABLE
   保留 exact request 并锁住所有编辑；重新 attach 后 replay 同 mutationId，Host receipt 只应用一次；确定性
-  conflict 解决并解锁；bootstrap 先流帧后传输错误保持可见可 replay 并重发 exact request。
+  conflict 解决并解锁；bootstrap 先流帧后传输错误保持可见可 replay 并重发 exact request。分类集中化：任何
+  UNAVAILABLE 结果（包括 source 脱离或 ok:false 的 UNAVAILABLE 回复）以及任何传输异常都转为 unknown；
+  attempt 清除审计保证 generation/lifecycle/source 变化只更新与请求 mutationId 匹配的 attempt，绝不含丢凭据。
+  Pane 只有一个 `syncView` effect（store 内 bindLifecycle → ensure bootstrap → reconcileBootstrapView）；
+  `ensureBootstrap` 只负责启动抽取，所有 reactive dismissal/cleanup 都是原子操作，因此 replay 锁不会变得不可见。
 - **Bootstrap lifecycle、清理、预检、replay 与原子状态**：Pane 在同一 effect 内先 bind lifecycle 再
   `ensureBootstrap`；旧 Host 首次收到真实 fingerprint 时，会使在未知 lifecycle 下启动的 extraction 失效并为已
   定义 lifecycle 重新提取；切换 lifecycle 会丢弃旧 extraction，只接受新 lifecycle 的结果。已审阅草案遇到远端
@@ -757,9 +761,9 @@ seq **31825**，位于 compaction seq 31801 与 runtime 快照 seq 31810 之后�
 - 真实模型实测：2026-10-22，运行于 Desktop/Web runtime DSH `0.2.0-rc.2`（`dsh` CLI `0.2.0-rc.2`）。这次
   运行发生在上述完整重启 Desktop **之前**；当时仍在运行的进程加载的是重启前的 Host bundle，因此
   `charter_read` 结果带有 legacy debug 字段。
-- compiled-bundle build commit：`2a084906d43b794db563457b10052a492b14a09d`——通过门禁的源码树，Host ESM 与浏览器 bundle 由它构建。
-  该树的门禁：`npm run check`（typecheck + build + 19 个测试文件 / 256 个测试）、`npm run smoke:package`、本地
-  五版本矩阵（每个版本 19 个文件 / 256 个测试）；另外用 compaction checker 对已记录的真实 transcript 复跑
+- compiled-bundle build commit：`PENDING_BUILD_COMMIT`——通过门禁的源码树，Host ESM 与浏览器 bundle 由它构建。
+  该树的门禁：`npm run check`（typecheck + build + 19 个测试文件 / 260 个测试）、`npm run smoke:package`、本地
+  五版本矩阵（每个版本 19 个文件 / 260 个测试）；另外用 compaction checker 对已记录的真实 transcript 复跑
   （PASS）。
 - archive/evidence-tree commit：build commit 的直接子 commit，只添加本证据记录并刷新 tracked digest。打包的
   `dsh-charter-0.1.0-rc.1.tgz` 同时包含 build commit 构建的 bundle **和**证据树中 package 可见的文档，因此不能

@@ -49,7 +49,7 @@ Initial MVP.
   restart is still required for the new pending-import semantics.
 - Verified against DSH `0.2.1-rc.2` with no code changes required; the existing peer range and compatibility layer
   cover the release candidate.
-- 256 tests across core, host composition, fork, idempotency, quota, prompt boundary, Remote stream, history
+- 260 tests across core, host composition, fork, idempotency, quota, prompt boundary, Remote stream, history
   extraction, client reordering, compatibility, and decorator compatibility. Verified on DSH `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`,
   `0.2.1-rc.1`, and `0.2.1-rc.2`. The actual Web UI was exercised on `0.2.0-rc.2`: tab order, Chinese/English
   switching, objective and invariant editing, preview, Apply, and reload persistence.
@@ -344,6 +344,13 @@ Initial MVP.
   `package/package.json` from the parsed archive before installing, and cover it with JS-built GNU/BSD/PAX fixture
   archives — Ubuntu GNU tar/`LC_ALL` differences no longer affect parsing, and both normal and exact-artifact smoke
   pass on the real final tarball.
+- Centralize unknown-outcome classification for edit and bootstrap replay: every UNAVAILABLE result (including a
+  detached source or an `ok:false` UNAVAILABLE reply) and every transport throw become `unknown`; the
+  attempt-clearing audit guarantees generation/lifecycle/source changes preserve the exact mutationId/base/ops and
+  that views can no longer drop a replayable attempt. The Pane now has one `syncView` effect backed by one store
+  method (bind lifecycle → ensure bootstrap → reconcile reviewed draft atomically), so a bootstrap Apply in flight
+  or replay-pending can never end invisible; `ensureBootstrap` only starts extraction and all dismissal/cleanup is
+  owned by the atomic reconcile path (Retry/Abandon stay visible; ordinary dismiss stays locked while unknown).
 - Release prerequisites/known limitations documented accurately: public repo + remote, restored metadata, verified
   private security reporting, public Node 22.19/24 CI (check + normal smoke only), one final tarball build,
   exact-artifact smoke + SHA + fresh-profile UI check on that same file, final annotated tag, then GitHub Release

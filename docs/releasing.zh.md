@@ -18,6 +18,10 @@ git remote -v            # 应为空，或尚不包含该仓库
 
 如需内部追溯，可使用只在本地存在的标记 tag（例如 `v0.1.0-rc.1-build`）；它绝不推送，也不是发布 tag。
 
+**维护者 GitHub 账号候选：** `https://github.com/centella-cream`（仅记录在此）。目前没有仓库、remote、
+`package.json` 的 `repository`/`homepage`/`bugs` 元数据、push 或 publish；它们会保持缺失，直到下面步骤真正创建
+公开仓库。
+
 先准备仓库与公开门禁：
 
 1. 创建公开仓库（owner/name 由维护者确定）并添加为 `origin`；

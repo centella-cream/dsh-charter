@@ -606,17 +606,12 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   }, [release])
 
   useEffect(() => {
-    if (view === null) return
-    // Lifecycle first, extraction second: a bind can invalidate an extraction
-    // started under a different (or unknown) lifecycle, after which this effect
-    // starts the extraction for the current lifecycle.
-    draft.bindLifecycle(view.lifecycle)
-    draft.ensureBootstrap(view, state.status === 'ready')
+    // ONE atomic view reaction: bind lifecycle, start extraction when idle, and
+    // reconcile a reviewed draft without ever half-cleaning in-flight/unknown
+    // work. Keeping this in the store means the Pane cannot create invisible
+    // replay locks with a second effect.
+    if (view !== null) draft.syncView(view, state.status === 'ready')
   }, [view, state.status, draft])
-
-  useEffect(() => {
-    if (view !== null && bootstrapPhase === 'draft') draft.markBootstrapStale(view)
-  }, [view, bootstrapPhase, draft])
 
   useEffect(() => {
     if (editor === null) triggerRef.current?.focus?.()
@@ -956,7 +951,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
             >
               {section === 'context' ? t('footer.hidePreview') : t('footer.preview')}
             </ActionButton>
-            {draftOpen && ops.length === 0
+            {(draftOpen || bootstrapReplay) && ops.length === 0
               ? (
                   <>
                     <ActionButton
@@ -1536,7 +1531,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                   </div>
                   <StatusTag tone="info">{t('preview.bytesLabel', { bytes: formatBytes(t, previewBytes) })}</StatusTag>
                 </div>
-                {draftOpen && ops.length === 0 && (
+                {(draftOpen || bootstrapReplay) && ops.length === 0 && (
                   <div className="charter-notice" role="note">{t('footer.draftStatus')}</div>
                 )}
                 <pre>{preview || t('preview.empty')}</pre>

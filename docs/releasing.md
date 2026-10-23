@@ -21,6 +21,10 @@ git remote -v            # must be empty or must not contain this repository yet
 A local-only marker such as `v0.1.0-rc.1-build` may be used for internal traceability; it is never pushed and is
 not the release tag.
 
+**Maintainer GitHub account candidate:** `https://github.com/centella-cream` (recorded here only). No repository,
+remote, `package.json` `repository`/`homepage`/`bugs` metadata, push, or publish exists yet; those stay absent until
+an actual public repository is created in the step below.
+
 Prepare the repository and public gates first:
 
 1. create the public repository (owner/name agreed by the maintainer) and add it as `origin`;

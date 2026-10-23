@@ -337,15 +337,17 @@ describe('per-Session draft ownership', () => {
     release!({ ok: true, replayed: false, committedRevision: 1, ids: {}, view: view(1) })
     await applied
     // Even with the same source object and draft ops, a result from the old
-    // connection epoch cannot clear the current draft.
-    expect(draft.getSnapshot().ops).toHaveLength(1)
-    expect(draft.getSnapshot().saving).toBe(true)
-    draft.invalidateSource()
+    // connection epoch is not accepted: the outcome becomes unknown and the
+    // exact attempt/ops stay replayable.
     expect(draft.getSnapshot()).toMatchObject({
       saving: false,
       ops: [expect.objectContaining({ type: 'item.add' })],
       feedback: { kind: 'connection' },
+      attempt: expect.objectContaining({ status: 'unknown' }),
     })
+    expect(editReplayPending(draft.getSnapshot())).toBe(true)
+    expect(draft.abandonUnknown()).toBe(true)
+    expect(draft.getSnapshot().attempt).toBeNull()
   })
 
   it('ignores an Apply result after the lifecycle was reset', async () => {
@@ -360,15 +362,23 @@ describe('per-Session draft ownership', () => {
     })
     const applied = draft.applyDraft(view(0))
     await new Promise(resolve => setTimeout(resolve, 0))
+    // A lifecycle frame must not drop an in-flight attempt: the request stays
+    // replayable/abandonable instead of becoming an invisible lock.
     draft.bindLifecycle('life-b')
     release!({ ok: true, replayed: false, committedRevision: 1, ids: {}, view: view(1) })
     await applied
     expect(draft.getSnapshot()).toMatchObject({
       lifecycle: 'life-b',
       saving: false,
-      ops: [],
-      feedback: null,
+      ops: [expect.objectContaining({ type: 'item.add' })],
+      feedback: { kind: 'connection' },
+      attempt: expect.objectContaining({ status: 'unknown' }),
     })
+    // Explicit abandon clears the attempt; a later lifecycle change then resets
+    // the remaining dirty draft normally.
+    expect(draft.abandonUnknown()).toBe(true)
+    draft.bindLifecycle('life-c')
+    expect(draft.getSnapshot()).toMatchObject({ lifecycle: 'life-c', ops: [], attempt: null })
   })
 
   it('ignores a bootstrap Apply result after its source was replaced', async () => {
@@ -1370,7 +1380,7 @@ describe('per-Session draft ownership', () => {
     await new Promise(resolve => setTimeout(resolve, 0))
     // A stream frame arrives first: no half-clean, only needs-stale.
     const nonEmpty = view(0, { items: [committedInvariant({ id: 'external', text: 'External', order: 1 })] })
-    draft.ensureBootstrap(nonEmpty, true)
+    draft.syncView(nonEmpty, true)
     expect(draft.getSnapshot()).toMatchObject({
       bootstrapPhase: 'draft',
       bootstrapSaving: true,
@@ -1400,6 +1410,127 @@ describe('per-Session draft ownership', () => {
     expect(draft.abandonUnknown()).toBe(false)
     draft.bindLifecycle('life-abandon-idle')
     expect(draft.abandonUnknown()).toBe(false)
+  })
+
+  it('resolves an unknown attempt only on a deterministic business error', async () => {
+    const requests: CharterEditRequest[] = []
+    let call = 0
+    const fake = source({
+      edit: async request => {
+        requests.push(request)
+        call += 1
+        if (call === 1) throw new Error('lost')
+        if (call === 2) return { ok: false, code: 'UNAVAILABLE', message: 'source not attached' }
+        return { ok: false, code: 'QUOTA_EXCEEDED', message: 'too large' }
+      },
+    })
+    const draft = new CharterDraft(sessionId, () => fake)
+    draft.bindLifecycle('life-deterministic')
+    draft.stage(view(1), {
+      type: 'item.add',
+      item: { clientRef: 'm1', kind: 'invariant', text: 'Once', order: 0 },
+    })
+    await draft.applyDraft(view(1))
+    expect(editReplayPending(draft.getSnapshot())).toBe(true)
+    // UNAVAILABLE replays keep the attempt and lock edits.
+    await draft.applyDraft(view(1))
+    expect(draft.getSnapshot().attempt).toMatchObject({ status: 'unknown' })
+    draft.stage(view(1), {
+      type: 'item.add',
+      item: { clientRef: 'm2', kind: 'invariant', text: 'blocked', order: 1 },
+    })
+    expect(draft.getSnapshot().ops).toHaveLength(1)
+    // A deterministic business error resolves the attempt and unlocks.
+    await draft.applyDraft(view(1))
+    expect(draft.getSnapshot().attempt).toBeNull()
+    expect(editReplayPending(draft.getSnapshot())).toBe(false)
+    expect(rebaseAvailable(draft.getSnapshot())).toBe(true)
+    expect(draft.getSnapshot().feedback).toMatchObject({ kind: 'error', code: 'QUOTA_EXCEEDED' })
+    expect(requests).toHaveLength(3)
+    expect(new Set(requests.map(request => request.mutationId)).size).toBe(1)
+  })
+
+  it('keeps a bootstrap attempt through an UNAVAILABLE source and replays it exactly', async () => {
+    const requests: CharterEditRequest[] = []
+    let call = 0
+    const fake = source({
+      edit: async request => {
+        requests.push(request)
+        call += 1
+        if (call === 1) throw new Error('lost after commit')
+        if (call === 2) return { ok: false, code: 'UNAVAILABLE', message: 'source detached' }
+        return { ok: true, replayed: true, committedRevision: 2, ids: {}, view: view(2) }
+      },
+      snapshot: () => ({ status: 'ready', view: view(0), error: null }),
+      bootstrap: async () => ({
+        available: true,
+        proposal: {
+          objective: 'Reviewed objective',
+          invariants: ['Keep it'],
+          deliverables: [],
+          source: { summarySeq: 1, at: 1 },
+        },
+      }),
+    })
+    const draft = new CharterDraft(sessionId, () => fake)
+    draft.bindLifecycle('life-bootstrap-unavailable')
+    draft.ensureBootstrap(view(0), true)
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(draft.getSnapshot().bootstrapPhase).toBe('draft')
+    await draft.applyBootstrap(view(0))
+    expect(bootstrapReplayPending(draft.getSnapshot())).toBe(true)
+    const original = draft.getSnapshot().attempt
+    // Source-detached/UNAVAILABLE replay keeps payload + exact credentials.
+    await draft.applyBootstrap(view(0))
+    expect(bootstrapReplayPending(draft.getSnapshot())).toBe(true)
+    expect(draft.getSnapshot().attempt?.request.mutationId).toBe(original?.request.mutationId)
+    expect(draft.getSnapshot().bootstrap).not.toBeNull()
+    expect(draft.getSnapshot().bootstrapBaseRevision).toBe(0)
+    // Reattach and replay succeeds exactly once with the same request.
+    await draft.applyBootstrap(view(0))
+    expect(requests).toHaveLength(3)
+    expect(requests[2]).toEqual(requests[0])
+    expect(new Set(requests.map(request => request.mutationId)).size).toBe(1)
+    expect(draft.getSnapshot().bootstrapPhase).toBe('dismissed')
+    expect(draft.getSnapshot().attempt).toBeNull()
+    expect(draft.isEmpty).toBe(true)
+  })
+
+  it('keeps the bootstrap draft visible through a stream frame during an in-flight Apply', async () => {
+    const fake = source({
+      edit: () => new Promise<never>(() => undefined),
+      snapshot: () => ({ status: 'ready', view: view(0), error: null }),
+      bootstrap: async () => ({
+        available: true,
+        proposal: {
+          objective: 'Reviewed objective',
+          invariants: ['Keep it'],
+          deliverables: [],
+          source: { summarySeq: 1, at: 1 },
+        },
+      }),
+    })
+    const draft = new CharterDraft(sessionId, () => fake)
+    draft.bindLifecycle('life-sync-view')
+    draft.ensureBootstrap(view(0), true)
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(draft.getSnapshot().bootstrapPhase).toBe('draft')
+
+    void draft.applyBootstrap(view(0))
+    await new Promise(resolve => setTimeout(resolve, 0))
+    const nonEmpty = view(0, { items: [committedInvariant({ id: 'external', text: 'External', order: 1 })] })
+    draft.syncView(nonEmpty, true)
+    // Atomic: phase stays draft, payload/base/attempt remain visible, only the
+    // needs-stale marker is set — never an invisible dismissed/null state.
+    expect(draft.getSnapshot()).toMatchObject({
+      bootstrapPhase: 'draft',
+      bootstrapBaseRevision: 0,
+      bootstrapNeedsStale: true,
+      bootstrapSaving: true,
+    })
+    expect(draft.getSnapshot().bootstrap).not.toBeNull()
+    expect(draft.getSnapshot().attempt).not.toBeNull()
+    draft.abandonUnknown()
   })
 
   it('does not steal the current section when a draft arrives while editing', async () => {
