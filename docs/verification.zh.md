@@ -780,8 +780,8 @@ seq **31825**，位于 compaction seq 31801 与 runtime 快照 seq 31810 之后�
 
 ### 8.5 `0.1.0-rc.2` 候选证据（2026-10-24）
 
-- compiled-bundle build commit：`993623de57b413bf313313bd81e4de952ef70daf`；记录随发布产物 digest 的 evidence-tree commit 是它的直接
-  子 commit。
+- compiled-bundle build commit：`993623de57b413bf313313bd81e4de952ef70daf`；产物 digest 记录在 tracked 仓库根部
+  `SHA256SUMS`（npm `files` 白名单之外）与 `dist/SHA256SUMS`。
 - `npm test`：20 个测试文件 / 263 个测试通过；`npm run check` 通过；普通 `npm run smoke:package` 通过。
 - `zod` 精确为 `4.6.7`（直接依赖；dev 树通过 `overrides` 去重为单一 zod，使 typecheck/audit 干净）；
   `npm audit --omit=dev` 为 0 漏洞，去重后的完整 `npm audit` 也为 0。

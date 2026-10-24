@@ -867,8 +867,8 @@ Evidence timeline for this pre-release:
 
 ### 8.5 `0.1.0-rc.2` candidate evidence (2026-10-24)
 
-- Compiled-bundle build commit: `993623de57b413bf313313bd81e4de952ef70daf`; the evidence-tree commit that records the shipped digest is
-  its direct child.
+- Compiled-bundle build commit: `993623de57b413bf313313bd81e4de952ef70daf`; the artifact digest is recorded in the
+  tracked repository-root `SHA256SUMS` (outside the npm `files` whitelist) and `dist/SHA256SUMS`.
 - `npm test`: 20 test files / 263 tests pass; `npm run check` passes; normal `npm run smoke:package` passes.
 - `zod` is exactly `4.6.7` (direct dependency; the dev tree dedupes to one zod via `overrides` so typecheck/audit are
   clean); `npm audit --omit=dev` reports 0 vulnerabilities and the full `npm audit` also reports 0 with the deduped
