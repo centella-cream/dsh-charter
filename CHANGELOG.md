@@ -5,6 +5,41 @@ English | [中文](CHANGELOG.zh.md)
 All notable changes to `dsh-charter` are recorded here. The project follows a pre-1.0 version line while the
 DSH plugin ABI is still moving.
 
+## 0.1.0-rc.2 — 2026-10-24
+
+Small patch candidate: a Pane hook-order crash fix, a security upgrade, and release-channel/doc corrections.
+
+### Fixed
+
+- `CharterPane` no longer crashes with "Rendered more hooks than during the previous render" when a Session
+  transitions connecting/null → ready or error/null → retry → ready: the replay-state predicates
+  (`editReplay`/`bootstrapReplay`/`unknownReplay`) and the `confirmAbandon` reset effect now run above every early
+  return, so hook order is invariant across connection states.
+- Real `react-test-renderer` regression tests (three cases: connecting/null → ready, error/null → retry → ready,
+  ready → revision update) exercise the actual Pane component; the pre-fix code fails them with the exact
+  "Rendered more hooks than during the previous render" error.
+
+### Security
+
+- Upgrade `zod` from `4.4.3` to `4.6.7` exactly (GHSA memory-exhaustion advisory for oversized constrained
+  collections). `npm audit --omit=dev` reports 0 vulnerabilities and `npm ls zod` shows the production dependency
+  at 4.6.7; because tsdown inlines Zod into the browser bundle, the full build/wire/client-bundle/package smoke
+  and the five-version compatibility matrix are re-run against the upgraded build.
+
+### Tests
+
+- 20 test files / 263 tests (`npm test`), including the three real `react-test-renderer` Pane regression tests;
+  the repaired hook placement is required for two of them.
+
+### Changed
+
+- Version and current-release documentation move to `0.1.0-rc.2`; historical `0.1.0-rc.1` evidence and CHANGELOG
+  history are preserved.
+- Channel policy is now explicit and deliberate: rc.2 is published under the `next` dist-tag, and we also point
+  `latest` at the newest RC until a stable release exists. This is our current policy (npm keeps a `latest` tag and
+  we choose where it points), not an npm requirement or a claim about npm's behavior.
+- Added release notes for rc.2 at `docs/release-notes/0.1.0-rc.2.md` (outside the npm `files` whitelist).
+
 ## 0.1.0-rc.1 — 2026-10-22
 
 Initial MVP.
@@ -49,7 +84,7 @@ Initial MVP.
   restart is still required for the new pending-import semantics.
 - Verified against DSH `0.2.1-rc.2` with no code changes required; the existing peer range and compatibility layer
   cover the release candidate.
-- 260 tests across core, host composition, fork, idempotency, quota, prompt boundary, Remote stream, history
+- 263 tests across core, host composition, fork, idempotency, quota, prompt boundary, Remote stream, history
   extraction, client reordering, compatibility, and decorator compatibility. Verified on DSH `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`,
   `0.2.1-rc.1`, and `0.2.1-rc.2`. The actual Web UI was exercised on `0.2.0-rc.2`: tab order, Chinese/English
   switching, objective and invariant editing, preview, Apply, and reload persistence.

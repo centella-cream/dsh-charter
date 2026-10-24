@@ -1,6 +1,6 @@
 {
   "name": "dsh-charter",
-  "version": "0.1.0-rc.1",
+  "version": "0.1.0-rc.2",
   "description": "A durable, user-owned session charter for DeepSeek Harness, designed to survive context compaction.",
   "license": "MIT",
   "type": "module",
@@ -118,7 +118,10 @@
   },
   "dependencies": {
     "@deepseek-ai/schemastery": "~3.18.5",
-    "zod": "4.4.3"
+    "zod": "4.6.7"
+  },
+  "overrides": {
+    "zod": "4.6.7"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.4",
@@ -156,7 +159,11 @@
     "@tsdown/css": "^0.22.2",
     "@types/node": "^22.20.0",
     "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.7",
+    "@types/react-test-renderer": "^18.3.1",
     "react": "^18.2.0",
+    "react-dom": "^18.3.1",
+    "react-test-renderer": "^18.3.1",
     "tsdown": "0.22.2",
     "typescript": "~5.9.2",
     "vitest": "4.1.12"

@@ -14,7 +14,7 @@
 | 验证项 | 结果 |
 | --- | --- |
 | TypeScript 严格类型检查（5 个 DSH 版本） | 通过 |
-| Vitest（5 个本地可用版本 × 260 个测试） | 通过 |
+| Vitest（5 个本地可用版本 × 263 个测试） | 通过 |
 | Host ESM 构建 + 浏览器单文件 bundle | 通过 |
 | Remote 装饰器/资源 smoke | 通过（0.1.7/0.2.0 按预期无资源声明） |
 | 浏览器 factory bundle 物化与 `apply` smoke | 通过 |
@@ -25,6 +25,7 @@
 | 从压缩摘要生成历史草案 | 通过：core 解析器（含真实 bullet-only 摘要格式）+ composition 真实 Session 事件；见 4.4 |
 | 单记录损坏隔离 | 对**内部** schema 不合法记录通过（只禁用其 Session 并保留原文）；外层 JSON 不可读是已记录的残留风险，不在此保证内；见 4.5 |
 | 预算收紧与收敛 | 通过：调低预算后显示 `overBudget`、停止注入、缩小编辑可收敛；不可用配置被 clamp；见 4.5 |
+| Pane 跨连接状态渲染 | 通过：replay 谓词与 `confirmAbandon` 重置 effect 位于所有 early return 之前，connecting/null → ready 与 error/null → retry → ready 的 hook 顺序不变；真实 `react-test-renderer` 测试精确复现修复前的 "Rendered more hooks than during the previous render" 并在修复后通过；见第 2 节 |
 | Session 级客户端草稿 | 通过：edit 与 bootstrap 共用**一个**持久 attempt 类型 `{request, sourceGeneration, status: in-flight|unknown}`；传输失败与任何 UNAVAILABLE（含 source 未 attach/remote 不可用）转为 unknown 且绝不清除 mutationId/baseRevision/ops，只有成功或确定性业务码才解决；unknown 期间所有 request-changing 操作（stage/unstage/编辑器/objective/候选/选择/rebase/普通 Discard/Dismiss）都 no-op，Pane 在冲突/准入失败时仍启用 **Retry last Apply**，并提供单独的确认式 **Abandon unknown request**（只有它能清除 attempt）；流帧不会 half-clean（needs-stale + 可见可 replay payload，显式 abandon/dismiss 才完整清理）；attempt 未解决或编辑器/历史草案占用 baseline 时 Rebase 被阻止；编辑器 revision baseline 冻结；历史草案按提取 revision 门禁；原子 lifecycle-bind-then-extract；共享 `draftAdmission` 与 bootstrap store 预检；单一投影显示顺序；lifecycle fingerprint 转换；bootstrap 不抢占 section；见 4.5 |
 | 客户端 source 恢复与 retry | 通过：重试收到相同 revision 时恢复 `ready` 并清除 watchdog；终止的 snapshot stream 被 dispose，Retry 会重建它（首个快照前后均有覆盖）；见 4.5 |
 | 运行期 schema 重新校验 | 通过：mount 后把记录改成非法 schema，只有该 Session 不可用且原始记录保留；见 4.6 |
@@ -44,7 +45,7 @@ npm test
 
 - typecheck 通过；
 - build 通过；
-- 19 个测试文件、260 个测试全部通过（来自 `npm test`，即 build 后运行 `vitest run`）；
+- 20 个测试文件、263 个测试全部通过（来自 `npm test`，即 build 后运行 `vitest run`）；
 - `remote-smoke` 断言 `watch,bootstrap,edit`、stream mode 和 Session resource；
 - `client-smoke` 断言单文件 factory bundle、外部依赖白名单、不引用 Node-only `Buffer`、`apply` 注册
   tab/pane/Remote contribution。
@@ -79,6 +80,7 @@ CI（`.github/workflows/ci.yml`）对 Node `22.19.0` 与 Node `24` 运行 `npm r
 | `tests/client/store.spec.ts` | 提交后立即接受 view、忽略陈旧/重复 revision、opening snapshot 单调、权威不可用降级、attach 重试、相同快照的 retry 恢复与 watchdog 清除、终止 stream 在 Retry 时重建（首快照前后）、终止失败先推进 connection epoch 且迟到 Apply 成功被拒绝、保留 mutation id 的 retry、真实 controller 下的未知结果 edit 恢复（已提交但丢失的 M1 → source 脱离 → UNAVAILABLE 保留 exact request 并锁住编辑 → 重新 attach 后 replay 同 mutationId、最终只有一个 committed item）、待生效 attach 在 stream 启动前被取消、共享 source lease/引用计数、旧 lease no-op、忽略其他 Session 的 stream 帧 |
 | `tests/client/bootstrap-plan.spec.ts` | 溢出候选仍在一个 plan 中；O(1) 增量字节核算，覆盖 3,000 全 active、混合、2,000 CRLF/NFD 用例；base objective 已超预算时返回全 pending 计划且不触发 quadratic fallback（`usedExactFallback`/`exactRenders` 诊断）；逐候选结果；bootstrap 结果分类（draft/discard/stale/unavailable） |
 | `tests/client/draft.spec.ts` / `draft-store.spec.ts` | Session 绑定的请求构造（A 的 ops 不会为 B 构造请求）；binding 卸载/重挂载后草稿存活；统一的 `{request, sourceGeneration, status}` attempt 生命周期：传输/UNAVAILABLE 转为 unknown 且不清 mutationId/baseRevision/ops、所有 request-changing 操作被锁、replay 先于 admission、确定性业务错误解决并解锁、显式 abandon 是唯一清除路径（unknown 期间普通 dismiss/discard 被锁）、bootstrap 先流帧后传输错误保留可见可 replay payload 并重发 exact request（成功反馈来自 retained request）；attempt 未解决时 Rebase 被阻止；编辑器打开时拒绝冲突 rebase；冻结的编辑器 revision baseline；历史草案按提取 revision 门禁；原子 lifecycle-bind-then-extract；共享 `draftAdmission`；归一化准入上限；unstage 后的 order 分配；lifecycle null→fingerprint 转换；陈旧异步结果不能覆盖新的 draft/source/lifecycle；bootstrap 不抢占 section |
+| `tests/client/pane-hooks.spec.tsx` | 真实 `react-test-renderer` 渲染导出的 `CharterPane`（无 DOM/testing-library）：connecting + null view → ready 快照、error + null view → retry → ready、ready → revision 更新；修复前的 hook 位置在前两种场景以 React 的 "Rendered more hooks than during the previous render" 失败，修复后全部渲染通过 |
 | `tests/client/preview.spec.ts` | 投影后的 draft 行（add/edit/accept/progress/supersede/purge）；purge 预览会解除后继的 supersedes 关联；committed fixture 下两种 purge 顺序都保留直接暂存后继的 Unstage，只有纯派生行才隐藏；渲染器一致性与 pending 排除；pending/active 行按单一投影顺序显示（接受后保持顺序）；按 order（而非 Host id）排序渲染；prompt 预算的 Apply 准入（缩短、同字节、增长、预算内四种渲染） |
 | `tests/verify/compaction-checks.spec.ts` | compaction checker fixture：严格生命周期状态机（合法序列、失败 end、end-before-start、summary-before-start、同 id retry）；现代 `charter_read` producing-call 认证（合法；identity 字段缺失 toolCallId/turn/step 或 call 侧缺失、不匹配、source seq 非有限/≥result、歧义/非 charter call）与 legacy 重复 callId 配对；严格 arguments（缺省/普通对象/standing 有效，其他 malformed 形状全部拒绝）；活动门禁（无活动 = WAIT，执行但无 runtime 快照 = FAIL）；成功证据之后所有后续 attempt（landed-failed 后跟 unlanded 仍 FAIL、open = WAIT、未 landing 保留 PASS、后续成功需新证据）；checkpoint 按 attempt seq 区间关联（同 id retry 不继承旧 checkpoint）；WAIT 内部一致（`evaluated=false`、failures 空、无 FAIL line，仅 active evidence 可 FAIL）；system prompt 污染；commit 落在 start/end 之间需重新 compaction；断言 exit code/JSON verdict/文本/warnings；紧凑 standing 投影一致 |
 | `tests/verify/transcript-parser.spec.ts` | CLI fixture：末尾 torn line（append 未完成）被忽略；中间损坏行与完整的末尾损坏行都会带行号失败，绝不 PASS；非法 event envelope（null/数字/数组/缺字段/重复或倒序 seq/缺 data/time）同样带行号且无 Node stack |
@@ -775,6 +777,19 @@ seq **31825**，位于 compaction seq 31801 与 runtime 快照 seq 31810 之后�
   创建（见 docs/releasing.zh.md）。
 - 剩余手工检查：重启 Desktop 后重新打开会话契约 tab 一次，确认当前 bundle/tool ABI——这次重启后复核**不在**
   上述实测记录中，且只在发布稳定 `latest` 前必需，不影响以 `next` 发布本预发布。
+
+### 8.5 `0.1.0-rc.2` 候选证据（2026-10-24）
+
+- compiled-bundle build commit：`PENDING_BUILD_COMMIT`；记录随发布产物 digest 的 evidence-tree commit 是它的直接
+  子 commit。
+- `npm test`：20 个测试文件 / 263 个测试通过；`npm run check` 通过；普通 `npm run smoke:package` 通过。
+- `zod` 精确为 `4.6.7`（直接依赖；dev 树通过 `overrides` 去重为单一 zod，使 typecheck/audit 干净）；
+  `npm audit --omit=dev` 为 0 漏洞，去重后的完整 `npm audit` 也为 0。
+- 最终产物：`dist/dsh-charter-0.1.0-rc.2.tgz`；其 SHA-256 记录在 tracked 仓库根部 `SHA256SUMS` 与
+  `dist/SHA256SUMS`（根部文件位于 npm `files` 白名单之外，因此 digest 不会改变打包字节）。exact-artifact smoke
+  （`--artifact ... --sha256 SHA256SUMS`）在不重建的前提下对这些字节通过；升级后的构建通过五版本 DSH 矩阵；
+  已记录的真实模型 compaction transcript 复跑 PASS。
+- 本次准备阶段不创建 tag、不发布；release tag 与 npm 渠道移动只在门禁通过后的发布执行中发生。
 
 ## 9. 未支持的验证项与已接受的非阻塞限制
 
