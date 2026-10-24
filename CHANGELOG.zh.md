@@ -4,6 +4,38 @@
 
 记录 `dsh-charter` 的重要变更。DSH 插件 ABI 仍在演进，项目保持 pre-1.0 版本线。
 
+## 0.1.0-rc.2 — 2026-10-24
+
+小型补丁候选：Pane hook 顺序崩溃修复、安全升级与发布渠道/文档修正。
+
+### 修复
+
+- `CharterPane` 在 Session 从 connecting/null → ready 或 error/null → retry → ready 过渡时不再崩溃
+  （"Rendered more hooks than during the previous render"）：replay 状态谓词
+  （`editReplay`/`bootstrapReplay`/`unknownReplay`）与 `confirmAbandon` 重置 effect 已移到所有 early return
+  之前，hook 顺序在不同连接状态下保持不变。
+- 新增真实 `react-test-renderer` 回归测试（connecting/null → ready、error/null → retry → ready、
+  ready → revision 更新三种场景）渲染真实 Pane；修复前代码会以精确的
+  "Rendered more hooks than during the previous render" 失败。
+
+### 安全
+
+- `zod` 从 `4.4.3` 精确升级到 `4.6.7`（GHSA 超大 constrained collection 内存耗尽 advisory）。
+  `npm audit --omit=dev` 为 0 漏洞，`npm ls zod` 显示生产依赖为 4.6.7；由于 tsdown 会把 Zod 内联进浏览器
+  bundle，完整 build/wire/client-bundle/package smoke 与五版本兼容矩阵都针对升级后的构建重跑。
+
+### 测试
+
+- 20 个测试文件 / 263 个测试（`npm test`），包含 3 个真实 `react-test-renderer` Pane 回归测试；其中两个测试
+  依赖修复后的 hook 位置。
+
+### 变更
+
+- 版本与当前发布文档迁移到 `0.1.0-rc.2`；保留 `0.1.0-rc.1` 的历史证据与 CHANGELOG 记录。
+- 渠道策略显式化且是有意选择：rc.2 发布到 `next` dist-tag，同时在稳定版出现前把 `latest` 也指向最新 RC。
+  这是当前策略（npm 会保留一个 `latest` tag，我们决定它指向哪里），不是 npm 的强制要求，也不声称是 npm 行为。
+- 新增 rc.2 发布说明 `docs/release-notes/0.1.0-rc.2.md`（位于 npm `files` 白名单之外）。
+
 ## 0.1.0-rc.1 — 2026-10-22
 
 首个 MVP。
@@ -39,7 +71,7 @@
 - 新浏览器 client 可以兼容仍在运行旧 Host 的 view snapshot（旧 Host 仍带 active 条数字段），避免 host/client
   revision 不一致时「会话契约」白屏；新的 pending 导入语义仍需要完整重启 Host 才生效。
 - 已针对 DSH `0.2.1-rc.2` 验证，无需代码改动；现有 peer range 和兼容层已覆盖该 release candidate。
-- 260 个测试，覆盖内核、Host 组合、fork、幂等、配额、prompt 边界、Remote stream、历史抽取、客户端 tab
+- 263 个测试，覆盖内核、Host 组合、fork、幂等、配额、prompt 边界、Remote stream、历史抽取、客户端 tab
   排序和装饰器兼容。已在 DSH `0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-rc.1`、`0.2.1-rc.2` 上验证。
   真实 Web UI 在 `0.2.0-rc.2` 上验证了标签顺序、中英文切换、目标/约束编辑、预览、Apply 和刷新持久化。
 

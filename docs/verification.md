@@ -15,7 +15,7 @@ HTML live under `.tmp/` and are excluded from the published package.
 | Item | Result |
 | --- | --- |
 | Strict TypeScript check (5 DSH versions) | Pass |
-| Vitest (5 locally available versions × 260 tests) | Pass |
+| Vitest (5 locally available versions × 263 tests) | Pass |
 | Host ESM build + browser single-file bundle | Pass |
 | Remote decorator/resource smoke | Pass (0.1.7/0.2.0 have no resource declaration, as expected) |
 | Browser factory-bundle materialization and `apply` smoke | Pass |
@@ -26,6 +26,7 @@ HTML live under `.tmp/` and are excluded from the published package.
 | History draft from a compaction summary | Pass: core parser (including real bullet-only summary format) + composition test on a real Session event; section 4.4 |
 | Per-record storage isolation | Pass for a schema-invalid **inner** record (disables only its own Session, preserved); unreadable outer JSON is a documented residual risk, not covered; section 4.5 |
 | Budget degradation and convergence | Pass: lowered budgets become `overBudget`, injection stops, shrinking edits converge; non-viable config is clamped; section 4.5 |
+| Pane rendering across connection states | Pass: replay predicates and the `confirmAbandon` reset effect run above every early return, so hook order is invariant across connecting/null → ready and error/null → retry → ready; real `react-test-renderer` tests reproduce exactly the pre-fix "Rendered more hooks than during the previous render" failure and pass on the fix; section 2 |
 | Session-owned client drafts | Pass: draft survival across bindings; ONE persisted attempt type `{request, sourceGeneration, status: in-flight|unknown}` shared by edit and bootstrap, where transport failures and every UNAVAILABLE (including source-not-attached/remote unavailable) become `unknown` without clearing mutationId/baseRevision/ops and only success or a deterministic business code resolves; while unknown ALL request-changing actions (edit/lock + objective/candidate/selection edits + rebase + ordinary discard/dismiss) are no-ops, the Pane enables **Retry last Apply** despite conflict/fresh admission and offers a separate confirmed **Abandon unknown request** that alone clears the attempt; stream frames never half-clean (needs-stale marker + visible replayable payload, explicit abandon/dismiss is the only full cleanup); Rebase blocked while any attempt is unresolved or an editor/history draft owns another baseline; frozen editor revision baseline; extraction-revision-gated history drafts; atomic lifecycle-bind-then-extract; shared `draftAdmission` and bootstrap store preflight; single projected display order; lifecycle-fingerprint transition; bootstrap section ownership; section 4.5 |
 | Client source recovery and retry | Pass: a retry that delivers the identical revision recovers `ready` and clears the watchdog; a terminal snapshot stream advances the connection epoch before publishing its error, so in-flight drafts are invalidated (ops/mutation-id preserved) and a late success cannot clear them; Retry recreates the stream (before/after the first snapshot); section 4.5 |
 | Runtime schema revalidation | Pass: a record mutated to an invalid schema after mount isolates only its Session and is preserved; section 4.6 |
@@ -45,7 +46,7 @@ Results:
 
 - typecheck passes;
 - build passes;
-- 19 test files, 260 tests pass (from `npm test`, which builds and then runs `vitest run`);
+- 20 test files, 263 tests pass (from `npm test`, which builds and then runs `vitest run`);
 - `remote-smoke` asserts `watch,bootstrap,edit`, stream mode, and Session resource;
 - `client-smoke` asserts the single-file factory bundle, external-dependency allowlist, no Node-only `Buffer`
   reference, and `apply` registering the tab/pane/Remote contribution;
@@ -84,6 +85,7 @@ Key test files:
 | `tests/client/store.spec.ts` | accept committed view immediately, ignore stale/duplicate revisions, monotonic opening snapshot, authoritative availability demotion, attach retry, identical-snapshot retry recovery and watchdog clearing, terminal stream recreation on Retry (before/after first snapshot), terminal-failure connection-epoch advance with a late Apply success rejected and mutation-id-preserving retry, real-controller unknown-outcome edit recovery (committed-but-lost M1 → detached source → UNAVAILABLE keeps the exact request and locks edits → reattach replays the same mutation id with exactly one committed item), pending-attach cancellation before its stream starts, shared source lease/ref count, stale-lease no-op, foreign-Session stream frames ignored |
 | `tests/client/bootstrap-plan.spec.ts` | overflow candidates stay in one plan; O(1) incremental byte accounting with 3,000 all-active, mixed, and 2,000 CRLF/NFD cases; over-budget base objective returns an all-pending plan without the quadratic fallback (`usedExactFallback`/`exactRenders` diagnostics); per-candidate outcomes; bootstrap outcome classifier (draft/discard/stale/unavailable) |
 | `tests/client/draft.spec.ts` / `tests/client/draft-store.spec.ts` | Session-scoped request guard (Session A ops never build a request for Session B); draft survival across binding unmount/remount; unified `{request, sourceGeneration, status}` attempt lifecycle: transport/UNAVAILABLE transitions to unknown without clearing mutationId/baseRevision/ops, all request-changing actions locked, exact replay before admission, deterministic business error resolves/unlocks, explicit abandon is the only clear path (dismiss/discard locked while unknown), bootstrap stream-first + transport error keeps a visible replayable payload and retries the exact request (success feedback from the retained request); Rebase blocked while an attempt is unresolved; conflict rebase blocked while an editor is open; frozen editor revision baseline; extraction-revision-gated history draft; atomic A→B lifecycle switch; unknown→defined lifecycle invalidation/re-extraction; bootstrap store preflight; shared `draftAdmission`; normalized admission limits; order allocation after unstage; lifecycle null→fingerprint transition; stale async results cannot overwrite newer draft/source/lifecycle; bootstrap does not steal the section |
+| `tests/client/pane-hooks.spec.tsx` | REAL `react-test-renderer` rendering of the exported `CharterPane` (no DOM/testing-library): connecting + null view → ready snapshot, error + null view → retry → ready, and ready → revision updates; the pre-fix hook placement fails the first two with React's "Rendered more hooks than during the previous render", the fixed Pane renders all transitions |
 | `tests/client/preview.spec.ts` | projected draft rows for add/edit/accept/progress/supersede/purge; purge detaches the successor's supersedes link; committed-fixture purge ordering keeps a directly staged successor's Unstage and hides it only for a derived-only row; renderer parity and pending exclusion; single projected display order for pending/active rows (stable after acceptance); order-based (not Host-id) rendering; prompt-budget Apply admission (shrinking, same-size, growing, and within-budget renders) |
 | `tests/verify/compaction-checks.spec.ts` | compaction checker fixtures: strict lifecycle state machine (valid, failed end, end-before-start, summary-before-start, same-id retry); modern `charter_read` producing-call authentication (valid; malformed/absent-vs-present `sourceEventSeqs` including dual mismatch, other-tool reference, toolCallId/turn/step mismatch, non-finite or ≥result source seq, ambiguous/non-charter call) and legacy duplicate-callId pairing; strict arguments (missing/plain-object/standing valid, every malformed shape rejected); activity gating (no activity = WAIT exit 3 with `verification.ok` and no failures; execution without snapshot = FAIL); later attempts (open attempt WAIT, landed failed attempt FAIL, unlanded failed attempt keeps the earlier PASS); checkpoint association by `compactionId` (other-id never associated, id-less fallback warned); dirty system prompt; commit-between-start/end re-compaction; exit code/JSON verdict/text/warnings assertions; exact compact standing projection |
 | `tests/verify/transcript-parser.spec.ts` | CLI fixtures: a torn final line (incomplete append) is ignored, while a malformed middle line and a malformed complete final line both fail with line numbers and never PASS; a start-only compaction attempt renders OPEN without a RangeError and returns WAIT |
@@ -861,6 +863,23 @@ Evidence timeline for this pre-release:
 - Remaining manual check: restart the Desktop app and reopen the Charter tab once to confirm the current
   bundle/tool ABI — this post-restart re-check is **not** part of the recording above and is required before a
   stable `latest` release, not before publishing this pre-release under `next`.
+
+
+### 8.5 `0.1.0-rc.2` candidate evidence (2026-10-24)
+
+- Compiled-bundle build commit: `PENDING_BUILD_COMMIT`; the evidence-tree commit that records the shipped digest is
+  its direct child.
+- `npm test`: 20 test files / 263 tests pass; `npm run check` passes; normal `npm run smoke:package` passes.
+- `zod` is exactly `4.6.7` (direct dependency; the dev tree dedupes to one zod via `overrides` so typecheck/audit are
+  clean); `npm audit --omit=dev` reports 0 vulnerabilities and the full `npm audit` also reports 0 with the deduped
+  dev tree.
+- Final artifact: `dist/dsh-charter-0.1.0-rc.2.tgz`; its SHA-256 is recorded in the tracked repository-root
+  `SHA256SUMS` and `dist/SHA256SUMS` (the root file is outside the npm `files` whitelist, so the digest does not
+  change the packed bytes). Exact-artifact smoke (`--artifact ... --sha256 SHA256SUMS`) passes on those bytes
+  without rebuilding; the five-version DSH matrix passes with the upgraded build; the recorded real-model
+  compaction transcript re-runs PASS.
+- This candidate is not tagged or published in this preparation pass; the release tag and npm channel moves happen
+  only in the release run after the gates above.
 
 ## 9. Unsupported verification and accepted non-blocking limitations
 

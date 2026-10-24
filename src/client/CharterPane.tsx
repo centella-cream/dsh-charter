@@ -687,6 +687,15 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
     && !bootstrapStale
     && bootstrapTextIssue === undefined
 
+  // Replay state and its reset hook live ABOVE every early return: hook order
+  // must be invariant across connecting/null → ready and error/null → ready.
+  const editReplay = editReplayPending(draftState)
+  const bootstrapReplay = bootstrapReplayPending(draftState)
+  const unknownReplay = editReplay || bootstrapReplay
+  useEffect(() => {
+    if (!unknownReplay) setConfirmAbandon(false)
+  }, [unknownReplay])
+
   if (state.status === 'connecting' && view === null) {
     return (
       <main className="charter-root charter-centered">
@@ -711,12 +720,6 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   const revisionConflict = ops.length > 0 && baseRevision !== null && view.revision !== baseRevision
   // Shared with the store: an unknown-outcome Apply freezes the whole draft and
   // is recovered through an explicit Retry, never through fresh edits.
-  const editReplay = editReplayPending(draftState)
-  const bootstrapReplay = bootstrapReplayPending(draftState)
-  const unknownReplay = editReplay || bootstrapReplay
-  useEffect(() => {
-    if (!unknownReplay) setConfirmAbandon(false)
-  }, [unknownReplay])
   const editable = view.status === 'ready'
     && !saving
     && !bootstrapSaving

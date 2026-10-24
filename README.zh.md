@@ -99,7 +99,9 @@ Host 在 `session/created` 时初始化记录，并在首次 prompt 前的 `agen
 
 ## 安装
 
-`dsh-charter@0.1.0-rc.1` 已发布到 npm registry。预发布渠道是 `next`；需要可复现 profile 时固定精确版本。
+`dsh-charter@0.1.0-rc.2` 是当前 npm 预发布版本。当前渠道策略是发布到 `next`，并在稳定版出现前让 `latest` 也指向
+最新 RC（npm 会保留 `latest` tag，由我们决定其指向；这是我们的策略，不是 npm 的强制要求）。需要可复现 profile
+时固定精确版本。
 npm 目前也会把这个首个 RC 暴露在 `latest` 下，因为 npm 会给新包的首次发布自动设置 `latest`——稳定版发布后
 会替换它。不要依赖 `@latest` 安装预发布版。
 
@@ -115,7 +117,7 @@ npm 目前也会把这个首个 RC 暴露在 `latest` 下，因为 npm 会给新
 #### Web profile — 按版本或预发布 tag 安装
 
 ```bash
-dsh plugin --profile web add dsh-charter@0.1.0-rc.1   # 精确版本：可复现
+dsh plugin --profile web add dsh-charter@0.1.0-rc.2   # 精确版本：可复现
 dsh plugin --profile web add dsh-charter@next         # 最新预发布
 ```
 
@@ -140,12 +142,12 @@ tarball 回退方式。
 # 在 checkout 中：
 npm install
 npm run build
-npm pack                         # dsh-charter-0.1.0-rc.1.tgz
-dsh plugin --profile web add ./dsh-charter-0.1.0-rc.1.tgz
+npm pack                         # dsh-charter-0.1.0-rc.2.tgz
+dsh plugin --profile web add ./dsh-charter-0.1.0-rc.2.tgz
 
 # 或下载 GitHub Release 的 tarball + SHA256SUMS 并校验：
 shasum -a 256 -c SHA256SUMS
-dsh plugin --profile web add ./dsh-charter-0.1.0-rc.1.tgz
+dsh plugin --profile web add ./dsh-charter-0.1.0-rc.2.tgz
 ```
 
 `dsh plugin --profile desktop` 会被拥有该 profile 的 Electron app 拒绝；请使用 Desktop 的 Plugins 页面或该
@@ -155,7 +157,7 @@ profile 自己的包管理器。源码开发流程见 [CONTRIBUTING.zh.md](CONTR
 ### 更新
 
 - **Web（npm）**：`dsh plugin --profile web add dsh-charter@next`，然后重启/刷新；固定版本 profile 继续使用
-  显式的 `0.1.0-rc.1`；
+  显式的 `0.1.0-rc.2`；
 - **本地 tarball**：重新构建/下载新 tarball，并重复本地安装命令；
 - **Desktop**：Plugins → `dsh-charter` → **Update**，Desktop 会热更新。
 
@@ -271,7 +273,7 @@ npm run verify:compaction # 手工真实模型 compaction 校验（不在 check 
 ```
 
 测试覆盖纯内核、真实 Host 组合、storage domain、Remote framing、历史抽取、客户端状态和 factory bundle
-注册。当前矩阵：**DSH `0.1.7-rc.2`、`0.2.0-rc.1`/`rc.2`、`0.2.1-rc.1`/`rc.2` × 260 个测试全部通过**。命令与证据见[验证记录](docs/verification.zh.md)。
+注册。当前矩阵：**DSH `0.1.7-rc.2`、`0.2.0-rc.1`/`rc.2`、`0.2.1-rc.1`/`rc.2` × 263 个测试全部通过**。命令与证据见[验证记录](docs/verification.zh.md)。
 
 ## 致谢
 
@@ -304,10 +306,9 @@ npm run verify:compaction # 手工真实模型 compaction 校验（不在 check 
 
 ## 状态
 
-Pre-1.0。DSH 插件 ABI 仍在演进；项目对上述版本做兼容验证，并刻意保持兼容层很小。公开仓库为 [centella-cream/dsh-charter](https://github.com/centella-cream/dsh-charter)。当前树是 `0.1.0-rc.1`
+Pre-1.0。DSH 插件 ABI 仍在演进；项目对上述版本做兼容验证，并刻意保持兼容层很小。公开仓库为 [centella-cream/dsh-charter](https://github.com/centella-cream/dsh-charter)。当前树是 `0.1.0-rc.2`
 预发布：真实模型 compaction 验收 **PASS 已于 2026-10-22 记录**（一个匿名评估会话；326 条消息 / 约 228k
-tokens 被压缩，revision 1 契约携带匹配 digest 存活——见验证记录第 8.4 节）。发布产物已通过 npm 的 `next` dist-tag 提供；GitHub Release 也附带同一份已验证 tarball。npm 目前也会把首个 RC 暴露在
-`latest` 下（首次发布行为）；预发布安装请使用精确版本 `0.1.0-rc.1` 或 `@next`。发布稳定 `latest` 前还有一项记录在 8.4 节的人工
+tokens 被压缩，revision 1 契约携带匹配 digest 存活——见验证记录第 8.4 节）。rc.2 候选产物已在本地验证，计划通过 npm 的 `next` dist-tag 发布；按当前渠道策略，稳定版出现前 `latest` 也会指向最新 RC（这是有意的策略选择，不是 npm 的强制要求）。GitHub Release 将附带同一份已验证 tarball。发布稳定 `latest` 前还有一项记录在 8.4 节的人工
 检查：重启 Desktop app 后重新打开会话契约 tab 一次，确认已安装的 bundle/tool ABI。CI
 （`.github/workflows/ci.yml`）在 Node `22.19.0` 与 `24` 上打包并 smoke 测试可安装产物；本地门禁证据记录在验证
 记录第 2 节。发布状态前置项、tag 顺序和确切的发布流程见 [docs/releasing.zh.md](docs/releasing.zh.md)。

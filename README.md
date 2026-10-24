@@ -108,10 +108,10 @@ The browser registers a `conversation.view` entry; the pane and `charter.watch` 
 
 ## Install
 
-`dsh-charter@0.1.0-rc.1` is published to the npm registry. The canonical pre-release channel is `next`; pin the
-exact version for reproducible profiles. npm also currently exposes this first RC under `latest` because npm
-assigns `latest` to a package's first publish — a stable `latest` will replace it later. Do not rely on `@latest`
-for a pre-release.
+`dsh-charter@0.1.0-rc.2` is the current npm pre-release. Our channel policy is to publish it under `next` and to
+point `latest` at the newest RC until a stable release exists (npm keeps a `latest` tag and we choose where it
+points; this is our policy, not an npm requirement). Pin the exact version for reproducible profiles, and use
+`@next` to track the newest pre-release.
 
 ### Requirements
 
@@ -126,13 +126,13 @@ for a pre-release.
 #### Web profile — install by version or pre-release tag
 
 ```bash
-dsh plugin --profile web add dsh-charter@0.1.0-rc.1   # exact version: reproducible
+dsh plugin --profile web add dsh-charter@0.1.0-rc.2   # exact version: reproducible
 dsh plugin --profile web add dsh-charter@next         # newest pre-release
 ```
 
-Use the exact version for reproducible profiles, or `@next` to track the newest pre-release. `@latest` is not the
-pre-release channel; it will point at a stable release once one exists. If the registry is unreachable, use the
-offline tarball fallback below.
+Use the exact version for reproducible profiles, or `@next` to track the newest pre-release. Under the current
+channel policy `@latest` points at the newest RC until a stable release exists. If the registry is unreachable,
+use the offline tarball fallback below.
 
 Restart `dsh web` (or let profile HMR recompose), then refresh the page. The profile's `package.json` gains the
 dependency and bundle entry.
@@ -152,12 +152,12 @@ release artifact. The GitHub Release ships the same tarball and `SHA256SUMS` use
 # From a checkout:
 npm install
 npm run build
-npm pack                         # dsh-charter-0.1.0-rc.1.tgz
-dsh plugin --profile web add ./dsh-charter-0.1.0-rc.1.tgz
+npm pack                         # dsh-charter-0.1.0-rc.2.tgz
+dsh plugin --profile web add ./dsh-charter-0.1.0-rc.2.tgz
 
 # Or download the GitHub Release tarball + SHA256SUMS and verify:
 shasum -a 256 -c SHA256SUMS
-dsh plugin --profile web add ./dsh-charter-0.1.0-rc.1.tgz
+dsh plugin --profile web add ./dsh-charter-0.1.0-rc.2.tgz
 ```
 
 `dsh plugin --profile desktop` is intentionally refused by the Electron app that owns that profile; use the
@@ -167,7 +167,7 @@ Desktop Plugins page or that profile's package manager. Source-level development
 ### Update
 
 - **Web (npm):** `dsh plugin --profile web add dsh-charter@next`, then restart/refresh. Pinned profiles keep
-  their explicit `0.1.0-rc.1` entry.
+  their explicit `0.1.0-rc.2` entry.
 - **Local tarball:** rebuild/download the new tarball and repeat the local install command.
 - **Desktop:** Plugins → `dsh-charter` → **Update**; Desktop hot-applies it.
 
@@ -292,7 +292,7 @@ npm run verify:compaction # manual real-model compaction check (not part of chec
 ```
 
 The test suite covers the pure core, real Host composition, storage-domain behavior, Remote framing,
-history extraction, client state, and factory-bundle registration. Current matrix: **260 tests on DSH `0.1.7-rc.2`, `0.2.0-rc.1`/`rc.2`, and `0.2.1-rc.1`/`rc.2`**. See the [verification record](docs/verification.md) for commands and evidence.
+history extraction, client state, and factory-bundle registration. Current matrix: **263 tests on DSH `0.1.7-rc.2`, `0.2.0-rc.1`/`rc.2`, and `0.2.1-rc.1`/`rc.2`**. See the [verification record](docs/verification.md) for commands and evidence.
 
 ## Acknowledgements
 
@@ -327,11 +327,13 @@ security reports, follow [SECURITY.md](SECURITY.md).
 ## Status
 
 Pre-1.0. The DSH plugin ABI is still moving; compatibility is tested against the versions above, and the design
-keeps the compatibility layer deliberately small. The public repository is [centella-cream/dsh-charter](https://github.com/centella-cream/dsh-charter). This tree is the `0.1.0-rc.1` pre-release: the real-model
+keeps the compatibility layer deliberately small. The public repository is [centella-cream/dsh-charter](https://github.com/centella-cream/dsh-charter). This tree is the `0.1.0-rc.2` pre-release: the real-model
 compaction acceptance **PASS is recorded on 2026-10-22** on an anonymized evaluation Session (326 messages /
-~228k tokens shadowed, revision-1 charter survived with matching digest — see verification §8.4). The release is available from the npm registry under the `next` dist-tag; the GitHub Release also ships the same verified
-tarball. npm currently also exposes this first RC under `latest` (first-publish behavior); use exact `0.1.0-rc.1` or `@next` for pre-release installs. One manual check recorded in §8.4 is required before a stable `latest` release: restart
-the Desktop app and reopen the Charter tab once to confirm the installed bundle/tool ABI. CI
+~228k tokens shadowed, revision-1 charter survived with matching digest — see verification §8.4). The rc.2 candidate
+is verified locally and is intended for the npm registry under the `next` dist-tag; under our channel policy
+`latest` also tracks the newest RC until a stable release exists (a deliberate policy choice, not an npm
+requirement). One manual check recorded in §8.4 is required before a stable `latest` release: restart the Desktop
+app and reopen the Charter tab once to confirm the installed bundle/tool ABI. CI
 (`.github/workflows/ci.yml`) packs and smoke-tests the installable artifact on Node `22.19.0` and `24`; the local
 gate evidence is recorded in verification §2. Release-state prerequisites, tag ordering, and the exact publish
 flow live in [docs/releasing.md](docs/releasing.md).
