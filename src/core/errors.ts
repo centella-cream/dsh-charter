@@ -11,6 +11,11 @@ export type CharterErrorCode =
   | 'QUOTA_EXCEEDED'
   | 'CORRUPT_STATE'
   | 'UNAVAILABLE'
+  | 'INITIALIZATION_REQUIRED'
+  | 'INVALID_ARCHIVE'
+  | 'RECORD_CONFLICT'
+  | 'OPERATION_ID_REUSED'
+  | 'RECOVERY_UNSUPPORTED'
 
 export class CharterError extends Error {
   readonly code: CharterErrorCode

@@ -201,13 +201,31 @@ export const mutationReceiptSchema = z.object({
   ids: z.record(clientRefSchema, identifierSchema),
 }).strict()
 
+export const charterIdentitySchema = z.object({
+  createdAt: z.number().int().nonnegative(),
+  cwd: z.string().optional(),
+  parentSession: z.string().optional(),
+}).strict()
+
+export const maintenanceKindSchema = z.enum(['initialize', 'restore'])
+
+/**
+ * Bounded initialize/restore receipt. Optional in the version-1 record: old
+ * records without it stay valid and are never rewritten on startup.
+ */
+export const charterMaintenanceReceiptSchema = z.object({
+  operationId: identifierSchema,
+  kind: maintenanceKindSchema,
+  requestDigest: digestSchema,
+  resultRevision: z.number().int().nonnegative(),
+  resultStateDigest: digestSchema,
+  sourceRecordDigest: digestSchema.optional(),
+  at: z.number().int().nonnegative(),
+}).strict()
+
 export const charterRecordSchema = z.object({
   recordSchemaVersion: z.literal(1),
-  identity: z.object({
-    createdAt: z.number().int().nonnegative(),
-    cwd: z.string().optional(),
-    parentSession: z.string().optional(),
-  }).strict(),
+  identity: charterIdentitySchema,
   forkedFrom: z.object({
     sessionId: z.string().min(1),
     revision: z.number().int().nonnegative(),
@@ -215,6 +233,48 @@ export const charterRecordSchema = z.object({
   current: charterSnapshotSchema,
   history: z.array(charterReceiptSchema),
   recentMutations: z.array(mutationReceiptSchema),
+  recentMaintenance: z.array(charterMaintenanceReceiptSchema).optional(),
+}).strict()
+
+export const charterRecordArchiveSourceSchema = z.object({
+  domain: z.literal('dsh_charter_v1'),
+  domainVersion: z.literal(1),
+  sessionId: z.string().min(1).max(256),
+  lifecycle: z.string().nullable(),
+  health: z.enum(['healthy', 'schema-invalid', 'consistency-invalid', 'lifecycle-mismatch']),
+  revision: z.number().int().nonnegative().nullable(),
+  recordDigest: digestSchema,
+}).strict()
+
+export const charterRecordArchiveSchema = z.object({
+  format: z.literal('dsh-charter-record'),
+  formatVersion: z.literal(1),
+  exportedAt: z.number().int().nonnegative(),
+  source: charterRecordArchiveSourceSchema,
+  /** Raw stored value; validated after payload-digest verification. */
+  record: z.unknown(),
+  payloadDigest: digestSchema,
+}).strict()
+
+export const charterInitializeRequestSchema = z.object({
+  sessionId: z.string().min(1).max(256),
+  operationId: mutationIdSchema,
+  expectedLifecycle: z.string().min(1),
+}).strict()
+
+export const charterRestoreRequestSchema = z.object({
+  sessionId: z.string().min(1).max(256),
+  operationId: mutationIdSchema,
+  expectedLifecycle: z.string().min(1),
+  expectedTarget: z.discriminatedUnion('kind', [
+    z.object({ kind: z.literal('absent-unconfirmed') }).strict(),
+    z.object({
+      kind: z.literal('invalid'),
+      reason: z.enum(['schema', 'consistency']),
+      recordDigest: digestSchema,
+    }).strict(),
+  ]),
+  archive: z.unknown(),
 }).strict()
 
 export type CharterReview = z.infer<typeof charterReviewSchema>
@@ -234,3 +294,10 @@ export type CharterChange = z.infer<typeof charterChangeSchema>
 export type CharterReceipt = z.infer<typeof charterReceiptSchema>
 export type MutationReceipt = z.infer<typeof mutationReceiptSchema>
 export type CharterRecord = z.infer<typeof charterRecordSchema>
+export type MaintenanceKind = z.infer<typeof maintenanceKindSchema>
+export type CharterMaintenanceReceipt = z.infer<typeof charterMaintenanceReceiptSchema>
+export type CharterRecordArchiveSource = z.infer<typeof charterRecordArchiveSourceSchema>
+export type CharterRecordArchive = z.infer<typeof charterRecordArchiveSchema>
+export type CharterInitializeRequest = z.infer<typeof charterInitializeRequestSchema>
+export type CharterRestoreRequest = z.infer<typeof charterRestoreRequestSchema>
+export type CharterRestoreTarget = CharterRestoreRequest['expectedTarget']

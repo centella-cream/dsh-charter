@@ -1,7 +1,7 @@
 import { sha256Json, sha256Text } from './digest.js'
 import type { CharterLimits } from './limits.js'
 import type { CharterItem, CharterObjective, CharterSnapshot } from './schemas.js'
-import { canonicalItems } from './items.js'
+import { canonicalItems, normalizeItemShape } from './items.js'
 import { renderCharterPrompt } from './prompt.js'
 import { assertStateQuota } from './state.js'
 
@@ -25,7 +25,7 @@ export function buildSnapshotUnchecked(
   objective: CharterObjective | undefined,
   items: readonly CharterItem[],
 ): CharterSnapshot {
-  const canonical = canonicalItems(items)
+  const canonical = canonicalItems(items).map(normalizeItemShape)
   const promptText = renderCharterPrompt(objective, canonical)
   return {
     revision,

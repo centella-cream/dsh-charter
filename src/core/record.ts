@@ -6,12 +6,15 @@ import { applyOps } from './commands.js'
 import { buildSnapshotUnchecked, emptySnapshot } from './render.js'
 import { utf8Bytes } from './limits.js'
 import { validateState } from './state.js'
+import { maintenanceSemanticCheck } from './archive.js'
 import type {
   CharterActor,
   CharterEditRequest,
+  CharterMaintenanceReceipt,
   CharterRecord,
   CharterReceipt,
   CharterSnapshot,
+  MaintenanceKind,
   MutationReceipt,
 } from './schemas.js'
 
@@ -79,6 +82,73 @@ export function requestDigestOf(
   })
 }
 
+/** Digest of the deterministic revision-0 empty state (initialize receipts bind it). */
+export function emptyStateDigest(limits: CharterLimits): `sha256:${string}` {
+  return emptySnapshot(limits).stateDigest as `sha256:${string}`
+}
+
+/**
+ * The maintenance request digest binds operation kind, Session, lifecycle,
+ * actor, expected target and archive digest, excluding the operation id itself.
+ */
+export function maintenanceRequestDigestOf(input: {
+  readonly kind: MaintenanceKind
+  readonly sessionId: string
+  readonly lifecycle: string
+  readonly actor: CharterActor
+  readonly expectedTarget: unknown
+  readonly sourceRecordDigest?: `sha256:${string}` | undefined
+}): `sha256:${string}` {
+  return sha256Json({
+    version: 1,
+    domain: 'dsh_charter_v1',
+    kind: input.kind,
+    sessionId: input.sessionId,
+    lifecycle: input.lifecycle,
+    actor: input.actor,
+    expectedTarget: input.expectedTarget,
+    sourceRecordDigest: input.sourceRecordDigest ?? null,
+  })
+}
+
+/** The current operation always survives: keep at most maintenanceLimit - 1 old receipts. */
+export function appendMaintenanceReceipt(
+  record: CharterRecord,
+  receipt: CharterMaintenanceReceipt,
+  limits: CharterLimits,
+): CharterRecord {
+  const previous = record.recentMaintenance ?? []
+  const keep = Math.max(0, limits.maintenanceLimit - 1)
+  const trimmed = keep === 0 ? [] : previous.slice(-keep)
+  return {
+    ...record,
+    recentMaintenance: [...trimmed, receipt],
+  }
+}
+
+/** Final serialized record must fit the recovery envelope budget. */
+export function assertRecoveryRecordAdmission(record: CharterRecord, limits: CharterLimits): void {
+  const bytes = jsonBytes(record)
+  if (bytes > limits.maxRecoveryBytes) {
+    throw charterError('QUOTA_EXCEEDED', `restored record exceeds ${limits.maxRecoveryBytes} UTF-8 bytes`)
+  }
+  const maintenance = record.recentMaintenance ?? []
+  if (maintenance.length > limits.maintenanceLimit) {
+    throw charterError('QUOTA_EXCEEDED', `maintenance receipts exceed ${limits.maintenanceLimit}`)
+  }
+}
+
+/** A restored record keeps archived content and appends only the maintenance receipt. */
+export function restoredRecord(
+  archived: CharterRecord,
+  receipt: CharterMaintenanceReceipt,
+  limits: CharterLimits,
+): CharterRecord {
+  const next = appendMaintenanceReceipt(archived, receipt, limits)
+  assertRecoveryRecordAdmission(next, limits)
+  return next
+}
+
 /** Records are immutable snapshots replaced by the single writer. */
 const validatedRecords = new WeakSet<CharterRecord>()
 
@@ -104,7 +174,7 @@ function assertSnapshotIntegrity(record: CharterRecord): void {
  * for callers and future structure checks.
  */
 export function assertRecordConsistency(record: CharterRecord, limits: CharterLimits): void {
-  void limits
+  const limitsForConsistency = limits
   if (validatedRecords.has(record)) return
   assertSnapshotIntegrity(record)
   const last = record.history.at(-1)
@@ -159,6 +229,24 @@ export function assertRecordConsistency(record: CharterRecord, limits: CharterLi
       || mutation.committedRevision !== receipt.revision
       || mutation.resultDigest !== receipt.resultDigest) {
       throw charterError('CORRUPT_STATE', `history and mutation receipt disagree for ${receipt.mutationId}`)
+    }
+  }
+  const maintenance = record.recentMaintenance ?? []
+  const maintenanceIds = new Set<string>()
+  for (const receipt of maintenance) {
+    if (maintenanceIds.has(receipt.operationId)) {
+      throw charterError('CORRUPT_STATE', `duplicate maintenance operation ${receipt.operationId}`)
+    }
+    maintenanceIds.add(receipt.operationId)
+    if (receipt.resultRevision > record.current.revision) {
+      throw charterError('CORRUPT_STATE', `maintenance ${receipt.operationId} points past the current revision`)
+    }
+    maintenanceSemanticCheck(receipt, emptyStateDigest(limitsForConsistency))
+    const currentOrHistory = receipt.resultRevision === record.current.revision
+      ? record.current.stateDigest
+      : record.history.find(entry => entry.revision === receipt.resultRevision)?.resultDigest
+    if (currentOrHistory !== undefined && currentOrHistory !== receipt.resultStateDigest) {
+      throw charterError('CORRUPT_STATE', `maintenance ${receipt.operationId} digest disagrees with history`)
     }
   }
   validatedRecords.add(record)
