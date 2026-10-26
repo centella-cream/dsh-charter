@@ -14,7 +14,7 @@
 | 验证项 | 结果 |
 | --- | --- |
 | TypeScript 严格类型检查（5 个 DSH 版本） | 通过 |
-| Vitest（5 个本地可用版本 × 322 个测试） | 通过 |
+| Vitest（5 个本地可用版本 × 330 个测试） | 通过 |
 | Host ESM 构建 + 浏览器单文件 bundle | 通过 |
 | Remote 装饰器/资源 smoke | 通过（0.1.7/0.2.0 按预期无资源声明） |
 | 浏览器 factory bundle 物化与 `apply` smoke | 通过 |
@@ -45,7 +45,7 @@ npm test
 
 - typecheck 通过；
 - build 通过；
-- 24 个测试文件、322 个测试全部通过（来自 `npm test`，即 build 后运行 `vitest run`）；
+- 25 个测试文件、330 个测试全部通过（来自 `npm test`，即 build 后运行 `vitest run`）；
 - `remote-smoke` 断言 `watch,bootstrap,edit`、stream mode 和 Session resource；
 - `client-smoke` 断言单文件 factory bundle、外部依赖白名单、不引用 Node-only `Buffer`、`apply` 注册
   tab/pane/Remote contribution。
@@ -795,18 +795,18 @@ seq **31825**，位于 compaction seq 31801 与 runtime 快照 seq 31810 之后�
 - 本次准备阶段不创建 tag、不发布；release tag 与 npm 渠道移动只在门禁通过后的发布执行中发生。
 
 
-### 8.6 `0.1.0-rc.3` 候选证据（2026-10-26）
+### 8.6 `0.1.0-rc.3` 候选证据（2026-10-27）
 
-rc.3 在 rc.2 的 `b2abb22` 之上以未提交 worktree 实现，由 Lead 审核后提交。版本 `0.1.0-rc.3`。
+rc.3 经审核后提交在 release 分支上。版本 `0.1.0-rc.3`。
 
-- `npm test` / `npm run check`：24 个测试文件 / 322 个测试通过（typecheck + build + Vitest）。
+- `npm test` / `npm run check`：25 个测试文件 / 330 个测试通过（typecheck + build + Vitest）。
 - 普通 `npm run smoke:package` 通过；exact-artifact package smoke 在最终 tarball 上通过且不重建。
 - **打包产物 recovery smoke**（`node scripts/verify/recovery-smoke.mjs --artifact <dist tgz> --sha256 SHA256SUMS`）
   通过：校验 tarball SHA-256，解析归档并断言六个 Remote 方法与 client factory bundle，用脚本化后端挂载**打包的**
   `CharterService`，构造含 Unicode/pending/archived/superseded/history 的记录并导出，删除目标后在同一 Session
   identity 下恢复，经 maintenance 回执 replay，两次重启比较完整 record/state/prompt/tool 投影，证明健康目标拒绝
   覆盖，并运行存储故障矩阵（startup put reject → 围栏；commit-then-reject → 重启收敛；open reject → 无记录/不 ready）。
-- 五版本 DSH 矩阵：`0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-rc.1`、`0.2.1-rc.2` 均为 322/322。
+- 五版本 DSH 矩阵：`0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-rc.1`、`0.2.1-rc.2` 均为 330/330。
 - 最终产物 SHA-256 记录在 tracked 仓库根部 `SHA256SUMS` 与 `dist/SHA256SUMS`（根部文件不在 npm `files` 白名单内，
   不影响打包字节）。本轮不创建 tag、不推送、不发布。
 
@@ -832,13 +832,14 @@ rc.3 在 rc.2 的 `b2abb22` 之上以未提交 worktree 实现，由 Lead 审核
 请求 operation id 时在写入前以 `OPERATION_ID_REUSED` 拒绝；修复 `maintenanceLimit: 1` 裁剪；关闭流程在关闭介质前排水
 mutation 队列；startup put 在每 Session 队列内重新读取/CAS；replay 返回回执原始 revision；客户端预览校验
 payload/record digest 并显示 exportedAt/来源 Session；Pane 使用共享 admission 谓词与本地化原因，确认可重置/取消；
-导出错误本地化，移除暗色文件输入覆盖。完整套件现为 24 个测试文件 / 322 个测试。
+导出错误本地化，移除暗色文件输入覆盖。复审后的竞态修复还会在 queued initialize/restore 内重新确认 live
+Session 对象/lifecycle 并检查 fence，lifecycle 变化时把 in-flight maintenance attempt 转为 unknown，接受失败结果
+携带的 write-uncertain view，为 archive 选择/导出增加异步 generation 守卫，检查完整 recovery request/export 大小，
+并限制 archive 时间戳以避免预览抛 `RangeError`。完整套件现为 25 个测试文件 / 330 个测试。
 
 诚实缺口：当前环境没有 live 0.2.1 Gateway principal 测试与真实浏览器 UI 会话（改用契约/Host 能力测试与真实
 renderer 测试）；未重新生成截图（无干净 demo-only 隔离 profile）；未提交的树尚未跑公开 CI。Host 中的 legacy
-`invalidRecords`/message 兼容路径被保留但不再是用户可见的权威（以 record state 为准）；测试 harness 中有一个已记录
-的兼容 shim：对 in-process 创建、尚未收到 `agent/created` 的 Session 惰性执行 startup 初始化；wire 层的权威来源契约
-不变。
+`invalidRecords`/message 兼容路径被保留但不再是用户可见的权威（以 record state 为准）；wire 层的权威来源契约不变，读取不再触发任何 startup 初始化 shim。
 
 ## 9. 未支持的验证项与已接受的非阻塞限制
 

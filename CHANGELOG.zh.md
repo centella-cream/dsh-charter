@@ -65,6 +65,17 @@ owner 可以导出完整归档并将其恢复到同一 Session lifecycle。
   语义；导出失败按确定性 code 本地化；移除 `prefers-color-scheme` 的文件输入覆盖，改用 DSH token；lifecycle
   展示不再暴露原始 cwd JSON。
 
+### 修复（复审竞态）
+
+- 排队的 `initializeRecord`/`restoreRecord` 在读取目标前重新确认 live Session 对象/lifecycle，并重新检查
+  write-uncertain fence；Session 已被替换时返回 `LIFECYCLE_MISMATCH` 且不写入。
+- maintenance 请求执行期间 lifecycle 变化时，attempt 转为 `unknown` 并清除 `maintenanceSaving`，Retry/Abandon 不会
+  永久不可用。
+- maintenance 失败结果携带的权威 view 会在结果分类前被接受，write-uncertain 立即显示而不是旧状态。
+- archive 选择与记录导出加入请求 generation；较慢的旧文件/旧导出不会覆盖新选择，也不会跨 Session/lifecycle 完成。
+- 完整 restore request 与导出/恢复后的 archive envelope 都检查 `maxRecoveryBytes`；`exportedAt` 限制在 JavaScript
+  Date 可表示范围内，UI 预览使用安全格式化。
+
 ### 安全
 
 - 维护操作 owner-only，且要求 DSH 0.2.1+ 的 principal/资源约束；0.1.7/0.2.0 上 Host 在深层归档解析或存储访问前以
@@ -85,7 +96,7 @@ owner 可以导出完整归档并将其恢复到同一 Session lifecycle。
 
 ### 测试
 
-- 24 个测试文件 / 322 个测试（`npm test`），含新的 core archive/maintenance 套件、Host 恢复/故障场景、Remote
+- 25 个测试文件 / 330 个测试（`npm test`），含新的 core archive/maintenance 套件、Host 恢复/故障场景、Remote
   六方法契约、客户端 attempt/分类测试与真实 `react-test-renderer` 恢复 UI 测试；另有打包产物 recovery smoke 与
   五版本矩阵。
 

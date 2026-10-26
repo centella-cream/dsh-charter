@@ -15,7 +15,7 @@ HTML live under `.tmp/` and are excluded from the published package.
 | Item | Result |
 | --- | --- |
 | Strict TypeScript check (5 DSH versions) | Pass |
-| Vitest (5 locally available versions × 322 tests) | Pass |
+| Vitest (5 locally available versions × 330 tests) | Pass |
 | Host ESM build + browser single-file bundle | Pass |
 | Remote decorator/resource smoke | Pass (0.1.7/0.2.0 have no resource declaration, as expected) |
 | Browser factory-bundle materialization and `apply` smoke | Pass |
@@ -46,7 +46,7 @@ Results:
 
 - typecheck passes;
 - build passes;
-- 24 test files, 322 tests pass (from `npm test`, which builds and then runs `vitest run`);
+- 25 test files, 330 tests pass (from `npm test`, which builds and then runs `vitest run`);
 - `remote-smoke` asserts `watch,bootstrap,edit`, stream mode, and Session resource;
 - `client-smoke` asserts the single-file factory bundle, external-dependency allowlist, no Node-only `Buffer`
   reference, and `apply` registering the tab/pane/Remote contribution;
@@ -886,12 +886,11 @@ Evidence timeline for this pre-release:
   only in the release run after the gates above.
 
 
-### 8.6 `0.1.0-rc.3` candidate evidence (2026-10-26)
+### 8.6 `0.1.0-rc.3` candidate evidence (2026-10-27)
 
-The rc.3 work was implemented directly in the uncommitted worktree on top of `b2abb22` (rc.2); the Lead reviews and
-commits it. Version `0.1.0-rc.3`.
+The rc.3 work is committed on the release branch after review. Version `0.1.0-rc.3`.
 
-- `npm test` / `npm run check`: 24 test files / 322 tests pass (typecheck + build + Vitest).
+- `npm test` / `npm run check`: 25 test files / 330 tests pass (typecheck + build + Vitest).
 - Normal `npm run smoke:package` passes; exact-artifact package smoke passes on the final tarball without rebuilding.
 - **Packed-artifact recovery smoke** (`node scripts/verify/recovery-smoke.mjs --artifact <dist tgz> --sha256
   SHA256SUMS`) passes: verifies the tarball SHA-256, parses the archive and asserts the six Remote methods + client
@@ -900,7 +899,7 @@ commits it. Version `0.1.0-rc.3`.
   Session identity, replays the restore through the maintenance receipt, restarts twice comparing the complete
   record/state/prompt/tool projections, proves a healthy target refuses overwrite, and runs the storage fault matrix
   (startup put reject → fence; commit-then-reject → restart convergence; open reject → no record/no ready).
-- Five-version DSH matrix: 322/322 on `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-rc.1`, `0.2.1-rc.2`.
+- Five-version DSH matrix: 330/330 on `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-rc.1`, `0.2.1-rc.2`.
 - The final artifact SHA-256 is recorded in the tracked repository-root `SHA256SUMS` and `dist/SHA256SUMS` (the root
   file is outside the npm `files` whitelist, so the digest does not change the packed bytes). No release tag, push, or
   publish is performed in this pass.
@@ -928,15 +927,17 @@ child); ambiguous archive operation ids rejected with `OPERATION_ID_REUSED` befo
 trim fixed; shutdown drains mutation queues before closing the medium; startup put re-reads/CAS inside the per-Session
 queue; replay reports the receipt's original revision; client preview verifies payload/record digests and shows
 exportedAt/source Session; the Pane uses the shared admission predicate with localized reasons and reset/cancel
-confirmation semantics; export errors are localized and the dark-mode file-input override is gone. Full suite is now
-24 files / 322 tests.
+confirmation semantics; export errors are localized and the dark-mode file-input override is gone. Post-review race
+fixes also re-confirm the live Session object/lifecycle and fence inside queued initialize/restore, convert an
+in-flight maintenance attempt to unknown on lifecycle change, accept failure-carried write-uncertain views, guard
+archive selection/export against stale async completions, enforce the complete recovery request/export size budget,
+and bound archive timestamps so previews cannot throw `RangeError`. Full suite is now 25 files / 330 tests.
 
 Honest remaining gaps: a live 0.2.1 Gateway principal test and a real-browser UI session are not available in this
 environment (contract/Host capability and real-renderer tests are used instead); screenshots were not regenerated (no
 clean demo-only isolated profile); public CI has not run on the uncommitted tree. The legacy `invalidRecords`/message
 compatibility paths in the Host are retained but no longer user-visible authority (record state is authoritative), and
-one documented compatibility shim lazily starts a startup initialization for a Session created in-process before its
-`agent/created` event in test harnesses; the authoritative wire-level source contract is unchanged.
+the authoritative wire-level source contract is unchanged; no read-triggered startup shim remains.
 
 ## 9. Unsupported verification and accepted non-blocking limitations
 

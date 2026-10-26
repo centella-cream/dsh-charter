@@ -81,6 +81,19 @@ to the same Session lifecycle.
   `prefers-color-scheme` file-input override was removed in favor of DSH tokens; lifecycle display no longer exposes
   the raw cwd JSON.
 
+### Fixed (post-review races)
+
+- Queued `initializeRecord`/`restoreRecord` re-confirm the live Session object and lifecycle and re-check the
+  write-uncertain fence before any target read; a replaced Session returns `LIFECYCLE_MISMATCH` without writing.
+- A lifecycle change during an in-flight maintenance request converts the attempt to `unknown` and clears
+  `maintenanceSaving`, so Retry/Abandon remain reachable.
+- A failed maintenance result's authoritative view is accepted before classification, exposing write-uncertain
+  immediately instead of the pre-write state.
+- Archive selection and record export use request generations; a slower earlier file/export cannot overwrite a newer
+  selection or complete against a different Session/lifecycle.
+- Complete restore requests and exported/re-restored archive envelopes are checked against `maxRecoveryBytes`;
+  `exportedAt` is bounded to the JavaScript Date range and UI previews use safe formatting.
+
 ### Security
 
 - Maintenance is owner-only and requires DSH 0.2.1+ principal/resource enforcement; on 0.1.7/0.2.0 the Host fails
@@ -104,7 +117,7 @@ to the same Session lifecycle.
 
 ### Tests
 
-- 24 test files / 322 tests (`npm test`), including the new core archive/maintenance suite, Host recovery/fault
+- 25 test files / 330 tests (`npm test`), including the new core archive/maintenance suite, Host recovery/fault
   scenarios, Remote six-method contract, client attempt/classification tests, and real `react-test-renderer`
   recovery UI tests; plus the packed-artifact recovery smoke and the five-version matrix.
 
