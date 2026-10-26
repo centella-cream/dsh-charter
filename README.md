@@ -108,10 +108,27 @@ The browser registers a `conversation.view` entry; the pane and `charter.watch` 
 
 ## Install
 
-`dsh-charter@0.1.0-rc.2` is the current npm pre-release. Our channel policy is to publish it under `next` and to
+`dsh-charter@0.1.0-rc.3` is the current npm pre-release. Our channel policy is to publish it under `next` and to
 point `latest` at the newest RC until a stable release exists (npm keeps a `latest` tag and we choose where it
 points; this is our policy, not an npm requirement). Pin the exact version for reproducible profiles, and use
 `@next` to track the newest pre-release.
+
+### Recovery and record health (0.1.0-rc.3)
+
+The rc.3 release adds authority-preserving recovery. The Pane shows a structured record state (healthy,
+absent-unconfirmed, invalid, lifecycle mismatch, unknown, or write-uncertain). Owners on DSH `0.2.1+` can export the
+complete record and restore a validated archive to the **same Session lifecycle** through the **Storage & recovery**
+section; a healthy record can never be overwritten and cross-Session/lifecycle import is unsupported. When a restored
+Session has no readable record the plugin reports "missing or unreadable; cannot be distinguished automatically" and
+does not create an empty record or re-fork from the parent; an explicit, twice-confirmed empty initialization is
+available. A rejected storage write fences that Session as write-uncertain (no injection/read/write) until a Host
+restart.
+
+Maintenance is owner-only, requires DSH `0.2.1+` principal/resource enforcement, and fails closed with
+`RECOVERY_UNSUPPORTED` on `0.1.7`/`0.2.0`. `maxRecoveryBytes` defaults to 4 MiB (at least the record budget + 64 KiB,
+16 MiB hard ceiling); if the record budget leaves no room, maintenance is disabled with reason `record-limit` and an
+offline backup after stopping the Host is required. Archives contain user text and are sensitive. Records written with
+a maintenance receipt are isolated (preserved, not injected/edited) by rc.2; upgrading back to rc.3 restores access.
 
 ### Requirements
 
@@ -126,7 +143,7 @@ points; this is our policy, not an npm requirement). Pin the exact version for r
 #### Web profile — install by version or pre-release tag
 
 ```bash
-dsh plugin --profile web add dsh-charter@0.1.0-rc.2   # exact version: reproducible
+dsh plugin --profile web add dsh-charter@0.1.0-rc.3   # exact version: reproducible
 dsh plugin --profile web add dsh-charter@next         # newest pre-release
 ```
 
@@ -152,12 +169,12 @@ release artifact. The GitHub Release ships the same tarball and `SHA256SUMS` use
 # From a checkout:
 npm install
 npm run build
-npm pack                         # dsh-charter-0.1.0-rc.2.tgz
-dsh plugin --profile web add ./dsh-charter-0.1.0-rc.2.tgz
+npm pack                         # dsh-charter-0.1.0-rc.3.tgz
+dsh plugin --profile web add ./dsh-charter-0.1.0-rc.3.tgz
 
 # Or download the GitHub Release tarball + SHA256SUMS and verify:
 shasum -a 256 -c SHA256SUMS
-dsh plugin --profile web add ./dsh-charter-0.1.0-rc.2.tgz
+dsh plugin --profile web add ./dsh-charter-0.1.0-rc.3.tgz
 ```
 
 `dsh plugin --profile desktop` is intentionally refused by the Electron app that owns that profile; use the
@@ -167,7 +184,7 @@ Desktop Plugins page or that profile's package manager. Source-level development
 ### Update
 
 - **Web (npm):** `dsh plugin --profile web add dsh-charter@next`, then restart/refresh. Pinned profiles keep
-  their explicit `0.1.0-rc.2` entry.
+  their explicit `0.1.0-rc.3` entry.
 - **Local tarball:** rebuild/download the new tarball and repeat the local install command.
 - **Desktop:** Plugins → `dsh-charter` → **Update**; Desktop hot-applies it.
 
@@ -243,6 +260,8 @@ Defaults live in `cordis.patch.yml`. Override them in the profile patch:
 | `historyLimit` | 64 | recent history receipts |
 | `maxHistoryBytes` | 131072 | recent history bytes |
 | `mutationLimit` | 128 | recent mutation receipts |
+| `maintenanceLimit` | 16 | recent initialize/restore receipts (min 1) |
+| `maxRecoveryBytes` | 4194304 | complete recovery-archive budget (≥ record budget + 64 KiB, 16 MiB ceiling) |
 | `contextOrder` | 130 | runtime-context order; after sandbox/approval/subagent by default |
 
 The only model-visible capacity is `maxPromptBytes`; active invariants and deliverables are not capped
@@ -292,7 +311,7 @@ npm run verify:compaction # manual real-model compaction check (not part of chec
 ```
 
 The test suite covers the pure core, real Host composition, storage-domain behavior, Remote framing,
-history extraction, client state, and factory-bundle registration. Current matrix: **263 tests on DSH `0.1.7-rc.2`, `0.2.0-rc.1`/`rc.2`, and `0.2.1-rc.1`/`rc.2`**. See the [verification record](docs/verification.md) for commands and evidence.
+history extraction, client state, and factory-bundle registration. Current matrix: **322 tests on DSH `0.1.7-rc.2`, `0.2.0-rc.1`/`rc.2`, and `0.2.1-rc.1`/`rc.2`**. See the [verification record](docs/verification.md) for commands and evidence.
 
 ## Acknowledgements
 
@@ -310,6 +329,7 @@ Their ideas informed the design review; no source code is copied, and these proj
 
 - [Design specification](docs/design/charter-design.md)
 - [Design review](docs/design/charter-design-review.md)
+- [0.1.0-rc.3 upgrade plan](docs/design/rc3-recovery-plan.md)
 - [Compatibility matrix](docs/design/compatibility.md)
 - [User and operator guide](docs/user-guide.md)
 - [Verification record](docs/verification.md)
@@ -327,7 +347,7 @@ security reports, follow [SECURITY.md](SECURITY.md).
 ## Status
 
 Pre-1.0. The DSH plugin ABI is still moving; compatibility is tested against the versions above, and the design
-keeps the compatibility layer deliberately small. The public repository is [centella-cream/dsh-charter](https://github.com/centella-cream/dsh-charter). This tree is the `0.1.0-rc.2` pre-release: the real-model
+keeps the compatibility layer deliberately small. The public repository is [centella-cream/dsh-charter](https://github.com/centella-cream/dsh-charter). This tree is the `0.1.0-rc.3` pre-release: the real-model
 compaction acceptance **PASS is recorded on 2026-10-22** on an anonymized evaluation Session (326 messages /
 ~228k tokens shadowed, revision-1 charter survived with matching digest — see verification §8.4). The rc.2 candidate
 is verified locally and is intended for the npm registry under the `next` dist-tag; under our channel policy

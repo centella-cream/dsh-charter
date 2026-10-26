@@ -15,7 +15,7 @@ HTML live under `.tmp/` and are excluded from the published package.
 | Item | Result |
 | --- | --- |
 | Strict TypeScript check (5 DSH versions) | Pass |
-| Vitest (5 locally available versions × 263 tests) | Pass |
+| Vitest (5 locally available versions × 322 tests) | Pass |
 | Host ESM build + browser single-file bundle | Pass |
 | Remote decorator/resource smoke | Pass (0.1.7/0.2.0 have no resource declaration, as expected) |
 | Browser factory-bundle materialization and `apply` smoke | Pass |
@@ -46,7 +46,7 @@ Results:
 
 - typecheck passes;
 - build passes;
-- 20 test files, 263 tests pass (from `npm test`, which builds and then runs `vitest run`);
+- 24 test files, 322 tests pass (from `npm test`, which builds and then runs `vitest run`);
 - `remote-smoke` asserts `watch,bootstrap,edit`, stream mode, and Session resource;
 - `client-smoke` asserts the single-file factory bundle, external-dependency allowlist, no Node-only `Buffer`
   reference, and `apply` registering the tab/pane/Remote contribution;
@@ -89,6 +89,10 @@ Key test files:
 | `tests/client/preview.spec.ts` | projected draft rows for add/edit/accept/progress/supersede/purge; purge detaches the successor's supersedes link; committed-fixture purge ordering keeps a directly staged successor's Unstage and hides it only for a derived-only row; renderer parity and pending exclusion; single projected display order for pending/active rows (stable after acceptance); order-based (not Host-id) rendering; prompt-budget Apply admission (shrinking, same-size, growing, and within-budget renders) |
 | `tests/verify/compaction-checks.spec.ts` | compaction checker fixtures: strict lifecycle state machine (valid, failed end, end-before-start, summary-before-start, same-id retry); modern `charter_read` producing-call authentication (valid; malformed/absent-vs-present `sourceEventSeqs` including dual mismatch, other-tool reference, toolCallId/turn/step mismatch, non-finite or ≥result source seq, ambiguous/non-charter call) and legacy duplicate-callId pairing; strict arguments (missing/plain-object/standing valid, every malformed shape rejected); activity gating (no activity = WAIT exit 3 with `verification.ok` and no failures; execution without snapshot = FAIL); later attempts (open attempt WAIT, landed failed attempt FAIL, unlanded failed attempt keeps the earlier PASS); checkpoint association by `compactionId` (other-id never associated, id-less fallback warned); dirty system prompt; commit-between-start/end re-compaction; exit code/JSON verdict/text/warnings assertions; exact compact standing projection |
 | `tests/verify/transcript-parser.spec.ts` | CLI fixtures: a torn final line (incomplete append) is ignored, while a malformed middle line and a malformed complete final line both fail with line numbers and never PASS; a start-only compaction attempt renders OPEN without a RangeError and returns WAIT |
+| `tests/core/archive.spec.ts` | record digest coverage of identity/current/history/mutations/maintenance; payload-digest round trip and mutation rejection; Session/size rejection; healthy + lifecycle + revision restorable checks; maintenance receipt append/trim/duplicate/semantic rejection; restore content/receipt preservation; restore-followed-by-edit; rc.2 strict-schema isolation vs rc.3 re-read |
+| `tests/host/recovery.spec.ts` | rc.3 Host authority/recovery matrix: resume absence with no put + `INITIALIZATION_REQUIRED`; `session/created` intent vs authoritative startup; malformed and version-rejected raw bytes unchanged; missing fork child not rebuilt; explicit initialize + replay/conflict/owner/lifecycle denials; export → invalid-target restore with digest/history/mutation/receipt agreement and prompt/tool projection agreement; healthy-target refusal and `OPERATION_ID_REUSED`; restore-then-edit replay; foreign/lifecycle archive rejection; capability fail-closed (`record-limit`); rc.2 receipt isolation and re-read; over-budget restore not injected; concurrent initialize/restore queue order; authoritative startup after reattach absence; scripted fault backend (open/load reject, startup put reject, commit-then-reject restart convergence, update reject-after-callback vs known preflight, deferred write, per-Session isolation) |
+| `tests/client/pane-recovery.spec.tsx` | real `react-test-renderer` Storage & recovery section: healthy export + sensitive notice, invalid/diagnostic export, second-confirm empty initialization with healthy post-state, archive preview (digest verification/exportedAt/source Session) + second-confirm restore request content, legacy-host/record-limit disabled controls + shared-admission reason hints, confirm reset/Cancel, write-uncertain restart copy, safe no-DOM download path; Pane hook-order regression tests remain green |
+| `tests/client/locales.spec.ts` | English/Chinese key-set and placeholder parity, and no CJK characters in the English dictionary (audit guard) |
 | `tests/verify/package-smoke.spec.ts` | pack JSON parsing for object/keyed-object/array npm output (full-output parse), SHA sums resolution and exact-artifact digest verification (match + mismatch + missing entry), structured Node tar parsing of JS-built GNU/BSD ustar, PAX long-path and GNU longname archives plus rejections (symlink/hardlink/fifo, duplicates, traversal, absolute, outside-package, corrupt checksum, truncated data), packed-manifest identity/files/exports/dependencies/peers/engines validation against the working tree, and artifact-mode argument pairing |
 
 ## 3. Cross-version matrix
@@ -880,6 +884,59 @@ Evidence timeline for this pre-release:
   compaction transcript re-runs PASS.
 - This candidate is not tagged or published in this preparation pass; the release tag and npm channel moves happen
   only in the release run after the gates above.
+
+
+### 8.6 `0.1.0-rc.3` candidate evidence (2026-10-26)
+
+The rc.3 work was implemented directly in the uncommitted worktree on top of `b2abb22` (rc.2); the Lead reviews and
+commits it. Version `0.1.0-rc.3`.
+
+- `npm test` / `npm run check`: 24 test files / 322 tests pass (typecheck + build + Vitest).
+- Normal `npm run smoke:package` passes; exact-artifact package smoke passes on the final tarball without rebuilding.
+- **Packed-artifact recovery smoke** (`node scripts/verify/recovery-smoke.mjs --artifact <dist tgz> --sha256
+  SHA256SUMS`) passes: verifies the tarball SHA-256, parses the archive and asserts the six Remote methods + client
+  factory bundle, mounts the **packed** `CharterService` over a scripted backend, builds a record with
+  Unicode/pending/archived/superseded/history content, exports it, removes the target, restores under the same
+  Session identity, replays the restore through the maintenance receipt, restarts twice comparing the complete
+  record/state/prompt/tool projections, proves a healthy target refuses overwrite, and runs the storage fault matrix
+  (startup put reject → fence; commit-then-reject → restart convergence; open reject → no record/no ready).
+- Five-version DSH matrix: 322/322 on `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-rc.1`, `0.2.1-rc.2`.
+- The final artifact SHA-256 is recorded in the tracked repository-root `SHA256SUMS` and `dist/SHA256SUMS` (the root
+  file is outside the npm `files` whitelist, so the digest does not change the packed bytes). No release tag, push, or
+  publish is performed in this pass.
+
+Blocking acceptance matrix (evidence = the suites/files above plus the packed-artifact recovery smoke):
+
+| ID | Status | Evidence |
+| --- | --- | --- |
+| RC3-01 | PASS | Host tests: resume/reattach absence performs no `put()` and reports `absent-unconfirmed`; edit returns `INITIALIZATION_REQUIRED` |
+| RC3-02 | PASS | malformed and version-rejected per-record files stay byte-identical across Host start/view/edit (real JSON); recovery smoke ext fs assertions |
+| RC3-03 | PASS | resumed missing fork child is not rebuilt; parent record unchanged |
+| RC3-04 | PASS | packed export contains the full record; restore receipt binds `source.recordDigest`; restored current/history/mutations match the archive |
+| RC3-05 | PASS | restore accepts only same-Session/same-lifecycle structurally consistent archives (foreign Session/lifecycle/invalid archive rejected) |
+| RC3-06 | PASS | healthy target, changed invalid target digest, and lifecycle mismatch reject overwrite; packed smoke proves healthy refusal leaves bytes unchanged |
+| RC3-07 | PASS | unknown initialize/restore replays exact operation id/digest within the receipt window, including restore followed by an ordinary edit (Host + client) |
+| RC3-08 | PASS | storage rejection publishes no proposed content, fences write-uncertain, stops prompt/tool/edits, and converges after commit-then-reject restart (Host fault tests + packed smoke) |
+| RC3-09 | PASS | watch/client emit and preserve same-revision record-state/digest/capability changes (dedupe tests) |
+| RC3-10 | PASS | Node 22.19/24 CI configuration plus the five-version matrix; maintenance enabled on 0.2.1 (capability true) and fail-closed on older DSH/record-limit (`RECOVERY_UNSUPPORTED`, `recordMaintenance:false`); live-Gateway principal enforcement is covered only by contract/Host capability tests (see gaps) |
+| RC3-11 | PASS | final `.tgz` exact-artifact package smoke + packed recovery/fault smoke |
+| RC3-12 | PASS | English/Chinese README, design plan, user guide, verification, changelog, releasing docs, and rc.3 release-notes draft are updated and version-consistent |
+| RC3-13 | PASS | core/Host tests: rc.2 strict schema isolates a receipt-bearing record (preserved), rc.3 re-reads it after re-upgrade |
+
+Audit follow-up (same candidate): read-triggered lazy startup removed with gap probes (absence/malformed/missing fork
+child); ambiguous archive operation ids rejected with `OPERATION_ID_REUSED` before any write; `maintenanceLimit: 1`
+trim fixed; shutdown drains mutation queues before closing the medium; startup put re-reads/CAS inside the per-Session
+queue; replay reports the receipt's original revision; client preview verifies payload/record digests and shows
+exportedAt/source Session; the Pane uses the shared admission predicate with localized reasons and reset/cancel
+confirmation semantics; export errors are localized and the dark-mode file-input override is gone. Full suite is now
+24 files / 322 tests.
+
+Honest remaining gaps: a live 0.2.1 Gateway principal test and a real-browser UI session are not available in this
+environment (contract/Host capability and real-renderer tests are used instead); screenshots were not regenerated (no
+clean demo-only isolated profile); public CI has not run on the uncommitted tree. The legacy `invalidRecords`/message
+compatibility paths in the Host are retained but no longer user-visible authority (record state is authoritative), and
+one documented compatibility shim lazily starts a startup initialization for a Session created in-process before its
+`agent/created` event in test harnesses; the authoritative wire-level source contract is unchanged.
 
 ## 9. Unsupported verification and accepted non-blocking limitations
 

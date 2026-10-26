@@ -4,6 +4,91 @@
 
 记录 `dsh-charter` 的重要变更。DSH 插件 ABI 仍在演进，项目保持 pre-1.0 版本线。
 
+## 0.1.0-rc.3 — 2026-10-26
+
+保留权威记录的恢复版本。会话契约记录现在通过统一的结构化状态机打开；恢复的 Session 缺失记录时不再自动重建；
+owner 可以导出完整归档并将其恢复到同一 Session lifecycle。
+
+### 新增
+
+- 来源感知初始化：`startup` 可创建 root/fork 记录；`resume`、`clear`、`compact`、`reattach` 与未知来源停在
+  `absent-unconfirmed` 且不写入。`session/created` 只记录意图，`agent/created` 才是权威来源；推断/权威启动意图
+  会被合并；`edit` 不再隐式创建记录并返回 `INITIALIZATION_REQUIRED`。
+- Host view 与 Remote wire 上的结构化 `CharterRecordState`（`healthy`、`absent-unconfirmed`、`invalid`、
+  `lifecycle-mismatch`、`unknown`、`write-uncertain`），以及 `capabilities.recordMaintenance`、
+  `maxRecoveryBytes`、`maintenanceLimit`；`recordState` 由 Host 推导、绝不持久化。集中检查覆盖 schema、一致性、
+  lifecycle，并为 schema 不合法记录提供 loose identity 的 recoverable 判定。
+- 完整记录导出与受控恢复：新增 owner-only 的 `exportRecord`、`initializeRecord`、`restoreRecord`
+  （共六个 Remote 方法），带 Session 资源与严格 codec；restore 外层契约只校验小字段，能力/owner/存储检查在深层
+  归档解析之前。归档包含 identity、当前快照、有界历史、mutation 回执与 payload digest；restore 要求同一
+  Session/lifecycle、重做全部校验、拒绝健康目标、保留归档的 current/history/mutations 且只追加 maintenance 回执。
+- 记录（`recordSchemaVersion: 1`）内新增有界 `recentMaintenance` 回执（默认 16），支持 initialize/restore 在响应
+  丢失后的精确 replay（包括 restore 之后又发生普通 edit），同一 operation id 不同内容返回
+  `OPERATION_ID_REUSED`。
+- 写结果不确定围栏：可能已落盘的存储拒绝不会发布提议内容，停止 prompt 注入与 `charter_read`，拒绝
+  edit/initialize/restore/export，只发一次结构化 watch 降级，同一 Host 生命周期内不再覆盖该键，重启后从介质收敛。
+  已知的 pre-flight `DomainError`（`missing-key`/`closed`）仍是确定结果，不触发围栏。
+- 每 Session 的 mutation 队列串行 startup 初始化、显式初始化、普通 edit 与 restore，每个队列槽都重新读取并做
+  CAS。
+- Context 之后的“存储与恢复”Pane 区：记录健康/revision/lifecycle/digest/超预算、敏感完整记录导出下载、归档选择与
+  预览、显式空初始化与恢复的两步确认、absent-unconfirmed 指引（含“缺失或不可读、无法区分”与停止 Host 备份
+  建议）、write-uncertain 重启说明、能力/record-limit 说明；中英文案、明暗与窄屏布局、键盘/focus 样式。
+- 验证：脚本化存储故障矩阵（open/load/put/update 的 reject/defer/commit-then-reject）、真实 JSON Host 恢复场景，
+  以及针对打包 tarball 的 final-artifact recovery smoke（`scripts/verify/recovery-smoke.mjs`）：export → 删除 →
+  restore → 两次重启比较 record/state/prompt/tool 投影 → 健康目标拒绝覆盖 → 存储故障矩阵。
+
+### 变更
+
+- 新增确定性业务码：`INITIALIZATION_REQUIRED`、`INVALID_ARCHIVE`、`RECORD_CONFLICT`、
+  `OPERATION_ID_REUSED`、`RECOVERY_UNSUPPORTED`。
+- Remote namespace 从 3 个方法扩展到 6 个；旧 Host frame 将 `recordState` 默认为 `unknown/legacy-host`、
+  `capabilities.recordMaintenance` 默认为 false。同 revision 的 record-state/digest/capability 变化现在会发出
+  changed frame 并通过 watch/client 去重。
+- 客户端 attempt 状态扩展 initialize/restore：精确保留 operation id/lifecycle/target digest/archive，共享
+  replay/abandon 规则，并用稳定 RemoteError 分类（文档化的 pre-dispatch 失败为确定结果；所有可能已执行的失败保留
+  请求；不做 message/`instanceof` 匹配）。
+
+### 修复（审计跟进）
+
+- 彻底移除读触发的 lazy startup 路径：`session/created → agent/created` 间隔内的 view/watch 读取不再推断
+  `startup`、不写入，缺失一律归类为 `absent-unconfirmed`；只有权威 `agent/created(startup)` 才创建记录。探针测试覆盖
+  该间隔内缺失、malformed/version-rejected 字节（逐字节不变）、缺失 fork 子记录（不重新 fork）。
+- restore 拒绝模糊 maintenance 证据：若归档自身记录已含请求 operation id，而目标没有匹配的 replay 回执，返回
+  `OPERATION_ID_REUSED` 且不写入；initialize 与 restore 在持久化 put 前都会断言记录一致性。
+- 修复 `maintenanceLimit: 1` 时保留整个回执数组的 bug（`slice(-(limit-1))`）：只保留当前回执，并加测试。
+- 关闭流程先关闭准入、排水初始化与每 Session mutation 队列，再关闭存储介质；startup put 在每 Session 队列内执行并
+  重新读取/CAS，不会覆盖并发的 initialize/restore。
+- maintenance replay 返回回执原始 result revision（而非后续 edit 后的当前 revision）；view 仍是当前权威。
+- 客户端归档预览用 WebCrypto 校验 payload/record digest，显示导出时间/来源 Session，大小检查覆盖完整 envelope，
+  仅对健康且完整性校验通过的归档开放 restore；导出/初始化/恢复使用共享 admission 谓词并显示本地化禁用原因；
+  破坏性确认在 section/target/archive/lifecycle 变化时重置并提供取消；in-flight 与 unknown 状态分离 live-region
+  语义；导出失败按确定性 code 本地化；移除 `prefers-color-scheme` 的文件输入覆盖，改用 DSH token；lifecycle
+  展示不再暴露原始 cwd JSON。
+
+### 安全
+
+- 维护操作 owner-only，且要求 DSH 0.2.1+ 的 principal/资源约束；0.1.7/0.2.0 上 Host 在深层归档解析或存储访问前以
+  `RECOVERY_UNSUPPORTED` fail closed。归档包含用户文本并标注敏感；payload digest 检测意外损坏，不证明恶意来源。
+
+### 已知限制
+
+- **rc.2 降级：**rc.2 使用不含 `recentMaintenance` 的严格记录 schema。rc.3 为某 Session 写入 maintenance 回执后，
+  rc.2 会把该 Session 隔离为 schema-invalid（不注入/不可编辑）但保留原始记录；重新升级到 rc.3 后恢复访问。没有
+  maintenance 操作的记录仍可被 rc.2 读取。这是前向可读的升级兼容，不是 rc.2 回滚兼容。
+- 存储 API 仍无法区分记录缺失与不可读的外层文档；UI/插件只报告“缺失或不可读，无法区分”，绝不声称识别了损坏。
+  如需取证字节，请停止 Host 并备份/修复存储文件。
+- `maxRecoveryBytes` 默认 4 MiB（至少 `maxRecordBytes + 64 KiB`，硬上限 16 MiB）。记录预算无空间的 profile 会关闭
+  maintenance（`recordMaintenance:false`，reason `record-limit`），需要停止 Host 后离线备份；既有记录上限不会被
+  静默降低。
+- 有界 maintenance 回执：仅当回执仍在窗口内时保证 replay。
+- 不支持跨 Session/lifecycle 导入、覆盖健康记录或 force 选项；不引入 v2 domain 或迁移。
+
+### 测试
+
+- 24 个测试文件 / 322 个测试（`npm test`），含新的 core archive/maintenance 套件、Host 恢复/故障场景、Remote
+  六方法契约、客户端 attempt/分类测试与真实 `react-test-renderer` 恢复 UI 测试；另有打包产物 recovery smoke 与
+  五版本矩阵。
+
 ## 0.1.0-rc.2 — 2026-10-24
 
 小型补丁候选：Pane hook 顺序崩溃修复、安全升级与发布渠道/文档修正。

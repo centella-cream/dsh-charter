@@ -40,7 +40,7 @@ For a Web or Desktop profile the plugin registers:
 npm install
 npm run build
 npm pack
-dsh plugin --profile web add ./dsh-charter-0.1.0-rc.2.tgz
+dsh plugin --profile web add ./dsh-charter-0.1.0-rc.3.tgz
 ```
 
 For Desktop, use the Plugins page if local import is available; otherwise install the tarball through the Desktop
@@ -50,11 +50,11 @@ dependency is a local `file:` path. Prefer npm install in §2.3 when the registr
 ### 2.3 npm / Registry install (recommended) — Web profile by version or tag
 
 ```bash
-dsh plugin --profile web add dsh-charter@0.1.0-rc.2   # exact version: reproducible
+dsh plugin --profile web add dsh-charter@0.1.0-rc.3   # exact version: reproducible
 dsh plugin --profile web add dsh-charter@next         # newest pre-release
 ```
 
-`0.1.0-rc.2` is the current pre-release under the `next` dist-tag. Under our channel policy `latest` also points
+`0.1.0-rc.3` is the current pre-release under the `next` dist-tag. Under our channel policy `latest` also points
 at the newest RC until a stable release exists (npm keeps a `latest` tag and we choose where it points; this is
 our policy, not an npm requirement). Use the exact version or `@next` for pre-release installs, and use the
 offline tarball fallback above only when the registry is unreachable. Pin an explicit version for reproducible
@@ -65,7 +65,7 @@ dependency and bundle selection:
 
 ```json
 {
-  "dependencies": { "dsh-charter": "0.1.0-rc.2" },
+  "dependencies": { "dsh-charter": "0.1.0-rc.3" },
   "dsh": { "profile": { "bundles": ["...", "dsh-charter"] } }
 }
 ```
@@ -79,7 +79,26 @@ If your Desktop build exposes the public catalog and the package is published th
 search for **`dsh-charter`**, and click **Install**. When already installed, click **Update**; Desktop owns the
 plugin lifecycle and hot-applies the new bundle. Otherwise use the tarball path.
 
-### 2.5 Source development
+### 2.5 Storage & recovery
+
+Open the **Storage & recovery** tab (after **Context**). It shows the structured record state, revision, lifecycle,
+short record digest, and over-budget flag.
+
+- **Export** downloads the complete record archive (identity, current snapshot, bounded history, mutation and
+  maintenance receipts). The archive contains your charter text and is sensitive.
+- **Recovery** accepts a local JSON archive only (never a URL or Host path). The Pane validates the outer envelope,
+  file size (`maxRecoveryBytes`), Session, and lifecycle, previews health/revision/lifecycle/digest, and requires a
+  second confirmation before the Host revalidates and writes anything. Restore is offered only for an
+  `absent-unconfirmed` or `invalid` target; a healthy record cannot be overwritten.
+- **Explicit empty initialization** is available for `absent-unconfirmed` and requires a destructive second
+  confirmation, because an unreadable outer document also appears absent.
+- `write-uncertain` means a storage write may or may not have landed. Restart the Host so it reloads the medium; the
+  Session stays read-only until then.
+- Maintenance is owner-only on DSH `0.2.1+`; older DSH shows the capability as unavailable. Cross-Session or
+  cross-lifecycle restore, force import, and healthy-record overwrite are unsupported. Records with a maintenance
+  receipt are isolated by rc.2 (preserved, not injected/edited) and readable again after upgrading to rc.3.
+
+### 2.6 Source development
 
 For source changes, link the checkout and rebuild:
 

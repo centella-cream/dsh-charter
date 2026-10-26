@@ -39,7 +39,7 @@ dsh --profile web --dump-config | grep -n "charter" || true
 npm install
 npm run build
 npm pack
-dsh plugin --profile web add ./dsh-charter-0.1.0-rc.2.tgz
+dsh plugin --profile web add ./dsh-charter-0.1.0-rc.3.tgz
 ```
 
 Desktop 若支持本地插件导入，可在 Plugins 页面安装同一个 tarball；否则通过 Desktop profile 自己的包管理器
@@ -49,11 +49,11 @@ Desktop 若支持本地插件导入，可在 Plugins 页面安装同一个 tarba
 ### 2.3 npm / Registry 安装（推荐）— Web profile 按版本或 tag
 
 ```bash
-dsh plugin --profile web add dsh-charter@0.1.0-rc.2   # 精确版本：可复现
+dsh plugin --profile web add dsh-charter@0.1.0-rc.3   # 精确版本：可复现
 dsh plugin --profile web add dsh-charter@next         # 最新预发布
 ```
 
-`0.1.0-rc.2` 是 `next` dist-tag 下的当前预发布。按当前渠道策略，稳定版出现前 `latest` 也会指向最新 RC（npm
+`0.1.0-rc.3` 是 `next` dist-tag 下的当前预发布。按当前渠道策略，稳定版出现前 `latest` 也会指向最新 RC（npm
 会保留 `latest` tag，由我们决定其指向；这是我们的策略，不是 npm 的强制要求）。预发布安装请使用精确版本或
 `@next`；只有 registry 不可达时才使用上面的离线 tarball 回退。固定明确版本可以让 profile 可复现。
 
@@ -62,7 +62,7 @@ dsh plugin --profile web add dsh-charter@next         # 最新预发布
 
 ```json
 {
-  "dependencies": { "dsh-charter": "0.1.0-rc.2" },
+  "dependencies": { "dsh-charter": "0.1.0-rc.3" },
   "dsh": { "profile": { "bundles": ["...", "dsh-charter"] } }
 }
 ```
@@ -76,7 +76,22 @@ peer 兼容检查结果为准。
 **`dsh-charter`**，点击 **Install**。已安装时点击 **Update**；Desktop 管理插件生命周期并热更新 bundle。
 否则使用 tarball 路径。
 
-### 2.5 源码开发
+### 2.5 存储与恢复
+
+打开 **存储与恢复** 标签（位于 **上下文** 之后），可查看结构化记录状态、revision、lifecycle、短记录 digest 与超预算
+标记。
+
+- **导出**：下载完整记录归档（identity、当前快照、有界历史、mutation 与 maintenance 回执）。归档包含会话契约
+  文本，属敏感数据。
+- **恢复**：只接受本地 JSON 归档（绝不接受 URL 或 Host 路径）。Pane 先校验外层封装、文件大小
+  （`maxRecoveryBytes`）、Session 与 lifecycle，并预览 health/revision/lifecycle/digest；Host 在写入前再次完整
+  校验，且需要第二次确认。仅对 `absent-unconfirmed` 或 `invalid` 目标提供恢复；健康记录不能被覆盖。
+- **显式空初始化**：仅对 `absent-unconfirmed` 可用，需要破坏性二次确认，因为不可读的外层文档同样表现为缺失。
+- `write-uncertain`：存储写入可能已落盘也可能没有。重启 Host 让插件重新加载介质；在此之前该 Session 保持只读。
+- 维护操作在 DSH `0.2.1+` 上 owner-only；旧版 DSH 显示能力不可用。不支持跨 Session/lifecycle 恢复、force 导入或
+  覆盖健康记录。写入 maintenance 回执的记录会被 rc.2 隔离（保留但不注入/编辑），升级回 rc.3 后可再次读取。
+
+### 2.6 源码开发
 
 源码改动可以链接 checkout 并重新构建：
 

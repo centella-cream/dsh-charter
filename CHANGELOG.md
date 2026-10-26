@@ -5,6 +5,109 @@ English | [中文](CHANGELOG.zh.md)
 All notable changes to `dsh-charter` are recorded here. The project follows a pre-1.0 version line while the
 DSH plugin ABI is still moving.
 
+## 0.1.0-rc.3 — 2026-10-26
+
+Authority-preserving recovery release. The Charter record is now opened through one structured state machine, an
+absent record on a restored Session is never auto-replaced, and owners can export a complete archive and restore it
+to the same Session lifecycle.
+
+### Added
+
+- Source-aware initialization: `startup` may create a root or fork record; `resume`, `clear`, `compact`, `reattach`,
+  and unknown sources stop at `absent-unconfirmed` without writing. `session/created` records intent only;
+  `agent/created` is authoritative; inferred/authoritative startup intents are coalesced; `edit` no longer creates a
+  record implicitly and returns `INITIALIZATION_REQUIRED`.
+- Structured `CharterRecordState` on the Host view and Remote wire (`healthy`, `absent-unconfirmed`, `invalid`,
+  `lifecycle-mismatch`, `unknown`, `write-uncertain`) plus `capabilities.recordMaintenance`, `maxRecoveryBytes`, and
+  `maintenanceLimit`; `recordState` is Host-derived and never persisted. Central inspection covers schema,
+  consistency, and lifecycle with a loose-identity recoverable flag.
+- Complete-record export and controlled restore: owner-only `exportRecord`, `initializeRecord`, and `restoreRecord`
+  Remote methods (six methods total) with Session resources, strict codecs, and an outer restore contract that checks
+  only small fields before capability/owner/storage access. Archives carry identity, current snapshot, bounded
+  history, mutation receipts, and a payload digest; restore requires the same Session and lifecycle, revalidates
+  everything, refuses healthy targets, and preserves archived current/history/mutations while appending only a
+  maintenance receipt.
+- Bounded `recentMaintenance` receipts (default 16) inside `recordSchemaVersion: 1` records, enabling exact replay of
+  initialize/restore after a lost response (including restore followed by an ordinary edit) and `OPERATION_ID_REUSED`
+  for one operation id with different content.
+- Write-uncertain fencing: a storage rejection after a possibly durable write publishes no proposed content, stops
+  prompt injection and `charter_read`, rejects edit/initialize/restore/export, emits one structured watch demotion,
+  never overwrites the key again in the same Host lifetime, and converges from the medium after restart. Known
+  pre-flight `DomainError`s (`missing-key`/`closed`) remain definite outcomes and do not fence.
+- Per-Session mutation queue for startup initialization, explicit initialization, ordinary edit, and restore, with a
+  re-read/CAS at every queue slot.
+- Storage & recovery Pane section after Context: record health/revision/lifecycle/digest/over-budget, sensitive
+  complete-record export download, archive file selection + preview, two-step confirmation for explicit empty
+  initialization and restore, absent-unconfirmed guidance (including "missing or unreadable; cannot distinguish"
+  and stop-the-Host backup advice), write-uncertain restart copy, and capability/record-limit copy. English and
+  Chinese copy, light/dark and narrow layouts, keyboard/focus styles.
+- Verification: scripted storage fault matrix (open/load/put/update controls incl. reject, defer,
+  commit-then-reject), real-JSON Host recovery scenarios, and a final-artifact recovery smoke
+  (`scripts/verify/recovery-smoke.mjs`) that runs against the packed tarball: export → remove → restore → two
+  restarts with record/state/prompt/tool-projection comparison → healthy-target refusal → storage-fault matrix.
+
+### Changed
+
+- New deterministic business codes: `INITIALIZATION_REQUIRED`, `INVALID_ARCHIVE`, `RECORD_CONFLICT`,
+  `OPERATION_ID_REUSED`, `RECOVERY_UNSUPPORTED`.
+- Remote namespace expanded from three to six methods; old Host frames default `recordState` to
+  `unknown/legacy-host` and `capabilities.recordMaintenance` to false. Same-revision record-state/digest/capability
+  changes now emit changed frames and survive watch/client dedupe.
+- Client attempt state now covers initialize/restore with exact operation id/lifecycle/target digest/archive
+  retention, shared replay/abandon rules, and stable RemoteError classification (documented pre-dispatch failures are
+  definite, all possibly-executed failures retain the request; no message/`instanceof` matching).
+
+### Fixed (audit follow-up)
+
+- Removed the read-triggered lazy startup path entirely: a view/watch read in the `session/created → agent/created`
+  gap never infers `startup`, writes nothing, and classifies absence as `absent-unconfirmed`; only the authoritative
+  `agent/created(startup)` creates a record. Probe tests cover a gap view over absence, malformed/version-rejected
+  bytes (byte-identical), and a missing fork child (not re-forked).
+- Restore now refuses ambiguous maintenance evidence: an archive whose own record already contains the request
+  operation id, while the target has no matching replay receipt, returns `OPERATION_ID_REUSED` without writing; both
+  initialize and restore assert record consistency immediately before the durable put.
+- `maintenanceLimit: 1` no longer keeps the whole receipt array (`slice(-(limit-1))` bug); exactly the current receipt
+  survives, with a test.
+- Shutdown closes admission, drains initialization and per-Session mutation queues, then closes the medium; startup
+  puts run inside the per-Session queue with a fresh re-read/CAS so they cannot overwrite a concurrent
+  initialize/restore.
+- Maintenance replay reports the receipt's original result revision (not the current revision after a later edit);
+  the view remains the current authority.
+- Client archive preview verifies the payload and record digests with WebCrypto, shows export time/source Session,
+  includes the envelope in the size check, and requires a healthy, integrity-checked archive before restore is
+  offered; export/initialize/restore use the shared admission predicate with localized disabled reasons; destructive
+  confirmations reset on section/target/archive/lifecycle changes and provide Cancel; in-flight and unknown-outcome
+  states have separate live-region semantics; export failures are localized by deterministic code; the dark-mode
+  `prefers-color-scheme` file-input override was removed in favor of DSH tokens; lifecycle display no longer exposes
+  the raw cwd JSON.
+
+### Security
+
+- Maintenance is owner-only and requires DSH 0.2.1+ principal/resource enforcement; on 0.1.7/0.2.0 the Host fails
+  closed with `RECOVERY_UNSUPPORTED` before deep archive parsing or storage access. Archives contain user text and
+  are labeled sensitive; payload digests detect accidental corruption, not malicious provenance.
+
+### Known limitations
+
+- **rc.2 downgrade:** rc.2 uses a strict record schema without `recentMaintenance`. Once rc.3 writes a maintenance
+  receipt for a Session, rc.2 isolates that Session as schema-invalid (no injection/editing) while preserving the raw
+  record; upgrading back to rc.3 restores access. Records without maintenance operations stay readable by rc.2. This
+  is forward-readable upgrade compatibility, not rc.2 rollback compatibility.
+- The storage API still cannot distinguish a missing record from an unreadable outer document; the UI/Plugin reports
+  "missing or unreadable; cannot distinguish", never claims corruption was identified. Stop the Host and back up or
+  repair the storage file if forensic bytes are needed.
+- `maxRecoveryBytes` defaults to 4 MiB (at least `maxRecordBytes + 64 KiB`, 16 MiB hard ceiling). A profile whose
+  record budget leaves no room disables maintenance (`recordMaintenance:false`, reason `record-limit`) and requires
+  offline backup after stopping the Host; the existing record limit is never silently lowered.
+- Bounded maintenance receipts: replay is guaranteed only while the receipt remains in the window.
+- No cross-Session/cross-lifecycle import, healthy-record overwrite, or force option. No v2 domain or migration.
+
+### Tests
+
+- 24 test files / 322 tests (`npm test`), including the new core archive/maintenance suite, Host recovery/fault
+  scenarios, Remote six-method contract, client attempt/classification tests, and real `react-test-renderer`
+  recovery UI tests; plus the packed-artifact recovery smoke and the five-version matrix.
+
 ## 0.1.0-rc.2 — 2026-10-24
 
 Small patch candidate: a Pane hook-order crash fix, a security upgrade, and release-channel/doc corrections.

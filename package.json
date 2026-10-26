@@ -1,6 +1,6 @@
 {
   "name": "dsh-charter",
-  "version": "0.1.0-rc.2",
+  "version": "0.1.0-rc.3",
   "description": "A durable, user-owned session charter for DeepSeek Harness, designed to survive context compaction.",
   "license": "MIT",
   "type": "module",

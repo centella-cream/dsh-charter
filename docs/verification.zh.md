@@ -14,7 +14,7 @@
 | 验证项 | 结果 |
 | --- | --- |
 | TypeScript 严格类型检查（5 个 DSH 版本） | 通过 |
-| Vitest（5 个本地可用版本 × 263 个测试） | 通过 |
+| Vitest（5 个本地可用版本 × 322 个测试） | 通过 |
 | Host ESM 构建 + 浏览器单文件 bundle | 通过 |
 | Remote 装饰器/资源 smoke | 通过（0.1.7/0.2.0 按预期无资源声明） |
 | 浏览器 factory bundle 物化与 `apply` smoke | 通过 |
@@ -45,7 +45,7 @@ npm test
 
 - typecheck 通过；
 - build 通过；
-- 20 个测试文件、263 个测试全部通过（来自 `npm test`，即 build 后运行 `vitest run`）；
+- 24 个测试文件、322 个测试全部通过（来自 `npm test`，即 build 后运行 `vitest run`）；
 - `remote-smoke` 断言 `watch,bootstrap,edit`、stream mode 和 Session resource；
 - `client-smoke` 断言单文件 factory bundle、外部依赖白名单、不引用 Node-only `Buffer`、`apply` 注册
   tab/pane/Remote contribution。
@@ -84,6 +84,9 @@ CI（`.github/workflows/ci.yml`）对 Node `22.19.0` 与 Node `24` 运行 `npm r
 | `tests/client/preview.spec.ts` | 投影后的 draft 行（add/edit/accept/progress/supersede/purge）；purge 预览会解除后继的 supersedes 关联；committed fixture 下两种 purge 顺序都保留直接暂存后继的 Unstage，只有纯派生行才隐藏；渲染器一致性与 pending 排除；pending/active 行按单一投影顺序显示（接受后保持顺序）；按 order（而非 Host id）排序渲染；prompt 预算的 Apply 准入（缩短、同字节、增长、预算内四种渲染） |
 | `tests/verify/compaction-checks.spec.ts` | compaction checker fixture：严格生命周期状态机（合法序列、失败 end、end-before-start、summary-before-start、同 id retry）；现代 `charter_read` producing-call 认证（合法；identity 字段缺失 toolCallId/turn/step 或 call 侧缺失、不匹配、source seq 非有限/≥result、歧义/非 charter call）与 legacy 重复 callId 配对；严格 arguments（缺省/普通对象/standing 有效，其他 malformed 形状全部拒绝）；活动门禁（无活动 = WAIT，执行但无 runtime 快照 = FAIL）；成功证据之后所有后续 attempt（landed-failed 后跟 unlanded 仍 FAIL、open = WAIT、未 landing 保留 PASS、后续成功需新证据）；checkpoint 按 attempt seq 区间关联（同 id retry 不继承旧 checkpoint）；WAIT 内部一致（`evaluated=false`、failures 空、无 FAIL line，仅 active evidence 可 FAIL）；system prompt 污染；commit 落在 start/end 之间需重新 compaction；断言 exit code/JSON verdict/文本/warnings；紧凑 standing 投影一致 |
 | `tests/verify/transcript-parser.spec.ts` | CLI fixture：末尾 torn line（append 未完成）被忽略；中间损坏行与完整的末尾损坏行都会带行号失败，绝不 PASS；非法 event envelope（null/数字/数组/缺字段/重复或倒序 seq/缺 data/time）同样带行号且无 Node stack |
+| `tests/core/archive.spec.ts` | record digest 覆盖 identity/current/history/mutations/maintenance；payload digest 往返与篡改拒绝；Session/大小拒绝；healthy + lifecycle + revision 可恢复校验；maintenance 回执追加/裁剪/重复/语义拒绝；restore 内容与回执保留；restore 后 edit；rc.2 严格 schema 隔离 vs rc.3 重新读取 |
+| `tests/host/recovery.spec.ts` | rc.3 Host 权威/恢复矩阵：resume 缺失不 put 且返回 `INITIALIZATION_REQUIRED`；`session/created` 意图 vs 权威 startup；malformed 与 version-rejected 原始字节不变；缺失 fork 子记录不重建；显式 initialize + replay/冲突/owner/lifecycle 拒绝；export → invalid 目标 restore 的 digest/history/mutation/receipt 与 prompt/tool 投影一致性；健康目标拒绝与 `OPERATION_ID_REUSED`；restore 后 edit 的 replay；跨 Session/lifecycle 归档拒绝；能力 fail-closed（`record-limit`）；rc.2 回执隔离与重读；超预算 restore 不注入；并发 initialize/restore 队列顺序；reattach 缺失后权威 startup；脚本化故障后端（open/load reject、startup put reject、commit-then-reject 重启收敛、update 回调后拒绝 vs 已知 preflight、deferred 写入、每 Session 隔离） |
+| `tests/client/pane-recovery.spec.tsx` | 真实 `react-test-renderer` 存储与恢复区：健康导出 + 敏感提示、invalid/诊断导出、两步确认空初始化与成功后的健康状态、归档预览 + 二次确认 restore 请求内容、legacy-host/record-limit 禁用控件、write-uncertain 重启说明、无 DOM 的下载安全路径；Pane hook 顺序回归测试保持通过 |
 | `tests/verify/package-smoke.spec.ts` | pack JSON 解析：object/以包名为 key 的 object/单元素数组（完整输出解析）、SHA sums 解析与 exact-artifact digest 校验（匹配 + 不匹配 + 缺失条目）、用 JS 构造的 GNU/BSD ustar、PAX 长路径、GNU longname archive 验证结构化 Node tar 解析，并拒绝 symlink/hardlink/fifo/重复/穿越/绝对/package 外/坏 checksum/截断数据、tar 内 packed manifest 的身份/files/exports/dependencies/peers/engines 与工作树一致性校验、artifact 模式参数配对 |
 
 ## 3. 跨版本矩阵
@@ -790,6 +793,52 @@ seq **31825**，位于 compaction seq 31801 与 runtime 快照 seq 31810 之后�
   （`--artifact ... --sha256 SHA256SUMS`）在不重建的前提下对这些字节通过；升级后的构建通过五版本 DSH 矩阵；
   已记录的真实模型 compaction transcript 复跑 PASS。
 - 本次准备阶段不创建 tag、不发布；release tag 与 npm 渠道移动只在门禁通过后的发布执行中发生。
+
+
+### 8.6 `0.1.0-rc.3` 候选证据（2026-10-26）
+
+rc.3 在 rc.2 的 `b2abb22` 之上以未提交 worktree 实现，由 Lead 审核后提交。版本 `0.1.0-rc.3`。
+
+- `npm test` / `npm run check`：24 个测试文件 / 322 个测试通过（typecheck + build + Vitest）。
+- 普通 `npm run smoke:package` 通过；exact-artifact package smoke 在最终 tarball 上通过且不重建。
+- **打包产物 recovery smoke**（`node scripts/verify/recovery-smoke.mjs --artifact <dist tgz> --sha256 SHA256SUMS`）
+  通过：校验 tarball SHA-256，解析归档并断言六个 Remote 方法与 client factory bundle，用脚本化后端挂载**打包的**
+  `CharterService`，构造含 Unicode/pending/archived/superseded/history 的记录并导出，删除目标后在同一 Session
+  identity 下恢复，经 maintenance 回执 replay，两次重启比较完整 record/state/prompt/tool 投影，证明健康目标拒绝
+  覆盖，并运行存储故障矩阵（startup put reject → 围栏；commit-then-reject → 重启收敛；open reject → 无记录/不 ready）。
+- 五版本 DSH 矩阵：`0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-rc.1`、`0.2.1-rc.2` 均为 322/322。
+- 最终产物 SHA-256 记录在 tracked 仓库根部 `SHA256SUMS` 与 `dist/SHA256SUMS`（根部文件不在 npm `files` 白名单内，
+  不影响打包字节）。本轮不创建 tag、不推送、不发布。
+
+阻塞验收矩阵（证据即上述套件/文件与打包产物 recovery smoke）：
+
+| ID | 状态 | 证据 |
+| --- | --- | --- |
+| RC3-01 | PASS | Host 测试：resume/reattach 缺失不执行 `put()` 并报告 `absent-unconfirmed`；edit 返回 `INITIALIZATION_REQUIRED` |
+| RC3-02 | PASS | malformed 与 version-rejected per-record 文件在 Host 启动/view/edit 后字节不变（真实 JSON）；recovery smoke |
+| RC3-03 | PASS | 恢复时缺失的 fork 子记录不被重建，父记录不变 |
+| RC3-04 | PASS | 打包导出包含完整记录；restore 回执绑定 `source.recordDigest`；恢复后的 current/history/mutations 与归档一致 |
+| RC3-05 | PASS | restore 只接受同 Session/lifecycle、结构一致的归档（跨 Session/lifecycle/非法归档被拒绝） |
+| RC3-06 | PASS | 健康目标、变更过的 invalid target digest 与 lifecycle mismatch 均拒绝覆盖；打包 smoke 证明健康拒绝后字节不变 |
+| RC3-07 | PASS | 未知 initialize/restore 在回执窗口内精确 replay 同 operation id/digest，包括 restore 后普通 edit（Host + 客户端） |
+| RC3-08 | PASS | 存储拒绝不发布提议内容、围栏 write-uncertain、停止 prompt/tool/编辑，commit-then-reject 重启后收敛（Host 故障测试 + 打包 smoke） |
+| RC3-09 | PASS | watch/client 发出并保留同 revision 的 record-state/digest/capability 变化（去重测试） |
+| RC3-10 | PASS | Node 22.19/24 CI 配置与五版本矩阵；0.2.1 启用 maintenance，旧版 DSH/record-limit fail closed（`RECOVERY_UNSUPPORTED`、`recordMaintenance:false`）；live Gateway principal 仅由契约/Host 能力测试覆盖（见缺口） |
+| RC3-11 | PASS | 最终 `.tgz` exact-artifact package smoke + 打包 recovery/fault smoke |
+| RC3-12 | PASS | 中英文 README、设计计划、用户指南、验证记录、changelog、releasing 文档与 rc.3 release-notes 草稿已更新且版本一致 |
+| RC3-13 | PASS | core/Host 测试：rc.2 严格 schema 隔离带回执记录（保留），重新升级后 rc.3 可读取 |
+
+审计跟进（同一候选）：读触发的 lazy startup 已移除并有缺口探针（缺失/malformed/缺失 fork 子记录）；归档中已存在
+请求 operation id 时在写入前以 `OPERATION_ID_REUSED` 拒绝；修复 `maintenanceLimit: 1` 裁剪；关闭流程在关闭介质前排水
+mutation 队列；startup put 在每 Session 队列内重新读取/CAS；replay 返回回执原始 revision；客户端预览校验
+payload/record digest 并显示 exportedAt/来源 Session；Pane 使用共享 admission 谓词与本地化原因，确认可重置/取消；
+导出错误本地化，移除暗色文件输入覆盖。完整套件现为 24 个测试文件 / 322 个测试。
+
+诚实缺口：当前环境没有 live 0.2.1 Gateway principal 测试与真实浏览器 UI 会话（改用契约/Host 能力测试与真实
+renderer 测试）；未重新生成截图（无干净 demo-only 隔离 profile）；未提交的树尚未跑公开 CI。Host 中的 legacy
+`invalidRecords`/message 兼容路径被保留但不再是用户可见的权威（以 record state 为准）；测试 harness 中有一个已记录
+的兼容 shim：对 in-process 创建、尚未收到 `agent/created` 的 Session 惰性执行 startup 初始化；wire 层的权威来源契约
+不变。
 
 ## 9. 未支持的验证项与已接受的非阻塞限制
 

@@ -12,5 +12,7 @@
         historyLimit: 64
         maxHistoryBytes: 131072
         mutationLimit: 128
+        maintenanceLimit: 16
+        maxRecoveryBytes: 4194304
     - id: charter-remote
       name: dsh-charter/remote

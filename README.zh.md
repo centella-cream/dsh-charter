@@ -99,11 +99,25 @@ Host 在 `session/created` 时初始化记录，并在首次 prompt 前的 `agen
 
 ## 安装
 
-`dsh-charter@0.1.0-rc.2` 是当前 npm 预发布版本。当前渠道策略是发布到 `next`，并在稳定版出现前让 `latest` 也指向
+`dsh-charter@0.1.0-rc.3` 是当前 npm 预发布版本。当前渠道策略是发布到 `next`，并在稳定版出现前让 `latest` 也指向
 最新 RC（npm 会保留 `latest` tag，由我们决定其指向；这是我们的策略，不是 npm 的强制要求）。需要可复现 profile
 时固定精确版本。
 npm 目前也会把这个首个 RC 暴露在 `latest` 下，因为 npm 会给新包的首次发布自动设置 `latest`——稳定版发布后
 会替换它。不要依赖 `@latest` 安装预发布版。
+
+### 恢复与记录健康（0.1.0-rc.3）
+
+rc.3 增加保留权威记录的恢复能力。Pane 会显示结构化的记录状态（healthy、absent-unconfirmed、invalid、
+lifecycle mismatch、unknown、write-uncertain）。DSH `0.2.1+` 上的 owner 可在 **存储与恢复** 区导出完整记录，
+并把校验通过的归档恢复到 **同一 Session lifecycle**；健康记录不能被覆盖，也不支持跨 Session/lifecycle 导入。
+恢复的 Session 没有可读记录时，插件报告“缺失或不可读，无法自动区分”，不会自动创建空记录或从父会话重新 fork；
+用户可执行需两次确认的显式空初始化。存储写入被拒绝时，该 Session 被围栏为 write-uncertain（不注入/不读写），
+直到 Host 重启。
+
+维护操作 owner-only，要求 DSH `0.2.1+` 的 principal/资源约束；`0.1.7`/`0.2.0` 上以 `RECOVERY_UNSUPPORTED`
+fail closed。`maxRecoveryBytes` 默认 4 MiB（至少为记录预算 + 64 KiB，硬上限 16 MiB）；若记录预算无空间，维护被禁用
+（reason `record-limit`），需停止 Host 后离线备份。归档包含用户文本，属敏感数据。写入 maintenance 回执的记录会被
+rc.2 隔离（保留但不注入/编辑）；重新升级到 rc.3 后恢复访问。
 
 ### 环境要求
 
@@ -117,7 +131,7 @@ npm 目前也会把这个首个 RC 暴露在 `latest` 下，因为 npm 会给新
 #### Web profile — 按版本或预发布 tag 安装
 
 ```bash
-dsh plugin --profile web add dsh-charter@0.1.0-rc.2   # 精确版本：可复现
+dsh plugin --profile web add dsh-charter@0.1.0-rc.3   # 精确版本：可复现
 dsh plugin --profile web add dsh-charter@next         # 最新预发布
 ```
 
@@ -142,12 +156,12 @@ tarball 回退方式。
 # 在 checkout 中：
 npm install
 npm run build
-npm pack                         # dsh-charter-0.1.0-rc.2.tgz
-dsh plugin --profile web add ./dsh-charter-0.1.0-rc.2.tgz
+npm pack                         # dsh-charter-0.1.0-rc.3.tgz
+dsh plugin --profile web add ./dsh-charter-0.1.0-rc.3.tgz
 
 # 或下载 GitHub Release 的 tarball + SHA256SUMS 并校验：
 shasum -a 256 -c SHA256SUMS
-dsh plugin --profile web add ./dsh-charter-0.1.0-rc.2.tgz
+dsh plugin --profile web add ./dsh-charter-0.1.0-rc.3.tgz
 ```
 
 `dsh plugin --profile desktop` 会被拥有该 profile 的 Electron app 拒绝；请使用 Desktop 的 Plugins 页面或该
@@ -157,7 +171,7 @@ profile 自己的包管理器。源码开发流程见 [CONTRIBUTING.zh.md](CONTR
 ### 更新
 
 - **Web（npm）**：`dsh plugin --profile web add dsh-charter@next`，然后重启/刷新；固定版本 profile 继续使用
-  显式的 `0.1.0-rc.2`；
+  显式的 `0.1.0-rc.3`；
 - **本地 tarball**：重新构建/下载新 tarball，并重复本地安装命令；
 - **Desktop**：Plugins → `dsh-charter` → **Update**，Desktop 会热更新。
 
@@ -227,6 +241,8 @@ profile 自己的包管理器。源码开发流程见 [CONTRIBUTING.zh.md](CONTR
 | `historyLimit` | 64 | 近期 history 条数 |
 | `maxHistoryBytes` | 131072 | 近期 history 字节上限 |
 | `mutationLimit` | 128 | 近期 mutation 回执上限 |
+| `maintenanceLimit` | 16 | 最近的 initialize/restore 回执（最小 1） |
+| `maxRecoveryBytes` | 4194304 | 完整恢复归档预算（≥ 记录预算 + 64 KiB，硬上限 16 MiB） |
 | `contextOrder` | 130 | runtime context 排序；默认在 sandbox/approval/subagent 之后 |
 
 模型可见容量只有 `maxPromptBytes`；active invariant/deliverable 不再单独设条数上限。`maxItems` 和
@@ -273,7 +289,7 @@ npm run verify:compaction # 手工真实模型 compaction 校验（不在 check 
 ```
 
 测试覆盖纯内核、真实 Host 组合、storage domain、Remote framing、历史抽取、客户端状态和 factory bundle
-注册。当前矩阵：**DSH `0.1.7-rc.2`、`0.2.0-rc.1`/`rc.2`、`0.2.1-rc.1`/`rc.2` × 263 个测试全部通过**。命令与证据见[验证记录](docs/verification.zh.md)。
+注册。当前矩阵：**DSH `0.1.7-rc.2`、`0.2.0-rc.1`/`rc.2`、`0.2.1-rc.1`/`rc.2` × 322 个测试全部通过**。命令与证据见[验证记录](docs/verification.zh.md)。
 
 ## 致谢
 
@@ -290,6 +306,7 @@ npm run verify:compaction # 手工真实模型 compaction 校验（不在 check 
 
 - [设计规格](docs/design/charter-design.zh.md)
 - [设计评审](docs/design/charter-design-review.zh.md)
+- [0.1.0-rc.3 升级方案](docs/design/rc3-recovery-plan.zh.md)
 - [兼容矩阵](docs/design/compatibility.zh.md)
 - [使用与运维指南](docs/user-guide.zh.md)
 - [验证记录](docs/verification.zh.md)
@@ -306,7 +323,7 @@ npm run verify:compaction # 手工真实模型 compaction 校验（不在 check 
 
 ## 状态
 
-Pre-1.0。DSH 插件 ABI 仍在演进；项目对上述版本做兼容验证，并刻意保持兼容层很小。公开仓库为 [centella-cream/dsh-charter](https://github.com/centella-cream/dsh-charter)。当前树是 `0.1.0-rc.2`
+Pre-1.0。DSH 插件 ABI 仍在演进；项目对上述版本做兼容验证，并刻意保持兼容层很小。公开仓库为 [centella-cream/dsh-charter](https://github.com/centella-cream/dsh-charter)。当前树是 `0.1.0-rc.3`
 预发布：真实模型 compaction 验收 **PASS 已于 2026-10-22 记录**（一个匿名评估会话；326 条消息 / 约 228k
 tokens 被压缩，revision 1 契约携带匹配 digest 存活——见验证记录第 8.4 节）。rc.2 候选产物已在本地验证，计划通过 npm 的 `next` dist-tag 发布；按当前渠道策略，稳定版出现前 `latest` 也会指向最新 RC（这是有意的策略选择，不是 npm 的强制要求）。GitHub Release 将附带同一份已验证 tarball。发布稳定 `latest` 前还有一项记录在 8.4 节的人工
 检查：重启 Desktop app 后重新打开会话契约 tab 一次，确认已安装的 bundle/tool ABI。CI
