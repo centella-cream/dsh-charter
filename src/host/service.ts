@@ -403,6 +403,7 @@ export class CharterService extends Service {
       this.waitingForParent.delete(session.id)
       this.unavailable.delete(session.id)
       this.invalidRecords.delete(session.id)
+      this.initializationParents.delete(session.id)
       this.initializationControllers.get(session.id)?.abort(
         new Error('Session disposed during Charter initialization'),
       )
@@ -552,9 +553,8 @@ export class CharterService extends Service {
     const existingOwner = this.initializationOwners.get(session.id)
     if (existing !== undefined && existingOwner === session) {
       // Coalesce: an authoritative startup must re-inspect after an inferred
-      // reattach/unknown run instead of reusing its (weaker) result.
-      const previousSource = this.startSources.get(session.id)
-      void previousSource
+      // reattach/unknown run instead of reusing its (weaker) result. The
+      // current source was just recorded above, so no second lookup is needed.
       if (source === 'startup' && this.lastInitSource.get(session.id) !== 'startup') {
         const rerun = existing.catch(() => undefined)
           .then(() => this.initializeSession(session, source, signal, new Set(ancestors)))
@@ -582,6 +582,7 @@ export class CharterService extends Service {
           this.initializationControllers.delete(session.id)
           this.initializationOwners.delete(session.id)
           this.lastInitSource.delete(session.id)
+          this.initializationParents.delete(session.id)
         }
       })
     this.initializations.set(session.id, initialization)
