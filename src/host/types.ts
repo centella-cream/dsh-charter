@@ -1,8 +1,11 @@
 import type {
   CharterActor,
   CharterEditRequest,
+  CharterInitializeRequest,
   CharterItem,
   CharterObjective,
+  CharterRecordArchive,
+  CharterRestoreRequest,
   CharterSnapshot,
 } from '../core/schemas.js'
 import type { CharterErrorCode } from '../core/errors.js'
@@ -16,6 +19,47 @@ export interface CharterViewLimits {
   readonly maxOps: number
   /** One Session record including bounded history/mutation receipts. */
   readonly maxRecordBytes: number
+  /** Bounded initialize/restore receipts kept in the record. */
+  readonly maintenanceLimit?: number | undefined
+  /** Complete recovery-archive budget (business admission, not transport). */
+  readonly maxRecoveryBytes?: number | undefined
+}
+
+/** Host-derived record health. Never persisted in the record. */
+export type CharterRecordState =
+  | {
+      readonly kind: 'healthy'
+      readonly recordDigest: `sha256:${string}`
+    }
+  | {
+      readonly kind: 'absent-unconfirmed'
+      readonly source: 'resume' | 'clear' | 'compact' | 'reattach' | 'unknown'
+    }
+  | {
+      readonly kind: 'invalid'
+      readonly reason: 'schema' | 'consistency'
+      readonly recordDigest: `sha256:${string}`
+      readonly observedRevision?: number | undefined
+      readonly recoverable: boolean
+    }
+  | {
+      readonly kind: 'lifecycle-mismatch'
+      readonly recordDigest: `sha256:${string}`
+    }
+  | {
+      readonly kind: 'unknown'
+      readonly reason: 'initializing' | 'storage-unavailable' | 'legacy-host'
+    }
+  | {
+      readonly kind: 'write-uncertain'
+      readonly operation: 'startup' | 'edit' | 'initialize' | 'restore'
+      readonly lastKnownRecordDigest?: `sha256:${string}` | undefined
+    }
+
+export interface CharterViewCapabilities {
+  /** Record export/initialize/restore are available on this runtime. */
+  readonly recordMaintenance: boolean
+  readonly recordMaintenanceReason?: 'runtime' | 'record-limit' | 'legacy-host' | undefined
 }
 
 export interface CharterView {
@@ -32,7 +76,45 @@ export interface CharterView {
   /** Session lifecycle fingerprint; client drafts are bound to it. */
   readonly lifecycle?: string | undefined
   readonly message?: string | undefined
+  /** Structured record health (defaults to unknown/legacy-host on old frames). */
+  readonly recordState?: CharterRecordState | undefined
+  readonly capabilities?: CharterViewCapabilities | undefined
 }
+
+/** Export/initialize/restore are maintenance operations, never model tools. */
+export type CharterRecordOperationResult =
+  | {
+      readonly ok: true
+      readonly replayed: boolean
+      readonly committedRevision: number
+      readonly view: CharterView
+    }
+  | {
+      readonly ok: false
+      readonly code: CharterErrorCode
+      readonly message: string
+      readonly view?: CharterView
+    }
+
+export interface CharterRecordExportResult {
+  readonly ok: true
+  readonly filename: string
+  readonly archive: CharterRecordArchive
+}
+
+export interface CharterRecordExportFailure {
+  readonly ok: false
+  readonly code: CharterErrorCode
+  readonly message: string
+}
+
+export type CharterRecordExport = CharterRecordExportResult | CharterRecordExportFailure
+
+export interface CharterMaintenanceInputs {
+  readonly actor: CharterActor
+}
+
+export type { CharterInitializeRequest, CharterRestoreRequest }
 
 export interface CharterBootstrapSource {
   readonly summarySeq: number

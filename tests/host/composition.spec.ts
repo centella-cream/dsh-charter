@@ -22,7 +22,11 @@ afterEach(async () => {
   await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true })))
 })
 
-async function mount(root: string, config: Partial<Record<string, number>> = {}): Promise<Context> {
+async function mount(
+  root: string,
+  config: Partial<Record<string, number>> = {},
+  options: { readonly autoStartup?: boolean } = {},
+): Promise<Context> {
   const ctx = new Context()
   contexts.push(ctx)
   await ctx.plugin(AgentRegistry)
@@ -33,6 +37,21 @@ async function mount(root: string, config: Partial<Record<string, number>> = {})
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
   await ctx.plugin(CharterService, config as never)
+  // Test harness convenience: `sessions.create` stands for the DSH lifecycle
+  // that authoritatively reports a new Agent. Real Host code never infers a
+  // startup source from a read; the audit regression probes create raw
+  // sessions through `mount(..., { autoStartup: false })` instead.
+  if (options.autoStartup === false) return ctx
+  const originalCreate = ctx.sessions.create.bind(ctx.sessions)
+  ctx.sessions.create = ((id: never, options: never) => {
+    const session = originalCreate(id, options)
+    ctx.emit('agent/created', {
+      agent: { id: session.id, session } as never,
+      source: 'startup',
+      signal: new AbortController().signal,
+    } as never)
+    return session
+  }) as never
   return ctx
 }
 
@@ -843,14 +862,25 @@ describe('dsh-charter host composition', () => {
     const child = ctx.sessions.create(SessionId('child-retry'), {
       meta: { cwd: root, createdAt: 1_700_000_000_010, parentSession: parentId },
     })
-    await new Promise(resolve => setTimeout(resolve, 20))
-    expect(service.view(child).status).toBe('unavailable')
+    // rc.3: session/created only records intent; the authoritative startup is
+    // delivered explicitly here (agent/created in real DSH).
+    ctx.emit('agent/created', {
+      agent: { id: child.id, session: child } as never,
+      source: 'startup',
+      signal: new AbortController().signal,
+    } as never)
+    await waitForStatus(service, child, 'unavailable')
 
     const published: string[] = []
     const unsubscribe = service.subscribe(child.id, view => { if (view !== null) published.push(view.status) })
     const parent = ctx.sessions.create(parentId, {
       meta: { cwd: root, createdAt: 1_700_000_000_009 },
     })
+    ctx.emit('agent/created', {
+      agent: { id: parent.id, session: parent } as never,
+      source: 'startup',
+      signal: new AbortController().signal,
+    } as never)
     await waitForReady(service, parent)
     await waitForStatus(service, child, 'ready')
     unsubscribe()
