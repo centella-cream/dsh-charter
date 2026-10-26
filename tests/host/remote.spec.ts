@@ -1,12 +1,23 @@
 import { describe, expect, it } from 'vitest'
 import { charterRemoteContribution } from '../../src/remote/contribution.js'
 import { charterEditRequestSchema, charterItemSchema } from '../../src/core/schemas.js'
-import { charterBootstrapResultSchema, charterFrameSchema, charterViewSchema } from '../../src/remote/wire.js'
+import {
+  charterBootstrapResultSchema,
+  charterFrameSchema,
+  charterInitializeRequestWireSchema,
+  charterRecordExportSchema,
+  charterRecordOperationResultSchema,
+  charterRestoreRequestWireSchema,
+  charterViewSchema,
+} from '../../src/remote/wire.js'
+import { RemoteError } from '@deepseek-ai/dsh-typert-protocol'
 
 describe('charter Remote contract', () => {
-  it('uses rc.2 create-based strict codecs and validates wire payloads', () => {
+  it('uses rc.3 create-based strict codecs and validates six wire methods', () => {
     expect(charterRemoteContribution.package).toBe('dsh-charter')
-    expect(charterRemoteContribution.descriptors).toHaveLength(3)
+    expect(charterRemoteContribution.descriptors).toHaveLength(6)
+    expect(charterRemoteContribution.descriptors.map(descriptor => descriptor.method))
+      .toEqual(['watch', 'bootstrap', 'edit', 'exportRecord', 'initializeRecord', 'restoreRecord'])
     for (const descriptor of charterRemoteContribution.descriptors) {
       expect(descriptor.result.mode).toBe('strict')
       if (descriptor.result.mode === 'strict') expect(typeof descriptor.result.create).toBe('function')
@@ -154,5 +165,110 @@ describe('charter Remote contract', () => {
       },
     }).success).toBe(true)
     expect(charterBootstrapResultSchema.safeParse({ available: false, reason: 'no-summary' }).success).toBe(true)
+  })
+
+  it('describes Session resources, strict codecs, and the outer restore contract', () => {
+    for (const descriptor of charterRemoteContribution.descriptors) {
+      // Session resources are declared on the Host method decorators (checked by
+      // the composition/remote service tests); every client descriptor carries
+      // at least one strictly decoded parameter and a strict result codec.
+      expect(descriptor.invocation.kind).toBe('direct')
+      expect(descriptor.service).toBe('charterRemote')
+      expect(descriptor.namespace).toBe('charter')
+      expect(descriptor.parameters.length).toBeGreaterThan(0)
+      expect(descriptor.parameters.every(parameter => (parameter.codec as { mode: string }).mode === 'strict')).toBe(true)
+      expect(descriptor.result.mode).toBe('strict')
+    }
+    const restore = charterRemoteContribution.descriptors.find(item => item.method === 'restoreRecord')
+    const parameter = restore?.parameters[0]
+    expect(parameter?.codec.mode).toBe('strict')
+    if (parameter?.codec.mode !== 'strict') throw new Error('expected strict restore codec')
+    const schema = parameter.codec.create() as unknown as { safeParse: (value: unknown) => { success: boolean } }
+    const outer = {
+      sessionId: 's1',
+      operationId: 'op-1',
+      expectedLifecycle: 'life-1',
+      expectedTarget: { kind: 'absent-unconfirmed' },
+      archive: { format: 'dsh-charter-record', formatVersion: 1, record: {} },
+    }
+    expect(schema.safeParse(outer).success).toBe(true)
+    expect(schema.safeParse({ ...outer, unexpected: true }).success).toBe(false)
+    expect(schema.safeParse({ ...outer, archive: undefined }).success).toBe(false)
+  })
+
+  it('round-trips new error codes and maintenance result/export codecs', () => {
+    const view = {
+      status: 'unavailable',
+      sessionId: 's1',
+      revision: 0,
+      objective: null,
+      items: [],
+      promptText: '',
+      promptDigest: 'sha256:' + '0'.repeat(64),
+      limits: {
+        maxPromptBytes: 8192,
+        maxObjectiveBytes: 4096,
+        maxItemBytes: 1024,
+        maxItems: 512,
+        maxPendingItems: 512,
+        maxOps: 1024,
+        maxRecordBytes: 1_048_576,
+        maintenanceLimit: 16,
+        maxRecoveryBytes: 4_194_304,
+      },
+      overBudget: false,
+      recordState: { kind: 'absent-unconfirmed', source: 'resume' },
+      capabilities: { recordMaintenance: true },
+    }
+    expect(charterViewSchema.safeParse(view).success).toBe(true)
+    for (const code of ['INITIALIZATION_REQUIRED', 'INVALID_ARCHIVE', 'RECORD_CONFLICT', 'OPERATION_ID_REUSED', 'RECOVERY_UNSUPPORTED']) {
+      expect(charterRecordOperationResultSchema.safeParse({ ok: false, code, message: 'x' }).success).toBe(true)
+    }
+    expect(charterRecordExportSchema.safeParse({
+      ok: true,
+      filename: 'a.json',
+      archive: {
+        format: 'dsh-charter-record',
+        formatVersion: 1,
+        exportedAt: 1,
+        source: {
+          domain: 'dsh_charter_v1',
+          domainVersion: 1,
+          sessionId: 's1',
+          lifecycle: 'life-1',
+          health: 'healthy',
+          revision: 0,
+          recordDigest: 'sha256:' + '0'.repeat(64),
+        },
+        record: {},
+        payloadDigest: 'sha256:' + '0'.repeat(64),
+      },
+    }).success).toBe(true)
+    expect(charterInitializeRequestWireSchema.safeParse({
+      sessionId: 's1',
+      operationId: 'op-1',
+      expectedLifecycle: 'life-1',
+    }).success).toBe(true)
+    expect(charterRestoreRequestWireSchema.safeParse({
+      sessionId: 's1',
+      operationId: 'op-1',
+      expectedLifecycle: 'life-1',
+      expectedTarget: { kind: 'invalid', reason: 'schema', recordDigest: 'sha256:' + '0'.repeat(64) },
+      archive: {},
+    }).success).toBe(true)
+  })
+
+  it('classifies Remote failures by stable code, never message or instanceof', async () => {
+    const { classifyRemoteFailure } = await import('../../src/client/remote-error.js')
+    for (const code of ['gateway/bad-request', 'gateway/arguments-invalid', 'remote-access/denied'] as const) {
+      expect(classifyRemoteFailure(new RemoteError(code as never, 'm', {} as never))).toEqual({ kind: 'known', code })
+    }
+    for (const code of ['gateway/internal', 'gateway/cancelled'] as const) {
+      expect(classifyRemoteFailure(new RemoteError(code as never, 'm', {} as never))).toEqual({ kind: 'unknown' })
+    }
+    expect(classifyRemoteFailure(new Error('anything'))).toEqual({ kind: 'unknown' })
+    // Structural marker works across copies without instanceof.
+    expect(classifyRemoteFailure({ isDSHRemoteError: true, code: 'remote-access/denied' }))
+      .toEqual({ kind: 'known', code: 'remote-access/denied' })
   })
 })

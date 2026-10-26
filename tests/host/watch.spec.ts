@@ -197,4 +197,58 @@ describe('Remote decorator compatibility', () => {
     direct(() => undefined, {} as never)
     expect(calls).toEqual([{ kind: 'stream' }, { kind: 'direct' }])
   })
+
+  it('emits a changed frame when only recordState changes at the same revision', async () => {
+    const initial: CharterView = {
+      ...view(3, 'same'),
+      recordState: { kind: 'healthy', recordDigest: `sha256:${'a'.repeat(64)}` },
+      capabilities: { recordMaintenance: true },
+    }
+    const source = new FakeSource(initial)
+    const controller = new AbortController()
+    const frames = (async () => {
+      const seen: string[] = []
+      for await (const frame of watchCharter(source, controller.signal)) {
+        seen.push(`${frame.type}:${frame.value.revision}:${frame.value.recordState?.kind === 'healthy' ? frame.value.recordState.recordDigest.slice(-1) : '-'}`)
+        if (seen.length === 2) {
+          controller.abort()
+          break
+        }
+      }
+      return seen
+    })()
+    await Promise.resolve()
+    source.push({
+      ...initial,
+      recordState: { kind: 'healthy', recordDigest: `sha256:${'b'.repeat(64)}` },
+    })
+    expect(await frames).toEqual(['snapshot:3:a', 'changed:3:b'])
+  })
+
+  it('emits a changed frame when only capabilities change at the same revision', async () => {
+    const initial: CharterView = {
+      ...view(2, 'same'),
+      recordState: { kind: 'healthy', recordDigest: `sha256:${'a'.repeat(64)}` },
+      capabilities: { recordMaintenance: true },
+    }
+    const source = new FakeSource(initial)
+    const controller = new AbortController()
+    const frames = (async () => {
+      const seen: boolean[] = []
+      for await (const frame of watchCharter(source, controller.signal)) {
+        seen.push(frame.value.capabilities?.recordMaintenance === true)
+        if (seen.length === 2) {
+          controller.abort()
+          break
+        }
+      }
+      return seen
+    })()
+    await Promise.resolve()
+    source.push({
+      ...initial,
+      capabilities: { recordMaintenance: false, recordMaintenanceReason: 'runtime' },
+    })
+    expect(await frames).toEqual([true, false])
+  })
 })

@@ -68,6 +68,8 @@ export function sameCharterView(left: CharterView, right: CharterView): boolean 
     && left.promptDigest === right.promptDigest
     && left.message === right.message
     && left.lifecycle === right.lifecycle
+    && JSON.stringify(left.recordState ?? null) === JSON.stringify(right.recordState ?? null)
+    && JSON.stringify(left.capabilities ?? null) === JSON.stringify(right.capabilities ?? null)
 }
 
 export interface CharterWatchSource {

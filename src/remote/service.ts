@@ -2,8 +2,19 @@ import { Context } from '@deepseek-ai/cordis'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import { CharterError } from '../core/errors.js'
-import type { CharterActor, CharterEditRequest } from '../core/schemas.js'
-import type { CharterBootstrapResult, CharterEditResult, CharterView } from '../host/types.js'
+import type {
+  CharterActor,
+  CharterEditRequest,
+  CharterInitializeRequest,
+  CharterRestoreRequest,
+} from '../core/schemas.js'
+import type {
+  CharterBootstrapResult,
+  CharterEditResult,
+  CharterRecordExport,
+  CharterRecordOperationResult,
+  CharterView,
+} from '../host/types.js'
 import { resolveRemoteActor } from './actor.js'
 import { remoteMethod } from './compat.js'
 import { watchCharter, type CharterWatchSource } from './watch.js'
@@ -54,6 +65,53 @@ export class CharterRemoteService extends TypertRemoteService {
       throw error
     }
     return this.ctx.charter.edit(request, actor)
+  }
+
+  @remoteMethod({
+    resources: {
+      session: (sessionId: SessionId): SessionId => sessionId,
+    },
+  })
+  exportRecord(sessionId: SessionId): Promise<CharterRecordExport> {
+    const actor = this.maintenanceActor()
+    if ('ok' in actor) return Promise.resolve(actor)
+    return Promise.resolve(this.ctx.charter.exportRecord(sessionId, actor.actor))
+  }
+
+  @remoteMethod({
+    resources: {
+      session: (request: CharterInitializeRequest): SessionId => request.sessionId as SessionId,
+    },
+  })
+  initializeRecord(request: CharterInitializeRequest): Promise<CharterRecordOperationResult> {
+    const actor = this.maintenanceActor()
+    if ('ok' in actor) return Promise.resolve(actor)
+    return this.ctx.charter.initializeRecord(request, actor.actor)
+  }
+
+  @remoteMethod({
+    resources: {
+      session: (request: CharterRestoreRequest): SessionId => request.sessionId as SessionId,
+    },
+  })
+  restoreRecord(request: CharterRestoreRequest): Promise<CharterRecordOperationResult> {
+    // Capability/owner fail closed BEFORE the Host parses the archive deeply.
+    const actor = this.maintenanceActor()
+    if ('ok' in actor) return Promise.resolve(actor)
+    return this.ctx.charter.restoreRecord(request, actor.actor)
+  }
+
+  private maintenanceActor():
+    | { readonly actor: CharterActor }
+    | { readonly ok: false; readonly code: 'FORBIDDEN'; readonly message: string } {
+    try {
+      return { actor: resolveRemoteActor(this.ctx) }
+    } catch (error) {
+      if (error instanceof CharterError) {
+        return { ok: false, code: 'FORBIDDEN', message: error.message }
+      }
+      throw error
+    }
   }
 
   private async *openWatch(sessionId: SessionId, signal: AbortSignal): AsyncGenerator<CharterFrame> {
