@@ -36,6 +36,10 @@ vi.mock('@deepseek-ai/dsh-api-gateway/client', () => {
 import { RemoteSnapshotStream as MockRemoteSnapshotStream } from '@deepseek-ai/dsh-api-gateway/client'
 import type { CharterEditRequest } from '../../src/core/schemas.js'
 import type { CharterEditResult, CharterView } from '../../src/host/types.js'
+import {
+  attemptEditRequest,
+  attemptMutationId,
+} from '../../src/client/draft-store.js'
 import { CharterClientController, CharterSessionSource } from '../../src/client/store.js'
 
 function view(
@@ -131,6 +135,32 @@ describe('client charter source', () => {
     source.accept(view(9, 'other session', 'session-2'))
     expect(source.getSnapshot().view?.revision).toBe(2)
 
+    unsubscribe()
+    await source.dispose()
+  })
+
+  it('publishes same-revision record-state, digest, and capability changes', async () => {
+    const source = new CharterSessionSource({} as never, SessionId('session-record-state'))
+    const seen: string[] = []
+    const unsubscribe = source.subscribe(() => {
+      const view = source.getSnapshot().view
+      seen.push(`${view?.revision ?? -1}:${view?.recordState?.kind ?? '-'}:${view?.capabilities?.recordMaintenance ?? '-'}`)
+    })
+    const first: CharterView = {
+      ...view(1, 'state', 'session-record-state'),
+      recordState: { kind: 'healthy', recordDigest: `sha256:${'a'.repeat(64)}` },
+      capabilities: { recordMaintenance: true },
+    }
+    source.accept(first)
+    source.accept({ ...first, recordState: { kind: 'healthy', recordDigest: `sha256:${'b'.repeat(64)}` } })
+    source.accept({
+      ...first,
+      recordState: { kind: 'healthy', recordDigest: `sha256:${'b'.repeat(64)}` },
+      capabilities: { recordMaintenance: false, recordMaintenanceReason: 'runtime' },
+    })
+    expect(seen).toHaveLength(3)
+    expect(source.getSnapshot().view?.recordState).toMatchObject({ kind: 'healthy', recordDigest: `sha256:${'b'.repeat(64)}` })
+    expect(source.getSnapshot().view?.capabilities?.recordMaintenance).toBe(false)
     unsubscribe()
     await source.dispose()
   })
@@ -625,8 +655,8 @@ describe('client charter source', () => {
     controller.detach(remoteOne)
     await lease.draft.applyDraft(view(1, 'one', 'session-unknown-edit'))
     expect(lease.draft.getSnapshot().attempt).toMatchObject({ status: 'unknown' })
-    expect(lease.draft.getSnapshot().attempt?.request.mutationId)
-      .toBe(unknown?.request.mutationId)
+    expect(attemptMutationId(lease.draft.getSnapshot().attempt))
+      .toBe(attemptMutationId(unknown))
     expect(lease.draft.getSnapshot().ops).toBe(committedOps)
     expect(lease.draft.getSnapshot().baseRevision).toBe(baseRevision)
     // All request-changing actions stay locked.
@@ -731,10 +761,10 @@ describe('client charter source', () => {
     for (let attempt = 0; attempt < 2; attempt += 1) {
       await lease.draft.applyDraft(view(1, 'one', 'session-unknown-unavailable'))
       expect(lease.draft.getSnapshot().attempt).toMatchObject({ status: 'unknown' })
-      expect(lease.draft.getSnapshot().attempt?.request.mutationId).toBe(original?.request.mutationId)
-      expect(lease.draft.getSnapshot().attempt?.request.baseRevision).toBe(original?.request.baseRevision)
-      expect(lease.draft.getSnapshot().attempt?.request.ops).toEqual(original?.request.ops)
-      expect(lease.draft.getSnapshot().ops).toEqual(original?.request.ops)
+      expect(attemptMutationId(lease.draft.getSnapshot().attempt)).toBe(attemptMutationId(original))
+      expect(attemptEditRequest(lease.draft.getSnapshot().attempt)?.baseRevision).toBe(attemptEditRequest(original)?.baseRevision)
+      expect(attemptEditRequest(lease.draft.getSnapshot().attempt)?.ops).toEqual(attemptEditRequest(original)?.ops)
+      expect(lease.draft.getSnapshot().ops).toEqual(attemptEditRequest(original)?.ops)
     }
     expect(requests).toHaveLength(3)
     expect(new Set(requests.map(request => request.mutationId)).size).toBe(1)

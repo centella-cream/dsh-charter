@@ -26,8 +26,11 @@ import { draftAdmission } from './admission.js'
 import {
   bootstrapReplayPending,
   editReplayPending,
+  maintenanceReplayPending,
   rebaseAvailable,
 } from './draft-store.js'
+import { type CharterRecordArchive } from '../core/schemas.js'
+import { previewArchive } from './archive-preview.js'
 import {
   activeItems,
   itemCounts,
@@ -135,16 +138,43 @@ function bootstrapProblemText(problem: BootstrapProblem | null, t: CharterText):
   }
 }
 
+/** One exhaustive switch over the Host-derived record state. */
 function statusMessage(view: CharterView, t: CharterText): string | null {
   if (view.status === 'ready') return null
-  if (view.status === 'initializing') return t('status.initializing')
-  const message = view.message ?? ''
-  if (message.includes('read-only')) return t('status.readOnly')
-  if (message.includes('not live')) return t('status.notLive')
-  if (message.includes('another Session lifecycle')) return t('status.lifecycle')
-  if (message.includes('inconsistent') || message.includes('corrupt')) return t('status.corrupt')
-  if (message.includes('storage') || message.includes('not ready')) return t('status.storage')
-  return t('status.unavailable')
+  const state = view.recordState
+  switch (state?.kind) {
+    case 'absent-unconfirmed':
+      return t('status.absent')
+    case 'invalid':
+      return state.reason === 'schema' ? t('status.invalidSchema') : t('status.invalidConsistency')
+    case 'lifecycle-mismatch':
+      return t('status.lifecycle')
+    case 'write-uncertain':
+      return t('status.writeUncertain')
+    case 'unknown':
+      return state.reason === 'initializing'
+        ? t('status.initializing')
+        : state.reason === 'legacy-host' ? t('status.legacyHost') : t('status.storage')
+    case 'healthy':
+      return view.status === 'initializing' ? t('status.initializing') : t('status.unavailable')
+    default:
+      return view.status === 'initializing' ? t('status.initializing') : t('status.unavailable')
+  }
+}
+
+interface ArchivePreview {
+  readonly fileName: string
+  readonly archive?: CharterRecordArchive
+  readonly errorKey?: string
+  readonly errorParams?: Readonly<Record<string, string>>
+  readonly health?: 'healthy' | 'schema-invalid' | 'consistency-invalid' | 'lifecycle-mismatch'
+  readonly revision?: number | null
+  readonly lifecycle?: string | null
+  readonly digest?: string
+  readonly exportedAt?: number
+  readonly sourceSession?: string
+  readonly payloadDigestOk?: boolean
+  readonly recordDigestOk?: boolean
 }
 
 function itemState(item: ProjectedItem): 'done' | 'warning' | 'ongoing' | 'idle' {
@@ -158,6 +188,31 @@ function itemState(item: ProjectedItem): 'done' | 'warning' | 'ongoing' | 'idle'
 function shortText(text: string, length = 48): string {
   const normalized = text.replace(/\s+/gu, ' ').trim()
   return normalized.length <= length ? normalized : `${normalized.slice(0, length)}...`
+}
+
+/** Render the lifecycle fingerprint as a compact, stable date label for the UI. */
+function lifecycleLabel(value: string | null | undefined): string {
+  if (!value) return '-'
+  try {
+    const parsed = JSON.parse(value) as { createdAt?: unknown }
+    if (typeof parsed.createdAt === 'number' && Number.isFinite(parsed.createdAt)) {
+      const date = new Date(parsed.createdAt)
+      if (!Number.isNaN(date.getTime())) return date.toISOString().slice(0, 10)
+    }
+  } catch {
+    // Non-fingerprint legacy value: fall through to a short text label.
+  }
+  return shortText(value, 24)
+}
+
+/** Localized health label for an archive preview. */
+function archiveHealthLabel(
+  health: 'healthy' | 'schema-invalid' | 'consistency-invalid' | 'lifecycle-mismatch',
+  t: CharterText,
+): string {
+  if (health === 'healthy') return t('recovery.healthy')
+  if (health === 'lifecycle-mismatch') return t('recovery.mismatch')
+  return t('recovery.invalid')
 }
 
 function CharterMark() {
@@ -595,6 +650,10 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   const [showHistoryItems, setShowHistoryItems] = useState(false)
   const [visibleCandidates, setVisibleCandidates] = useState(40)
   const [confirmAbandon, setConfirmAbandon] = useState(false)
+  const [archivePreview, setArchivePreview] = useState<ArchivePreview | null>(null)
+  const [confirmRecovery, setConfirmRecovery] = useState<'initialize' | 'restore' | null>(null)
+  const [exportProblem, setExportProblem] = useState<string | null>(null)
+  const archiveInputRef = useRef<HTMLInputElement | null>(null)
   const triggerRef = useRef<HTMLElement | null>(null)
   const statusRef = useRef<HTMLDivElement | null>(null)
 
@@ -696,6 +755,45 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
     if (!unknownReplay) setConfirmAbandon(false)
   }, [unknownReplay])
 
+  const recordState = view?.recordState
+  const capabilities = view?.capabilities
+  const maintenanceReplay = maintenanceReplayPending(draftState)
+  const recoveryBusy = draftState.maintenanceSaving || maintenanceReplay
+  const maintenanceProblem = draftState.maintenanceProblem
+  // Capability gates the whole recovery section; a raw record must also exist
+  // (or be diagnosed) before export makes sense.
+  const maintenanceEnabled = capabilities?.recordMaintenance === true
+  const exportableState = recordState?.kind === 'healthy'
+    || recordState?.kind === 'invalid'
+    || recordState?.kind === 'lifecycle-mismatch'
+  const canExport = maintenanceEnabled && exportableState
+  const restoreTarget = recordState?.kind === 'absent-unconfirmed'
+    || (recordState?.kind === 'invalid' && recordState.recoverable)
+  const restoreArchiveReady = archivePreview?.archive !== undefined && archivePreview.health === 'healthy'
+  const recordDigest = recordState?.kind === 'healthy'
+    || recordState?.kind === 'invalid'
+    || recordState?.kind === 'lifecycle-mismatch'
+    ? recordState.recordDigest
+    : undefined
+
+  const initAdmission = view === null
+    ? { ok: false as const, reason: 'busy' }
+    : draft.maintenanceAdmission(view, 'initialize')
+  const restoreAdmission = view === null
+    ? { ok: false as const, reason: 'busy' }
+    : draft.maintenanceAdmission(view, 'restore')
+
+  // Destructive confirmation never survives a section/target/archive change,
+  // an in-flight request, success, or abandon.
+  useEffect(() => {
+    setConfirmRecovery(null)
+  }, [section, view?.sessionId, view?.lifecycle, archivePreview?.fileName, recoveryBusy])
+
+  useEffect(() => {
+    if (draftState.maintenanceSaving || maintenanceReplay) return
+    if (archiveInputRef.current !== null) archiveInputRef.current.value = ''
+  }, [draftState.maintenanceSaving, maintenanceReplay, recordState?.kind])
+
   if (state.status === 'connecting' && view === null) {
     return (
       <main className="charter-root charter-centered">
@@ -793,6 +891,120 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   const applyDraft = (): void => {
     void draft.applyDraft(view).finally(() => statusRef.current?.focus())
   }
+  const errorText = (code: string | undefined): string => {
+    if (code === undefined) return t('recovery.exportFailed')
+    const key = `error.${code}`
+    return t(key as never) === key ? t('recovery.exportFailed') : t(key as never)
+  }
+
+  const downloadArchive = (filename: string, archive: CharterRecordArchive): void => {
+    if (typeof document === 'undefined' || typeof URL === 'undefined' || typeof Blob === 'undefined') return
+    const url = URL.createObjectURL(new Blob([JSON.stringify(archive, null, 2)], { type: 'application/json' }))
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = filename
+    anchor.rel = 'noopener'
+    anchor.style.display = 'none'
+    document.body.append(anchor)
+    anchor.click()
+    setTimeout(() => {
+      anchor.remove()
+      URL.revokeObjectURL(url)
+    }, 0)
+  }
+
+  const exportArchive = (): void => {
+    setExportProblem(null)
+    void source.exportRecord().then(result => {
+      if (result.ok) downloadArchive(result.filename, result.archive)
+      else setExportProblem(errorText(result.code))
+    }).catch(() => setExportProblem(t('recovery.exportFailed')))
+  }
+
+  const chooseArchive = (file: File): void => {
+    setArchivePreview({ fileName: file.name })
+    setExportProblem(null)
+    setConfirmRecovery(null)
+    if (view === null) return
+    const maxBytes = view.limits.maxRecoveryBytes ?? 4 * 1_024 * 1_024
+    if (file.size > maxBytes) {
+      setArchivePreview({
+        fileName: file.name,
+        errorKey: 'recovery.fileTooLargeLimit',
+        errorParams: { limit: formatBytes(t, maxBytes) },
+      })
+      return
+    }
+    const lifecycle = draftState.lifecycle ?? view.lifecycle ?? null
+    void file.text().then(async text => {
+      let parsed: unknown
+      try {
+        parsed = JSON.parse(text)
+      } catch {
+        setArchivePreview({ fileName: file.name, errorKey: 'recovery.invalidJson' })
+        return
+      }
+      const preview = await previewArchive(parsed, {
+        sessionId: view.sessionId,
+        lifecycle,
+        maxRecoveryBytes: maxBytes,
+      })
+      if (!preview.ok) {
+        const key = preview.reason === 'fileTooLarge'
+          ? 'recovery.fileTooLargeLimit'
+          : preview.reason === 'invalidJson'
+            ? 'recovery.invalidJson'
+            : preview.reason === 'invalidArchive'
+              ? 'recovery.invalidArchive'
+              : preview.reason === 'sessionMismatch'
+                ? 'recovery.sessionMismatchPreview'
+                : preview.reason === 'lifecycleMismatch'
+                  ? 'recovery.lifecycleMismatchPreview'
+                  : 'recovery.digestMismatchPreview'
+        setArchivePreview({
+          fileName: file.name,
+          errorKey: key,
+          ...(preview.reason === 'fileTooLarge' ? { errorParams: { limit: formatBytes(t, maxBytes) } } : {}),
+        })
+        return
+      }
+      setArchivePreview({
+        fileName: file.name,
+        archive: preview.archive,
+        health: preview.health,
+        revision: preview.revision,
+        lifecycle: preview.lifecycle,
+        digest: preview.digest,
+        exportedAt: preview.exportedAt,
+        sourceSession: preview.sourceSession,
+        payloadDigestOk: preview.payloadDigestOk,
+        recordDigestOk: preview.recordDigestOk,
+      })
+    }).catch(() => setArchivePreview({ fileName: file.name, errorKey: 'recovery.invalidArchive' }))
+  }
+
+  const initializeEmpty = (): void => {
+    if (view === null || !maintenanceEnabled || !initAdmission.ok) return
+    if (confirmRecovery !== 'initialize') {
+      setConfirmRecovery('initialize')
+      return
+    }
+    setConfirmRecovery(null)
+    void draft.initializeEmpty(view)
+  }
+
+  const restoreArchive = (): void => {
+    if (view === null || archivePreview?.archive === undefined) return
+    if (!maintenanceEnabled || !restoreTarget || !restoreAdmission.ok) return
+    if (archivePreview.health !== 'healthy') return
+    if (confirmRecovery !== 'restore') {
+      setConfirmRecovery('restore')
+      return
+    }
+    setConfirmRecovery(null)
+    void draft.restoreArchive(view, archivePreview.archive)
+  }
+
   const abandonUnknown = (): void => {
     if (!confirmAbandon) {
       setConfirmAbandon(true)
@@ -1019,6 +1231,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
               { id: 'deliverables' as const, label: t('nav.deliverables'), badge: deliverables.length },
               { id: 'history' as const, label: t('nav.history'), dot: bootstrapPhase !== 'idle' },
               { id: 'context' as const, label: t('nav.context') },
+              { id: 'recovery' as const, label: t('nav.recovery') },
             ] as const).map(item => (
               <button
                 key={item.id}
@@ -1522,6 +1735,219 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                     </div>
                   </section>
                 )}
+              </>
+            )}
+
+            {section === 'recovery' && (
+              <>
+                <section className="charter-card charter-recovery" aria-labelledby="charter-recovery-title">
+                  <div className="charter-cardhead">
+                    <div className="charter-cardtitle">
+                      <span className="charter-kicker">{t('recovery.title')}</span>
+                      <h3 id="charter-recovery-title">{t('recovery.recordTitle')}</h3>
+                    </div>
+                    <StatusTag tone={recordState?.kind === 'healthy' ? 'success' : 'warning'}>
+                      {recordState?.kind === 'healthy'
+                        ? t('recovery.healthy')
+                        : recordState?.kind === 'absent-unconfirmed'
+                          ? t('recovery.absent')
+                          : recordState?.kind === 'invalid'
+                            ? t('recovery.invalid')
+                            : recordState?.kind === 'lifecycle-mismatch'
+                              ? t('recovery.mismatch')
+                              : recordState?.kind === 'write-uncertain'
+                                ? t('recovery.uncertain')
+                                : t('recovery.unknown')}
+                    </StatusTag>
+                  </div>
+                  <dl className="charter-recovery__facts">
+                    <div>
+                      <dt>{t('recovery.revision')}</dt>
+                      <dd>{view.revision}</dd>
+                    </div>
+                    <div>
+                      <dt>{t('recovery.lifecycle')}</dt>
+                      <dd><code>{lifecycleLabel(view.lifecycle)}</code></dd>
+                    </div>
+                    <div>
+                      <dt>{t('recovery.digest')}</dt>
+                      <dd><code>{recordDigest === undefined ? '-' : shortText(recordDigest.replace('sha256:', ''), 20)}</code></dd>
+                    </div>
+                    {view.overBudget && <div><dt>{t('recovery.overBudget')}</dt><dd>!</dd></div>}
+                  </dl>
+                  <p className="charter-hint">{t('recovery.subtitle')}</p>
+                </section>
+
+                <section className="charter-card charter-recovery" aria-labelledby="charter-export-title">
+                  <div className="charter-cardhead">
+                    <div className="charter-cardtitle">
+                      <span className="charter-kicker">{t('recovery.exportTitle')}</span>
+                      <h3 id="charter-export-title">{t('recovery.export')}</h3>
+                    </div>
+                  </div>
+                  <p className="charter-hint">{t('recovery.exportHint')}</p>
+                  <div className="charter-notice charter-notice--warning" role="note">
+                    <span>{t('recovery.sensitive')}</span>
+                  </div>
+                  <div className="charter-recovery__actions">
+                    <ActionButton
+                      variant="primary"
+                      disabled={!canExport || recoveryBusy}
+                      onClick={exportArchive}
+                    >
+                      {t('recovery.export')}
+                    </ActionButton>
+                    {!maintenanceEnabled && (
+                      <span className="charter-hint" role="note">
+                        {capabilities?.recordMaintenanceReason === 'record-limit'
+                          ? t('recovery.recordLimit')
+                          : t('recovery.capabilityUnavailable')}
+                      </span>
+                    )}
+                    {maintenanceEnabled && !exportableState && (
+                      <span className="charter-hint" role="note">{t('recovery.noRawRecord')}</span>
+                    )}
+                  </div>
+                  {exportProblem !== null && (
+                    <p className="charter-hint" role="alert">{exportProblem}</p>
+                  )}
+                </section>
+
+                <section className="charter-card charter-recovery" aria-labelledby="charter-restore-title">
+                  <div className="charter-cardhead">
+                    <div className="charter-cardtitle">
+                      <span className="charter-kicker">{t('recovery.title')}</span>
+                      <h3 id="charter-restore-title">{t('recovery.restore')}</h3>
+                    </div>
+                  </div>
+                  {recordState?.kind === 'write-uncertain' && (
+                    <div className="charter-notice charter-notice--warning" role="alert">
+                      <span>{t('recovery.writeUncertain')}</span>
+                    </div>
+                  )}
+                  {recordState?.kind === 'absent-unconfirmed' && (
+                    <div className="charter-notice" role="note">
+                      <span>{t('recovery.absentHint')}</span>
+                    </div>
+                  )}
+                  {recordState?.kind === 'healthy' && (
+                    <p className="charter-hint">{t('recovery.replaceHint')}</p>
+                  )}
+                  {maintenanceProblem !== null && (
+                    <div className="charter-recovery__problem">
+                      <div className="charter-notice charter-notice--warning" role="alert">
+                        <span>
+                          {t('recovery.problem')}
+                          {maintenanceProblem.code === undefined ? '' : ` (${errorText(String(maintenanceProblem.code))})`}
+                        </span>
+                      </div>
+                      <ActionButton variant="outline" onClick={() => draft.dismissMaintenanceProblem()}>
+                        {t('recovery.dismiss')}
+                      </ActionButton>
+                    </div>
+                  )}
+                  {draftState.maintenanceSaving && (
+                    <div className="charter-notice" role="status">
+                      <span>{t('recovery.inFlight')}</span>
+                    </div>
+                  )}
+                  {maintenanceReplay && (
+                    <div className="charter-recovery__problem">
+                      <div className="charter-notice" role="status">
+                        <span>{t('recovery.unknownOutcome')}</span>
+                      </div>
+                      <div className="charter-recovery__actions">
+                        <ActionButton variant="primary" onClick={() => void draft.retryMaintenance()}>
+                          {t('recovery.retry')}
+                        </ActionButton>
+                        <ActionButton variant="outline" onClick={abandonUnknown}>
+                          {confirmAbandon ? t('footer.abandonConfirm') : t('recovery.abandon')}
+                        </ActionButton>
+                      </div>
+                    </div>
+                  )}
+                  <label className="charter-recovery__file">
+                    <span className="charter-kicker">{t('recovery.chooseFile')}</span>
+                    <input
+                      ref={archiveInputRef}
+                      type="file"
+                      accept="application/json,.json"
+                      onChange={event => {
+                        const file = event.currentTarget.files?.[0]
+                        if (file !== undefined) chooseArchive(file)
+                      }}
+                    />
+                  </label>
+                  {archivePreview !== null && (
+                    <div className="charter-recovery__preview">
+                      <strong>{t('recovery.previewTitle')}</strong>
+                      <span>{t('recovery.selected')}: {archivePreview.fileName}</span>
+                      {archivePreview.errorKey !== undefined
+                        ? <span role="alert">{t(archivePreview.errorKey as never, archivePreview.errorParams as never)}</span>
+                        : (
+                          <dl>
+                            <div><dt>{t('recovery.previewHealth')}</dt><dd>{archivePreview.health === undefined ? '-' : archiveHealthLabel(archivePreview.health, t)}</dd></div>
+                            <div><dt>{t('recovery.previewRevision')}</dt><dd>{archivePreview.revision ?? '-'}</dd></div>
+                            <div><dt>{t('recovery.previewLifecycle')}</dt><dd><code>{lifecycleLabel(archivePreview.lifecycle)}</code></dd></div>
+                            <div><dt>{t('recovery.previewDigest')}</dt><dd><code>{archivePreview.digest === undefined ? '-' : shortText(archivePreview.digest.replace('sha256:', ''), 20)}</code></dd></div>
+                            <div><dt>{t('recovery.exportedAt')}</dt><dd>{archivePreview.exportedAt === undefined ? '-' : new Date(archivePreview.exportedAt).toISOString().slice(0, 19).replace('T', ' ')}</dd></div>
+                            <div><dt>{t('recovery.sourceSession')}</dt><dd><code>{shortText(archivePreview.sourceSession ?? '-', 24)}</code></dd></div>
+                            <div><dt>{t('recovery.payloadDigest')}</dt><dd>{archivePreview.payloadDigestOk === true ? t('recovery.verified') : t('recovery.unverified')}</dd></div>
+                          </dl>
+                        )}
+                    </div>
+                  )}
+                  {recordState?.kind === 'absent-unconfirmed' && (
+                    <div className="charter-recovery__danger">
+                      <p className="charter-hint" role="note">{t('recovery.initializeWarning')}</p>
+                      <ActionButton
+                        variant={confirmRecovery === 'initialize' ? 'primary' : 'outline'}
+                        disabled={!maintenanceEnabled || recoveryBusy || !initAdmission.ok}
+                        onClick={initializeEmpty}
+                      >
+                        {confirmRecovery === 'initialize' ? t('recovery.initializeConfirm') : t('recovery.initialize')}
+                      </ActionButton>
+                      {confirmRecovery === 'initialize' && (
+                        <ActionButton variant="outline" onClick={() => setConfirmRecovery(null)}>
+                          {t('recovery.cancel')}
+                        </ActionButton>
+                      )}
+                      {!initAdmission.ok && (
+                        <span className="charter-hint" role="note">
+                          {t(`recovery.reason.${initAdmission.reason}` as never)}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  {restoreTarget && (
+                    <div className="charter-recovery__actions">
+                      <ActionButton
+                        variant={confirmRecovery === 'restore' ? 'primary' : 'outline'}
+                        disabled={!maintenanceEnabled || recoveryBusy || !restoreAdmission.ok || !restoreArchiveReady}
+                        onClick={restoreArchive}
+                      >
+                        {confirmRecovery === 'restore' ? t('recovery.restoreConfirm') : t('recovery.restore')}
+                      </ActionButton>
+                      {confirmRecovery === 'restore' && (
+                        <ActionButton variant="outline" onClick={() => setConfirmRecovery(null)}>
+                          {t('recovery.cancel')}
+                        </ActionButton>
+                      )}
+                      <span className="charter-hint">
+                        {archivePreview?.archive === undefined
+                          ? t('recovery.noPreview')
+                          : restoreArchiveReady
+                            ? t('recovery.readyToRestore')
+                            : t('recovery.diagnosticOnly')}
+                      </span>
+                      {!restoreAdmission.ok && (
+                        <span className="charter-hint" role="note">
+                          {t(`recovery.reason.${restoreAdmission.reason}` as never)}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </section>
               </>
             )}
 

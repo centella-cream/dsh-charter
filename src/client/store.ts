@@ -5,8 +5,18 @@ import {
 } from '@deepseek-ai/dsh-api-gateway/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { TypertRemoteNamespaceMap } from '@deepseek-ai/dsh-typert-protocol'
-import type { CharterEditRequest } from '../core/schemas.js'
-import type { CharterBootstrapResult, CharterEditResult, CharterView } from '../host/types.js'
+import type {
+  CharterEditRequest,
+  CharterInitializeRequest,
+  CharterRestoreRequest,
+} from '../core/schemas.js'
+import type {
+  CharterBootstrapResult,
+  CharterEditResult,
+  CharterRecordExport,
+  CharterRecordOperationResult,
+  CharterView,
+} from '../host/types.js'
 import type {
   CharterChangedFrame,
   CharterFrame,
@@ -29,6 +39,12 @@ export interface CharterSource {
   /** Apply a committed view returned by edit immediately, without waiting for the stream. */
   readonly accept: (view: CharterView) => void
   readonly retry: () => void
+  /** Export the complete raw record archive (owner-only maintenance call). */
+  readonly exportRecord: () => Promise<CharterRecordExport>
+  /** Explicitly initialize an absent-unconfirmed record. */
+  readonly initializeRecord: (request: CharterInitializeRequest) => Promise<CharterRecordOperationResult>
+  /** Restore a validated archive over an absent/invalid target. */
+  readonly restoreRecord: (request: CharterRestoreRequest) => Promise<CharterRecordOperationResult>
 }
 
 type CharterRemote = TypertRemoteNamespaceMap['charter']
@@ -103,6 +119,40 @@ export class CharterSessionSource implements CharterSource {
       return { ok: false, code: 'UNAVAILABLE', message: 'Charter connection is unavailable.' }
     }
     const result = await remote.edit(request)
+    if (!result.ok) throw result.error
+    return result.value
+  }
+
+  readonly exportRecord = async (): Promise<CharterRecordExport> => {
+    const remote = this.remote
+    if (remote === undefined) {
+      return { ok: false, code: 'UNAVAILABLE', message: 'Charter connection is unavailable.' }
+    }
+    const result = await remote.exportRecord(this.sessionId)
+    if (!result.ok) throw result.error
+    return result.value
+  }
+
+  readonly initializeRecord = async (
+    request: CharterInitializeRequest,
+  ): Promise<CharterRecordOperationResult> => {
+    const remote = this.remote
+    if (remote === undefined) {
+      return { ok: false, code: 'UNAVAILABLE', message: 'Charter connection is unavailable.' }
+    }
+    const result = await remote.initializeRecord(request)
+    if (!result.ok) throw result.error
+    return result.value
+  }
+
+  readonly restoreRecord = async (
+    request: CharterRestoreRequest,
+  ): Promise<CharterRecordOperationResult> => {
+    const remote = this.remote
+    if (remote === undefined) {
+      return { ok: false, code: 'UNAVAILABLE', message: 'Charter connection is unavailable.' }
+    }
+    const result = await remote.restoreRecord(request)
     if (!result.ok) throw result.error
     return result.value
   }
@@ -236,6 +286,8 @@ export class CharterSessionSource implements CharterSource {
       && view.message === current.message
       && view.overBudget === current.overBudget
       && JSON.stringify(view.limits) === JSON.stringify(current.limits)
+      && JSON.stringify(view.recordState ?? null) === JSON.stringify(current.recordState ?? null)
+      && JSON.stringify(view.capabilities ?? null) === JSON.stringify(current.capabilities ?? null)
     // Connection readiness is separate from business-data dedupe. A retry or
     // reattach that delivers the same view must still recover `ready` (and
     // clear the first-frame watchdog); an already-ready pane with the identical

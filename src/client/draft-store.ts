@@ -1,6 +1,13 @@
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { inspectUserText, type UserTextIssue } from '../core/normalize.js'
 import type { CharterErrorCode } from '../core/errors.js'
+import type {
+  CharterInitializeRequest,
+  CharterRecordArchive,
+  CharterRestoreRequest,
+  CharterRestoreTarget,
+} from '../core/schemas.js'
+import { classifyRemoteFailure } from './remote-error.js'
 import type { CharterOp, NewItemInput } from '../core/schemas.js'
 import type {
   CharterBootstrapProposal,
@@ -24,6 +31,7 @@ export type CharterSection =
   | 'deliverables'
   | 'history'
   | 'context'
+  | 'recovery'
 
 export type DraftEditor =
   | { readonly kind: 'objective' }
@@ -69,16 +77,31 @@ export interface BootstrapProblem {
  * One persisted request attempt. `in-flight` means the RPC is still awaited;
  * `unknown` means the outcome is genuinely unknown (transport failure, source
  * detached/unavailable) and the exact request must be replayed or explicitly
- * abandoned — never silently dropped or replaced. Edit and bootstrap share this
- * one lifecycle.
+ * abandoned — never silently dropped or replaced. Edit, bootstrap, initialize
+ * and restore share this one lifecycle.
  */
-interface DraftAttempt {
-  readonly kind: 'edit' | 'bootstrap'
+export interface EditAttempt {
+  readonly kind: 'edit'
   readonly request: import('../core/schemas.js').CharterEditRequest
-  /** Connection epoch the request was sent through. */
   readonly sourceGeneration: number
   readonly status: 'in-flight' | 'unknown'
 }
+
+export interface BootstrapAttempt {
+  readonly kind: 'bootstrap'
+  readonly request: import('../core/schemas.js').CharterEditRequest
+  readonly sourceGeneration: number
+  readonly status: 'in-flight' | 'unknown'
+}
+
+export interface MaintenanceAttempt {
+  readonly kind: 'initialize' | 'restore'
+  readonly request: CharterInitializeRequest | CharterRestoreRequest
+  readonly sourceGeneration: number
+  readonly status: 'in-flight' | 'unknown'
+}
+
+export type DraftAttempt = EditAttempt | BootstrapAttempt | MaintenanceAttempt
 
 export interface CharterDraftState {
   readonly sessionId: SessionId
@@ -108,6 +131,16 @@ export interface CharterDraftState {
   /** View revision captured when the reviewed history draft was accepted. */
   readonly bootstrapBaseRevision: number | null
   readonly attempt: DraftAttempt | null
+  /** A maintenance RPC (initialize/restore) is in flight. */
+  readonly maintenanceSaving: boolean
+  /** Last maintenance failure shown in the Storage & recovery section. */
+  readonly maintenanceProblem: MaintenanceProblem | null
+}
+
+export interface MaintenanceProblem {
+  readonly kind: 'request-failed' | 'unavailable'
+  readonly code?: CharterErrorCode | string
+  readonly detail?: string
 }
 
 export type ResolveSource = () => CharterSessionSource | undefined
@@ -129,6 +162,38 @@ export function editReplayPending(state: Pick<CharterDraftState, 'attempt'>): bo
   return state.attempt?.kind === 'edit' && state.attempt.status === 'unknown'
 }
 
+/** Initialize/restore has an unknown outcome and must be replayed/abandoned. */
+export function maintenanceReplayPending(state: Pick<CharterDraftState, 'attempt'>): boolean {
+  return (state.attempt?.kind === 'initialize' || state.attempt?.kind === 'restore')
+    && state.attempt.status === 'unknown'
+}
+
+/** The edit/bootstrap mutation id of an attempt (undefined for maintenance). */
+export function attemptMutationId(
+  attempt: DraftAttempt | null,
+): string | undefined {
+  return attempt !== null && (attempt.kind === 'edit' || attempt.kind === 'bootstrap')
+    ? attempt.request.mutationId
+    : undefined
+}
+
+/** The edit/bootstrap request of an attempt (undefined for maintenance). */
+export function attemptEditRequest(
+  attempt: DraftAttempt | null,
+): import('../core/schemas.js').CharterEditRequest | undefined {
+  return attempt !== null && (attempt.kind === 'edit' || attempt.kind === 'bootstrap')
+    ? attempt.request
+    : undefined
+}
+
+/** The unresolved maintenance attempt, if one exists. */
+export function maintenanceAttempt(
+  state: Pick<CharterDraftState, 'attempt'>,
+): MaintenanceAttempt | undefined {
+  const attempt = state.attempt
+  return attempt?.kind === 'initialize' || attempt?.kind === 'restore' ? attempt : undefined
+}
+
 /** The last bootstrap Apply has an unknown outcome and must be replayed/abandoned. */
 export function bootstrapReplayPending(state: Pick<CharterDraftState, 'attempt'>): boolean {
   return state.attempt?.kind === 'bootstrap' && state.attempt.status === 'unknown'
@@ -141,9 +206,9 @@ export function unknownAttempt(state: Pick<CharterDraftState, 'attempt'>):
   return state.attempt?.status === 'unknown' ? state.attempt : undefined
 }
 
-/** Lock every draft edit while any unknown-outcome request is unresolved. */
+/** Lock every draft edit while any durable request is unresolved/in-flight. */
 function replayLocked(state: CharterDraftState): boolean {
-  return unknownAttempt(state) !== undefined
+  return unknownAttempt(state) !== undefined || state.maintenanceSaving
 }
 
 /**
@@ -181,6 +246,8 @@ function initialState(sessionId: SessionId): CharterDraftState {
     bootstrapNeedsStale: false,
     bootstrapBaseRevision: null,
     attempt: null,
+    maintenanceSaving: false,
+    maintenanceProblem: null,
   }
 }
 
@@ -232,7 +299,9 @@ export class CharterDraft {
           : {}),
         ...(this.state.attempt?.kind === 'edit'
           ? { feedback: { kind: 'connection' } }
-          : { bootstrapProblem: { kind: 'save-failed', code: 'UNAVAILABLE' } }),
+          : this.state.attempt?.kind === 'bootstrap'
+            ? { bootstrapProblem: { kind: 'save-failed', code: 'UNAVAILABLE' } }
+            : { maintenanceProblem: { kind: 'unavailable', code: 'UNAVAILABLE' } }),
       })
       return
     }
@@ -300,6 +369,14 @@ export class CharterDraft {
         bootstrapSaving: false,
         attempt: attempt?.kind === 'bootstrap' ? { ...attempt, status: 'unknown' } : attempt,
         bootstrapProblem: { kind: 'save-failed', code: 'UNAVAILABLE' },
+      })
+    } else if (this.state.maintenanceSaving) {
+      this.update({
+        maintenanceSaving: false,
+        attempt: attempt?.kind === 'initialize' || attempt?.kind === 'restore'
+          ? { ...attempt, status: 'unknown' }
+          : attempt,
+        maintenanceProblem: { kind: 'unavailable', code: 'UNAVAILABLE' },
       })
     }
   }
@@ -393,9 +470,178 @@ export class CharterDraft {
       saving: false,
       bootstrapSaving: false,
       attempt: null,
-      ...(attempt.kind === 'edit' ? { feedback: null } : { bootstrapProblem: null }),
+      ...(attempt.kind === 'edit'
+        ? { feedback: null }
+        : attempt.kind === 'bootstrap'
+          ? { bootstrapProblem: null }
+          : { maintenanceProblem: null }),
     })
     return true
+  }
+
+  /** Pure shared admission for initialize/restore (Pane uses the same rule). */
+  maintenanceAdmission(
+    view: CharterView,
+    operation: 'initialize' | 'restore',
+  ): { readonly ok: true } | { readonly ok: false; readonly reason: string } {
+    if (this.state.maintenanceSaving) return { ok: false, reason: 'busy' }
+    if (unknownAttempt(this.state) !== undefined) return { ok: false, reason: 'replayPending' }
+    if (this.state.saving || this.state.bootstrapSaving) return { ok: false, reason: 'busy' }
+    if (this.state.ops.length > 0) return { ok: false, reason: 'stagedOps' }
+    if (this.state.editor !== null) return { ok: false, reason: 'editorOpen' }
+    if (this.state.bootstrap !== null || this.state.bootstrapPhase === 'checking') {
+      return { ok: false, reason: 'historyDraft' }
+    }
+    const lifecycle = view.lifecycle
+    if (lifecycle === undefined || lifecycle === '') return { ok: false, reason: 'lifecycleUnknown' }
+    if (this.state.lifecycle !== null && this.state.lifecycle !== lifecycle) {
+      return { ok: false, reason: 'lifecycleMismatch' }
+    }
+    const state = view.recordState
+    if (state === undefined) return { ok: false, reason: 'legacyHost' }
+    if (view.capabilities?.recordMaintenance !== true) return { ok: false, reason: 'capability' }
+    const permitted = operation === 'initialize'
+      ? state.kind === 'absent-unconfirmed'
+      : state.kind === 'absent-unconfirmed' || state.kind === 'invalid'
+    return permitted ? { ok: true } : { ok: false, reason: 'recordHealthy' }
+  }
+
+  private async runMaintenance(attempt: MaintenanceAttempt): Promise<void> {
+    const source = this.resolveSource()
+    if (source === undefined) {
+      this.update({
+        maintenanceSaving: false,
+        attempt: { ...attempt, status: 'unknown' },
+        maintenanceProblem: { kind: 'unavailable', code: 'UNAVAILABLE' },
+      })
+      return
+    }
+    this.update({
+      maintenanceSaving: true,
+      maintenanceProblem: null,
+      attempt: { ...attempt, sourceGeneration: source.connectionGeneration, status: 'in-flight' },
+    })
+    const generation = this.asyncGeneration
+    const sourceGeneration = source.connectionGeneration
+    const current = (): boolean => this.asyncGeneration === generation
+      && this.resolveSource() === source
+      && source.connectionGeneration === sourceGeneration
+    try {
+      const result = attempt.kind === 'initialize'
+        ? await source.initializeRecord(attempt.request as CharterInitializeRequest)
+        : await source.restoreRecord(attempt.request as CharterRestoreRequest)
+      if (!current()) return
+      if (result.ok) {
+        if (result.view !== undefined) source.accept(result.view)
+        this.update({
+          maintenanceSaving: false,
+          attempt: null,
+          maintenanceProblem: null,
+          ops: [],
+          baseRevision: null,
+          editor: null,
+          editorBaseRevision: null,
+          feedback: null,
+        })
+        return
+      }
+      const unresolved = result.code === 'UNAVAILABLE'
+      this.update({
+        maintenanceSaving: false,
+        attempt: unresolved ? { ...attempt, status: 'unknown' } : null,
+        maintenanceProblem: unresolved
+          ? { kind: 'unavailable', code: result.code }
+          : { kind: 'request-failed', code: result.code, detail: result.message },
+      })
+    } catch (error) {
+      if (!current()) return
+      const disposition = classifyRemoteFailure(error)
+      if (disposition.kind === 'known') {
+        this.update({
+          maintenanceSaving: false,
+          attempt: null,
+          maintenanceProblem: { kind: 'request-failed', code: disposition.code },
+        })
+        return
+      }
+      // Possibly executed (carrier loss / internal / unclassified): retain the
+      // exact request for replay or the explicit abandon decision.
+      this.update({
+        maintenanceSaving: false,
+        attempt: { ...attempt, status: 'unknown' },
+        maintenanceProblem: { kind: 'unavailable', code: 'UNAVAILABLE' },
+      })
+    }
+  }
+
+  /** Explicitly create an empty record for an absent-unconfirmed target. */
+  async initializeEmpty(view: CharterView): Promise<void> {
+    if (this.state.maintenanceSaving) return
+    const retained = this.retryableMaintenance()
+    if (retained?.kind === 'initialize') {
+      await this.runMaintenance(retained)
+      return
+    }
+    if (retained !== undefined) return
+    const admission = this.maintenanceAdmission(view, 'initialize')
+    if (!admission.ok) return
+    const lifecycle = view.lifecycle
+    if (lifecycle === undefined) return
+    const request: CharterInitializeRequest = {
+      sessionId: this.sessionId,
+      operationId: mutationId(),
+      expectedLifecycle: lifecycle,
+    }
+    await this.runMaintenance({ kind: 'initialize', request, sourceGeneration: 0, status: 'in-flight' })
+  }
+
+  /** Restore a validated archive over the current absent/invalid target. */
+  async restoreArchive(
+    view: CharterView,
+    archive: CharterRecordArchive,
+  ): Promise<void> {
+    if (this.state.maintenanceSaving) return
+    const retained = this.retryableMaintenance()
+    if (retained?.kind === 'restore') {
+      await this.runMaintenance(retained)
+      return
+    }
+    if (retained !== undefined) return
+    const admission = this.maintenanceAdmission(view, 'restore')
+    if (!admission.ok) return
+    const lifecycle = view.lifecycle
+    const state = view.recordState
+    if (lifecycle === undefined || state === undefined) return
+    let expectedTarget: CharterRestoreTarget
+    if (state.kind === 'absent-unconfirmed') {
+      expectedTarget = { kind: 'absent-unconfirmed' }
+    } else if (state.kind === 'invalid' && state.recoverable) {
+      expectedTarget = { kind: 'invalid', reason: state.reason, recordDigest: state.recordDigest }
+    } else {
+      return
+    }
+    const request: CharterRestoreRequest = {
+      sessionId: this.sessionId,
+      operationId: mutationId(),
+      expectedLifecycle: lifecycle,
+      expectedTarget,
+      archive,
+    }
+    await this.runMaintenance({ kind: 'restore', request, sourceGeneration: 0, status: 'in-flight' })
+  }
+
+  /** Retry the retained maintenance request verbatim (same operation id). */
+  async retryMaintenance(): Promise<void> {
+    if (this.state.maintenanceSaving) return
+    const retained = this.retryableMaintenance()
+    if (retained === undefined) return
+    await this.runMaintenance(retained)
+  }
+
+  /** Dismiss the last maintenance failure text (the attempt itself stays). */
+  dismissMaintenanceProblem(): void {
+    if (this.state.maintenanceProblem === null) return
+    this.update({ maintenanceProblem: null })
   }
 
   openEditor(editor: DraftEditor, view: CharterView): void {
@@ -523,9 +769,18 @@ export class CharterDraft {
   }
 
   /** A request may be retried only when the previous attempt failed with an unknown outcome. */
-  private retryableRequest(kind: 'edit' | 'bootstrap'): DraftAttempt | undefined {
+  private retryableEdit(): EditAttempt | undefined {
     const attempt = unknownAttempt(this.state)
-    return attempt !== undefined && attempt.kind === kind ? attempt : undefined
+    return attempt?.kind === 'edit' ? attempt : undefined
+  }
+
+  private retryableBootstrap(): BootstrapAttempt | undefined {
+    const attempt = unknownAttempt(this.state)
+    return attempt?.kind === 'bootstrap' ? attempt : undefined
+  }
+
+  private retryableMaintenance(): MaintenanceAttempt | undefined {
+    return maintenanceAttempt(this.state)
   }
 
   async applyDraft(view: CharterView): Promise<void> {
@@ -536,7 +791,7 @@ export class CharterDraft {
     // verbatim (same mutationId/baseRevision/ops) even when the current view or
     // limits would now reject a fresh batch — otherwise a committed-but-lost
     // request would be dropped or duplicated.
-    const previous = this.retryableRequest('edit')
+    const previous = this.retryableEdit()
     if (previous === undefined && unknownAttempt(this.state) !== undefined) return
     if (previous === undefined) {
       // Only a fresh request runs the shared admission preflight. The Pane
@@ -918,7 +1173,7 @@ export class CharterDraft {
     })
   }
 
-  private async replayBootstrap(retained: DraftAttempt): Promise<void> {
+  private async replayBootstrap(retained: BootstrapAttempt): Promise<void> {
     const source = this.resolveSource()
     if (source === undefined) {
       this.update({
@@ -999,7 +1254,7 @@ export class CharterDraft {
     // Unknown-outcome replay comes FIRST: resend the retained request before any
     // stale/text/plan/limit checks, because the Host may already have committed
     // it and a fresh admission failure must not block recovery.
-    const retained = this.retryableRequest('bootstrap')
+    const retained = this.retryableBootstrap()
     if (retained !== undefined) {
       await this.replayBootstrap(retained)
       return

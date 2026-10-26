@@ -1416,3 +1416,101 @@
   align-items: center;
   gap: 2px;
 }
+
+/* Storage & recovery ------------------------------------------------------ */
+.charter-recovery__facts,
+.charter-recovery__preview dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px 16px;
+  margin: 10px 0;
+  padding: 0;
+}
+
+.charter-recovery__facts > div,
+.charter-recovery__preview dl > div {
+  min-width: 0;
+}
+
+.charter-recovery__facts dt,
+.charter-recovery__preview dt {
+  margin: 0;
+  color: var(--dsw-alias-label-tertiary, rgba(127, 127, 127, 0.85));
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.charter-recovery__facts dd,
+.charter-recovery__preview dd {
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+
+.charter-recovery__actions,
+.charter-recovery__danger,
+.charter-recovery__file,
+.charter-recovery__preview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-top: 10px;
+}
+
+.charter-recovery__file {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.charter-recovery__file input[type='file'] {
+  max-width: 100%;
+  padding: 6px 8px;
+  border: 1px dashed var(--charter-border);
+  border-radius: var(--charter-radius);
+  background: var(--charter-surface);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.charter-recovery__file input[type='file']:focus-visible,
+.charter-recovery__actions .charter-button:focus-visible {
+  outline: 2px solid var(--charter-brand);
+  outline-offset: 2px;
+}
+
+.charter-recovery__preview {
+  flex-direction: column;
+  align-items: stretch;
+  padding: 10px 12px;
+  border: 1px solid var(--charter-border-soft);
+  border-radius: var(--charter-radius);
+  background: var(--charter-surface);
+}
+
+.charter-recovery__preview dl {
+  margin: 6px 0 0;
+}
+
+.charter-recovery__danger {
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border: 1px solid var(--charter-warn);
+  border-radius: var(--charter-radius);
+  background: var(--charter-surface-2);
+}
+
+@container (max-width: 520px) {
+  .charter-recovery__facts,
+  .charter-recovery__preview dl {
+    grid-template-columns: 1fr;
+  }
+
+  .charter-recovery__actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

@@ -1,14 +1,29 @@
 import { describe, expect, it } from 'vitest'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type { CharterEditRequest, CharterItem } from '../../src/core/schemas.js'
-import type { CharterBootstrapResult, CharterEditResult, CharterView } from '../../src/host/types.js'
+import type {
+  CharterBootstrapResult,
+  CharterEditResult,
+  CharterRecordOperationResult,
+  CharterView,
+} from '../../src/host/types.js'
 import type { CharterSessionSource } from '../../src/client/store.js'
 import {
   CharterDraft,
+  attemptMutationId,
   bootstrapReplayPending,
   editReplayPending,
+  maintenanceAttempt,
+  maintenanceReplayPending,
   rebaseAvailable,
 } from '../../src/client/draft-store.js'
+import { buildRecordArchive } from '../../src/core/archive.js'
+import { createEmptyRecord } from '../../src/core/record.js'
+import { DEFAULT_CHARTER_LIMITS } from '../../src/core/limits.js'
+import type {
+  CharterInitializeRequest,
+  CharterRestoreRequest,
+} from '../../src/core/schemas.js'
 import { draftAdmission } from '../../src/client/admission.js'
 import { previewPrompt } from '../../src/client/preview.js'
 import { utf8Bytes } from '../../src/core/limits.js'
@@ -1483,7 +1498,7 @@ describe('per-Session draft ownership', () => {
     // Source-detached/UNAVAILABLE replay keeps payload + exact credentials.
     await draft.applyBootstrap(view(0))
     expect(bootstrapReplayPending(draft.getSnapshot())).toBe(true)
-    expect(draft.getSnapshot().attempt?.request.mutationId).toBe(original?.request.mutationId)
+    expect(attemptMutationId(draft.getSnapshot().attempt)).toBe(attemptMutationId(original))
     expect(draft.getSnapshot().bootstrap).not.toBeNull()
     expect(draft.getSnapshot().bootstrapBaseRevision).toBe(0)
     // Reattach and replay succeeds exactly once with the same request.
@@ -1555,5 +1570,222 @@ describe('per-Session draft ownership', () => {
     expect(fake.getSnapshot().bootstrapPhase).toBe('draft')
     expect(fake.getSnapshot().section).toBe('objective')
     expect(fake.getSnapshot().bootstrap?.objective).toBe('Draft objective')
+  })
+})
+
+describe('rc.3 maintenance attempts (initialize/restore)', () => {
+  const maintenanceLifecycle = 'life-recovery'
+  function absentView(): CharterView {
+    return {
+      ...view(0),
+      status: 'unavailable',
+      lifecycle: maintenanceLifecycle,
+      recordState: { kind: 'absent-unconfirmed', source: 'resume' },
+      capabilities: { recordMaintenance: true },
+      limits: { ...view(0).limits, maintenanceLimit: 16, maxRecoveryBytes: 4_194_304 },
+    }
+  }
+  function archive() {
+    return buildRecordArchive({
+      sessionId: String(sessionId),
+      lifecycle: maintenanceLifecycle,
+      health: 'healthy',
+      revision: 0,
+      record: createEmptyRecord({ createdAt: 1 }, DEFAULT_CHARTER_LIMITS),
+      exportedAt: 1,
+    })
+  }
+  function recoverySource(handlers: {
+    initializeRecord?: (request: CharterInitializeRequest) => Promise<CharterRecordOperationResult>
+    restoreRecord?: (request: CharterRestoreRequest) => Promise<CharterRecordOperationResult>
+    edit?: (request: CharterEditRequest) => Promise<CharterEditResult>
+  }) {
+    const calls: { initialize: CharterInitializeRequest[]; restore: CharterRestoreRequest[] } = {
+      initialize: [],
+      restore: [],
+    }
+    const source = {
+      connectionGeneration: 1,
+      edit: handlers.edit ?? (async () => ({ ok: false as const, code: 'UNAVAILABLE' as const, message: 'unused' })),
+      bootstrap: async () => ({ available: false as const, reason: 'unavailable' as const }),
+      snapshot: () => ({ status: 'ready' as const, view: view(0), error: null }),
+      initializeRecord: async (request: CharterInitializeRequest) => {
+        calls.initialize.push(request)
+        return handlers.initializeRecord === undefined
+          ? { ok: true as const, replayed: false, committedRevision: 0, view: { ...absentView(), status: 'ready' as const, revision: 0 } }
+          : handlers.initializeRecord(request)
+      },
+      restoreRecord: async (request: CharterRestoreRequest) => {
+        calls.restore.push(request)
+        return handlers.restoreRecord === undefined
+          ? { ok: true as const, replayed: false, committedRevision: 0, view: { ...absentView(), status: 'ready' as const, revision: 0 } }
+          : handlers.restoreRecord(request)
+      },
+      accept: () => undefined,
+      retry: () => undefined,
+    }
+    return { source, calls }
+  }
+
+  it('unknown edit/bootstrap attempts lock initialize/restore admission', async () => {
+    const harness = recoverySource({
+      edit: async () => { throw new Error('transport lost') },
+    })
+    const draft = new CharterDraft(sessionId, () => harness.source as unknown as CharterSessionSource)
+    draft.bindLifecycle(maintenanceLifecycle)
+    draft.stage(view(0), {
+      type: 'item.add',
+      item: { clientRef: 'lock-ref', kind: 'invariant', text: 'Locked', order: 0 },
+    })
+    await draft.applyDraft(view(0))
+    expect(editReplayPending(draft.getSnapshot())).toBe(true)
+    expect(draft.maintenanceAdmission(absentView(), 'initialize'))
+      .toMatchObject({ ok: false, reason: 'replayPending' })
+    await draft.initializeEmpty(absentView())
+    expect(harness.calls.initialize).toHaveLength(0)
+  })
+
+  it('initializes an absent target and clears the attempt on success', async () => {
+    const harness = recoverySource({})
+    const draft = new CharterDraft(sessionId, () => harness.source as unknown as CharterSessionSource)
+    draft.bindLifecycle(maintenanceLifecycle)
+    await draft.initializeEmpty(absentView())
+    expect(harness.calls.initialize).toHaveLength(1)
+    expect(harness.calls.initialize[0]).toMatchObject({
+      sessionId: String(sessionId),
+      expectedLifecycle: maintenanceLifecycle,
+    })
+    expect(draft.getSnapshot()).toMatchObject({
+      attempt: null,
+      maintenanceSaving: false,
+      maintenanceProblem: null,
+    })
+  })
+
+  it('retains the exact initialize request through UNAVAILABLE and replays it', async () => {
+    let calls = 0
+    const harness = recoverySource({
+      initializeRecord: async () => {
+        calls += 1
+        if (calls === 1) return { ok: false, code: 'UNAVAILABLE', message: 'uncertain' }
+        return { ok: true, replayed: true, committedRevision: 0, view: { ...absentView(), status: 'ready', revision: 0 } }
+      },
+    })
+    const draft = new CharterDraft(sessionId, () => harness.source as unknown as CharterSessionSource)
+    draft.bindLifecycle(maintenanceLifecycle)
+    await draft.initializeEmpty(absentView())
+    expect(maintenanceReplayPending(draft.getSnapshot())).toBe(true)
+    const first = maintenanceAttempt(draft.getSnapshot())
+    expect(first).toBeDefined()
+    await draft.retryMaintenance()
+    expect(harness.calls.initialize).toHaveLength(2)
+    expect(harness.calls.initialize[1]).toEqual(harness.calls.initialize[0])
+    expect(first?.request).toEqual(harness.calls.initialize[0])
+    expect(draft.getSnapshot()).toMatchObject({ attempt: null, maintenanceProblem: null })
+  })
+
+  it('classifies known vs possibly-executed Remote failures without message matching', async () => {
+    const { RemoteError } = await import('@deepseek-ai/dsh-typert-protocol')
+    const knownHarness = recoverySource({
+      initializeRecord: async () => { throw new RemoteError('gateway/bad-request', 'deep validation failed', {}) },
+    })
+    const known = new CharterDraft(sessionId, () => knownHarness.source as unknown as CharterSessionSource)
+    known.bindLifecycle(maintenanceLifecycle)
+    await known.initializeEmpty(absentView())
+    expect(known.getSnapshot()).toMatchObject({
+      attempt: null,
+      maintenanceProblem: { kind: 'request-failed' },
+    })
+    expect(known.getSnapshot().maintenanceProblem?.code).toBe('gateway/bad-request')
+
+    const unknownHarness = recoverySource({
+      initializeRecord: async () => { throw new RemoteError('gateway/internal', 'carrier lost', {}) },
+    })
+    const unknown = new CharterDraft(sessionId, () => unknownHarness.source as unknown as CharterSessionSource)
+    unknown.bindLifecycle(maintenanceLifecycle)
+    await unknown.initializeEmpty(absentView())
+    expect(maintenanceReplayPending(unknown.getSnapshot())).toBe(true)
+    expect(unknown.getSnapshot().maintenanceProblem).toMatchObject({ kind: 'unavailable' })
+  })
+
+  it('retains the exact restore request across repeated UNAVAILABLE replies', async () => {
+    const archiveValue = archive()
+    const harness = recoverySource({
+      restoreRecord: async () => ({ ok: false, code: 'UNAVAILABLE', message: 'still uncertain' }),
+    })
+    const draft = new CharterDraft(sessionId, () => harness.source as unknown as CharterSessionSource)
+    draft.bindLifecycle(maintenanceLifecycle)
+    await draft.restoreArchive(absentView(), archiveValue)
+    expect(maintenanceReplayPending(draft.getSnapshot())).toBe(true)
+    await draft.retryMaintenance()
+    await draft.retryMaintenance()
+    expect(harness.calls.restore).toHaveLength(3)
+    expect(harness.calls.restore[1]).toEqual(harness.calls.restore[0])
+    expect(harness.calls.restore[2]).toEqual(harness.calls.restore[0])
+    expect(maintenanceReplayPending(draft.getSnapshot())).toBe(true)
+  })
+
+  it('unlocks the attempt on INVALID_ARCHIVE and RECORD_CONFLICT business failures', async () => {
+    for (const [code, reason] of [['INVALID_ARCHIVE', 'invalid-archive'], ['RECORD_CONFLICT', 'conflict']] as const) {
+      let first = true
+      const harness = recoverySource({
+        restoreRecord: async () => {
+          if (first) {
+            first = false
+            return { ok: false, code: 'UNAVAILABLE', message: 'uncertain' }
+          }
+          return { ok: false, code, message: reason }
+        },
+      })
+      const draft = new CharterDraft(sessionId, () => harness.source as unknown as CharterSessionSource)
+      draft.bindLifecycle(maintenanceLifecycle)
+      await draft.restoreArchive(absentView(), archive())
+      expect(maintenanceReplayPending(draft.getSnapshot())).toBe(true)
+      await draft.retryMaintenance()
+      expect(harness.calls.restore).toHaveLength(2)
+      expect(draft.getSnapshot()).toMatchObject({
+        attempt: null,
+        maintenanceSaving: false,
+        maintenanceProblem: { kind: 'request-failed', code },
+      })
+      // A resolved failure unlocks a fresh operation.
+      expect(draft.maintenanceAdmission(absentView(), 'initialize')).toMatchObject({ ok: true })
+    }
+  })
+
+  it('legacy-host views (no recordState/capabilities) refuse maintenance admission', () => {
+    const draft = new CharterDraft(sessionId, () => undefined)
+    draft.bindLifecycle(maintenanceLifecycle)
+    const legacyView = { ...absentView(), recordState: undefined, capabilities: undefined }
+    expect(draft.maintenanceAdmission(legacyView, 'initialize'))
+      .toMatchObject({ ok: false, reason: 'legacyHost' })
+    expect(draft.maintenanceAdmission(legacyView, 'restore'))
+      .toMatchObject({ ok: false, reason: 'legacyHost' })
+  })
+
+  it('keeps a restore archive exact across lifecycle changes and ends on deterministic mismatch', async () => {
+    const archiveValue = archive()
+    let calls = 0
+    const harness = recoverySource({
+      restoreRecord: async () => {
+        calls += 1
+        if (calls === 1) return { ok: false, code: 'UNAVAILABLE', message: 'uncertain' }
+        return { ok: false, code: 'LIFECYCLE_MISMATCH', message: 'lifecycle changed' }
+      },
+    })
+    const draft = new CharterDraft(sessionId, () => harness.source as unknown as CharterSessionSource)
+    draft.bindLifecycle(maintenanceLifecycle)
+    await draft.restoreArchive(absentView(), archiveValue)
+    expect(maintenanceReplayPending(draft.getSnapshot())).toBe(true)
+    const firstRequest = maintenanceAttempt(draft.getSnapshot())?.request as CharterRestoreRequest
+    expect(firstRequest.archive).toEqual(archiveValue)
+    draft.bindLifecycle('life-recovery-2')
+    expect(draft.getSnapshot().lifecycle).toBe('life-recovery-2')
+    await draft.retryMaintenance()
+    expect(harness.calls.restore[1]).toEqual(harness.calls.restore[0])
+    expect(draft.getSnapshot()).toMatchObject({
+      attempt: null,
+      maintenanceProblem: { kind: 'request-failed', code: 'LIFECYCLE_MISMATCH' },
+    })
   })
 })
