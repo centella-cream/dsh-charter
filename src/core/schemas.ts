@@ -249,7 +249,9 @@ export const charterRecordArchiveSourceSchema = z.object({
 export const charterRecordArchiveSchema = z.object({
   format: z.literal('dsh-charter-record'),
   formatVersion: z.literal(1),
-  exportedAt: z.number().int().nonnegative(),
+  // JS Date has a finite representable range; a larger value would make
+  // `new Date(value).toISOString()` throw RangeError in recovery previews.
+  exportedAt: z.number().int().nonnegative().max(8_640_000_000_000_000),
   source: charterRecordArchiveSourceSchema,
   /** Raw stored value; validated after payload-digest verification. */
   record: z.unknown(),

@@ -300,3 +300,61 @@ describe('Storage & recovery Pane section', () => {
     expect(textOf(tree2.root)).toContain('recovery.writeUncertain')
   })
 })
+
+describe('Storage & recovery async ownership', () => {
+  function selectFile(tree: ReactTestRenderer, file: {
+    name: string
+    size: number
+    text: () => Promise<string>
+  }): void {
+    const input = fileInput(tree)
+    act(() => input.props.onChange({ currentTarget: { files: [file] } } as never))
+  }
+
+  async function flushPreview(tree: ReactTestRenderer, expected: string): Promise<string> {
+    for (let attempt = 0; attempt < 30; attempt += 1) {
+      await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
+      const text = textOf(tree.root)
+      if (text.includes(expected)) return text
+    }
+    return textOf(tree.root)
+  }
+
+  it('ignores a slower archive selection after a newer file completed', async () => {
+    const h = harness(absentView())
+    const tree = mount(absentView(), h)
+    const archive = JSON.stringify(archiveFor(createEmptyRecord({ createdAt: 1_700_000_000_000 }, DEFAULT_CHARTER_LIMITS)))
+    let resolveSlow!: (text: string) => void
+    selectFile(tree, {
+      name: 'A-slow.json',
+      size: archive.length,
+      text: () => new Promise<string>(resolve => { resolveSlow = resolve }),
+    })
+    selectFile(tree, { name: 'B-fast.json', size: archive.length, text: async () => archive })
+    const afterFast = await flushPreview(tree, 'recovery.selected: B-fast.json')
+    expect(afterFast).toContain('B-fast.json')
+    resolveSlow(archive)
+    const afterSlow = await flushPreview(tree, 'recovery.verified')
+    expect(afterSlow).toContain('B-fast.json')
+    expect(afterSlow).not.toContain('A-slow.json')
+  })
+
+  it('drops an archive preview started under the previous lifecycle', async () => {
+    const h = harness(absentView())
+    const tree = mount(absentView(), h)
+    const archive = JSON.stringify(archiveFor(createEmptyRecord({ createdAt: 1_700_000_000_000 }, DEFAULT_CHARTER_LIMITS)))
+    let resolveSlow!: (text: string) => void
+    selectFile(tree, {
+      name: 'old-life.json',
+      size: archive.length,
+      text: () => new Promise<string>(resolve => { resolveSlow = resolve }),
+    })
+    act(() => h.setView({
+      ...absentView(),
+      lifecycle: JSON.stringify({ createdAt: 1_700_000_000_900, cwd: '/work', parentSession: null }),
+    }))
+    resolveSlow(archive)
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
+    expect(textOf(tree.root)).not.toContain('old-life.json')
+  })
+})

@@ -893,3 +893,64 @@ describe('rc.3 scripted storage fault backend (RC3-08)', () => {
     }
   })
 })
+
+describe('rc.3 queued maintenance lifecycle and fence guards', () => {
+  it('refuses a queued initialize after its Session object is replaced', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-queued-lifecycle-'))
+    roots.push(root)
+    const ctx = await mount(root)
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('queued-lifecycle'), identityMeta(1_700_000_003_000))
+    await service.ensureSession(session, 'resume')
+    const lifecycle = service.view(session).lifecycle
+    expect(lifecycle).toBeDefined()
+
+    let release!: () => void
+    const blocker = new Promise<void>(resolve => { release = resolve })
+    const queued = (service as unknown as {
+      runMutationQueue: (id: SessionId, task: () => Promise<void>) => Promise<void>
+    }).runMutationQueue(session.id, () => blocker)
+    const operation = service.initializeRecord({
+      sessionId: session.id,
+      operationId: 'queued-lifecycle-op',
+      expectedLifecycle: lifecycle!,
+    })
+    const replacement = {
+      ...session,
+      header: { ...session.header, createdAt: session.header.createdAt + 1 },
+    } as never
+    ;(ctx.sessions as unknown as { get: (id: SessionId) => unknown }).get = () => replacement
+    release()
+    await queued
+    await expect(operation).resolves.toMatchObject({ ok: false, code: 'LIFECYCLE_MISMATCH' })
+    const table = (service as unknown as { sessionsTable: { get: (id: SessionId) => unknown } }).sessionsTable
+    expect(table.get(session.id)).toBeUndefined()
+  })
+
+  it('refuses a queued maintenance after another writer fences the Session', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-queued-fence-'))
+    roots.push(root)
+    const ctx = await mount(root)
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('queued-fence'), identityMeta(1_700_000_003_100))
+    await service.ensureSession(session, 'resume')
+    const lifecycle = service.view(session).lifecycle
+
+    let release!: () => void
+    const blocker = new Promise<void>(resolve => { release = resolve })
+    const queued = (service as unknown as {
+      runMutationQueue: (id: SessionId, task: () => Promise<void>) => Promise<void>
+    }).runMutationQueue(session.id, () => blocker)
+    const operation = service.initializeRecord({
+      sessionId: session.id,
+      operationId: 'queued-fence-op',
+      expectedLifecycle: lifecycle!,
+    })
+    ;(service as unknown as { writeUncertain: Map<string, string> }).writeUncertain.set(session.id, 'edit')
+    release()
+    await queued
+    await expect(operation).resolves.toMatchObject({ ok: false, code: 'UNAVAILABLE' })
+    const table = (service as unknown as { sessionsTable: { get: (id: SessionId) => unknown } }).sessionsTable
+    expect(table.get(session.id)).toBeUndefined()
+  })
+})

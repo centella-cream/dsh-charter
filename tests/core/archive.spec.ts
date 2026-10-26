@@ -194,3 +194,27 @@ describe('rc.2 downgrade isolation contract (core schema shape)', () => {
     expect(rc3Record.recentMaintenance).toHaveLength(1)
   })
 })
+
+describe('recovery size and timestamp admission', () => {
+  it('rejects exportedAt values outside the JavaScript Date representable range', () => {
+    const archive = buildRecordArchive({
+      sessionId: 'session-1',
+      lifecycle: null,
+      health: 'healthy',
+      revision: 0,
+      record: emptyRecord(),
+      exportedAt: 8_640_000_000_000_001,
+    })
+    expect(charterRecordSchema.safeParse(archive.record).success).toBe(true)
+    expect(() => validateArchiveEnvelope(archive, { sessionId: 'session-1' }, limits))
+      .toThrow(/archive does not match/i)
+  })
+
+  it('enforces maxRecoveryBytes on the complete archive/request envelope', async () => {
+    const { assertArchiveAdmission, assertRecoveryRequestAdmission } = await import('../../src/core/archive.js')
+    const oversized = { archive: 'x'.repeat(limits.maxRecoveryBytes), padding: 'y' }
+    expect(() => assertArchiveAdmission(oversized, limits)).toThrow(/exceeds/i)
+    expect(() => assertRecoveryRequestAdmission(oversized, limits)).toThrow(/exceeds/i)
+    expect(() => assertArchiveAdmission({ small: true }, limits)).not.toThrow()
+  })
+})

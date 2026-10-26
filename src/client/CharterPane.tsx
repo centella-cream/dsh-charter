@@ -205,6 +205,18 @@ function lifecycleLabel(value: string | null | undefined): string {
   return shortText(value, 24)
 }
 
+/** Render an archive timestamp without ever throwing on hostile values. */
+function formatTimestamp(value: number | undefined): string {
+  if (value === undefined || !Number.isFinite(value)) return '-'
+  try {
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return '-'
+    return date.toISOString().slice(0, 19).replace('T', ' ')
+  } catch {
+    return '-'
+  }
+}
+
 /** Localized health label for an archive preview. */
 function archiveHealthLabel(
   health: 'healthy' | 'schema-invalid' | 'consistency-invalid' | 'lifecycle-mismatch',
@@ -653,16 +665,40 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   const [archivePreview, setArchivePreview] = useState<ArchivePreview | null>(null)
   const [confirmRecovery, setConfirmRecovery] = useState<'initialize' | 'restore' | null>(null)
   const [exportProblem, setExportProblem] = useState<string | null>(null)
+  const [exporting, setExporting] = useState(false)
+  const archiveGenerationRef = useRef(0)
+  const exportEpochRef = useRef(0)
+  const exportInFlightRef = useRef(false)
+  const viewRef = useRef(view)
   const archiveInputRef = useRef<HTMLInputElement | null>(null)
   const triggerRef = useRef<HTMLElement | null>(null)
   const statusRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => () => {
+    archiveGenerationRef.current += 1
+    exportEpochRef.current += 1
     // The lease is instance-bound: releasing it is idempotent and a shared
     // Session is only disposed after the last view binding is gone. Draft
     // state lives on the controller, so switching tabs no longer loses work.
     release()
   }, [release])
+
+  useEffect(() => {
+    viewRef.current = view
+  }, [view])
+
+  useEffect(() => {
+    // Any Session/lifecycle/source transition invalidates an async archive
+    // preview or export started against the previous authority.
+    archiveGenerationRef.current += 1
+    exportEpochRef.current += 1
+    exportInFlightRef.current = false
+    setArchivePreview(null)
+    setConfirmRecovery(null)
+    setExportProblem(null)
+    setExporting(false)
+    if (archiveInputRef.current !== null) archiveInputRef.current.value = ''
+  }, [source, view?.sessionId, view?.lifecycle, draftState.lifecycle])
 
   useEffect(() => {
     // ONE atomic view reaction: bind lifecycle, start extraction when idle, and
@@ -914,14 +950,32 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   }
 
   const exportArchive = (): void => {
+    if (exportInFlightRef.current) return
+    const epoch = ++exportEpochRef.current
+    exportInFlightRef.current = true
     setExportProblem(null)
+    setExporting(true)
     void source.exportRecord().then(result => {
+      if (epoch !== exportEpochRef.current) return
+      exportInFlightRef.current = false
+      setExporting(false)
       if (result.ok) downloadArchive(result.filename, result.archive)
       else setExportProblem(errorText(result.code))
-    }).catch(() => setExportProblem(t('recovery.exportFailed')))
+    }).catch(() => {
+      if (epoch !== exportEpochRef.current) return
+      exportInFlightRef.current = false
+      setExporting(false)
+      setExportProblem(t('recovery.exportFailed'))
+    })
   }
 
   const chooseArchive = (file: File): void => {
+    const generation = ++archiveGenerationRef.current
+    const expectedSessionId = view?.sessionId
+    const expectedLifecycle = draftState.lifecycle ?? view?.lifecycle ?? null
+    const isCurrent = (): boolean => generation === archiveGenerationRef.current
+      && viewRef.current?.sessionId === expectedSessionId
+      && (draft.getSnapshot().lifecycle ?? null) === expectedLifecycle
     setArchivePreview({ fileName: file.name })
     setExportProblem(null)
     setConfirmRecovery(null)
@@ -937,11 +991,12 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
     }
     const lifecycle = draftState.lifecycle ?? view.lifecycle ?? null
     void file.text().then(async text => {
+      if (!isCurrent()) return
       let parsed: unknown
       try {
         parsed = JSON.parse(text)
       } catch {
-        setArchivePreview({ fileName: file.name, errorKey: 'recovery.invalidJson' })
+        if (isCurrent()) setArchivePreview({ fileName: file.name, errorKey: 'recovery.invalidJson' })
         return
       }
       const preview = await previewArchive(parsed, {
@@ -949,6 +1004,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
         lifecycle,
         maxRecoveryBytes: maxBytes,
       })
+      if (!isCurrent()) return
       if (!preview.ok) {
         const key = preview.reason === 'fileTooLarge'
           ? 'recovery.fileTooLargeLimit'
@@ -968,6 +1024,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
         })
         return
       }
+      if (!isCurrent()) return
       setArchivePreview({
         fileName: file.name,
         archive: preview.archive,
@@ -980,7 +1037,9 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
         payloadDigestOk: preview.payloadDigestOk,
         recordDigestOk: preview.recordDigestOk,
       })
-    }).catch(() => setArchivePreview({ fileName: file.name, errorKey: 'recovery.invalidArchive' }))
+    }).catch(() => {
+      if (isCurrent()) setArchivePreview({ fileName: file.name, errorKey: 'recovery.invalidArchive' })
+    })
   }
 
   const initializeEmpty = (): void => {
@@ -1792,8 +1851,9 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                   <div className="charter-recovery__actions">
                     <ActionButton
                       variant="primary"
-                      disabled={!canExport || recoveryBusy}
+                      disabled={!canExport || recoveryBusy || exporting}
                       onClick={exportArchive}
+                      busy={exporting}
                     >
                       {t('recovery.export')}
                     </ActionButton>
@@ -1890,7 +1950,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                             <div><dt>{t('recovery.previewRevision')}</dt><dd>{archivePreview.revision ?? '-'}</dd></div>
                             <div><dt>{t('recovery.previewLifecycle')}</dt><dd><code>{lifecycleLabel(archivePreview.lifecycle)}</code></dd></div>
                             <div><dt>{t('recovery.previewDigest')}</dt><dd><code>{archivePreview.digest === undefined ? '-' : shortText(archivePreview.digest.replace('sha256:', ''), 20)}</code></dd></div>
-                            <div><dt>{t('recovery.exportedAt')}</dt><dd>{archivePreview.exportedAt === undefined ? '-' : new Date(archivePreview.exportedAt).toISOString().slice(0, 19).replace('T', ' ')}</dd></div>
+                            <div><dt>{t('recovery.exportedAt')}</dt><dd>{formatTimestamp(archivePreview.exportedAt)}</dd></div>
                             <div><dt>{t('recovery.sourceSession')}</dt><dd><code>{shortText(archivePreview.sourceSession ?? '-', 24)}</code></dd></div>
                             <div><dt>{t('recovery.payloadDigest')}</dt><dd>{archivePreview.payloadDigestOk === true ? t('recovery.verified') : t('recovery.unverified')}</dd></div>
                           </dl>

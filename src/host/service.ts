@@ -44,6 +44,8 @@ import {
   type CharterIdentity,
 } from '../core/record.js'
 import {
+  assertArchiveAdmission,
+  assertRecoveryRequestAdmission,
   assertRestorableArchive,
   buildRecordArchive,
   recordDigestOf,
@@ -1306,6 +1308,37 @@ export class CharterService extends Service {
     }
   }
 
+  /** Re-confirm the queued operation still targets the live Session object. */
+  private queuedMaintenanceFailure(
+    session: Session,
+    lifecycle: string,
+    expectedLifecycle: string,
+  ): CharterRecordOperationResult | undefined {
+    if (this.ctx.sessions.get(session.id) !== session) {
+      return {
+        ok: false,
+        code: 'LIFECYCLE_MISMATCH',
+        message: 'The Session lifecycle changed while the operation was queued',
+      }
+    }
+    if (this.writeUncertain.has(session.id)) {
+      return {
+        ok: false,
+        code: 'UNAVAILABLE',
+        message: 'The last storage write outcome is uncertain; restart the Host',
+      }
+    }
+    const actual = lifecycleFingerprint(identityOf(session))
+    if (actual !== lifecycle || actual !== expectedLifecycle) {
+      return {
+        ok: false,
+        code: 'LIFECYCLE_MISMATCH',
+        message: 'The Session lifecycle changed while the operation was queued',
+      }
+    }
+    return undefined
+  }
+
   /** Export the complete raw record for one Session (owner-only). */
   exportRecord(sessionId: SessionIdType, actor: CharterActor = { kind: 'owner' }): CharterRecordExport {
     const gate = this.maintenanceGate(actor)
@@ -1331,15 +1364,22 @@ export class CharterService extends Service {
       : inspection.state.kind === 'invalid'
         ? inspection.state.reason === 'schema' ? 'schema-invalid' : 'consistency-invalid'
         : 'lifecycle-mismatch'
-    const archive = buildRecordArchive({
-      sessionId,
-      lifecycle: lifecycleFingerprint(identityOf(session)),
-      health,
-      revision: inspection.record?.current.revision
-        ?? (inspection.state.kind === 'invalid' ? (inspection.state.observedRevision ?? null) : null),
-      record: stored,
-      exportedAt: Date.now(),
-    })
+    let archive
+    try {
+      archive = buildRecordArchive({
+        sessionId,
+        lifecycle: lifecycleFingerprint(identityOf(session)),
+        health,
+        revision: inspection.record?.current.revision
+          ?? (inspection.state.kind === 'invalid' ? (inspection.state.observedRevision ?? null) : null),
+        record: stored,
+        exportedAt: Date.now(),
+      })
+      assertArchiveAdmission(archive, this.config)
+    } catch (error) {
+      if (error instanceof CharterError) return { ok: false, code: error.code, message: error.message }
+      throw error
+    }
     const safe = String(sessionId).replace(/[^A-Za-z0-9._-]+/gu, '-')
     const revision = inspection.record?.current.revision ?? 0
     return {
@@ -1375,6 +1415,8 @@ export class CharterService extends Service {
       return { ok: false, code: 'LIFECYCLE_MISMATCH', message: 'The Session lifecycle changed since preview' }
     }
     return this.runMutationQueue(session.id, async (): Promise<CharterRecordOperationResult> => {
+      const queuedFailure = this.queuedMaintenanceFailure(session, lifecycle, request.expectedLifecycle)
+      if (queuedFailure !== undefined) return queuedFailure
       const table = this.requireTable()
       const stored = table.get(session.id)
       if (stored !== undefined) {
@@ -1402,7 +1444,22 @@ export class CharterService extends Service {
         const next = appendMaintenanceReceipt(empty, receipt, this.config)
         assertRecoveryRecordAdmission(next, this.config)
         assertRecordConsistency(next, this.config)
+        assertArchiveAdmission(buildRecordArchive({
+          sessionId: session.id,
+          lifecycle,
+          health: 'healthy',
+          revision: next.current.revision,
+          record: next,
+          exportedAt: Date.now(),
+        }), this.config)
         await table.put(session.id, next)
+        if (this.ctx.sessions.get(session.id) !== session) {
+          return {
+            ok: false,
+            code: 'LIFECYCLE_MISMATCH',
+            message: 'The Session lifecycle changed while the operation was being written',
+          }
+        }
         this.recordStates.set(session.id, { kind: 'healthy', recordDigest: recordDigestOf(next) })
         this.publish(session.id)
         return this.maintenanceResult(session, false)
@@ -1461,6 +1518,12 @@ export class CharterService extends Service {
     if (request.expectedLifecycle !== lifecycle) {
       return { ok: false, code: 'LIFECYCLE_MISMATCH', message: 'The Session lifecycle changed since preview' }
     }
+    try {
+      assertRecoveryRequestAdmission(request, this.config)
+    } catch (error) {
+      if (error instanceof CharterError) return { ok: false, code: error.code, message: error.message }
+      throw error
+    }
     let archive
     try {
       archive = validateArchiveEnvelope(request.archive, { sessionId: request.sessionId }, this.config)
@@ -1484,6 +1547,8 @@ export class CharterService extends Service {
       throw error
     }
     return this.runMutationQueue(session.id, async (): Promise<CharterRecordOperationResult> => {
+      const queuedFailure = this.queuedMaintenanceFailure(session, lifecycle, request.expectedLifecycle)
+      if (queuedFailure !== undefined) return queuedFailure
       const table = this.requireTable()
       const stored = table.get(session.id)
       let targetState: CharterRecordState = stored === undefined
@@ -1539,7 +1604,22 @@ export class CharterService extends Service {
         })
         const next = restoredRecord(archived.data, receipt, this.config)
         assertRecordConsistency(next, this.config)
+        assertArchiveAdmission(buildRecordArchive({
+          sessionId: session.id,
+          lifecycle,
+          health: 'healthy',
+          revision: next.current.revision,
+          record: next,
+          exportedAt: Date.now(),
+        }), this.config)
         await table.put(session.id, next)
+        if (this.ctx.sessions.get(session.id) !== session) {
+          return {
+            ok: false,
+            code: 'LIFECYCLE_MISMATCH',
+            message: 'The Session lifecycle changed while the operation was being written',
+          }
+        }
         this.recordStates.set(session.id, { kind: 'healthy', recordDigest: recordDigestOf(next) })
         this.publish(session.id)
         return this.maintenanceResult(session, false)

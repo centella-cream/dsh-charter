@@ -34,6 +34,22 @@ export function withPayloadDigest(
   return { ...envelope, payloadDigest: payloadDigestOf(envelope) }
 }
 
+/** Enforce the complete-recovery budget on a serialized archive envelope. */
+export function assertArchiveAdmission(value: unknown, limits: CharterLimits): void {
+  const bytes = jsonBytes(value)
+  if (bytes > limits.maxRecoveryBytes) {
+    throw charterError(
+      'QUOTA_EXCEEDED',
+      `recovery payload exceeds ${limits.maxRecoveryBytes} UTF-8 bytes (got ${bytes})`,
+    )
+  }
+}
+
+/** The unary restore request itself must fit the same recovery budget. */
+export function assertRecoveryRequestAdmission(value: unknown, limits: CharterLimits): void {
+  assertArchiveAdmission(value, limits)
+}
+
 export interface ArchiveBuildInput {
   readonly sessionId: string
   readonly lifecycle: string | null

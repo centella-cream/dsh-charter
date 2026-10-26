@@ -290,16 +290,23 @@ export class CharterDraft {
       // request stays replayable/abandonable in the new lifecycle.
       this.bootstrapGeneration += 1
       this.asyncGeneration += 1
+      const attempt = this.state.attempt
       this.update({
         lifecycle,
         saving: false,
         bootstrapSaving: false,
+        // A maintenance RPC invalidated by a lifecycle change must become an
+        // explicit unknown outcome, never a permanent in-flight/busy state.
+        maintenanceSaving: false,
+        ...(attempt !== null && (attempt.kind === 'initialize' || attempt.kind === 'restore')
+          ? { attempt: { ...attempt, status: 'unknown' as const } }
+          : {}),
         ...(this.state.bootstrapPhase === 'draft' && !this.state.bootstrapNeedsStale
           ? { bootstrapNeedsStale: true }
           : {}),
-        ...(this.state.attempt?.kind === 'edit'
+        ...(attempt?.kind === 'edit'
           ? { feedback: { kind: 'connection' } }
-          : this.state.attempt?.kind === 'bootstrap'
+          : attempt?.kind === 'bootstrap'
             ? { bootstrapProblem: { kind: 'save-failed', code: 'UNAVAILABLE' } }
             : { maintenanceProblem: { kind: 'unavailable', code: 'UNAVAILABLE' } }),
       })
@@ -531,8 +538,11 @@ export class CharterDraft {
         ? await source.initializeRecord(attempt.request as CharterInitializeRequest)
         : await source.restoreRecord(attempt.request as CharterRestoreRequest)
       if (!current()) return
+      // A failure may still carry the authoritative view (for example the
+      // write-uncertain fence). Accept it before classifying the result so the
+      // Pane cannot keep showing the pre-write state.
+      if (result.view !== undefined) source.accept(result.view)
       if (result.ok) {
-        if (result.view !== undefined) source.accept(result.view)
         this.update({
           maintenanceSaving: false,
           attempt: null,
