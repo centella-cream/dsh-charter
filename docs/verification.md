@@ -897,8 +897,9 @@ The rc.3 work is committed on the release branch after review. Version `0.1.0-rc
   factory bundle, mounts the **packed** `CharterService` over a scripted backend, builds a record with
   Unicode/pending/archived/superseded/history content, exports it, removes the target, restores under the same
   Session identity, replays the restore through the maintenance receipt, restarts twice comparing the complete
-  record/state/prompt/tool projections, proves a healthy target refuses overwrite, and runs the storage fault matrix
-  (startup put reject → fence; commit-then-reject → restart convergence; open reject → no record/no ready).
+  record/state/prompt/tool projections, proves a healthy target refuses overwrite, and runs the packed fault subset
+  (startup put reject → fence; commit-then-reject → restart convergence; open reject → no record/no ready); the complete
+  source fault matrix lives in the Host tests.
 - Five-version DSH matrix: 330/330 on `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-rc.1`, `0.2.1-rc.2`.
 - The final artifact SHA-256 is recorded in the tracked repository-root `SHA256SUMS` and `dist/SHA256SUMS` (the root
   file is outside the npm `files` whitelist, so the digest does not change the packed bytes). No release tag, push, or

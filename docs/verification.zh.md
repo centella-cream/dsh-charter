@@ -805,7 +805,7 @@ rc.3 经审核后提交在 release 分支上。版本 `0.1.0-rc.3`。
   通过：校验 tarball SHA-256，解析归档并断言六个 Remote 方法与 client factory bundle，用脚本化后端挂载**打包的**
   `CharterService`，构造含 Unicode/pending/archived/superseded/history 的记录并导出，删除目标后在同一 Session
   identity 下恢复，经 maintenance 回执 replay，两次重启比较完整 record/state/prompt/tool 投影，证明健康目标拒绝
-  覆盖，并运行存储故障矩阵（startup put reject → 围栏；commit-then-reject → 重启收敛；open reject → 无记录/不 ready）。
+  覆盖，并运行 packed fault 子集（startup put reject → 围栏；commit-then-reject → 重启收敛；open reject → 无记录/不 ready）；完整的 source fault 矩阵由 Host 测试覆盖。
 - 五版本 DSH 矩阵：`0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-rc.1`、`0.2.1-rc.2` 均为 330/330。
 - 最终产物 SHA-256 记录在 tracked 仓库根部 `SHA256SUMS` 与 `dist/SHA256SUMS`（根部文件不在 npm `files` 白名单内，
   不影响打包字节）。本轮不创建 tag、不推送、不发布。

@@ -44,7 +44,8 @@ to the same Session lifecycle.
 - Verification: scripted storage fault matrix (open/load/put/update controls incl. reject, defer,
   commit-then-reject), real-JSON Host recovery scenarios, and a final-artifact recovery smoke
   (`scripts/verify/recovery-smoke.mjs`) that runs against the packed tarball: export → remove → restore → two
-  restarts with record/state/prompt/tool-projection comparison → healthy-target refusal → storage-fault matrix.
+  restarts with record/state/prompt/tool-projection comparison → healthy-target refusal → packed fault subset; the
+  complete source fault matrix is covered by Host tests.
 
 ### Changed
 

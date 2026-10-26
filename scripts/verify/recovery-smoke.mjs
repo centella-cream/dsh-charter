@@ -10,8 +10,10 @@
  *     deletes the target, restores it, restarts twice and compares digests and
  *     projections;
  *  4. proves a healthy target refuses overwrite;
- *  5. runs the storage fault matrix (open/load/put reject, commit-then-reject
- *     convergence, update reject) against the packed service.
+ *  5. runs the packed fault subset (startup put reject, startup
+ *     commit-then-reject convergence, open reject) against the packed service.
+ *     The complete source fault matrix (load/update/initialize/restore/fence
+ *     cases) lives in tests/host/recovery.spec.ts.
  *
  * Usage: node scripts/verify/recovery-smoke.mjs --artifact <tgz> --sha256 <sums>
  */
