@@ -372,7 +372,28 @@ function verifyArtifactContents({ artifact, consumer, emptyNpmrc, run }) {
   // The pure core entry has no Host peer imports, so an empty consumer can
   // load it. Root/Remote runtime imports are asserted structurally above
   // (export targets + files) and exercised by the workspace smoke scripts.
-  const coreImport = `import('dsh-charter/core').then(m => { if (!m.CHARTER_PROMPT_PREFIX?.startsWith('Current user-authored session charter.')) throw new Error('unexpected core export'); }).catch(e => { console.error(e); process.exit(1) })`
+  const coreImport = `
+    import('dsh-charter/core').then(m => {
+      if (!m.CHARTER_PROMPT_PREFIX?.startsWith('Current user-authored session charter.')) {
+        throw new Error('unexpected core export')
+      }
+      for (const name of ['buildRecordArchive', 'validateArchiveEnvelope', 'recordDigestOf', 'payloadDigestOf']) {
+        if (typeof m[name] !== 'function') throw new Error(\`core archive helper missing: \${name}\`)
+      }
+      const record = m.createEmptyRecord({ createdAt: 1, cwd: '/tmp' }, m.DEFAULT_CHARTER_LIMITS)
+      const archive = m.buildRecordArchive({
+        sessionId: 'consumer-roundtrip',
+        lifecycle: null,
+        health: 'healthy',
+        revision: 0,
+        record,
+        exportedAt: 1,
+      })
+      const parsed = m.validateArchiveEnvelope(archive, { sessionId: 'consumer-roundtrip' }, m.DEFAULT_CHARTER_LIMITS)
+      if (m.recordDigestOf(parsed.record) !== parsed.source.recordDigest) throw new Error('core archive digest mismatch')
+      m.assertArchiveAdmission(parsed, m.DEFAULT_CHARTER_LIMITS)
+    }).catch(e => { console.error(e); process.exit(1) })
+  `
   run(process.execPath, ['--input-type=module', '-e', coreImport], { cwd: consumer })
   for (const path of ['lib/index.js', 'lib/remote.js', 'lib/index.d.ts', 'lib/remote.d.ts']) {
     if (!existsSync(join(installed, path))) throw new Error(`consumer install is missing ${path}`)
