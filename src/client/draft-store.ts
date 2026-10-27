@@ -38,6 +38,15 @@ export type DraftEditor =
   | { readonly kind: 'edit'; readonly item: import('../core/schemas.js').CharterItem }
   | { readonly kind: 'supersede'; readonly item: import('../core/schemas.js').CharterItem }
 
+/** A local composer field that can be cleared independently. */
+export type ComposerKind = 'invariant' | 'deliverable'
+
+export interface LocalDraftWorkSummary {
+  readonly stagedOps: number
+  readonly editorOpen: boolean
+  readonly nonEmptyComposers: number
+}
+
 /** Rendered feedback descriptors; the Pane resolves them with the live locale. */
 export type DraftFeedback =
   | { readonly kind: 'saved'; readonly revision: number }
@@ -125,6 +134,8 @@ export interface CharterDraftState {
   readonly bootstrap: CharterBootstrapProposal | null
   readonly bootstrapObjective: string
   readonly bootstrapItems: readonly BootstrapDraftItem[]
+  /** How many candidates the review currently exposes; never resets on section changes. */
+  readonly bootstrapVisibleCount: number
   readonly bootstrapProblem: BootstrapProblem | null
   /** A stream frame made the reviewed draft stale while its RPC outcome was unknown. */
   readonly bootstrapNeedsStale: boolean
@@ -242,6 +253,7 @@ function initialState(sessionId: SessionId): CharterDraftState {
     bootstrap: null,
     bootstrapObjective: '',
     bootstrapItems: [],
+    bootstrapVisibleCount: 40,
     bootstrapProblem: null,
     bootstrapNeedsStale: false,
     bootstrapBaseRevision: null,
@@ -442,10 +454,56 @@ export class CharterDraft {
     })
   }
 
-  discard(force = false): void {
-    // Discarding while an unknown-outcome request is unresolved would drop the
-    // only evidence needed for an idempotent replay; the Pane disables discard.
-    if (!force && replayLocked(this.state)) return
+  private localMutationLocked(): boolean {
+    return this.state.saving || this.state.bootstrapSaving
+      || this.state.maintenanceSaving || replayLocked(this.state)
+  }
+
+  discardStaged(): boolean {
+    if (this.localMutationLocked()) return false
+    if (this.state.ops.length === 0 && this.state.baseRevision === null) return false
+    this.update({
+      ops: [],
+      baseRevision: null,
+      feedback: { kind: 'discarded' },
+      attempt: null,
+    })
+    return true
+  }
+
+  unstageObjective(): boolean {
+    if (this.localMutationLocked()) return false
+    const ops = this.state.ops.filter(op => !op.type.startsWith('objective.'))
+    if (ops.length === this.state.ops.length) return false
+    this.update({
+      ops,
+      baseRevision: ops.length === 0 ? null : this.state.baseRevision,
+      attempt: null,
+    })
+    return true
+  }
+
+  clearComposer(kind: ComposerKind): boolean {
+    if (this.localMutationLocked()) return false
+    const field = kind === 'invariant' ? 'newInvariant' : 'newDeliverable'
+    if (this.state[field].length === 0) return false
+    this.update({ [field]: '' } as Pick<CharterDraftState, typeof field>)
+    return true
+  }
+
+  localWorkSummary(): LocalDraftWorkSummary {
+    return {
+      stagedOps: this.state.ops.length,
+      editorOpen: this.state.editor !== null,
+      nonEmptyComposers: (this.state.newInvariant.trim().length > 0 ? 1 : 0)
+        + (this.state.newDeliverable.trim().length > 0 ? 1 : 0),
+    }
+  }
+
+  discardAllLocalWork(): boolean {
+    if (this.localMutationLocked()) return false
+    const summary = this.localWorkSummary()
+    if (summary.stagedOps === 0 && !summary.editorOpen && summary.nonEmptyComposers === 0) return false
     this.asyncGeneration += 1
     this.update({
       ops: [],
@@ -457,9 +515,10 @@ export class CharterDraft {
       editorBaseRevision: null,
       newInvariant: '',
       newDeliverable: '',
-      feedback: null,
+      feedback: { kind: 'discarded' },
       attempt: null,
     })
+    return true
   }
 
   /**
@@ -506,6 +565,9 @@ export class CharterDraft {
     }
     const state = view.recordState
     if (state === undefined) return { ok: false, reason: 'legacyHost' }
+    if (state.kind === 'invalid' && state.reason === 'future-schema') {
+      return { ok: false, reason: 'futureSchema' }
+    }
     if (view.capabilities?.recordMaintenance !== true) return { ok: false, reason: 'capability' }
     const permitted = operation === 'initialize'
       ? state.kind === 'absent-unconfirmed'
@@ -682,6 +744,7 @@ export class CharterDraft {
   }
 
   closeEditor(): void {
+    if (this.localMutationLocked()) return
     this.update({
       editor: null,
       editorText: '',
@@ -926,17 +989,33 @@ export class CharterDraft {
     })
   }
 
-  setAllBootstrapSelected(selected: boolean): void {
+  showMoreBootstrapCandidates(batchSize = 40): void {
     if (this.state.bootstrapSaving || replayLocked(this.state)) return
+    const total = this.state.bootstrapItems.length
+    const next = Math.min(total, this.state.bootstrapVisibleCount + Math.max(1, batchSize))
+    if (next === this.state.bootstrapVisibleCount) return
+    this.update({ bootstrapVisibleCount: next, attempt: null, bootstrapProblem: null })
+  }
+
+  /** Select only the candidates currently visible in the review. */
+  setVisibleBootstrapSelected(selected: boolean): void {
+    if (this.state.bootstrapSaving || replayLocked(this.state)) return
+    const visible = this.state.bootstrapVisibleCount
     this.update({
-      bootstrapItems: this.state.bootstrapItems.map(item => ({ ...item, selected })),
+      bootstrapItems: this.state.bootstrapItems.map((item, index) =>
+        index < visible ? { ...item, selected } : item),
       attempt: null,
       bootstrapProblem: null,
     })
   }
 
+  /** The only candidates fresh planning/admission sees are the visible window. */
+  private visibleBootstrapItems(): readonly BootstrapDraftItem[] {
+    return this.state.bootstrapItems.slice(0, this.state.bootstrapVisibleCount)
+  }
+
   bootstrapPlan(view: CharterView): BootstrapPlan {
-    return buildBootstrapPlan(view, this.state.bootstrapObjective, this.state.bootstrapItems)
+    return buildBootstrapPlan(view, this.state.bootstrapObjective, this.visibleBootstrapItems())
   }
 
   /** Ask for a draft when the Session is empty and no attempt has been made yet. */
@@ -1022,15 +1101,16 @@ export class CharterDraft {
             id: `inv-${index}`,
             kind: 'invariant' as const,
             text,
-            selected: true,
+            selected: false,
           })),
           ...proposal.deliverables.map((text, index) => ({
             id: `del-${index}`,
             kind: 'deliverable' as const,
             text,
-            selected: true,
+            selected: false,
           })),
         ],
+        bootstrapVisibleCount: 40,
         bootstrapProblem: null,
         // Do not steal the user's current section while they are working.
         ...(this.userBusy ? {} : { section: 'history' as const }),
@@ -1053,6 +1133,7 @@ export class CharterDraft {
       bootstrap: null,
       bootstrapObjective: '',
       bootstrapItems: [],
+      bootstrapVisibleCount: 40,
       bootstrapProblem: null,
       bootstrapNeedsStale: false,
       bootstrapBaseRevision: null,
@@ -1078,6 +1159,7 @@ export class CharterDraft {
       bootstrap: null,
       bootstrapObjective: '',
       bootstrapItems: [],
+      bootstrapVisibleCount: 40,
       bootstrapNeedsStale: false,
       bootstrapBaseRevision: null,
       bootstrapSaving: false,
@@ -1166,6 +1248,7 @@ export class CharterDraft {
       bootstrapPhase: 'dismissed',
       bootstrapObjective: '',
       bootstrapItems: [],
+      bootstrapVisibleCount: 40,
       bootstrapProblem: null,
       bootstrapNeedsStale: false,
       bootstrapBaseRevision: null,
@@ -1288,7 +1371,7 @@ export class CharterDraft {
     // admission the Pane uses, before any Remote call: an invalid character or
     // limit failure must keep the draft reviewable instead of round-tripping a
     // request the Host is known to reject.
-    const textIssue = firstDraftTextIssue(this.state.bootstrapObjective, this.state.bootstrapItems)
+    const textIssue = firstDraftTextIssue(this.state.bootstrapObjective, this.visibleBootstrapItems())
     if (textIssue !== undefined) {
       this.update({
         bootstrapProblem: { kind: 'save-failed', code: 'INVALID_ARGUMENT', detail: textIssue.issue },

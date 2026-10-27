@@ -1251,7 +1251,7 @@
     grid-template-columns: 1fr 1fr;
   }
 
-  .charter-actionbar__actions > :last-child {
+  .charter-actionbar__actions > .charter-actionbar__primary {
     grid-column: 1 / -1;
   }
 }
@@ -1512,5 +1512,86 @@
   .charter-recovery__actions {
     align-items: stretch;
     flex-direction: column;
+  }
+}
+
+
+/* rc.5: grouped bootstrap review, error details, and touch targets. */
+.charter-bootstrap__group {
+  display: grid;
+  gap: 2px;
+  margin-top: 8px;
+}
+
+.charter-bootstrap__group h4 {
+  margin: 6px 0 2px;
+  color: var(--dsw-alias-label-secondary, #777);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.charter-bootstrap__checklabel,
+.charter-bootstrap__textlabel {
+  color: var(--dsw-alias-label-tertiary, #999);
+  font-size: 10px;
+}
+
+.charter-bootstrap__checklabel {
+  flex: 0 0 auto;
+  margin-top: 7px;
+  cursor: pointer;
+}
+
+.charter-bootstrap__textlabel {
+  justify-self: start;
+}
+
+.charter-error-details {
+  margin: 4px 0;
+  color: var(--dsw-alias-label-secondary, #777);
+  font-size: 11px;
+}
+
+.charter-error-details summary {
+  cursor: pointer;
+}
+
+.charter-error-details pre {
+  max-height: 180px;
+  margin: 4px 0 0;
+  overflow: auto;
+  padding: 6px 8px;
+  border: 1px solid var(--charter-border-soft);
+  border-radius: 6px;
+  background: var(--charter-surface-2);
+  color: var(--dsw-alias-label-primary, inherit);
+  font-size: 11px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px), (pointer: coarse) {
+  .charter-actionbar__actions .charter-button,
+  .charter-bootstrap__summary .charter-button,
+  .charter-add__foot .charter-button,
+  .charter-recovery__actions .charter-button,
+  .charter-nav__item {
+    min-height: 44px;
+  }
+
+  .charter-actionbar__actions,
+  .charter-bootstrap__summary,
+  .charter-add__foot {
+    flex-wrap: wrap;
+  }
+
+  .charter-bootstrap__item {
+    flex-wrap: wrap;
+  }
+
+  .charter-bootstrap__item .charter-draftfield {
+    min-width: min(100%, 220px);
   }
 }

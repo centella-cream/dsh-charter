@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent, type ReactNode } from 'react'
+import { useEffect, useId, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent, type ReactNode } from 'react'
 import type {
   PropsLocale,
   PropsRuntime,
@@ -42,7 +42,7 @@ import {
   visibleItems,
   type ProjectedItem,
 } from './preview.js'
-import { buildBootstrapPlan, firstDraftTextIssue, type BootstrapPlan } from './bootstrap-plan.js'
+import { firstDraftTextIssue, type BootstrapPlan } from './bootstrap-plan.js'
 import { inspectUserText } from '../core/normalize.js'
 import './charter.css'
 
@@ -127,6 +127,16 @@ function feedbackDetail(feedback: DraftFeedback | null): string | undefined {
   return feedback?.kind === 'error' ? feedback.detail : undefined
 }
 
+function ErrorDetails({ detail, t }: { readonly detail: string | undefined; readonly t: CharterText }): ReactNode {
+  if (detail === undefined || detail.trim().length === 0) return null
+  return (
+    <details className="charter-error-details">
+      <summary>{t('error.details')}</summary>
+      <pre>{detail}</pre>
+    </details>
+  )
+}
+
 function bootstrapProblemText(problem: BootstrapProblem | null, t: CharterText): string | null {
   if (problem === null) return null
   switch (problem.kind) {
@@ -146,7 +156,9 @@ function statusMessage(view: CharterView, t: CharterText): string | null {
     case 'absent-unconfirmed':
       return t('status.absent')
     case 'invalid':
-      return state.reason === 'schema' ? t('status.invalidSchema') : t('status.invalidConsistency')
+      return state.reason === 'future-schema'
+        ? t('status.futureSchema')
+        : state.reason === 'schema' ? t('status.invalidSchema') : t('status.invalidConsistency')
     case 'lifecycle-mismatch':
       return t('status.lifecycle')
     case 'write-uncertain':
@@ -255,6 +267,7 @@ function ActionButton({
   ariaLabel,
   title,
   busy,
+  className,
 }: {
   readonly children: ReactNode
   readonly onClick?: () => void
@@ -263,11 +276,12 @@ function ActionButton({
   readonly ariaLabel?: string
   readonly title?: string
   readonly busy?: boolean
+  readonly className?: string
 }) {
   return (
     <button
       type="button"
-      className={`charter-button charter-button--${variant}`}
+      className={`charter-button charter-button--${variant}${className === undefined ? '' : ` ${className}`}`}
       onClick={onClick}
       disabled={disabled}
       aria-label={ariaLabel}
@@ -656,12 +670,14 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
     bootstrap,
     bootstrapObjective,
     bootstrapItems,
+    bootstrapVisibleCount,
     bootstrapProblem,
     bootstrapBaseRevision,
   } = draftState
   const [showHistoryItems, setShowHistoryItems] = useState(false)
-  const [visibleCandidates, setVisibleCandidates] = useState(40)
+  const bootstrapId = useId()
   const [confirmAbandon, setConfirmAbandon] = useState(false)
+  const [confirmDiscardAll, setConfirmDiscardAll] = useState(false)
   const [archivePreview, setArchivePreview] = useState<ArchivePreview | null>(null)
   const [confirmRecovery, setConfirmRecovery] = useState<'initialize' | 'restore' | null>(null)
   const [exportProblem, setExportProblem] = useState<string | null>(null)
@@ -718,6 +734,9 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   const invariants = projectedItems.filter(item => item.kind === 'invariant')
   const deliverables = projectedItems.filter((item): item is ProjectedItem & { kind: 'deliverable' } => item.kind === 'deliverable')
   const counts = itemCounts(projectedItems)
+  const committedActive = (view?.items ?? []).filter(item =>
+    item.lifecycle === 'current' && item.review === 'accepted').length
+  const committedStored = view?.items.length ?? 0
   const activeInvariants = activeItems(invariants)
   const pendingInvariants = pendingItems(invariants)
   // The Pane renders the single sorted projected list (filtered to the working
@@ -734,9 +753,9 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
 
   const bootstrapPlan = useMemo(
     () => (view !== null && bootstrapPhase === 'draft'
-      ? buildBootstrapPlan(view, bootstrapObjective, bootstrapItems)
+      ? draft.bootstrapPlan(view)
       : EMPTY_PLAN),
-    [view, bootstrapPhase, bootstrapObjective, bootstrapItems],
+    [view, bootstrapPhase, draft, bootstrapObjective, bootstrapItems, bootstrapVisibleCount],
   )
   const effectiveOps = ops.length > 0
     ? ops
@@ -760,8 +779,25 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
     || view.items.filter(item => item.review === 'pending').length + bootstrapPlan.pending > view.limits.maxPendingItems
   )
   const bootstrapTextIssue = bootstrapPhase === 'draft' && bootstrap !== null
-    ? firstDraftTextIssue(bootstrapObjective, bootstrapItems)
+    ? firstDraftTextIssue(bootstrapObjective, bootstrapItems.slice(0, bootstrapVisibleCount))
     : undefined
+  const localWork = {
+    stagedOps: ops.length,
+    editorOpen: editor !== null,
+    nonEmptyComposers: (newInvariant.trim().length > 0 ? 1 : 0)
+      + (newDeliverable.trim().length > 0 ? 1 : 0),
+  }
+  const hasLocalWork = localWork.stagedOps > 0 || localWork.editorOpen || localWork.nonEmptyComposers > 0
+  const objectiveStaged = ops.some(op => op.type === 'objective.initialize' || op.type === 'objective.redirect')
+  const discardAll = (): void => {
+    if (!confirmDiscardAll) {
+      setConfirmDiscardAll(true)
+      return
+    }
+    if (draft.discardAllLocalWork()) statusRef.current?.focus()
+    setConfirmDiscardAll(false)
+  }
+
   const bootstrapStale = bootstrapPhase === 'draft'
     && (bootstrapBaseRevision === null
       || view === null
@@ -786,6 +822,10 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   // must be invariant across connecting/null → ready and error/null → ready.
   const editReplay = editReplayPending(draftState)
   const bootstrapReplay = bootstrapReplayPending(draftState)
+  useEffect(() => {
+    if (!hasLocalWork || editReplay || bootstrapReplay || saving || bootstrapSaving) setConfirmDiscardAll(false)
+  }, [hasLocalWork, editReplay, bootstrapReplay, saving, bootstrapSaving])
+
   const unknownReplay = editReplay || bootstrapReplay
   useEffect(() => {
     if (!unknownReplay) setConfirmAbandon(false)
@@ -870,6 +910,28 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   // disagree about maxOps/maxItems/maxPendingItems/prompt admission.
   const admission = draftAdmission(view, ops)
   const applyBlocked = !admission.ok
+  const applyBlockReason: 'retry' | 'busy' | 'read-only' | 'no-changes' | 'editor-open'
+    | 'revision-conflict' | 'connection' | 'quota' | 'stale' | null = editReplay
+    ? 'retry'
+    : saving
+      ? 'busy'
+      : !editable
+        ? 'read-only'
+        : ops.length === 0
+          ? 'no-changes'
+          : editor !== null
+            ? 'editor-open'
+            : revisionConflict
+              ? 'revision-conflict'
+              : !online
+                ? 'connection'
+                : applyBlocked
+                  ? 'quota'
+                  : null
+  const applyHint = applyBlockReason === null
+    ? t('footer.applyHint')
+    : t(`apply.block.${applyBlockReason}` as never)
+  const applyHintId = 'charter-apply-hint'
   const canRebaseNow = rebaseAvailable(draftState)
   const budgetPercent = Math.min(100, Math.round((previewBytes / view.limits.maxPromptBytes) * 100))
   const message = feedbackText(feedback, t)
@@ -881,7 +943,8 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
     && !overBudget
     && projectedObjective === null
     && projectedItems.length === 0
-    && (bootstrapPhase === 'idle' || bootstrapPhase === 'dismissed')
+    && bootstrapPhase !== 'draft'
+    && bootstrapPhase !== 'checking'
   const draftOpen = bootstrapPhase === 'draft'
   // One consolidated budget alert with one remedy: a blocking staged draft wins,
   // then the stored over-budget state, then an admitted over-budget render.
@@ -1077,7 +1140,6 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
     void draft.applyBootstrap(view).finally(() => statusRef.current?.focus())
   }
   const openHistory = (): void => {
-    setVisibleCandidates(40)
     goSection('history')
   }
 
@@ -1132,13 +1194,26 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
           </div>
           <div className="charter-headside">
             <div className="charter-chips">
-              <StatusTag tone={view.status === 'ready' && !overBudget ? 'success' : 'warning'}>
-                {t('stats.revision', { revision: view.revision })}
-              </StatusTag>
-              <StatusTag>{t('stats.active', { count: counts.active })}</StatusTag>
-              <StatusTag>{t('stats.stored', { count: projectedItems.length })}</StatusTag>
+              <StatusTag>{t('stats.revision', { revision: view.revision })}</StatusTag>
+              <StatusTag>{t('stats.active', { count: committedActive })}</StatusTag>
+              <StatusTag>{t('stats.stored', { count: committedStored })}</StatusTag>
+              {ops.length > 0 && (
+                <StatusTag tone="info">
+                  {t('stats.afterApply', { active: counts.active, stored: projectedItems.length })}
+                </StatusTag>
+              )}
             </div>
-            <div className={`charter-meter${contextOver ? ' is-over' : budgetPercent >= 80 ? ' is-warn' : ''}`}>
+            <div
+              className={`charter-meter${contextOver ? ' is-over' : budgetPercent >= 80 ? ' is-warn' : ''}`}
+              role="meter"
+              aria-valuemin={0}
+              aria-valuemax={view.limits.maxPromptBytes}
+              aria-valuenow={Math.min(previewBytes, view.limits.maxPromptBytes)}
+              aria-valuetext={t('stats.budget', {
+                used: formatBytes(t, previewBytes),
+                limit: formatBytes(t, view.limits.maxPromptBytes),
+              })}
+            >
               <span>
                 {t('stats.budget', {
                   used: formatBytes(t, previewBytes),
@@ -1160,12 +1235,17 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
         {disconnected && (
           <div className="charter-notice charter-notice--danger">
             <span role="alert">{t('error.connection')}</span>
+            {state.errorKind !== undefined && <span className="charter-hint">{t(`error.kind.${state.errorKind}` as never)}</span>}
+            <ErrorDetails detail={state.error ?? undefined} t={t} />
             <ActionButton variant="outline" onClick={source.retry}>{t('button.retry')}</ActionButton>
           </div>
         )}
         {notice !== null && (
           <div className="charter-notice charter-notice--warning">
             <span role="status">{notice}</span>
+            {view.message !== undefined && view.message !== notice && (
+              <ErrorDetails detail={view.message} t={t} />
+            )}
           </div>
         )}
         {(editReplay || bootstrapReplay) && (
@@ -1216,7 +1296,8 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                   {message}
                 </span>
               )}
-              <span className="charter-actionbar__hint">{t('footer.applyHint')}</span>
+              {messageDetail !== undefined && <ErrorDetails detail={messageDetail} t={t} />}
+              <span className="charter-actionbar__hint" id={applyHintId}>{applyHint}</span>
             </div>
           </div>
           <div className="charter-actionbar__actions">
@@ -1254,15 +1335,37 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                   <>
                     <ActionButton
                       disabled={ops.length === 0 || saving || editReplay}
-                      onClick={() => { draft.discard(); statusRef.current?.focus() }}
+                      onClick={() => { draft.discardStaged(); statusRef.current?.focus() }}
                     >
                       {t('footer.discard')}
                     </ActionButton>
+                    {hasLocalWork && (
+                      <>
+                      <ActionButton
+                        variant="outline"
+                        disabled={saving || bootstrapSaving || editReplay || bootstrapReplay || maintenanceReplay}
+                        onClick={discardAll}
+                      >
+                        {confirmDiscardAll
+                          ? t('discard.confirmAll', {
+                              ops: localWork.stagedOps,
+                              editor: localWork.editorOpen ? 1 : 0,
+                              composers: localWork.nonEmptyComposers,
+                            })
+                          : t('discard.all')}
+                      </ActionButton>
+                      {confirmDiscardAll && (
+                        <ActionButton variant="outline" onClick={() => setConfirmDiscardAll(false)}>
+                          {t('discard.cancel')}
+                        </ActionButton>
+                      )}
+                      </>
+                    )}
                     <ActionButton
                       variant="primary"
-                      disabled={editReplay
-                        ? saving
-                        : ops.length === 0 || !editable || revisionConflict || applyBlocked || disconnected}
+                      className="charter-actionbar__primary"
+                      aria-describedby={applyHintId}
+                      disabled={editReplay ? saving : applyBlockReason !== null}
                       onClick={applyDraft}
                       busy={saving}
                     >
@@ -1342,10 +1445,10 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                     <h3>{t('empty.title')}</h3>
                     <p>{t('empty.body')}</p>
                     <div className="charter-empty-actions">
-                      <ActionButton variant="primary" onClick={() => goSection('objective')}>
+                      <ActionButton variant="primary" disabled={!editable} onClick={() => goSection('objective')}>
                         {t('objective.set')}
                       </ActionButton>
-                      <ActionButton onClick={() => goSection('invariants')}>
+                      <ActionButton disabled={!editable} onClick={() => goSection('invariants')}>
                         {t('composer.addInvariant')}
                       </ActionButton>
                     </div>
@@ -1357,7 +1460,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                     <div className="charter-cardtitle">
                       <span className="charter-kicker">{t('objective.kicker')}</span>
                       <h3>{projectedObjective?.current.text ?? t('objective.empty')}</h3>
-                      {projectedObjective === null && ops.some(op => op.type === 'objective.initialize' || op.type === 'objective.redirect') && (
+                      {objectiveStaged && (
                         <span className="charter-tag charter-tag--info">{t('tag.staged')}</span>
                       )}
                     </div>
@@ -1365,6 +1468,15 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                       <span className="charter-budget">
                         {formatBytes(t, utf8Bytes(projectedObjective?.current.text ?? ''))} / {formatBytes(t, view.limits.maxObjectiveBytes)}
                       </span>
+                      {objectiveStaged && (
+                        <ActionButton
+                          variant="outline"
+                          disabled={!editable || saving || editReplay}
+                          onClick={() => { draft.unstageObjective(); statusRef.current?.focus() }}
+                        >
+                          {t('discard.unstageObjective')}
+                        </ActionButton>
+                      )}
                       <ActionButton onClick={() => goSection('objective')}>{t('nav.open')}</ActionButton>
                     </div>
                   </div>
@@ -1437,9 +1549,18 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                       <span className="charter-budget">
                         {formatBytes(t, utf8Bytes(projectedObjective?.current.text ?? ''))} / {formatBytes(t, view.limits.maxObjectiveBytes)}
                       </span>
+                      {objectiveStaged && (
+                        <ActionButton
+                          variant="outline"
+                          disabled={!editable || saving || editReplay}
+                          onClick={() => { draft.unstageObjective(); statusRef.current?.focus() }}
+                        >
+                          {t('discard.unstageObjective')}
+                        </ActionButton>
+                      )}
                       <ActionButton
                         variant="outline"
-                        disabled={!editable || projectedObjective !== null && ops.some(op => op.type === 'objective.initialize' || op.type === 'objective.redirect')}
+                        disabled={!editable || projectedObjective !== null && objectiveStaged}
                         onClick={() => openEditor({ kind: 'objective' })}
                       >
                         {projectedObjective === null ? t('objective.set') : t('objective.redirect')}
@@ -1497,7 +1618,8 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                     disabled={!editable}
                     value={newInvariant}
                     placeholder={t('composer.placeholderInvariant')}
-                    aria-label={t('composer.inputAria')}
+                    aria-label={t('composer.invariantAria')}
+                    aria-invalid={normalizedBytes(newInvariant) > view.limits.maxItemBytes}
                     onChange={event => draft.setNewInvariant(event.target.value)}
                     onKeyDown={event => {
                       if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
@@ -1512,6 +1634,15 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                         ? t('budget.itemOver', { limit: formatBytes(t, view.limits.maxItemBytes) })
                         : `${formatBytes(t, normalizedBytes(newInvariant))} / ${formatBytes(t, view.limits.maxItemBytes)}`}
                     </span>
+                    {newInvariant.length > 0 && (
+                      <ActionButton
+                        variant="outline"
+                        disabled={!editable || saving || editReplay}
+                        onClick={() => draft.clearComposer('invariant')}
+                      >
+                        {t('composer.clear')}
+                      </ActionButton>
+                    )}
                     <ActionButton
                       variant="outline"
                       disabled={!editable || !normalizedNonEmpty(newInvariant) || normalizedBytes(newInvariant) > view.limits.maxItemBytes}
@@ -1555,7 +1686,8 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                     disabled={!editable}
                     value={newDeliverable}
                     placeholder={t('composer.placeholderDeliverable')}
-                    aria-label={t('composer.inputAria')}
+                    aria-label={t('composer.deliverableAria')}
+                    aria-invalid={normalizedBytes(newDeliverable) > view.limits.maxItemBytes}
                     onChange={event => draft.setNewDeliverable(event.target.value)}
                     onKeyDown={event => {
                       if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
@@ -1570,6 +1702,15 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                         ? t('budget.itemOver', { limit: formatBytes(t, view.limits.maxItemBytes) })
                         : `${formatBytes(t, normalizedBytes(newDeliverable))} / ${formatBytes(t, view.limits.maxItemBytes)}`}
                     </span>
+                    {newDeliverable.length > 0 && (
+                      <ActionButton
+                        variant="outline"
+                        disabled={!editable || saving || editReplay}
+                        onClick={() => draft.clearComposer('deliverable')}
+                      >
+                        {t('composer.clear')}
+                      </ActionButton>
+                    )}
                     <ActionButton
                       variant="outline"
                       disabled={!editable || !normalizedNonEmpty(newDeliverable) || normalizedBytes(newDeliverable) > view.limits.maxItemBytes}
@@ -1667,8 +1808,25 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                     </span>
                     <div className="charter-bootstrap__summary">
                       <StatusTag tone="info">{t('bootstrap.summary', { active: bootstrapPlan.active, pending: bootstrapPlan.pending })}</StatusTag>
-                      <ActionButton disabled={bootstrapSaving || bootstrapReplay} onClick={() => draft.setAllBootstrapSelected(true)}>{t('bootstrap.selectAll')}</ActionButton>
-                      <ActionButton disabled={bootstrapSaving || bootstrapReplay} onClick={() => draft.setAllBootstrapSelected(false)}>{t('bootstrap.selectNone')}</ActionButton>
+                      <span role="status">
+                        {t('bootstrap.reviewCounts', {
+                          total: bootstrapItems.length,
+                          visible: Math.min(bootstrapItems.length, bootstrapVisibleCount),
+                          selected: bootstrapItems.filter(item => item.selected).length,
+                        })}
+                      </span>
+                      <ActionButton
+                        disabled={bootstrapSaving || bootstrapReplay}
+                        onClick={() => draft.setVisibleBootstrapSelected(true)}
+                      >
+                        {t('bootstrap.selectShown', { count: Math.min(bootstrapItems.length, bootstrapVisibleCount) })}
+                      </ActionButton>
+                      <ActionButton
+                        disabled={bootstrapSaving || bootstrapReplay}
+                        onClick={() => draft.setVisibleBootstrapSelected(false)}
+                      >
+                        {t('bootstrap.clearShown')}
+                      </ActionButton>
                     </div>
                     {view.objective === null && (
                       <label className="charter-bootstrap__field">
@@ -1692,48 +1850,63 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                         ...bootstrapItems.filter(item => item.kind === 'invariant').map(item => ({ item, kind: 'invariant' as const })),
                         ...bootstrapItems.filter(item => item.kind === 'deliverable').map(item => ({ item, kind: 'deliverable' as const })),
                       ]
-                      const visible = ordered.slice(0, visibleCandidates)
+                      const visible = ordered.slice(0, bootstrapVisibleCount)
+                      const groups = [
+                        { kind: 'invariant' as const, label: t('bootstrap.groupInvariants'), items: visible.filter(entry => entry.kind === 'invariant') },
+                        { kind: 'deliverable' as const, label: t('bootstrap.groupDeliverables'), items: visible.filter(entry => entry.kind === 'deliverable') },
+                      ]
                       return (
                         <>
-                          {visible.map(({ item }, index) => {
-                            const bytes = normalizedBytes(item.text)
-                            const outcome = bootstrapPlan.outcomes[item.id]
-                            return (
-                              <label className="charter-bootstrap__item" key={item.id}>
-                                <input
-                                  type="checkbox"
-                                  checked={item.selected}
-                                  disabled={bootstrapSaving || bootstrapReplay}
-                                  aria-label={t('bootstrap.includeAria', { index: index + 1 })}
-                                  onChange={event => draft.updateBootstrapItem(item.id, { selected: event.target.checked })}
-                                />
-                                <div className="charter-draftfield">
-                                  <textarea
-                                    value={item.text}
-                                    rows={2}
-                                    disabled={bootstrapSaving || bootstrapReplay}
-                                    aria-label={t('bootstrap.editAria', { index: index + 1 })}
-                                    onChange={event => draft.updateBootstrapItem(item.id, { text: event.target.value })}
-                                  />
-                                  <span className="charter-draftfield__meta">
-                                    {outcome !== undefined && (
-                                      <StatusTag tone={outcome === 'active' ? 'success' : 'warning'}>
-                                        {outcome === 'active' ? t('bootstrap.outcomeActive') : t('bootstrap.outcomePending')}
-                                      </StatusTag>
-                                    )}
-                                    <span className={`charter-budget${bytes > view.limits.maxItemBytes ? ' is-over' : ''}`}>
-                                      {bytes > view.limits.maxItemBytes
-                                        ? t('bootstrap.itemOver', { limit: formatBytes(t, view.limits.maxItemBytes) })
-                                        : `${formatBytes(t, bytes)} / ${formatBytes(t, view.limits.maxItemBytes)}`}
-                                    </span>
-                                  </span>
-                                </div>
-                              </label>
-                            )
-                          })}
+                          {groups.map(group => group.items.length === 0 ? null : (
+                            <div className="charter-bootstrap__group" key={group.kind}>
+                              <h4>{group.label} ({group.items.length})</h4>
+                              {group.items.map(({ item }) => {
+                                const index = ordered.findIndex(entry => entry.item.id === item.id)
+                                const bytes = normalizedBytes(item.text)
+                                const outcome = bootstrapPlan.outcomes[item.id]
+                                const checkboxId = `${bootstrapId}-include-${item.id}`
+                                const textId = `${bootstrapId}-text-${item.id}`
+                                return (
+                                  <div className="charter-bootstrap__item" key={item.id}>
+                                    <input
+                                      id={checkboxId}
+                                      type="checkbox"
+                                      checked={item.selected}
+                                      disabled={bootstrapSaving || bootstrapReplay}
+                                      aria-label={t('bootstrap.includeAria', { index: index + 1 })}
+                                      onChange={event => draft.updateBootstrapItem(item.id, { selected: event.target.checked })}
+                                    />
+                                    <label className="charter-bootstrap__checklabel" htmlFor={checkboxId}>{t('bootstrap.selected')}</label>
+                                    <div className="charter-draftfield">
+                                      <label className="charter-bootstrap__textlabel" htmlFor={textId}>{t('bootstrap.editAria', { index: index + 1 })}</label>
+                                      <textarea
+                                        id={textId}
+                                        value={item.text}
+                                        rows={2}
+                                        disabled={bootstrapSaving || bootstrapReplay}
+                                        onChange={event => draft.updateBootstrapItem(item.id, { text: event.target.value })}
+                                      />
+                                      <span className="charter-draftfield__meta">
+                                        {outcome !== undefined && (
+                                          <StatusTag tone={outcome === 'active' ? 'success' : 'warning'}>
+                                            {outcome === 'active' ? t('bootstrap.outcomeActive') : t('bootstrap.outcomePending')}
+                                          </StatusTag>
+                                        )}
+                                        <span className={`charter-budget${bytes > view.limits.maxItemBytes ? ' is-over' : ''}`}>
+                                          {bytes > view.limits.maxItemBytes
+                                            ? t('bootstrap.itemOver', { limit: formatBytes(t, view.limits.maxItemBytes) })
+                                            : `${formatBytes(t, bytes)} / ${formatBytes(t, view.limits.maxItemBytes)}`}
+                                        </span>
+                                      </span>
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          ))}
                           {ordered.length > visible.length && (
-                            <ActionButton onClick={() => setVisibleCandidates(current => current + 40)}>
-                              {t('bootstrap.showMore', { count: ordered.length - visible.length })}
+                            <ActionButton onClick={() => draft.showMoreBootstrapCandidates(40)}>
+                              {t('bootstrap.showMore', { count: Math.min(40, ordered.length - visible.length) })}
                             </ActionButton>
                           )}
                         </>
@@ -1772,6 +1945,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                     <div className="charter-bootstrap__actions">
                       <ActionButton
                         variant="primary"
+                        className="charter-actionbar__primary"
                         disabled={bootstrapReplay ? bootstrapSaving : !canApplyBootstrap}
                         onClick={applyBootstrapDraft}
                         busy={bootstrapSaving}
@@ -1811,7 +1985,9 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                         : recordState?.kind === 'absent-unconfirmed'
                           ? t('recovery.absent')
                           : recordState?.kind === 'invalid'
-                            ? t('recovery.invalid')
+                            ? recordState.reason === 'future-schema'
+                              ? t('recovery.futureSchema')
+                              : t('recovery.invalid')
                             : recordState?.kind === 'lifecycle-mismatch'
                               ? t('recovery.mismatch')
                               : recordState?.kind === 'write-uncertain'

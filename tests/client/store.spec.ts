@@ -666,7 +666,7 @@ describe('client charter source', () => {
     })
     lease.draft.unstage('draft:m1')
     lease.draft.addItem(view(1, 'one', 'session-unknown-edit'), 'invariant', 'Another', () => undefined)
-    lease.draft.discard()
+    lease.draft.discardAllLocalWork()
     lease.draft.rebase(view(2, 'two', 'session-unknown-edit'))
     expect(lease.draft.getSnapshot().attempt).toMatchObject({ status: 'unknown' })
     expect(lease.draft.getSnapshot().ops).toBe(committedOps)
