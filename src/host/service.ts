@@ -23,6 +23,7 @@ import {
   type CharterLimits,
 } from '../core/limits.js'
 import {
+  CHARTER_RECORD_SCHEMA_VERSION,
   charterRecordSchema,
   type CharterActor,
   type CharterEditRequest,
@@ -139,6 +140,27 @@ function sameIdentity(record: CharterRecord, session: Session): boolean {
 
 type InitSource = StartSource | 'reattach' | 'unknown'
 
+/** Read only a finite non-negative integer schema version from raw JSON. */
+function finiteRecordSchemaVersion(stored: unknown): number | undefined {
+  if (typeof stored !== 'object' || stored === null || Array.isArray(stored)) return undefined
+  const value = (stored as { recordSchemaVersion?: unknown }).recordSchemaVersion
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : undefined
+}
+
+function futureSchemaRecordState(
+  digest: `sha256:${string}`,
+  stored: unknown,
+): import('./types.js').CharterRecordState {
+  const observed = looseIdentityRevision(stored)
+  return {
+    kind: 'invalid',
+    reason: 'future-schema',
+    recordDigest: digest,
+    recoverable: false,
+    ...(observed === undefined ? {} : { observedRevision: observed }),
+  }
+}
+
 interface Inspection {
   readonly digest: `sha256:${string}`
   readonly state: CharterRecordState
@@ -225,6 +247,10 @@ export class CharterService extends Service {
     const digest = recordDigestOf(stored)
     const parsed = charterRecordSchema.safeParse(stored)
     if (!parsed.success) {
+      const observedVersion = finiteRecordSchemaVersion(stored)
+      if (observedVersion !== undefined && observedVersion > CHARTER_RECORD_SCHEMA_VERSION) {
+        return { digest, state: futureSchemaRecordState(digest, stored), raw: stored }
+      }
       const loose = looseIdentityOf(stored)
       const observed = looseIdentityRevision(stored)
       const recoverable = loose !== undefined && sameIdentityValue(loose, session)
@@ -864,7 +890,13 @@ export class CharterService extends Service {
         + 'showing the stored charter read-only. Open or start the Session here to edit it.',
     }
     if (!parsed.success) {
-      return { ...limitsBody, recordState: { kind: 'invalid', reason: 'schema', recordDigest: digest, recoverable: false } }
+      const observedVersion = finiteRecordSchemaVersion(stored)
+      return {
+        ...limitsBody,
+        recordState: observedVersion !== undefined && observedVersion > CHARTER_RECORD_SCHEMA_VERSION
+          ? futureSchemaRecordState(digest, stored)
+          : { kind: 'invalid', reason: 'schema', recordDigest: digest, recoverable: false },
+      }
     }
     try {
       assertRecordConsistency(parsed.data, this.config)
@@ -1363,7 +1395,7 @@ export class CharterService extends Service {
     const health = inspection.state.kind === 'healthy'
       ? 'healthy'
       : inspection.state.kind === 'invalid'
-        ? inspection.state.reason === 'schema' ? 'schema-invalid' : 'consistency-invalid'
+        ? inspection.state.reason === 'consistency' ? 'consistency-invalid' : 'schema-invalid'
         : 'lifecycle-mismatch'
     let archive
     try {

@@ -43,6 +43,13 @@ export type CharterRecordState =
       readonly recoverable: boolean
     }
   | {
+      readonly kind: 'invalid'
+      readonly reason: 'future-schema'
+      readonly recordDigest: `sha256:${string}`
+      readonly observedRevision?: number | undefined
+      readonly recoverable: false
+    }
+  | {
       readonly kind: 'lifecycle-mismatch'
       readonly recordDigest: `sha256:${string}`
     }

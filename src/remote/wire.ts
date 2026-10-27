@@ -52,11 +52,15 @@ export const charterRecordStateSchema = z.discriminatedUnion('kind', [
   }).strict(),
   z.object({
     kind: z.literal('invalid'),
-    reason: z.enum(['schema', 'consistency']),
+    reason: z.enum(['schema', 'consistency', 'future-schema']),
     recordDigest: z.string(),
     observedRevision: z.number().int().nonnegative().optional(),
     recoverable: z.boolean(),
-  }).strict(),
+  }).strict().superRefine((value, ctx) => {
+    if (value.reason === 'future-schema' && value.recoverable !== false) {
+      ctx.addIssue({ code: 'custom', message: 'future-schema records are never recoverable' })
+    }
+  }),
   z.object({ kind: z.literal('lifecycle-mismatch'), recordDigest: z.string() }).strict(),
   z.object({
     kind: z.literal('unknown'),
