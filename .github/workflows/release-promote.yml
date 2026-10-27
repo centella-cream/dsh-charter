@@ -21,10 +21,14 @@ on:
       version:
         description: Exact SemVer version, e.g. 0.1.0-rc.5
         required: true
+      browser_evidence_run_id:
+        description: Successful protected browser-evidence run id
+        required: true
 
 permissions:
   contents: write
   actions: read
+  id-token: write
 
 concurrency:
   group: release-promote-${{ inputs.version }}
@@ -36,12 +40,12 @@ jobs:
     environment: release
     env:
       GH_TOKEN: ${{ github.token }}
-      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
       RUN_ID: ${{ inputs.candidate_run_id }}
       CANDIDATE_COMMIT: ${{ inputs.candidate_commit }}
       RELEASE_COMMIT: ${{ inputs.release_commit }}
       CANDIDATE_SHA256: ${{ inputs.candidate_sha256 }}
       VERSION: ${{ inputs.version }}
+      BROWSER_EVIDENCE_RUN_ID: ${{ inputs.browser_evidence_run_id }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -59,6 +63,7 @@ jobs:
           printf '%s' "$RELEASE_COMMIT" | grep -Eq '^[0-9a-f]{40}$'
           printf '%s' "$CANDIDATE_SHA256" | grep -Eq '^[0-9a-f]{64}$'
           printf '%s' "$VERSION" | grep -Eq '^0\.1\.0-rc\.[0-9]+$'
+          printf '%s' "$BROWSER_EVIDENCE_RUN_ID" | grep -Eq '^[1-9][0-9]*$'
           git fetch origin main --prune
           git cat-file -e "$CANDIDATE_COMMIT^{commit}"
           git cat-file -e "$RELEASE_COMMIT^{commit}"
@@ -81,6 +86,7 @@ jobs:
           SHA=$(sha256sum candidate/*.tgz | awk '{print $1}')
           test "$SHA" = "$CANDIDATE_SHA256"
           test "$(grep -c "$SHA" candidate/SHA256SUMS)" -ge 1
+          export ARTIFACT_BASE="$(basename candidate/*.tgz)"
           node - <<'NODE'
           const fs = require('fs')
           const meta = JSON.parse(fs.readFileSync('candidate/release-metadata.json', 'utf8'))
@@ -89,10 +95,26 @@ jobs:
             commit: process.env.CANDIDATE_COMMIT,
             runId: process.env.RUN_ID,
             artifactSha256: process.env.CANDIDATE_SHA256,
+            artifact: process.env.ARTIFACT_BASE,
           }
           for (const [key, value] of Object.entries(checks)) {
             if (String(meta[key]) !== String(value)) throw new Error(`release-metadata.${key} mismatch`)
           }
+          if (meta.artifact !== process.env.ARTIFACT_BASE) throw new Error('release-metadata.artifact mismatch')
+          NODE
+      - name: Verify protected browser evidence
+        run: |
+          set -euo pipefail
+          gh run view "$BROWSER_EVIDENCE_RUN_ID" --json workflowName,conclusion,headSha > browser-run.json
+          node -e "const r=require('./browser-run.json'); if(r.workflowName!=='Record browser recovery evidence'||r.conclusion!=='success') { console.error(r); process.exit(1) }"
+          rm -rf browser-evidence && mkdir browser-evidence
+          gh run download "$BROWSER_EVIDENCE_RUN_ID" -n browser-evidence -D browser-evidence
+          test "$(find browser-evidence -maxdepth 1 -name 'browser-evidence.json' | wc -l)" -eq 1
+          SHA="$CANDIDATE_SHA256" node - <<'NODE'
+          const fs = require('fs')
+          const evidence = JSON.parse(fs.readFileSync('browser-evidence/browser-evidence.json', 'utf8'))
+          if (evidence.schemaVersion !== 1) throw new Error('schemaVersion')
+          if (evidence.candidateSha256 !== process.env.SHA) throw new Error('browser evidence SHA mismatch')
           NODE
       - name: Verify C+1 changes only the root checksum
         run: |
@@ -104,8 +126,8 @@ jobs:
       - name: Verify exact CI success on C+1
         run: |
           set -euo pipefail
-          gh run list --workflow ci.yml --commit "$RELEASE_COMMIT" --limit 20 --json databaseId,conclusion,status,headSha > ci-runs.json
-          node -e "const rs=require('./ci-runs.json').filter(r=>r.headSha===process.env.RELEASE_COMMIT&&r.status==='completed'&&r.conclusion==='success'); if(rs.length===0) { console.error('no successful CI run for release commit'); process.exit(1) }"
+          gh run list --workflow ci.yml --commit "$RELEASE_COMMIT" --limit 50 --json databaseId,conclusion,status,headSha,event,headBranch > ci-runs.json
+          node -e "const rs=require('./ci-runs.json').filter(r=>r.headSha===process.env.RELEASE_COMMIT&&r.status==='completed'&&r.conclusion==='success'&&r.event==='push'&&r.headBranch==='main'); if(rs.length===0) { console.error('no successful main-push CI run for release commit'); process.exit(1) }"
       - name: Re-run exact-artifact smoke without build or pack
         run: |
           set -euo pipefail
@@ -113,19 +135,31 @@ jobs:
           mkdir -p dist && cp candidate/*.tgz dist/
           npm run smoke:package -- --artifact "dist/$(basename candidate/*.tgz)" --sha256 SHA256SUMS
           node scripts/verify/recovery-smoke.mjs --artifact "dist/$(basename candidate/*.tgz)" --sha256 SHA256SUMS
-      - name: Tag, release, and publish the same tarball
+      - name: Tag, release, and publish the same tarball (reentrant)
         run: |
           set -euo pipefail
           TAG="v$VERSION"
-          test -z "$(git tag -l "$TAG")"
-          git tag -a "$TAG" -m "dsh-charter $VERSION sha256 $CANDIDATE_SHA256"
-          git push origin "$TAG"
-          gh release create "$TAG" candidate/*.tgz candidate/SHA256SUMS \
-            --title "dsh-charter $VERSION" \
-            --notes-file "docs/release-notes/$VERSION.md" \
-            --verify-tag --prerelease
-          npm config set //registry.npmjs.org/:_authToken "$NPM_TOKEN"
-          npm publish "candidate/$(basename candidate/*.tgz)" --access public --tag next
+          PUBLISHED=0
+          if npm view "dsh-charter@$VERSION" version >/dev/null 2>&1; then
+            rm -rf /tmp/existing && mkdir -p /tmp/existing
+            npm pack "dsh-charter@$VERSION" --pack-destination /tmp/existing >/dev/null
+            test "$(sha256sum /tmp/existing/*.tgz | awk '{print $1}')" = "$CANDIDATE_SHA256"
+            PUBLISHED=1
+          fi
+          if git tag -l "$TAG" | grep -q .; then
+            test "$(git rev-parse "$TAG^{commit}")" = "$RELEASE_COMMIT"
+          else
+            git tag -a "$TAG" -m "dsh-charter $VERSION sha256 $CANDIDATE_SHA256"
+            git push origin "$TAG"
+          fi
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            test "$(gh release view "$TAG" --json isPrerelease -q .isPrerelease)" = "true"
+          else
+            gh release create "$TAG" candidate/*.tgz candidate/SHA256SUMS               --title "dsh-charter $VERSION"               --notes-file "docs/release-notes/$VERSION.md"               --verify-tag --prerelease
+          fi
+          if [ "$PUBLISHED" -eq 0 ]; then
+            npm publish "candidate/$(basename candidate/*.tgz)" --access public --tag next --provenance
+          fi
           npm dist-tag add "dsh-charter@$VERSION" latest
       - name: Verify registry version, tags, and downloaded digest
         run: |

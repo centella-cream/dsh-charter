@@ -383,3 +383,23 @@ describe('rc.5 restore confirmation binding', () => {
     expect(tree.root.findAll(node => node.type === 'button' && textOf(node) === 'recovery.restoreConfirm')).toHaveLength(0)
   })
 })
+
+describe('rc.5 archive confirmation binding', () => {
+  it('resets confirmation when the same filename carries a different archive', async () => {
+    const h = harness(invalidView())
+    const tree = mount(invalidView(), h)
+    const recordA = createEmptyRecord({ createdAt: 1_700_000_000_000 }, DEFAULT_CHARTER_LIMITS)
+    const recordB = createEmptyRecord({ createdAt: 1_700_000_000_000 }, DEFAULT_CHARTER_LIMITS)
+    recordB.current.revision = 2
+    selectArchive(tree, archiveFor(recordA))
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
+      if (textOf(tree.root).includes('recovery.verified')) break
+    }
+    click(tree, 'recovery.restore')
+    expect(tree.root.findAll(node => node.type === 'button' && textOf(node) === 'recovery.restoreConfirm')).toHaveLength(1)
+    selectArchive(tree, archiveFor(recordB))
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
+    expect(tree.root.findAll(node => node.type === 'button' && textOf(node) === 'recovery.restoreConfirm')).toHaveLength(0)
+  })
+})

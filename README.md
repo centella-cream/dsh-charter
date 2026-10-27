@@ -108,11 +108,11 @@ The browser registers a `conversation.view` entry; the pane and `charter.watch` 
 
 ## Install
 
-`dsh-charter@0.1.0-rc.5` is the current **release candidate** on the release branch, not yet published. The
-registry currently carries `0.1.0-rc.4`; the exact rc.5 install commands below apply only after the release
-commit publishes the artifact. Our channel policy is to publish RCs under `next` and to point `latest` at the
-newest RC until a stable release exists (npm keeps a `latest` tag and we choose where it points; this is our
-policy, not an npm requirement).
+`dsh-charter@0.1.0-rc.5` is the current release candidate. Use the exact rc.5 install commands below only after
+`npm view dsh-charter@0.1.0-rc.5 version` returns that version; until then continue with the latest published
+RC (`0.1.0-rc.4`). Our channel policy is to publish RCs under `next` and to point `latest` at the newest RC
+until a stable release exists (npm keeps a `latest` tag and we choose where it points; this is our policy, not
+an npm requirement).
 
 > **Pin an exact version for npm/CLI installation.** pnpm 11+ applies a default `minimumReleaseAge` of 1440
 > minutes (24 hours) before resolving a newly published release. During that window, unversioned resolution
@@ -332,7 +332,7 @@ npm run verify:compaction # manual real-model compaction check (not part of chec
 ```
 
 The test suite covers the pure core, real Host composition, storage-domain behavior, Remote framing,
-history extraction, client state, and factory-bundle registration. The current tree has **347 tests**; the rc.5 seven-version local matrix passes on all declared DSH versions. See the [verification record](docs/verification.md) for the current evidence.
+history extraction, client state, and factory-bundle registration. The current tree has **348 tests**; the rc.5 seven-version local matrix passes on all declared DSH versions. See the [verification record](docs/verification.md) for the current evidence.
 
 ## Acknowledgements
 

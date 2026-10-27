@@ -149,7 +149,7 @@ npm publish dist/dsh-charter-0.1.0-rc.5.tgz --access public --tag next
 ## rc.5 单产物自动化
 
 `.github/workflows/release-candidate.yml` 是 rc.5 tarball 的唯一 producer：source gates、compatibility sentinels、
-一次 `npm pack`、exact-artifact package smoke、packed recovery smoke，以及 Gateway/browser jobs。Gateway job 调用真实 tracked Gateway smoke；browser job 在真实脚本存在前仍 fail closed；不要把只跑了 source 的 run 当成发布证据。所有 consumer 下载同一个
+一次 `npm pack`、exact-artifact package smoke、packed recovery smoke，以及 Gateway/browser jobs。Gateway job 在隔离的 rc.3/rc.4 依赖图上运行精确 artifact；browser recovery 是受保护的人工 environment gate，promotion 要求成功的、绑定 SHA 的 evidence run；不要把只跑了 source 的 run 当成发布证据。所有 consumer 下载同一个
 `release-candidate` artifact，并使用 `--artifact`/`--sha256`，不得再次 pack。
 
 `.github/workflows/release-promote.yml` 由 `release` environment 保护，是唯一 promotion 路径。它要求 candidate

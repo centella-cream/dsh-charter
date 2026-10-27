@@ -965,6 +965,9 @@ describe('rc.5 forward-schema fence', () => {
     announceStartup(ctx, session)
     await waitFor(service, session, () => service.view(session).status === 'ready')
     await service.edit(addItem(session.id, 0, 'future-1', 'Future invariant'))
+    const healthyExport = service.exportRecord(session.id)
+    expect(healthyExport.ok).toBe(true)
+    if (!healthyExport.ok) throw new Error('expected a healthy archive')
     const path = await findRecord(root, session.id)
     const original = JSON.parse(await readFile(path, 'utf8')) as CharterRecord
     const future = { ...original, recordSchemaVersion: 2, futureOnlyField: { revision: 99 } }
@@ -1016,9 +1019,9 @@ describe('rc.5 forward-schema fence', () => {
         reason: 'schema',
         recordDigest: recordDigestOf(future),
       },
-      archive: exported.ok ? exported.archive : { format: 'dsh-charter-record', formatVersion: 1 },
+      archive: healthyExport.archive,
     } as never)
-    expect(restore).toMatchObject({ ok: false })
+    expect(restore).toMatchObject({ ok: false, code: 'RECORD_CONFLICT' })
     expect(await readFile(path)).toEqual(beforeBytes)
   })
 })

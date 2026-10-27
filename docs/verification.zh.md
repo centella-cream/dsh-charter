@@ -13,16 +13,16 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 | 项目 | 结果 |
 | --- | --- |
 | TypeScript 严格检查 | 当前树通过 |
-| Vitest | 27 个测试文件 / 350 个测试通过（`npm test`，先 build） |
+| Vitest | 26 个测试文件 / 348 个测试通过（`npm test`，先 build） |
 | Host ESM 构建 + 浏览器 factory bundle | 通过 |
 | Remote 契约与 client smoke | 通过 |
 | 普通 package smoke | 通过 |
 | exact-artifact package smoke | 对最终 `.tgz` 字节通过，不重建 |
 | packed recovery smoke | 通过：export、删除 target、restore、receipt replay、两次 restart、健康目标拒绝、packed fault 子集 |
-| 真实 `TypertGatewayService` | DSH `0.2.1-rc.3` / `0.2.1-rc.4` 通过 |
+| 真实 `TypertGatewayService` | 精确 artifact 在隔离的 DSH `0.2.1-rc.3` / `rc.4` 依赖图上通过 |
 | 兼容 sentinel | `0.1.7-rc.2`、`0.2.1-rc.2`、`0.2.1-rc.4` 通过 |
-| 七版本全量 rerun | 本地通过（每版本 347/347） |
-| 真实浏览器恢复 | 尚未自动化；candidate workflow fail closed |
+| 七版本全量 rerun | 本地通过（每版本 348/348） |
+| 真实浏览器恢复 | 受保护的人工 evidence gate；未自动化 |
 | 真实模型 compaction | 2026-10-22 记录 PASS；仍是人工发布门禁 |
 
 ## 2. 本地基线
@@ -32,7 +32,7 @@ npm run check
 npm run smoke:package
 npm run smoke:package -- --artifact <tgz> --sha256 SHA256SUMS
 node scripts/verify/recovery-smoke.mjs --artifact <tgz> --sha256 SHA256SUMS
-node scripts/verify/gateway-smoke.mjs --versions 0.2.1-rc.3,0.2.1-rc.4
+node scripts/verify/gateway-smoke.mjs --artifact <tgz> --sha256 SHA256SUMS
 node scripts/verify/compat-matrix.mjs --versions minimum,old-boundary,current
 ```
 
@@ -53,15 +53,15 @@ CI（`.github/workflows/ci.yml`）在 Node `22.19.0` / `24` 上运行 `npm run c
 
 | DSH 版本 | 证据 |
 | --- | --- |
-| `0.1.7-rc.2` | 347/347 本地全量矩阵 |
-| `0.2.0-rc.1` | 347/347 本地全量矩阵 |
-| `0.2.0-rc.2` | 347/347 本地全量矩阵 |
-| `0.2.1-rc.1` | 347/347 本地全量矩阵 |
-| `0.2.1-rc.2` | 347/347 本地全量矩阵 |
-| `0.2.1-rc.3` | 347/347 本地全量矩阵 |
-| `0.2.1-rc.4` | 347/347 本地全量矩阵 |
+| `0.1.7-rc.2` | 348/348 本地全量矩阵 |
+| `0.2.0-rc.1` | 348/348 本地全量矩阵 |
+| `0.2.0-rc.2` | 348/348 本地全量矩阵 |
+| `0.2.1-rc.1` | 348/348 本地全量矩阵 |
+| `0.2.1-rc.2` | 348/348 本地全量矩阵 |
+| `0.2.1-rc.3` | 348/348 本地全量矩阵 |
+| `0.2.1-rc.4` | 348/348 本地全量矩阵 |
 
-rc.5 七版本本地矩阵已于 2026-10-27 完成：每个声明版本均通过 typecheck、build 和 347/347 测试。release candidate workflow 会运行同一矩阵；CI 执行前该证据仍属本地。
+rc.5 七版本本地矩阵已于 2026-10-27 完成：每个声明版本均通过 typecheck、build 和 348/348 测试。release candidate workflow 会运行同一矩阵；CI 执行前该证据仍属本地。
 
 ## 4. 测试覆盖
 
@@ -94,7 +94,9 @@ rc.5 七版本本地矩阵已于 2026-10-27 完成：每个声明版本均通过
 
 ## 6. 人工/外部缺口
 
-- 真实浏览器 export → absent → restore → reload/restart 自动化尚未接入；candidate browser job fail closed。
+- 真实浏览器 export → absent → restore → reload/restart 是受保护的人工 evidence gate
+  （`.github/workflows/browser-evidence.yml`），尚未由 tracked browser script 自动化；promotion 要求与候选
+  SHA 绑定的成功 evidence run。
 - Desktop 重启后的 ABI、交互和 screen reader 仍人工验证。
 - 真实模型 compaction 已于 2026-10-22 记录 PASS，仍是发布人工门禁。
 - 多 Host 写入/lease 不在范围内；单写 Host 限制已记录。
