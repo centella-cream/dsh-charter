@@ -59,8 +59,9 @@ jobs:
       - name: Install npm with OIDC publish and dist-tag support
         run: |
           set -euo pipefail
-          npm install --global npm@12.2.0
-          test "$(npm --version)" = "12.2.0"
+          npm install --global npm@11.21.0
+          test "$(npm --version)" = "11.21.0"
+          node -e 'const [major,minor]=process.versions.node.split(".").map(Number); if (!(major===22 && minor>=9) && major<24) process.exit(1)'
       - name: Validate inputs and main/release ordering
         run: |
           set -euo pipefail
