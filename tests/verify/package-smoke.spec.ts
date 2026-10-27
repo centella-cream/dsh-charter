@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { gzipSync } from 'node:zlib'
@@ -23,6 +23,31 @@ function workdir(): string {
 
 afterAll(() => {
   for (const root of roots) rmSync(root, { recursive: true, force: true })
+})
+
+
+
+describe('published DSH compatibility metadata', () => {
+  const expected = [
+    '0.1.7-rc.2',
+    '0.2.0-rc.1',
+    '0.2.0-rc.2',
+    '0.2.1-rc.1',
+    '0.2.1-rc.2',
+    '0.2.1-rc.3',
+    '0.2.1-rc.4',
+  ].join(' || ')
+
+  it('keeps engines.dsh and every DSH peer range in sync with the verified matrix', () => {
+    const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')) as {
+      engines: Record<string, string>
+      peerDependencies: Record<string, string>
+    }
+    expect(pkg.engines.dsh).toBe(expected)
+    const peers = Object.entries(pkg.peerDependencies).filter(([name]) => name.startsWith('@deepseek-ai/dsh-'))
+    expect(peers.length).toBeGreaterThan(0)
+    for (const [name, range] of peers) expect(range, name).toBe(expected)
+  })
 })
 
 const ARTIFACT = 'dsh-charter-0.1.0-rc.1.tgz'

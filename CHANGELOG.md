@@ -5,6 +5,24 @@ English | [中文](CHANGELOG.zh.md)
 All notable changes to `dsh-charter` are recorded here. The project follows a pre-1.0 version line while the
 DSH plugin ABI is still moving.
 
+## 0.1.0-rc.4 — 2026-10-27
+
+Compatibility-only patch for DSH `0.2.1-rc.3` and `0.2.1-rc.4`. `0.1.0-rc.3` declared exactly five DSH versions
+and correctly rejected installation on DSH `0.2.1-rc.3`; the plugin API itself required no change.
+
+### Changed
+
+- `engines.dsh` and every DSH peer range now list the seven verified versions: `0.1.7-rc.2`, `0.2.0-rc.1`,
+  `0.2.0-rc.2`, `0.2.1-rc.1`, `0.2.1-rc.2`, `0.2.1-rc.3`, `0.2.1-rc.4`.
+- DSH `0.2.1-rc.4` becomes the primary development baseline; `0.2.1-rc.3` is verified by the same full matrix.
+- No record schema, domain, Remote, or client behavior changes; rc.3 records upgrade without migration.
+
+### Verification
+
+- Full typecheck, build, client/remote smoke, and 25 files / 331 tests pass on `0.2.1-rc.3` and `0.2.1-rc.4`.
+- The seven-version matrix passes 331/331 on every declared version.
+- Normal, exact-artifact, and packed recovery smokes pass on the final tarball; public CI passes on Node 22.19.0/24.
+
 ## 0.1.0-rc.3 — 2026-10-26
 
 Authority-preserving recovery release. The Charter record is now opened through one structured state machine, an

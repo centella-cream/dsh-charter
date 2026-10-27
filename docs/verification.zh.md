@@ -5,7 +5,7 @@
 验证日期：2026-10-20；第二、三轮发布就绪评审后复跑：2026-10-21；本地 `0.1.0-rc.1` RC 构建与 tracked 产物 digest 的
 最终树复跑：2026-10-22。
 环境：macOS，Node `v22.23.1`，npm `12.0.2`，pnpm `12.3.4`；当前 Desktop 运行时 DSH `0.2.0-rc.2`。
-本地开发依赖基线：DSH `0.2.1-rc.2`。
+本地开发依赖基线：DSH `0.2.1-rc.4`。
 
 本文记录可复现的命令和结果。临时目录、profile、tarball 和抓取到的 HTML 都在 `.tmp/` 下，不进入发布包。
 
@@ -13,8 +13,8 @@
 
 | 验证项 | 结果 |
 | --- | --- |
-| TypeScript 严格类型检查（5 个 DSH 版本） | 通过 |
-| Vitest（5 个本地可用版本 × 330 个测试） | 通过 |
+| TypeScript 严格类型检查（7 个 DSH 版本） | 通过 |
+| Vitest（7 个本地可用版本 × 331 个测试） | 通过 |
 | Host ESM 构建 + 浏览器单文件 bundle | 通过 |
 | Remote 装饰器/资源 smoke | 通过（0.1.7/0.2.0 按预期无资源声明） |
 | 浏览器 factory bundle 物化与 `apply` smoke | 通过 |
@@ -45,7 +45,7 @@ npm test
 
 - typecheck 通过；
 - build 通过；
-- 25 个测试文件、330 个测试全部通过（来自 `npm test`，即 build 后运行 `vitest run`）；
+- 25 个测试文件、331 个测试全部通过（来自 `npm test`，即 build 后运行 `vitest run`）；
 - `remote-smoke` 断言 `watch,bootstrap,edit`、stream mode 和 Session resource；
 - `client-smoke` 断言单文件 factory bundle、外部依赖白名单、不引用 Node-only `Buffer`、`apply` 注册
   tab/pane/Remote contribution。
@@ -113,16 +113,18 @@ npm run build
 
 | 版本 | typecheck | build | Vitest | remote smoke | client smoke |
 | --- | --- | --- | --- | --- | --- |
-| `0.1.7-rc.2` | 通过 | 通过 | 260/260 | 通过（无 resources 警告） | 通过 |
-| `0.2.0-rc.1` | 通过 | 通过 | 260/260 | 通过（无 resources 警告） | 通过 |
-| `0.2.0-rc.2` | 通过 | 通过 | 260/260 | 通过（无 resources 警告） | 通过 |
-| `0.2.1-rc.1` | 通过 | 通过 | 260/260 | 通过 | 通过 |
-| `0.2.1-rc.2` | 通过 | 通过 | 260/260 | 通过 | 通过 |
+| `0.1.7-rc.2` | 通过 | 通过 | 331/331 | 通过（无 resources 警告） | 通过 |
+| `0.2.0-rc.1` | 通过 | 通过 | 331/331 | 通过（无 resources 警告） | 通过 |
+| `0.2.0-rc.2` | 通过 | 通过 | 331/331 | 通过（无 resources 警告） | 通过 |
+| `0.2.1-rc.1` | 通过 | 通过 | 331/331 | 通过 | 通过 |
+| `0.2.1-rc.2` | 通过 | 通过 | 331/331 | 通过 | 通过 |
+| `0.2.1-rc.3` | 通过 | 通过 | 331/331 | 通过 | 通过 |
+| `0.2.1-rc.4` | 通过 | 通过 | 331/331 | 通过 | 通过 |
 
-最终 `0.1.0-rc.1` 树在 2026-10-22 重新跑过：每个版本均为 19 个测试文件 / 260 个测试，且 build 内含 remote/client
+最终 `0.1.0-rc.4` 树在 2026-10-27 重新跑过：每个版本均为 25 个测试文件 / 331 个测试，且 build 内含 remote/client
 smoke 断言。
 
-这个五版本矩阵是**本地证据**：版本目录和驱动脚本位于被 git 忽略的 `.tmp/`，公开 CI 不会复现它。CI
+这个七版本矩阵是**本地证据**：版本目录和驱动脚本位于被 git 忽略的 `.tmp/`，公开 CI 不会复现它。CI
 （`.github/workflows/ci.yml`）在 Node `22.19.0` 与 Node `24` 上运行已提交的门禁（`npm run check` +
 `npm run smoke:package`）。
 
@@ -806,7 +808,7 @@ rc.3 经审核后提交在 release 分支上。版本 `0.1.0-rc.3`。
   `CharterService`，构造含 Unicode/pending/archived/superseded/history 的记录并导出，删除目标后在同一 Session
   identity 下恢复，经 maintenance 回执 replay，两次重启比较完整 record/state/prompt/tool 投影，证明健康目标拒绝
   覆盖，并运行 packed fault 子集（startup put reject → 围栏；commit-then-reject → 重启收敛；open reject → 无记录/不 ready）；完整的 source fault 矩阵由 Host 测试覆盖。
-- 五版本 DSH 矩阵：`0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-rc.1`、`0.2.1-rc.2` 均为 330/330。
+- 七版本 DSH 矩阵：`0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-rc.1`、`0.2.1-rc.2`、`0.2.1-rc.3`、`0.2.1-rc.4` 均为 331/331。
 - 最终产物 SHA-256 记录在 tracked 仓库根部 `SHA256SUMS` 与 `dist/SHA256SUMS`（根部文件不在 npm `files` 白名单内，
   不影响打包字节）。本轮不创建 tag、不推送、不发布。
 
@@ -840,6 +842,13 @@ Session 对象/lifecycle 并检查 fence，lifecycle 变化时把 in-flight main
 诚实缺口：当前环境没有 live 0.2.1 Gateway principal 测试与真实浏览器 UI 会话（改用契约/Host 能力测试与真实
 renderer 测试）；未重新生成截图（无干净 demo-only 隔离 profile）；未提交的树尚未跑公开 CI。Host 中的 legacy
 `invalidRecords`/message 兼容路径被保留但不再是用户可见的权威（以 record state 为准）；wire 层的权威来源契约不变，读取不再触发任何 startup 初始化 shim。
+
+### 8.7 `0.1.0-rc.4` DSH 0.2.1-rc.3/rc.4 兼容补丁（2026-10-27）
+
+`0.1.0-rc.3` 只声明五个 DSH 精确版本，因此 Desktop 在 DSH `0.2.1-rc.3` 上正确拒绝安装。本轮对
+0.2.1-rc.3 与 0.2.1-rc.4 的完整 DSH 包图重新验证：typecheck、Host ESM build、client bundle 与
+25 files / 331 tests 在两个版本上全部通过，无需修改插件代码。`0.1.0-rc.4` 是兼容性补丁：peer ranges
+与 `engines.dsh` 增加 `0.2.1-rc.3`、`0.2.1-rc.4`，主开发基线移动到 `0.2.1-rc.4`；旧五个版本继续验证。
 
 ## 9. 未支持的验证项与已接受的非阻塞限制
 

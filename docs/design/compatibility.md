@@ -2,7 +2,7 @@
 
 English | [中文](compatibility.zh.md)
 
-Research/verification baseline: 2026-10-20.
+Research/verification baseline: 2026-10-27.
 
 This document answers three questions:
 
@@ -18,16 +18,18 @@ This document answers three questions:
 | `0.2.0-rc.1` | Supported | typecheck, build, Vitest suite, remote/client smoke |
 | `0.2.0-rc.2` | Supported | same + real profile install/startup, boot graph, bundle HTTP |
 | `0.2.1-rc.1` | Supported | typecheck, build, Vitest suite, remote/client smoke |
-| `0.2.1-rc.2` | Supported (primary development baseline) | same |
+| `0.2.1-rc.2` | Supported | same |
+| `0.2.1-rc.3` | Supported | typecheck, build, Vitest suite, remote/client smoke (full seven-version matrix) |
+| `0.2.1-rc.4` | Supported (primary development baseline) | same |
 | `0.1.5-rc.1` / `0.1.5-rc.2` / `0.1.5-rc.3` | Not supported | contract differences too large; see section 4 |
 | `0.1.6-alpha.x` | Not supported | same generation as 0.1.5; not individually verified |
 | `0.2.2-rc.x` | Not declared | peer range does not cover this prerelease; add after verification |
 | `0.3.x` | Not declared | major upgrade requires re-verification |
 
-The DSH peer ranges and `engines.dsh` in `package.json` are exactly the five verified versions:
+The DSH peer ranges and `engines.dsh` in `package.json` are exactly the seven verified versions:
 
 ```text
-0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2
+0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2 || 0.2.1-rc.3 || 0.2.1-rc.4
 ```
 
 Exact versions are intentional: a broad range would claim DSH prereleases that the project has not tested.
@@ -71,7 +73,7 @@ Extend the list only after running the version matrix for the new version, and k
 | `{{` escaping | `src/core/prompt.ts` |
 | Actor resolution | `resolveActor()` in `src/host/service.ts`, generation policy in `src/remote/actor.ts`; 0.2.1+ fails closed when a Remote call has no Peer principal |
 | Version-specific type verification | independent `node_modules` copies described in [verification](../verification.md) |
-| Deprecated historical event read | isolated in `src/host/session-events.ts`; **known technical debt**, not a completed replacement — DSH 0.2.1-rc.2 exposes no public non-deprecated reader yet |
+| Deprecated historical event read | isolated in `src/host/session-events.ts`; **known technical debt**, not a completed replacement — DSH 0.2.1-rc.2/rc.3/rc.4 expose no public non-deprecated reader yet |
 
 The compatibility layer is deliberately small: only decorator shape, two optional context fields, an actor
 reading branch, and the isolated historical-event reader. There is no second Remote codec, second session event protocol, or second sidebar API for old
@@ -107,7 +109,7 @@ npm run build
 ./node_modules/.bin/vitest run
 ```
 
-`0.1.7-rc.2` and `0.2.0-rc.2` additionally use the matching DSH CLI to create an isolated profile, install the
+`0.1.7-rc.2`, `0.2.0-rc.2`, and `0.2.1-rc.3`/`rc.4` additionally use the matching DSH CLI to create an isolated profile, install the
 tarball, start Web, and check the boot graph and client bundle HTTP. Results and reproduction commands are in
 the [verification record](../verification.md).
 

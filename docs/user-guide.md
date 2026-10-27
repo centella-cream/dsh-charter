@@ -40,7 +40,7 @@ For a Web or Desktop profile the plugin registers:
 npm install
 npm run build
 npm pack
-dsh plugin --profile web add ./dsh-charter-0.1.0-rc.3.tgz
+dsh plugin --profile web add ./dsh-charter-0.1.0-rc.4.tgz
 ```
 
 For Desktop, use the Plugins page if local import is available; otherwise install the tarball through the Desktop
@@ -50,11 +50,11 @@ dependency is a local `file:` path. Prefer npm install in §2.3 when the registr
 ### 2.3 npm / Registry install (recommended) — Web profile by version or tag
 
 ```bash
-dsh plugin --profile web add dsh-charter@0.1.0-rc.3   # exact version: reproducible
+dsh plugin --profile web add dsh-charter@0.1.0-rc.4   # exact version: reproducible
 dsh plugin --profile web add dsh-charter@next         # newest pre-release
 ```
 
-`0.1.0-rc.3` is the current pre-release under the `next` dist-tag. Under our channel policy `latest` also points
+`0.1.0-rc.4` is the current pre-release under the `next` dist-tag. Under our channel policy `latest` also points
 at the newest RC until a stable release exists (npm keeps a `latest` tag and we choose where it points; this is
 our policy, not an npm requirement). Use the exact version or `@next` for pre-release installs, and use the
 offline tarball fallback above only when the registry is unreachable. Pin an explicit version for reproducible
@@ -65,7 +65,7 @@ dependency and bundle selection:
 
 ```json
 {
-  "dependencies": { "dsh-charter": "0.1.0-rc.3" },
+  "dependencies": { "dsh-charter": "0.1.0-rc.4" },
   "dsh": { "profile": { "bundles": ["...", "dsh-charter"] } }
 }
 ```

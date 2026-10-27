@@ -5,7 +5,7 @@ English | [中文](verification.zh.md)
 Verification date: 2026-10-20; re-run after the second and third readiness reviews: 2026-10-21; final-tree rerun
 for the local `0.1.0-rc.1` RC build and tracked artifact digest: 2026-10-22.
 Environment: macOS, Node `v22.23.1`, npm `12.0.2`, pnpm `12.3.4`; current Desktop runtime DSH `0.2.0-rc.2`.
-Local development dependency baseline: DSH `0.2.1-rc.2`.
+Local development dependency baseline: DSH `0.2.1-rc.4`.
 
 This document records reproducible commands and results. Temporary directories, profiles, tarballs, and fetched
 HTML live under `.tmp/` and are excluded from the published package.
@@ -14,8 +14,8 @@ HTML live under `.tmp/` and are excluded from the published package.
 
 | Item | Result |
 | --- | --- |
-| Strict TypeScript check (5 DSH versions) | Pass |
-| Vitest (5 locally available versions × 330 tests) | Pass |
+| Strict TypeScript check (7 DSH versions) | Pass |
+| Vitest (7 locally available versions × 331 tests) | Pass |
 | Host ESM build + browser single-file bundle | Pass |
 | Remote decorator/resource smoke | Pass (0.1.7/0.2.0 have no resource declaration, as expected) |
 | Browser factory-bundle materialization and `apply` smoke | Pass |
@@ -46,7 +46,7 @@ Results:
 
 - typecheck passes;
 - build passes;
-- 25 test files, 330 tests pass (from `npm test`, which builds and then runs `vitest run`);
+- 25 test files, 331 tests pass (from `npm test`, which builds and then runs `vitest run`);
 - `remote-smoke` asserts `watch,bootstrap,edit`, stream mode, and Session resource;
 - `client-smoke` asserts the single-file factory bundle, external-dependency allowlist, no Node-only `Buffer`
   reference, and `apply` registering the tab/pane/Remote contribution;
@@ -105,6 +105,8 @@ Each version uses its own directory and `node_modules`:
 .tmp/compat/020rc2/proj
 .tmp/compat/021rc1/proj
 .tmp/compat/021rc2/proj
+.tmp/dsh-compat-021rc3
+.tmp/dsh-compat-021rc4
 ```
 
 Copy source (excluding `node_modules`, `lib`, `.build-ts`, `.tmp`), link the version's `node_modules` into
@@ -120,16 +122,18 @@ Results:
 
 | Version | typecheck | build | Vitest | remote smoke | client smoke |
 | --- | --- | --- | --- | --- | --- |
-| `0.1.7-rc.2` | Pass | Pass | 260/260 | Pass (no-resources warning) | Pass |
-| `0.2.0-rc.1` | Pass | Pass | 260/260 | Pass (no-resources warning) | Pass |
-| `0.2.0-rc.2` | Pass | Pass | 260/260 | Pass (no-resources warning) | Pass |
-| `0.2.1-rc.1` | Pass | Pass | 260/260 | Pass | Pass |
-| `0.2.1-rc.2` | Pass | Pass | 260/260 | Pass | Pass |
+| `0.1.7-rc.2` | Pass | Pass | 331/331 | Pass (no-resources warning) | Pass |
+| `0.2.0-rc.1` | Pass | Pass | 331/331 | Pass (no-resources warning) | Pass |
+| `0.2.0-rc.2` | Pass | Pass | 331/331 | Pass (no-resources warning) | Pass |
+| `0.2.1-rc.1` | Pass | Pass | 331/331 | Pass | Pass |
+| `0.2.1-rc.2` | Pass | Pass | 331/331 | Pass | Pass |
+| `0.2.1-rc.3` | Pass | Pass | 331/331 | Pass | Pass |
+| `0.2.1-rc.4` | Pass | Pass | 331/331 | Pass | Pass |
 
-Re-run on the final `0.1.0-rc.1` tree on 2026-10-22: each version reports 19 test files / 260 tests, and build
+Re-run on the final `0.1.0-rc.4` tree on 2026-10-27: each version reports 25 test files / 331 tests, and build
 includes the remote/client smoke assertions.
 
-This five-version matrix is **local evidence**: its version directories and driver script live in the gitignored
+This seven-version matrix is **local evidence**: its version directories and driver script live in the gitignored
 `.tmp/`, so the public CI does not reproduce it. CI (`.github/workflows/ci.yml`) runs the committed gates
 (`npm run check` + `npm run smoke:package`) on Node `22.19.0` and Node `24`.
 
@@ -900,7 +904,7 @@ The rc.3 work is committed on the release branch after review. Version `0.1.0-rc
   record/state/prompt/tool projections, proves a healthy target refuses overwrite, and runs the packed fault subset
   (startup put reject → fence; commit-then-reject → restart convergence; open reject → no record/no ready); the complete
   source fault matrix lives in the Host tests.
-- Five-version DSH matrix: 330/330 on `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-rc.1`, `0.2.1-rc.2`.
+- Seven-version DSH matrix: 331/331 on `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-rc.1`, `0.2.1-rc.2`, `0.2.1-rc.3`, `0.2.1-rc.4`.
 - The final artifact SHA-256 is recorded in the tracked repository-root `SHA256SUMS` and `dist/SHA256SUMS` (the root
   file is outside the npm `files` whitelist, so the digest does not change the packed bytes). No release tag, push, or
   publish is performed in this pass.
@@ -939,6 +943,15 @@ environment (contract/Host capability and real-renderer tests are used instead);
 clean demo-only isolated profile); public CI has not run on the uncommitted tree. The legacy `invalidRecords`/message
 compatibility paths in the Host are retained but no longer user-visible authority (record state is authoritative), and
 the authoritative wire-level source contract is unchanged; no read-triggered startup shim remains.
+
+### 8.7 `0.1.0-rc.4` DSH 0.2.1-rc.3/rc.4 compatibility patch (2026-10-27)
+
+`0.1.0-rc.3` declared exactly five DSH versions, so the Desktop error correctly rejected it on DSH
+`0.2.1-rc.3`. The compatibility contract was re-verified against the complete 0.2.1-rc.3 and 0.2.1-rc.4 package
+graphs: typecheck, Host ESM build, client bundle, and 25 files / 331 tests all pass on both, with no plugin code
+change required. `0.1.0-rc.4` is a compatibility-only patch: peer ranges and `engines.dsh` now include
+`0.2.1-rc.3` and `0.2.1-rc.4`; the primary development baseline moves to `0.2.1-rc.4`. The five older versions
+remain verified and unchanged.
 
 ## 9. Unsupported verification and accepted non-blocking limitations
 

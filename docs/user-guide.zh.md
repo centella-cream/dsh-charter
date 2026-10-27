@@ -39,7 +39,7 @@ dsh --profile web --dump-config | grep -n "charter" || true
 npm install
 npm run build
 npm pack
-dsh plugin --profile web add ./dsh-charter-0.1.0-rc.3.tgz
+dsh plugin --profile web add ./dsh-charter-0.1.0-rc.4.tgz
 ```
 
 Desktop 若支持本地插件导入，可在 Plugins 页面安装同一个 tarball；否则通过 Desktop profile 自己的包管理器
@@ -49,11 +49,11 @@ Desktop 若支持本地插件导入，可在 Plugins 页面安装同一个 tarba
 ### 2.3 npm / Registry 安装（推荐）— Web profile 按版本或 tag
 
 ```bash
-dsh plugin --profile web add dsh-charter@0.1.0-rc.3   # 精确版本：可复现
+dsh plugin --profile web add dsh-charter@0.1.0-rc.4   # 精确版本：可复现
 dsh plugin --profile web add dsh-charter@next         # 最新预发布
 ```
 
-`0.1.0-rc.3` 是 `next` dist-tag 下的当前预发布。按当前渠道策略，稳定版出现前 `latest` 也会指向最新 RC（npm
+`0.1.0-rc.4` 是 `next` dist-tag 下的当前预发布。按当前渠道策略，稳定版出现前 `latest` 也会指向最新 RC（npm
 会保留 `latest` tag，由我们决定其指向；这是我们的策略，不是 npm 的强制要求）。预发布安装请使用精确版本或
 `@next`；只有 registry 不可达时才使用上面的离线 tarball 回退。固定明确版本可以让 profile 可复现。
 
@@ -62,7 +62,7 @@ dsh plugin --profile web add dsh-charter@next         # 最新预发布
 
 ```json
 {
-  "dependencies": { "dsh-charter": "0.1.0-rc.3" },
+  "dependencies": { "dsh-charter": "0.1.0-rc.4" },
   "dsh": { "profile": { "bundles": ["...", "dsh-charter"] } }
 }
 ```

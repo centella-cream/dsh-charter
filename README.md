@@ -108,12 +108,12 @@ The browser registers a `conversation.view` entry; the pane and `charter.watch` 
 
 ## Install
 
-`dsh-charter@0.1.0-rc.3` is the current npm pre-release. Our channel policy is to publish it under `next` and to
+`dsh-charter@0.1.0-rc.4` is the current npm pre-release. Our channel policy is to publish it under `next` and to
 point `latest` at the newest RC until a stable release exists (npm keeps a `latest` tag and we choose where it
 points; this is our policy, not an npm requirement). Pin the exact version for reproducible profiles, and use
 `@next` to track the newest pre-release.
 
-### Recovery and record health (0.1.0-rc.3)
+### Recovery and record health (0.1.0-rc.3+)
 
 The rc.3 release adds authority-preserving recovery. The Pane shows a structured record state (healthy,
 absent-unconfirmed, invalid, lifecycle mismatch, unknown, or write-uncertain). Owners on DSH `0.2.1+` can export the
@@ -133,7 +133,7 @@ a maintenance receipt are isolated (preserved, not injected/edited) by rc.2; upg
 ### Requirements
 
 - DSH: only the versions listed in the [compatibility matrix](docs/design/compatibility.md) are supported
-  (`0.1.7-rc.2`, `0.2.0-rc.1`/`rc.2`, `0.2.1-rc.1`/`rc.2`). Newer stable/RC versions are not claimed until the
+  (`0.1.7-rc.2`, `0.2.0-rc.1`/`rc.2`, `0.2.1-rc.1`/`rc.2`/`rc.3`/`rc.4`). Newer stable/RC versions are not claimed until the
   matrix is extended; `0.2.1+` is required for per-Peer Remote resource authorization.
 - Node.js **`^22.19.0 || >=24.0.0`**.
 - A Web or Desktop profile.
@@ -143,7 +143,7 @@ a maintenance receipt are isolated (preserved, not injected/edited) by rc.2; upg
 #### Web profile — install by version or pre-release tag
 
 ```bash
-dsh plugin --profile web add dsh-charter@0.1.0-rc.3   # exact version: reproducible
+dsh plugin --profile web add dsh-charter@0.1.0-rc.4   # exact version: reproducible
 dsh plugin --profile web add dsh-charter@next         # newest pre-release
 ```
 
@@ -169,12 +169,12 @@ release artifact. The GitHub Release ships the same tarball and `SHA256SUMS` use
 # From a checkout:
 npm install
 npm run build
-npm pack                         # dsh-charter-0.1.0-rc.3.tgz
-dsh plugin --profile web add ./dsh-charter-0.1.0-rc.3.tgz
+npm pack                         # dsh-charter-0.1.0-rc.4.tgz
+dsh plugin --profile web add ./dsh-charter-0.1.0-rc.4.tgz
 
 # Or download the GitHub Release tarball + SHA256SUMS and verify:
 shasum -a 256 -c SHA256SUMS
-dsh plugin --profile web add ./dsh-charter-0.1.0-rc.3.tgz
+dsh plugin --profile web add ./dsh-charter-0.1.0-rc.4.tgz
 ```
 
 `dsh plugin --profile desktop` is intentionally refused by the Electron app that owns that profile; use the
@@ -184,7 +184,7 @@ Desktop Plugins page or that profile's package manager. Source-level development
 ### Update
 
 - **Web (npm):** `dsh plugin --profile web add dsh-charter@next`, then restart/refresh. Pinned profiles keep
-  their explicit `0.1.0-rc.3` entry.
+  their explicit `0.1.0-rc.4` entry.
 - **Local tarball:** rebuild/download the new tarball and repeat the local install command.
 - **Desktop:** Plugins → `dsh-charter` → **Update**; Desktop hot-applies it.
 
@@ -275,7 +275,7 @@ truncated, or silently dropped.
 | --- | --- |
 | `0.1.7-rc.2` | Supported (minimum) |
 | `0.2.0-rc.1` / `0.2.0-rc.2` | Supported |
-| `0.2.1-rc.1` / `0.2.1-rc.2` | Supported (primary baseline) |
+| `0.2.1-rc.1` / `0.2.1-rc.2` / `0.2.1-rc.3` / `0.2.1-rc.4` | Supported (primary baseline: `0.2.1-rc.4`) |
 | `0.1.5-rc.1` and earlier | Not supported |
 | `0.2.2-rc.x`, `0.3.x` | Not declared until verified |
 
@@ -311,7 +311,7 @@ npm run verify:compaction # manual real-model compaction check (not part of chec
 ```
 
 The test suite covers the pure core, real Host composition, storage-domain behavior, Remote framing,
-history extraction, client state, and factory-bundle registration. Current matrix: **330 tests on DSH `0.1.7-rc.2`, `0.2.0-rc.1`/`rc.2`, and `0.2.1-rc.1`/`rc.2`**. See the [verification record](docs/verification.md) for commands and evidence.
+history extraction, client state, and factory-bundle registration. Current matrix: **331 tests on DSH `0.1.7-rc.2`, `0.2.0-rc.1`/`rc.2`, and `0.2.1-rc.1`/`rc.2`/`rc.3`/`rc.4`**. See the [verification record](docs/verification.md) for commands and evidence.
 
 ## Acknowledgements
 
@@ -347,7 +347,7 @@ security reports, follow [SECURITY.md](SECURITY.md).
 ## Status
 
 Pre-1.0. The DSH plugin ABI is still moving; compatibility is tested against the versions above, and the design
-keeps the compatibility layer deliberately small. The public repository is [centella-cream/dsh-charter](https://github.com/centella-cream/dsh-charter). This tree is the `0.1.0-rc.3` pre-release: the real-model
+keeps the compatibility layer deliberately small. The public repository is [centella-cream/dsh-charter](https://github.com/centella-cream/dsh-charter). This tree is the `0.1.0-rc.4` pre-release: the real-model
 compaction acceptance **PASS is recorded on 2026-10-22** on an anonymized evaluation Session (326 messages /
 ~228k tokens shadowed, revision-1 charter survived with matching digest — see verification §8.4). The rc.2 candidate
 is verified locally and is intended for the npm registry under the `next` dist-tag; under our channel policy
