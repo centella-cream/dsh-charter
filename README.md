@@ -110,8 +110,13 @@ The browser registers a `conversation.view` entry; the pane and `charter.watch` 
 
 `dsh-charter@0.1.0-rc.4` is the current npm pre-release. Our channel policy is to publish it under `next` and to
 point `latest` at the newest RC until a stable release exists (npm keeps a `latest` tag and we choose where it
-points; this is our policy, not an npm requirement). Pin the exact version for reproducible profiles, and use
-`@next` to track the newest pre-release.
+points; this is our policy, not an npm requirement).
+
+> **Pin an exact version for npm/CLI installation.** pnpm 11+ applies a default `minimumReleaseAge` of 1440
+> minutes (24 hours) before resolving a newly published release. During that window, unversioned resolution
+> (`dsh-charter`, `@next`, or `@latest`) can select an older release that does not declare compatibility with the
+> current DSH runtime, and DSH will reject it. An exact published version does not use that unversioned resolution
+> path. Do not bypass the compatibility gate with an exact-version exemption for an older, undeclared release.
 
 ### Recovery and record health (0.1.0-rc.3+)
 
@@ -140,30 +145,38 @@ a maintenance receipt are isolated (preserved, not injected/edited) by rc.2; upg
 
 ### Install from npm (recommended)
 
-#### Web profile — install by version or pre-release tag
+#### Web profile — install an exact version
 
 ```bash
-dsh plugin --profile web add dsh-charter@0.1.0-rc.4   # exact version: reproducible
-dsh plugin --profile web add dsh-charter@next         # newest pre-release
+# Pin the published version; required when the newest RC is inside the
+# pnpm release-age window.
+dsh plugin --profile web add dsh-charter@0.1.0-rc.4
 ```
 
-Use the exact version for reproducible profiles, or `@next` to track the newest pre-release. Under the current
-channel policy `@latest` points at the newest RC until a stable release exists. If the registry is unreachable,
-use the offline tarball fallback below.
+Pin an exact version for reproducible profiles. `@next` and `@latest` follow dist-tags but are still subject to
+pnpm's release-age policy, so they are not a reliable way to install a freshly published RC. If the registry is
+unreachable, or you need the exact release artifact, use the offline tarball fallback below.
 
 Restart `dsh web` (or let profile HMR recompose), then refresh the page. The profile's `package.json` gains the
 dependency and bundle entry.
 
-#### Desktop — install from Plugins
+#### Desktop — install through Plugins
 
-If your Desktop build exposes the public plugin catalog, open **Desktop → Plugins**, search for
-**`dsh-charter`**, and click **Install** (or **Update** when already installed). Desktop owns the plugin
-lifecycle and hot-applies the new bundle. Otherwise use the offline tarball fallback below.
+Open **Desktop → Plugins** and use **Install**/**Update** for `dsh-charter`. The current Desktop Plugins UI does
+not accept an exact npm version spec; it resolves the package through its plugin catalog. Consequently, when a
+new release is still inside pnpm's release-age window, the catalog can initially resolve an older release that
+the DSH compatibility gate rejects. In that case, wait until the target release is outside the release-age
+window and retry **Install**/**Update**. Do not disable the policy or grant an exact-version exemption to force
+an older, undeclared release.
+
+For an immediate or exact install, use the offline tarball fallback below if your Desktop build supports
+importing a local plugin. Otherwise, the Plugins UI is the only supported Desktop installation path. Desktop
+owns the plugin lifecycle and hot-applies the new bundle.
 
 ### Offline / local tarball fallback
 
-Use this path for air-gapped machines, Desktop builds that only import local plugins, or verifying the exact
-release artifact. The GitHub Release ships the same tarball and `SHA256SUMS` used by `npm publish`.
+Use this path as a backup for air-gapped machines, exact-artifact verification, or Desktop builds that support
+importing a local plugin. The GitHub Release ships the same tarball and `SHA256SUMS` used by `npm publish`.
 
 ```bash
 # From a checkout:
@@ -183,10 +196,16 @@ Desktop Plugins page or that profile's package manager. Source-level development
 
 ### Update
 
-- **Web (npm):** `dsh plugin --profile web add dsh-charter@next`, then restart/refresh. Pinned profiles keep
-  their explicit `0.1.0-rc.4` entry.
-- **Local tarball:** rebuild/download the new tarball and repeat the local install command.
-- **Desktop:** Plugins → `dsh-charter` → **Update**; Desktop hot-applies it.
+- **Web (npm):** install the exact target version, e.g.
+  `dsh plugin --profile web add dsh-charter@0.1.0-rc.4`, then restart/refresh. Pinned profiles keep their
+  explicit version entry. Do not use a bare `@next`/`@latest` immediately after a release; pnpm's release-age
+  policy can resolve an older version.
+- **Local tarball:** rebuild/download the new tarball and repeat the local install command; this bypasses
+  registry release-age resolution.
+- **Desktop:** use **Plugins → Install/Update**. The UI has no exact npm version selector, so it follows the
+  catalog and the release-age policy. If it resolves an older release that the compatibility gate rejects, wait
+  until the target release matures and retry, or use the offline tarball fallback if your build supports local
+  plugin import. Desktop hot-applies the new bundle.
 
 ## Quick start
 

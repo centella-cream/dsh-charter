@@ -100,10 +100,12 @@ Host 在 `session/created` 时初始化记录，并在首次 prompt 前的 `agen
 ## 安装
 
 `dsh-charter@0.1.0-rc.4` 是当前 npm 预发布版本。当前渠道策略是发布到 `next`，并在稳定版出现前让 `latest` 也指向
-最新 RC（npm 会保留 `latest` tag，由我们决定其指向；这是我们的策略，不是 npm 的强制要求）。需要可复现 profile
-时固定精确版本。
-npm 目前也会把这个首个 RC 暴露在 `latest` 下，因为 npm 会给新包的首次发布自动设置 `latest`——稳定版发布后
-会替换它。不要依赖 `@latest` 安装预发布版。
+最新 RC（npm 会保留 `latest` tag，由我们决定其指向；这是我们的策略，不是 npm 的强制要求）。
+
+> **通过 npm/CLI 安装时请固定精确版本。** pnpm 11+ 默认启用 `minimumReleaseAge = 1440` 分钟（24 小时），
+> 新发布的版本在这个窗口内不会参与正常解析。此时不带版本的安装或更新（`dsh-charter`、`@next`、`@latest`）
+> 可能解析到旧版本；如果该旧版本没有声明支持当前 DSH runtime，会被兼容性检查拒绝。精确发布版本不经过这条
+> 无版本解析路径。不要通过 exact-version exemption 强行启用未声明兼容的旧版本。
 
 ### 恢复与记录健康（0.1.0-rc.3+）
 
@@ -128,29 +130,33 @@ rc.2 隔离（保留但不注入/编辑）；重新升级到 rc.3 后恢复访�
 
 ### 从 npm 安装（推荐）
 
-#### Web profile — 按版本或预发布 tag 安装
+#### Web profile — 安装精确版本
 
 ```bash
-dsh plugin --profile web add dsh-charter@0.1.0-rc.4   # 精确版本：可复现
-dsh plugin --profile web add dsh-charter@next         # 最新预发布
+# 固定已发布版本；最新 RC 处于 pnpm release-age 窗口内时这是必需做法。
+dsh plugin --profile web add dsh-charter@0.1.0-rc.4
 ```
 
-固定精确版本可以保证 profile 可复现；`@next` 跟踪最新预发布。`@latest` 不是预发布渠道，稳定版出现后会指向
-稳定版。registry 不可达时，使用下面的离线 tarball 回退方式。
+固定精确版本可以保证 profile 可复现。`@next` 和 `@latest` 只是 dist-tag，同样受 pnpm release-age 策略影响，
+不能可靠地用来安装刚发布的 RC。registry 不可达、或需要精确发布产物时，使用下面的离线 tarball 回退方式。
 
 重启 `dsh web`（或等待 profile HMR 重新组合），然后刷新页面。profile 的 `package.json` 会增加依赖和
 bundle 选择。
 
-#### Desktop — 从 Plugins 安装
+#### Desktop — 通过 Plugins 安装
 
-如果你的 Desktop 版本已接入公开插件目录，打开 **Desktop → Plugins**，搜索 **`dsh-charter`**，点击
-**Install**；已安装时点击 **Update**。Desktop 管理插件生命周期并热更新新的 bundle。否则使用下面的离线
-tarball 回退方式。
+打开 **Desktop → Plugins**，对 `dsh-charter` 使用 **Install**/**Update**。当前 Desktop Plugins UI 不支持输入
+精确的 npm 版本 spec，而是通过插件目录解析版本。因此，新版本仍处于 pnpm release-age 窗口内时，目录可能先
+解析到旧版本，然后被 DSH 兼容性检查拒绝。遇到这种情况，请等目标版本离开 release-age 窗口后重试
+**Install**/**Update**。不要关闭该策略，也不要对未声明兼容的旧版本授予 exact-version exemption 来强行安装。
+
+如需立即安装或精确安装，并且你的 Desktop 构建支持导入本地插件，请使用下面的离线 tarball 回退方式；否则
+Plugins UI 是 Desktop 唯一受支持的安装路径。Desktop 管理插件生命周期并热更新新的 bundle。
 
 ### 离线 / 本地 tarball 回退
 
-适用于离线/air-gapped 机器、只能导入本地插件的 Desktop 构建，或需要校验精确发布产物的场景。GitHub Release
-附带与 `npm publish` 完全相同的 tarball 和 `SHA256SUMS`。
+作为离线/air-gapped 机器、精确发布产物校验，或支持导入本地插件的 Desktop 构建的备用安装路径。GitHub
+Release 附带与 `npm publish` 完全相同的 tarball 和 `SHA256SUMS`。
 
 ```bash
 # 在 checkout 中：
@@ -170,10 +176,13 @@ profile 自己的包管理器。源码开发流程见 [CONTRIBUTING.zh.md](CONTR
 
 ### 更新
 
-- **Web（npm）**：`dsh plugin --profile web add dsh-charter@next`，然后重启/刷新；固定版本 profile 继续使用
-  显式的 `0.1.0-rc.4`；
-- **本地 tarball**：重新构建/下载新 tarball，并重复本地安装命令；
-- **Desktop**：Plugins → `dsh-charter` → **Update**，Desktop 会热更新。
+- **Web（npm）**：安装精确目标版本，例如
+  `dsh plugin --profile web add dsh-charter@0.1.0-rc.4`，然后重启/刷新；固定版本 profile 继续使用显式版本。
+  新版本发布后不要立即使用裸 `@next`/`@latest`，pnpm 的 release-age 策略可能解析到旧版本；
+- **本地 tarball**：重新构建/下载新 tarball，并重复本地安装命令；这条路径绕过 registry 的 release-age 解析；
+- **Desktop**：使用 **Plugins → Install/Update**。UI 没有精确 npm 版本选择器，因此会遵循插件目录和
+  release-age 策略。如果解析到旧版本并被兼容性检查拒绝，等目标版本成熟后重试；对支持本地插件导入的构建，
+  使用离线 tarball 回退。Desktop 会热更新。
 
 ## 快速开始
 
