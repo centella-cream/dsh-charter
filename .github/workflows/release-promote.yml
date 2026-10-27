@@ -31,7 +31,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: release-promote-${{ inputs.version }}
+  group: release-promote
   cancel-in-progress: false
 
 jobs:
@@ -55,6 +55,12 @@ jobs:
         with:
           node-version: '22.19.0'
           cache: npm
+          registry-url: 'https://registry.npmjs.org'
+      - name: Install npm with OIDC publish and dist-tag support
+        run: |
+          set -euo pipefail
+          npm install --global npm@12.2.0
+          test "$(npm --version)" = "12.2.0"
       - name: Validate inputs and main/release ordering
         run: |
           set -euo pipefail
@@ -102,11 +108,37 @@ jobs:
           }
           if (meta.artifact !== process.env.ARTIFACT_BASE) throw new Error('release-metadata.artifact mismatch')
           NODE
+      - name: Preflight dist-tags against the current registry
+        run: |
+          set -euo pipefail
+          CURRENT_LATEST=$(npm view dsh-charter dist-tags.latest)
+          CURRENT_NEXT=$(npm view dsh-charter dist-tags.next)
+          export CURRENT_LATEST CURRENT_NEXT VERSION
+          node - <<'NODE'
+          const currentLatest = process.env.CURRENT_LATEST
+          const currentNext = process.env.CURRENT_NEXT
+          const target = process.env.VERSION
+          const rc = value => {
+            const match = /^0\.1\.0-rc\.(\d+)$/u.exec(value)
+            if (match === null) throw new Error(`unsupported current tag: ${value}`)
+            return Number(match[1])
+          }
+          const targetRc = rc(target)
+          for (const [name, current] of [['latest', currentLatest], ['next', currentNext]]) {
+            if (current !== undefined && rc(current) > targetRc) {
+              throw new Error(`refusing to move ${name} backward from ${current} to ${target}`)
+            }
+          }
+          NODE
       - name: Verify protected browser evidence
         run: |
           set -euo pipefail
-          gh run view "$BROWSER_EVIDENCE_RUN_ID" --json workflowName,conclusion,headSha > browser-run.json
-          node -e "const r=require('./browser-run.json'); if(r.workflowName!=='Record browser recovery evidence'||r.conclusion!=='success') { console.error(r); process.exit(1) }"
+          gh run view "$BROWSER_EVIDENCE_RUN_ID" --json workflowName,event,status,conclusion,headSha > browser-run.json
+          node -e "const r=require('./browser-run.json'); if(r.workflowName!=='Record browser recovery evidence'||r.event!=='workflow_dispatch'||r.status!=='completed'||r.conclusion!=='success') { console.error(r); process.exit(1) }"
+          BROWSER_SHA=$(node -p "require('./browser-run.json').headSha")
+          BROWSER_PATH=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$BROWSER_EVIDENCE_RUN_ID" --jq .path)
+          test "$BROWSER_PATH" = ".github/workflows/browser-evidence.yml"
+          git merge-base --is-ancestor "$BROWSER_SHA" "$RELEASE_COMMIT"
           rm -rf browser-evidence && mkdir browser-evidence
           gh run download "$BROWSER_EVIDENCE_RUN_ID" -n browser-evidence -D browser-evidence
           test "$(find browser-evidence -maxdepth 1 -name 'browser-evidence.json' | wc -l)" -eq 1
@@ -154,12 +186,17 @@ jobs:
           fi
           if gh release view "$TAG" >/dev/null 2>&1; then
             test "$(gh release view "$TAG" --json isPrerelease -q .isPrerelease)" = "true"
+            rm -rf /tmp/release-assets && mkdir /tmp/release-assets
+            gh release download "$TAG" -D /tmp/release-assets -p '*.tgz' -p 'SHA256SUMS'
+            test "$(sha256sum /tmp/release-assets/*.tgz | awk '{print $1}')" = "$CANDIDATE_SHA256"
+            test "$(grep -c "$CANDIDATE_SHA256" /tmp/release-assets/SHA256SUMS)" -ge 1
           else
             gh release create "$TAG" candidate/*.tgz candidate/SHA256SUMS               --title "dsh-charter $VERSION"               --notes-file "docs/release-notes/$VERSION.md"               --verify-tag --prerelease
           fi
           if [ "$PUBLISHED" -eq 0 ]; then
             npm publish "candidate/$(basename candidate/*.tgz)" --access public --tag next --provenance
           fi
+          npm dist-tag add "dsh-charter@$VERSION" next
           npm dist-tag add "dsh-charter@$VERSION" latest
       - name: Verify registry version, tags, and downloaded digest
         run: |

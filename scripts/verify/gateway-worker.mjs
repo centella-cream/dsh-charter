@@ -96,12 +96,12 @@ ctx.typertGateway.resolveReceiverContext = (...args) => {
   receiverCalls += 1
   return originalResolveReceiver(...args)
 }
-let hostProbes = 0
-const originalView = service.view.bind(service)
-// A direct business probe after the policy would indicate a pre-policy dispatch.
-service.view = (...args) => {
-  hostProbes += 1
-  return originalView(...args)
+let storageReads = 0
+const sessionsTable = service.sessionsTable
+const originalTableGet = sessionsTable.get.bind(sessionsTable)
+sessionsTable.get = (...args) => {
+  storageReads += 1
+  return originalTableGet(...args)
 }
 const invoke = (method, argsValue, peerValue) =>
   ctx.typertGateway.invoke({ namespace: 'charter', method, args: argsValue, peer: peerValue })
@@ -133,12 +133,12 @@ ctx.remoteAccess.registerPolicy('guest', {
 const guestA = await invoke('edit', { request: editRequest(sessionA.id, 1, 'Guest A invariant', 'gw-guest-a') }, guest)
 check('guest edit on authorized Session A', guestA?.ok === true && service.view(sessionA).revision === 2)
 
-const beforeB = { receiver: receiverCalls, host: hostProbes }
+const beforeB = { receiver: receiverCalls, storage: storageReads }
 const guestBError = await invoke('edit', { request: editRequest(sessionB.id, 0, 'Guest B invariant', 'gw-guest-b') }, guest)
   .then(() => undefined, error => error)
 check('guest Session B denied', guestBError?.code === 'remote-access/denied')
 check('Session B denial precedes receiver activation', receiverCalls === beforeB.receiver)
-check('Session B denial precedes business/storage probe', hostProbes === beforeB.host)
+check('Session B denial precedes storage probe', storageReads === beforeB.storage)
 check('Session B stayed unmodified', service.view(sessionB).revision === 0)
 
 const guestExport = await invoke('exportRecord', { sessionId: sessionA.id }, guest)
@@ -178,19 +178,33 @@ const guestRestore = await invoke('restoreRecord', {
 }, guest)
 check('guest restore denied in business layer', guestRestore?.ok === false && guestRestore.code === 'FORBIDDEN')
 
+// Write-uncertain followed by the same mutation id must replay exactly once.
+const uncertainEdits = service.writeUncertain
+check('host exposes write-uncertain state', uncertainEdits !== undefined)
+const unknownRequest = editRequest(sessionA.id, service.view(sessionA).revision, 'Unknown outcome', 'gw-unknown')
+uncertainEdits.set(sessionA.id, 'edit')
+const unknown = await invoke('edit', { request: unknownRequest }, owner)
+check('unknown outcome is visible', unknown?.ok === false && unknown.code === 'UNAVAILABLE')
+uncertainEdits.delete(sessionA.id)
+const replay = await invoke('edit', { request: unknownRequest }, owner)
+check('same mutation replays exactly once', replay?.ok === true && replay.replayed === false)
+const secondReplay = await invoke('edit', { request: unknownRequest }, owner)
+check('second replay is marked replayed', secondReplay?.ok === true && secondReplay.replayed === true)
+const stableRevision = service.view(sessionA).revision
+
 const aborted = new AbortController()
 aborted.abort(new Error('cancelled before dispatch'))
 const cancelled = await invoke('edit', {
   request: editRequest(sessionA.id, service.view(sessionA).revision, 'Late write', 'gw-cancelled'),
 }, peer(ctx, { kind: 'owner' }, aborted.signal)).then(() => undefined, error => error)
 check('cancelled call fails', cancelled !== undefined)
-check('cancelled call writes nothing', service.view(sessionA).revision === 2)
+check('cancelled call writes nothing', service.view(sessionA).revision === stableRevision)
 
 const missing = await invoke('edit', {
-  request: editRequest(sessionA.id, 2, 'Missing principal', 'gw-missing'),
+  request: editRequest(sessionA.id, stableRevision, 'Missing principal', 'gw-missing'),
 }, peer(ctx, undefined)).then(() => undefined, error => error)
 check('missing principal fails closed', missing instanceof Error)
-check('missing principal writes nothing', service.view(sessionA).revision === 2)
+check('missing principal writes nothing', service.view(sessionA).revision === stableRevision)
 
 // Production Remote results are already the wire projection returned by a
 // strict descriptor; inspect the result shape rather than only success.
