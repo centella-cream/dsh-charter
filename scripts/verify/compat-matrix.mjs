@@ -95,16 +95,39 @@ async function prepareProject(version, workRoot) {
     await rm(join(dir, 'tests/gateway'), { recursive: true, force: true })
   }
   const pkg = JSON.parse(await readFile(join(dir, 'package.json'), 'utf8'))
+  // Explicit per-version test manifest: only packages imported by the shipped
+  // source/tests. Gateway tooling is exercised separately against the artifact.
+  const TEST_DSH_PACKAGES = [
+    '@deepseek-ai/dsh-agent',
+    '@deepseek-ai/dsh-api-gateway',
+    '@deepseek-ai/dsh-client-locale',
+    '@deepseek-ai/dsh-client-ui-conversation',
+    '@deepseek-ai/dsh-client-ui-renderer',
+    '@deepseek-ai/dsh-client-ui-session',
+    '@deepseek-ai/dsh-client-ui-slots',
+    '@deepseek-ai/dsh-session',
+    '@deepseek-ai/dsh-storage',
+    '@deepseek-ai/dsh-storage-domain',
+    '@deepseek-ai/dsh-storage-json',
+    '@deepseek-ai/dsh-system-prompt',
+    '@deepseek-ai/dsh-tools',
+    '@deepseek-ai/dsh-typert-protocol',
+  ]
   for (const name of Object.keys(pkg.devDependencies ?? {})) {
-    if (!name.startsWith('@deepseek-ai/dsh-')) continue
+    if (name.startsWith('@deepseek-ai/dsh-')) delete pkg.devDependencies[name]
+  }
+  for (const name of TEST_DSH_PACKAGES) {
     const cache = join(dir, '.npm-cache')
     const lookup = await run('npm', [
       'view', `${name}@${version}`, 'version', '--json', '--cache', cache,
     ], dir)
-    if (lookup.code !== 0 || lookup.stdoutTail.trim() === '') delete pkg.devDependencies[name]
-    else pkg.devDependencies[name] = version
+    if (lookup.code !== 0 || lookup.stdoutTail.trim() === '') {
+      throw new Error(`DSH ${version} has no ${name}; refusing an incomplete manifest`)
+    }
+    pkg.devDependencies[name] = version
   }
   await writeFile(join(dir, 'package.json'), JSON.stringify(pkg, null, 2) + '\n')
+  await rm(join(dir, 'package-lock.json'), { force: true })
   return dir
 }
 
@@ -123,15 +146,38 @@ async function main() {
   for (const version of args.versions) {
     const dir = await prepareProject(version, workRoot)
     const install = await run('npm', [
-      'install', '--ignore-scripts', '--legacy-peer-deps', '--no-audit', '--no-fund',
+      'install', '--ignore-scripts', '--no-audit', '--no-fund',
       '--cache', join(dir, '.npm-cache'),
     ], dir)
     let resolvedAgent = null
     try {
       resolvedAgent = JSON.parse(await readFile(join(dir, 'node_modules/@deepseek-ai/dsh-agent/package.json'), 'utf8')).version
     } catch { /* install failed; the record captures that */ }
-    const result = { version, installedAgent: resolvedAgent, install, typecheck: null, build: null, test: null, passed: false }
+    const peers = Object.keys(JSON.parse(await readFile(join(dir, 'package.json'), 'utf8')).peerDependencies ?? {})
+      .filter(name => name.startsWith('@deepseek-ai/dsh-'))
+    let peerMismatch = null
     if (install.code === 0) {
+      for (const name of peers) {
+        try {
+          const installed = JSON.parse(await readFile(join(dir, 'node_modules', name, 'package.json'), 'utf8')).version
+          if (installed !== version) peerMismatch = `${name}: ${installed} != ${version}`
+        } catch {
+          peerMismatch = `${name}: missing`
+        }
+        if (peerMismatch !== null) break
+      }
+    }
+    const result = {
+      version,
+      installedAgent: resolvedAgent,
+      peerMismatch,
+      install,
+      typecheck: null,
+      build: null,
+      test: null,
+      passed: false,
+    }
+    if (install.code === 0 && peerMismatch === null) {
       result.typecheck = await run(join(dir, 'node_modules/.bin/tsc'), ['--noEmit'], dir)
       result.build = await run('npm', ['run', 'build'], dir)
       const needsGateway = version.localeCompare('0.2.1-rc.3', undefined, { numeric: true }) >= 0
@@ -140,7 +186,8 @@ async function main() {
       if (!needsGateway) testArgs.push('--exclude', 'tests/gateway/**')
       result.test = await run(join(dir, 'node_modules/.bin/vitest'), testArgs, dir)
     }
-    result.passed = install.code === 0 && result.typecheck?.code === 0 && result.build?.code === 0 && result.test?.code === 0
+    result.passed = install.code === 0 && peerMismatch === null
+      && result.typecheck?.code === 0 && result.build?.code === 0 && result.test?.code === 0
     evidence.versions.push(result)
     console.log(`${result.passed ? 'PASS' : 'FAIL'} DSH ${version} (agent ${resolvedAgent ?? 'missing'})`)
     if (!result.passed) process.exitCode = 1

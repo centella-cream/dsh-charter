@@ -24,8 +24,8 @@ persistent schema version.
 - Connection error kinds, expandable escaped technical details, composer-specific ARIA labels, meter semantics,
   and larger narrow/coarse-pointer touch targets.
 - Seven-version compatibility metadata in all declaration sites, a tracked compatibility runner, and one-artifact
-  release candidate/promote workflows. A real `TypertGatewayService` suite now covers owner/guest edit, guest
-  maintenance/purge refusal, and pre-business denial on DSH `0.2.1-rc.3`/`rc.4`.
+  release candidate/promote workflows. A real `TypertGatewayService` smoke imports the exact artifact and covers owner/guest edit, Session
+  resource denial, maintenance refusal, and missing-principal fail-closed behavior.
 
 ### Verification
 

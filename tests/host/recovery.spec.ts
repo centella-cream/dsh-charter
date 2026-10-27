@@ -990,6 +990,22 @@ describe('rc.5 forward-schema fence', () => {
     expect(exported.ok).toBe(true)
     if (exported.ok) expect(exported.archive.source.health).toBe('schema-invalid')
     const beforeBytes = await readFile(path)
+    // A finite integer beyond MAX_SAFE_INTEGER is still a future version, not recoverable schema damage.
+    await table.put(session.id, { ...future, recordSchemaVersion: 10 ** 20 })
+    await service.ensureSession(session, 'resume')
+    await waitFor(service, session, () => service.view(session).recordState?.kind === 'invalid')
+    expect(service.view(session).recordState).toMatchObject({
+      kind: 'invalid',
+      reason: 'future-schema',
+      recoverable: false,
+    })
+    // Restore the previous future record before exercising the stale-client path.
+    await table.put(session.id, future)
+    await service.ensureSession(session, 'resume')
+    await waitFor(service, session, () => {
+      const state = service.view(session).recordState
+      return state?.kind === 'invalid' && state.reason === 'future-schema'
+    })
     // A stale rc.4 client request naming reason:schema and the exact digest must not overwrite it.
     const restore = await service.restoreRecord({
       sessionId: session.id,

@@ -144,7 +144,9 @@ type InitSource = StartSource | 'reattach' | 'unknown'
 function finiteRecordSchemaVersion(stored: unknown): number | undefined {
   if (typeof stored !== 'object' || stored === null || Array.isArray(stored)) return undefined
   const value = (stored as { recordSchemaVersion?: unknown }).recordSchemaVersion
-  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : undefined
+  return typeof value === 'number' && Number.isFinite(value) && Number.isInteger(value) && value >= 0
+    ? value
+    : undefined
 }
 
 function futureSchemaRecordState(

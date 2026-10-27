@@ -40,7 +40,7 @@ jobs:
           node-version: '22.19.0'
           cache: npm
       - run: npm ci
-      - run: node scripts/verify/compat-matrix.mjs --versions minimum,old-boundary,current --out compat-matrix.json
+      - run: node scripts/verify/compat-matrix.mjs --versions all --out compat-matrix.json
       - uses: actions/upload-artifact@v4
         with:
           name: compat-evidence
@@ -76,10 +76,13 @@ jobs:
           BASE=$(basename "$TGZ")
           printf '%s  %s\n' "$SHA" "$BASE" > dist/SHA256SUMS
           cp dist/SHA256SUMS SHA256SUMS
-          printf '%s\n' "$SHA" >> "$GITHUB_OUTPUT"
+          printf 'sha256=%s\n' "$SHA" >> "$GITHUB_OUTPUT"
           printf 'artifact-name=%s\n' "release-candidate" >> "$GITHUB_OUTPUT"
           printf 'pack-commit=%s\n' "$GITHUB_SHA" >> "$GITHUB_OUTPUT"
           SHA="$SHA" BASE="$BASE" node -e "const fs=require('fs');fs.writeFileSync('release-metadata.json',JSON.stringify({version:process.env.VERSION,commit:process.env.GITHUB_SHA,runId:process.env.GITHUB_RUN_ID,artifactSha256:process.env.SHA,artifact:process.env.BASE},null,2)+'\\n')"
+          grep -q "sha256=$SHA" "$GITHUB_OUTPUT"
+          grep -q "\"artifactSha256\": \"$SHA\"" release-metadata.json
+          test "$(sha256sum "$TGZ" | awk '{print $1}')" = "$SHA"
       - uses: actions/upload-artifact@v4
         with:
           name: release-candidate
@@ -136,10 +139,10 @@ jobs:
         with:
           name: release-candidate
           path: candidate
-      - name: Real Gateway acceptance
+      - name: Real Gateway acceptance on the exact artifact
         run: |
           npm ci
-          node scripts/verify/gateway-smoke.mjs --versions 0.2.1-rc.3,0.2.1-rc.4 --out gateway-smoke.json
+          node scripts/verify/gateway-smoke.mjs --artifact "candidate/$(basename candidate/*.tgz)" --sha256 candidate/SHA256SUMS
 
   browser-recovery:
     runs-on: ubuntu-latest

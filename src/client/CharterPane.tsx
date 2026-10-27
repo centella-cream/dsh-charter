@@ -680,6 +680,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   const [confirmDiscardAll, setConfirmDiscardAll] = useState(false)
   const [archivePreview, setArchivePreview] = useState<ArchivePreview | null>(null)
   const [confirmRecovery, setConfirmRecovery] = useState<'initialize' | 'restore' | null>(null)
+  const [confirmRestoreKey, setConfirmRestoreKey] = useState<string | null>(null)
   const [exportProblem, setExportProblem] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
   const archiveGenerationRef = useRef(0)
@@ -852,6 +853,32 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
     ? recordState.recordDigest
     : undefined
 
+  // A confirmation names the exact target and archive, not just the current
+  // view. A stream update with the same reason but another digest must reset it.
+  const restoreConfirmationKey = JSON.stringify({
+    sessionId: view?.sessionId,
+    lifecycle: view?.lifecycle,
+    target: recordState === undefined
+      ? null
+      : {
+          kind: recordState.kind,
+          reason: recordState.kind === 'invalid' ? recordState.reason : null,
+          digest: recordState.kind === 'healthy'
+            || recordState.kind === 'invalid'
+            || recordState.kind === 'lifecycle-mismatch'
+            ? recordState.recordDigest
+            : null,
+        },
+    archive: archivePreview?.archive === undefined
+      ? null
+      : {
+          payloadDigest: archivePreview.archive.payloadDigest,
+          recordDigest: archivePreview.archive.source.recordDigest,
+          sourceSession: archivePreview.archive.source.sessionId,
+          sourceLifecycle: archivePreview.archive.source.lifecycle,
+        },
+  })
+
   const initAdmission = view === null
     ? { ok: false as const, reason: 'busy' }
     : draft.maintenanceAdmission(view, 'initialize')
@@ -863,7 +890,8 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   // an in-flight request, success, or abandon.
   useEffect(() => {
     setConfirmRecovery(null)
-  }, [section, view?.sessionId, view?.lifecycle, archivePreview?.fileName, recoveryBusy])
+    setConfirmRestoreKey(null)
+  }, [section, restoreConfirmationKey, recoveryBusy])
 
   useEffect(() => {
     if (draftState.maintenanceSaving || maintenanceReplay) return
@@ -1112,6 +1140,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
       return
     }
     setConfirmRecovery(null)
+    setConfirmRestoreKey(null)
     void draft.initializeEmpty(view)
   }
 
@@ -1119,11 +1148,13 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
     if (view === null || archivePreview?.archive === undefined) return
     if (!maintenanceEnabled || !restoreTarget || !restoreAdmission.ok) return
     if (archivePreview.health !== 'healthy') return
-    if (confirmRecovery !== 'restore') {
+    if (confirmRecovery !== 'restore' || confirmRestoreKey !== restoreConfirmationKey) {
       setConfirmRecovery('restore')
+      setConfirmRestoreKey(restoreConfirmationKey)
       return
     }
     setConfirmRecovery(null)
+    setConfirmRestoreKey(null)
     void draft.restoreArchive(view, archivePreview.archive)
   }
 
