@@ -148,6 +148,7 @@ jobs:
           npm ci
           node scripts/verify/gateway-smoke.mjs --artifact "candidate/$(basename candidate/*.tgz)" --sha256 candidate/SHA256SUMS
       - uses: actions/upload-artifact@v4
+        if: ${{ always() }}
         with:
           name: gateway-evidence
           path: .tmp/gateway-smoke.json
