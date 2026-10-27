@@ -139,7 +139,7 @@ jobs:
           BROWSER_SHA=$(node -p "require('./browser-run.json').headSha")
           BROWSER_PATH=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$BROWSER_EVIDENCE_RUN_ID" --jq .path)
           test "$BROWSER_PATH" = ".github/workflows/browser-evidence.yml"
-          git merge-base --is-ancestor "$BROWSER_SHA" "$RELEASE_COMMIT"
+          test "$BROWSER_SHA" = "$RELEASE_COMMIT"
           rm -rf browser-evidence && mkdir browser-evidence
           gh run download "$BROWSER_EVIDENCE_RUN_ID" -n browser-evidence -D browser-evidence
           test "$(find browser-evidence -maxdepth 1 -name 'browser-evidence.json' | wc -l)" -eq 1
@@ -148,6 +148,8 @@ jobs:
           const evidence = JSON.parse(fs.readFileSync('browser-evidence/browser-evidence.json', 'utf8'))
           if (evidence.schemaVersion !== 1) throw new Error('schemaVersion')
           if (evidence.candidateSha256 !== process.env.SHA) throw new Error('browser evidence SHA mismatch')
+          if (evidence.candidateRunId !== process.env.RUN_ID) throw new Error('browser evidence candidate run mismatch')
+          if (evidence.candidateCommit !== process.env.CANDIDATE_COMMIT) throw new Error('browser evidence candidate commit mismatch')
           NODE
       - name: Verify C+1 changes only the root checksum
         run: |

@@ -25,8 +25,8 @@ persistent schema version.
   and larger narrow/coarse-pointer touch targets.
 - Seven-version compatibility metadata in all declaration sites, a tracked compatibility runner, and one-artifact
   release candidate/promote workflows. A real `TypertGatewayService` smoke installs the exact artifact on isolated rc.3/rc.4 graphs and covers
-  owner/guest edit, Session resource denial before business dispatch, maintenance refusal, cancellation, and
-  missing-principal fail-closed behavior.
+  owner/guest edit, Session resource denial before business dispatch, maintenance refusal, pre-dispatch cancellation, and
+  missing-principal fail-closed behavior; write-uncertain replay is simulated, not a mid-dispatch fault.
 
 ### Verification
 
