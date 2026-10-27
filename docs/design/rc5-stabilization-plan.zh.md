@@ -351,9 +351,10 @@ source gate 不运行普通模式 `npm run smoke:package`，因为该命令会�
 4. 校验 tracked digest、artifact digest、版本和 metadata 一致，复跑 exact-artifact，不 build、不 pack。
 5. tag 指向 `C+1`；release metadata 同时记录 C、C+1、workflow run/artifact ID 和 tarball SHA。
 6. 创建 GitHub Release，并 `npm publish <tgz> --tag next`，禁止目录 publish。
-7. 回读 registry exact version、dist-tags 和 tarball digest。
+7. `next` 和 `latest` 都指向最新 RC；stable 发布时才把 `latest` 指向 stable。禁止把 `next`/`latest` 回退到旧 RC。
+8. 回读 registry exact version、dist-tags 和 tarball digest。
 
-stable 时再把 `latest` 指向 `0.1.0`。已发布 RC 不移动 tag、不重建同版本。
+已发布 RC 不移动 tag、不重建同版本。
 
 ## 11. 实施顺序
 

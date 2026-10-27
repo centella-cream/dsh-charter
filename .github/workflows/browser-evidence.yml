@@ -37,8 +37,9 @@ jobs:
           set -euo pipefail
           printf '%s' "$RUN_ID" | grep -Eq '^[1-9][0-9]*$'
           printf '%s' "$CANDIDATE_SHA256" | grep -Eq '^[0-9a-f]{64}$'
-          gh run view "$RUN_ID" --json workflowName,conclusion,headSha > candidate-run.json
-          node -e "const r=require('./candidate-run.json'); if(r.workflowName!=='Release candidate'||r.conclusion!=='success') process.exit(1)"
+          test "${GITHUB_REF}" = "refs/heads/main"
+          gh run view "$RUN_ID" --json workflowName,event,status,conclusion,headSha > candidate-run.json
+          node -e "const r=require('./candidate-run.json'); if(r.workflowName!=='Release candidate'||r.event!=='workflow_dispatch'||r.status!=='completed'||r.conclusion!=='success') { console.error(r); process.exit(1) }"
           rm -rf candidate && mkdir candidate
           gh run download "$RUN_ID" -n release-candidate -D candidate
           test "$(find candidate -maxdepth 1 -name '*.tgz' | wc -l)" -eq 1
@@ -51,14 +52,33 @@ jobs:
           const required = [
             'fresh-profile', 'export', 'archive-select', 'restore',
             'reload', 'host-restart', 'healthy-target-refusal',
+            'utf8-chinese-emoji', 'healthy-target-disabled', 'error-detail-long',
           ]
           if (evidence.schemaVersion !== 1) throw new Error('schemaVersion')
           if (evidence.candidateSha256 !== process.env.SHA) throw new Error('candidateSha256 mismatch')
-          if (typeof evidence.dshVersion !== 'string' || !/^0\.2\.1-rc\.[34]$/u.test(evidence.dshVersion)) throw new Error('dshVersion')
+          if (evidence.dshVersion !== '0.2.1-rc.4') throw new Error('dshVersion must be 0.2.1-rc.4')
           if (typeof evidence.recordedAt !== 'string' || Number.isNaN(Date.parse(evidence.recordedAt))) throw new Error('recordedAt')
           if (typeof evidence.operator !== 'string' || evidence.operator.length < 2) throw new Error('operator')
+          if (typeof evidence.candidateRunId !== 'string' || !/^[1-9][0-9]*$/u.test(evidence.candidateRunId)) throw new Error('candidateRunId')
+          if (typeof evidence.candidateCommit !== 'string' || !/^[0-9a-f]{40}$/u.test(evidence.candidateCommit)) throw new Error('candidateCommit')
+          if (typeof evidence.artifact !== 'string' || !evidence.artifact.endsWith('.tgz')) throw new Error('artifact')
           if (evidence.checks === null || typeof evidence.checks !== 'object') throw new Error('checks')
           for (const key of required) if (evidence.checks[key] !== true) throw new Error(`check missing: ${key}`)
+          const restore = evidence.restore
+          if (restore === null || typeof restore !== 'object') throw new Error('restore evidence')
+          for (const phase of ['before', 'after']) {
+            const value = restore[phase]
+            if (value === null || typeof value !== 'object') throw new Error(`restore.${phase}`)
+            if (!Number.isInteger(value.revision) || value.revision < 0) throw new Error(`restore.${phase}.revision`)
+            for (const key of ['recordDigest', 'storageDigest']) {
+              if (typeof value[key] !== 'string' || !/^sha256:[0-9a-f]{64}$/u.test(value[key])) throw new Error(`restore.${phase}.${key}`)
+            }
+          }
+          for (const width of [320, 375, 390]) {
+            const view = evidence.viewports?.[width]
+            if (view === undefined || typeof view.ok !== 'boolean' || view.ok !== true) throw new Error(`viewport ${width}`)
+          }
+          if (evidence.accessibility?.keyboard !== true || evidence.accessibility?.screenReader !== true) throw new Error('accessibility')
           NODE
           cat browser-evidence.json
       - uses: actions/upload-artifact@v4
