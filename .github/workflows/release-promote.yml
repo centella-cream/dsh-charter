@@ -1,28 +1,34 @@
 name: Promote release candidate
 
-# Promotion is deliberately separate from candidate production and protected by
-# an environment with required reviewers. It never builds or packs. It verifies
-# that C+1 differs from the candidate's C only in the root SHA256SUMS, then
-# tags, creates the GitHub Release, and publishes the exact candidate tarball.
-
+# Protected, no-build/no-pack promotion. The candidate artifact is the only
+# source of release bytes. Inputs are untrusted; use env: interpolation and
+# validate every identifier before touching the repository or npm.
 on:
   workflow_dispatch:
     inputs:
       candidate_run_id:
-        description: Successful release-candidate workflow run id
+        description: Successful Release candidate run id
         required: true
       candidate_commit:
-        description: Pack source commit C recorded by the candidate
+        description: Pack source commit C (40 hex)
+        required: true
+      release_commit:
+        description: C+1 release commit on main (40 hex)
         required: true
       candidate_sha256:
-        description: Tarball SHA-256 recorded by the candidate
+        description: Candidate tarball SHA-256 (64 hex)
         required: true
       version:
-        description: Exact version to publish, e.g. 0.1.0-rc.5
+        description: Exact SemVer version, e.g. 0.1.0-rc.5
         required: true
 
 permissions:
   contents: write
+  actions: read
+
+concurrency:
+  group: release-promote-${{ inputs.version }}
+  cancel-in-progress: false
 
 jobs:
   promote:
@@ -31,51 +37,102 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      RUN_ID: ${{ inputs.candidate_run_id }}
+      CANDIDATE_COMMIT: ${{ inputs.candidate_commit }}
+      RELEASE_COMMIT: ${{ inputs.release_commit }}
+      CANDIDATE_SHA256: ${{ inputs.candidate_sha256 }}
+      VERSION: ${{ inputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: main
       - uses: actions/setup-node@v4
         with:
           node-version: '22.19.0'
           cache: npm
-      - name: Download the candidate artifact
+      - name: Validate inputs and main/release ordering
         run: |
+          set -euo pipefail
+          printf '%s' "$RUN_ID" | grep -Eq '^[1-9][0-9]*$'
+          printf '%s' "$CANDIDATE_COMMIT" | grep -Eq '^[0-9a-f]{40}$'
+          printf '%s' "$RELEASE_COMMIT" | grep -Eq '^[0-9a-f]{40}$'
+          printf '%s' "$CANDIDATE_SHA256" | grep -Eq '^[0-9a-f]{64}$'
+          printf '%s' "$VERSION" | grep -Eq '^0\.1\.0-rc\.[0-9]+$'
+          git fetch origin main --prune
+          git cat-file -e "$CANDIDATE_COMMIT^{commit}"
+          git cat-file -e "$RELEASE_COMMIT^{commit}"
+          git merge-base --is-ancestor "$CANDIDATE_COMMIT" origin/main
+          git merge-base --is-ancestor "$RELEASE_COMMIT" origin/main
+          test "$(git rev-parse origin/main)" = "$RELEASE_COMMIT"
+          git checkout --detach "$RELEASE_COMMIT"
+      - name: Verify the candidate run is the successful producer
+        run: |
+          set -euo pipefail
+          gh run view "$RUN_ID" --json workflowName,event,conclusion,headSha,status > candidate-run.json
+          node -e "const r=require('./candidate-run.json'); if(r.workflowName!=='Release candidate'||r.conclusion!=='success'||r.status!=='completed'||r.headSha!==process.env.CANDIDATE_COMMIT) { console.error(r); process.exit(1) }"
+          gh run view "$RUN_ID" --log-failed >/dev/null 2>&1 || true
+      - name: Download and verify the candidate artifact
+        run: |
+          set -euo pipefail
           rm -rf candidate && mkdir candidate
-          gh run download "${{ inputs.candidate_run_id }}" -n release-candidate -D candidate
+          gh run download "$RUN_ID" -n release-candidate -D candidate
           test "$(find candidate -maxdepth 1 -name '*.tgz' | wc -l)" -eq 1
-      - name: Verify C+1 changes only the root checksum file
+          SHA=$(sha256sum candidate/*.tgz | awk '{print $1}')
+          test "$SHA" = "$CANDIDATE_SHA256"
+          test "$(grep -c "$SHA" candidate/SHA256SUMS)" -ge 1
+          node - <<'NODE'
+          const fs = require('fs')
+          const meta = JSON.parse(fs.readFileSync('candidate/release-metadata.json', 'utf8'))
+          const checks = {
+            version: process.env.VERSION,
+            commit: process.env.CANDIDATE_COMMIT,
+            runId: process.env.RUN_ID,
+            artifactSha256: process.env.CANDIDATE_SHA256,
+          }
+          for (const [key, value] of Object.entries(checks)) {
+            if (String(meta[key]) !== String(value)) throw new Error(`release-metadata.${key} mismatch`)
+          }
+          NODE
+      - name: Verify C+1 changes only the root checksum
         run: |
-          C="${{ inputs.candidate_commit }}"
-          git fetch origin "$C" --depth=1
-          CHANGED=$(git diff --name-only "$C" HEAD)
+          set -euo pipefail
+          CHANGED=$(git diff --name-only "$CANDIDATE_COMMIT" "$RELEASE_COMMIT")
           test "$CHANGED" = "SHA256SUMS"
-          TGZ=$(find candidate -maxdepth 1 -name '*.tgz' | head -1)
-          SHA=$(sha256sum "$TGZ" | awk '{print $1}')
-          test "$SHA" = "${{ inputs.candidate_sha256 }}"
-          grep -q "$SHA" SHA256SUMS
-          grep -q "$SHA" candidate/SHA256SUMS
-          test "$(node -p "require('./package.json').version")" = "${{ inputs.version }}"
+          grep -q "$CANDIDATE_SHA256" SHA256SUMS
+          test "$(node -p "require('./package.json').version")" = "$VERSION"
+      - name: Verify exact CI success on C+1
+        run: |
+          set -euo pipefail
+          gh run list --workflow ci.yml --commit "$RELEASE_COMMIT" --limit 20 --json databaseId,conclusion,status,headSha > ci-runs.json
+          node -e "const rs=require('./ci-runs.json').filter(r=>r.headSha===process.env.RELEASE_COMMIT&&r.status==='completed'&&r.conclusion==='success'); if(rs.length===0) { console.error('no successful CI run for release commit'); process.exit(1) }"
       - name: Re-run exact-artifact smoke without build or pack
         run: |
+          set -euo pipefail
           npm ci
           mkdir -p dist && cp candidate/*.tgz dist/
           npm run smoke:package -- --artifact "dist/$(basename candidate/*.tgz)" --sha256 SHA256SUMS
           node scripts/verify/recovery-smoke.mjs --artifact "dist/$(basename candidate/*.tgz)" --sha256 SHA256SUMS
-      - name: Tag, release, and publish the exact tarball
+      - name: Tag, release, and publish the same tarball
         run: |
-          TAG="v${{ inputs.version }}"
-          git tag -a "$TAG" -m "dsh-charter ${{ inputs.version }} sha256 ${{ inputs.candidate_sha256 }}"
+          set -euo pipefail
+          TAG="v$VERSION"
+          test -z "$(git tag -l "$TAG")"
+          git tag -a "$TAG" -m "dsh-charter $VERSION sha256 $CANDIDATE_SHA256"
           git push origin "$TAG"
           gh release create "$TAG" candidate/*.tgz candidate/SHA256SUMS \
-            --title "dsh-charter ${{ inputs.version }}" \
-            --notes-file "docs/release-notes/${{ inputs.version }}.md" \
+            --title "dsh-charter $VERSION" \
+            --notes-file "docs/release-notes/$VERSION.md" \
             --verify-tag --prerelease
           npm config set //registry.npmjs.org/:_authToken "$NPM_TOKEN"
           npm publish "candidate/$(basename candidate/*.tgz)" --access public --tag next
+          npm dist-tag add "dsh-charter@$VERSION" latest
       - name: Verify registry version, tags, and downloaded digest
         run: |
-          npm view "dsh-charter@${{ inputs.version }}" version
-          npm dist-tag ls dsh-charter
-          npm pack "dsh-charter@${{ inputs.version }}" --pack-destination /tmp/published >/dev/null
-          sha256sum /tmp/published/*.tgz
+          set -euo pipefail
+          npm view "dsh-charter@$VERSION" version
+          npm dist-tag ls dsh-charter > dist-tags.txt
+          grep -q "next: $VERSION" dist-tags.txt
+          grep -q "latest: $VERSION" dist-tags.txt
+          npm pack "dsh-charter@$VERSION" --pack-destination /tmp/published >/dev/null
+          test "$(sha256sum /tmp/published/*.tgz | awk '{print $1}')" = "$CANDIDATE_SHA256"

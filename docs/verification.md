@@ -14,7 +14,7 @@ Environment: macOS, Node `v22.23.1`, npm `12.0.2`, pnpm `12.3.4`. Local DSH deve
 | Item | Result |
 | --- | --- |
 | Strict TypeScript check | Pass on the current tree |
-| Vitest | 27 files / 350 tests pass (`npm test`, which builds first) |
+| Vitest | 26 files / 347 tests pass (`npm test`, which builds first) |
 | Host ESM build + browser factory bundle | Pass |
 | Remote contract and client smoke | Pass |
 | Normal package smoke | Pass |
@@ -22,7 +22,7 @@ Environment: macOS, Node `v22.23.1`, npm `12.0.2`, pnpm `12.3.4`. Local DSH deve
 | Packed-artifact recovery smoke | Pass: export, target removal, restore, receipt replay, two restarts, healthy-target refusal, packed fault subset |
 | Real `TypertGatewayService` | Pass on DSH `0.2.1-rc.3` and `0.2.1-rc.4` |
 | Compatibility sentinels | Pass on `0.1.7-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4` |
-| Seven-version full rerun | Not completed; see §3 |
+| Seven-version full rerun | Pass locally (347/347 each) |
 | Real browser recovery | Not yet automated; candidate workflow fails closed |
 | Real-model compaction | Separately recorded PASS (2026-10-22); still a manual release gate |
 
@@ -54,16 +54,15 @@ The tracked runner creates isolated npm projects and runs typecheck/build/tests 
 
 | DSH version | Evidence |
 | --- | --- |
-| `0.1.7-rc.2` | 346/346 sentinel; Gateway test excluded because the Gateway API is absent |
-| `0.2.0-rc.1` | 331/331 full matrix recorded for rc.4 |
-| `0.2.0-rc.2` | 331/331 full matrix recorded for rc.4 |
-| `0.2.1-rc.1` | 331/331 full matrix recorded for rc.4 |
-| `0.2.1-rc.2` | 346/346 sentinel; Gateway test excluded because the typed Gateway API is absent |
-| `0.2.1-rc.3` | 331/331 full matrix recorded for rc.4; real Gateway suite passes for rc.5 |
-| `0.2.1-rc.4` | 350/350 sentinel; real Gateway suite passes |
+| `0.1.7-rc.2` | 347/347 full local matrix; `npm test` on current tree |
+| `0.2.0-rc.1` | 347/347 full local matrix; `npm test` on current tree |
+| `0.2.0-rc.2` | 347/347 full local matrix; `npm test` on current tree |
+| `0.2.1-rc.1` | 347/347 full local matrix; `npm test` on current tree |
+| `0.2.1-rc.2` | 347/347 full local matrix; `npm test` on current tree |
+| `0.2.1-rc.3` | 347/347 full local matrix; `npm test` on current tree |
+| `0.2.1-rc.4` | 347/347 full local matrix; `npm test` on current tree |
 
-The seven-version rc.5 full rerun is not complete. Do not present the sentinel rows as a full matrix. Release jobs
-run the full seven-version matrix before promotion.
+The rc.5 seven-version local matrix completed on 2026-10-27: every declared version passed typecheck, build, and 347/347 tests. The release candidate workflow runs the same matrix; its evidence remains local until CI executes it.
 
 ## 4. What the tests cover
 

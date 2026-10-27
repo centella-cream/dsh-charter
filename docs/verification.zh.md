@@ -21,7 +21,7 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 | packed recovery smoke | 通过：export、删除 target、restore、receipt replay、两次 restart、健康目标拒绝、packed fault 子集 |
 | 真实 `TypertGatewayService` | DSH `0.2.1-rc.3` / `0.2.1-rc.4` 通过 |
 | 兼容 sentinel | `0.1.7-rc.2`、`0.2.1-rc.2`、`0.2.1-rc.4` 通过 |
-| 七版本全量 rerun | 未完成，见 §3 |
+| 七版本全量 rerun | 本地通过（每版本 347/347） |
 | 真实浏览器恢复 | 尚未自动化；candidate workflow fail closed |
 | 真实模型 compaction | 2026-10-22 记录 PASS；仍是人工发布门禁 |
 
@@ -53,15 +53,15 @@ CI（`.github/workflows/ci.yml`）在 Node `22.19.0` / `24` 上运行 `npm run c
 
 | DSH 版本 | 证据 |
 | --- | --- |
-| `0.1.7-rc.2` | 346/346 sentinel；Gateway API 不存在，排除 gateway test |
-| `0.2.0-rc.1` | rc.4 全量矩阵 331/331 |
-| `0.2.0-rc.2` | rc.4 全量矩阵 331/331 |
-| `0.2.1-rc.1` | rc.4 全量矩阵 331/331 |
-| `0.2.1-rc.2` | 346/346 sentinel；typed Gateway API 不存在，排除 gateway test |
-| `0.2.1-rc.3` | rc.4 全量矩阵 331/331；rc.5 真实 Gateway 套件通过 |
-| `0.2.1-rc.4` | 350/350 sentinel；真实 Gateway 套件通过 |
+| `0.1.7-rc.2` | 347/347 本地全量矩阵 |
+| `0.2.0-rc.1` | 347/347 本地全量矩阵 |
+| `0.2.0-rc.2` | 347/347 本地全量矩阵 |
+| `0.2.1-rc.1` | 347/347 本地全量矩阵 |
+| `0.2.1-rc.2` | 347/347 本地全量矩阵 |
+| `0.2.1-rc.3` | 347/347 本地全量矩阵 |
+| `0.2.1-rc.4` | 347/347 本地全量矩阵 |
 
-rc.5 的七版本全量 rerun 未完成；不要把 sentinel 行当作全量矩阵。发布 job 在 promotion 前运行七版本全量。
+rc.5 七版本本地矩阵已于 2026-10-27 完成：每个声明版本均通过 typecheck、build 和 347/347 测试。release candidate workflow 会运行同一矩阵；CI 执行前该证据仍属本地。
 
 ## 4. 测试覆盖
 

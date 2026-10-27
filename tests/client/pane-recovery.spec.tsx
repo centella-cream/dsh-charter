@@ -358,3 +358,28 @@ describe('Storage & recovery async ownership', () => {
     expect(textOf(tree.root)).not.toContain('old-life.json')
   })
 })
+
+describe('rc.5 restore confirmation binding', () => {
+  it('resets a pending restore confirmation when the target digest changes', async () => {
+    const h = harness(invalidView())
+    const tree = mount(invalidView(), h)
+    const archive = archiveFor(createEmptyRecord({ createdAt: 1_700_000_000_000 }, DEFAULT_CHARTER_LIMITS))
+    selectArchive(tree, archive)
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
+      if (textOf(tree.root).includes('recovery.verified')) break
+    }
+    click(tree, 'recovery.restore')
+    expect(tree.root.findAll(node => node.type === 'button' && textOf(node) === 'recovery.restoreConfirm')).toHaveLength(1)
+    act(() => h.setView({
+      ...invalidView(),
+      recordState: {
+        kind: 'invalid',
+        reason: 'schema',
+        recordDigest: `sha256:${'c'.repeat(64)}`,
+        recoverable: true,
+      },
+    }))
+    expect(tree.root.findAll(node => node.type === 'button' && textOf(node) === 'recovery.restoreConfirm')).toHaveLength(0)
+  })
+})
