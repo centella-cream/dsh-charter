@@ -1,0 +1,68 @@
+name: Record browser recovery evidence
+
+# Manual, protected browser gate. A human runs the documented export/restore
+# walkthrough in a real Web profile against the exact candidate tarball and
+# submits machine-verifiable evidence here. The release environment must have
+# required reviewers; promotion consumes the uploaded artifact, not the input.
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_run_id:
+        description: Successful Release candidate run id
+        required: true
+      candidate_sha256:
+        description: Candidate tarball SHA-256 (64 hex)
+        required: true
+      evidence:
+        description: Base64-encoded browser-evidence JSON
+        required: true
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    environment: release
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RUN_ID: ${{ inputs.candidate_run_id }}
+      CANDIDATE_SHA256: ${{ inputs.candidate_sha256 }}
+      EVIDENCE_B64: ${{ inputs.evidence }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate and preserve browser evidence
+        run: |
+          set -euo pipefail
+          printf '%s' "$RUN_ID" | grep -Eq '^[1-9][0-9]*$'
+          printf '%s' "$CANDIDATE_SHA256" | grep -Eq '^[0-9a-f]{64}$'
+          gh run view "$RUN_ID" --json workflowName,conclusion,headSha > candidate-run.json
+          node -e "const r=require('./candidate-run.json'); if(r.workflowName!=='Release candidate'||r.conclusion!=='success') process.exit(1)"
+          rm -rf candidate && mkdir candidate
+          gh run download "$RUN_ID" -n release-candidate -D candidate
+          test "$(find candidate -maxdepth 1 -name '*.tgz' | wc -l)" -eq 1
+          SHA=$(sha256sum candidate/*.tgz | awk '{print $1}')
+          test "$SHA" = "$CANDIDATE_SHA256"
+          printf '%s' "$EVIDENCE_B64" | base64 -d > browser-evidence.json
+          SHA="$SHA" node - <<'NODE'
+          const fs = require('fs')
+          const evidence = JSON.parse(fs.readFileSync('browser-evidence.json', 'utf8'))
+          const required = [
+            'fresh-profile', 'export', 'archive-select', 'restore',
+            'reload', 'host-restart', 'healthy-target-refusal',
+          ]
+          if (evidence.schemaVersion !== 1) throw new Error('schemaVersion')
+          if (evidence.candidateSha256 !== process.env.SHA) throw new Error('candidateSha256 mismatch')
+          if (typeof evidence.dshVersion !== 'string' || !/^0\.2\.1-rc\.[34]$/u.test(evidence.dshVersion)) throw new Error('dshVersion')
+          if (typeof evidence.recordedAt !== 'string' || Number.isNaN(Date.parse(evidence.recordedAt))) throw new Error('recordedAt')
+          if (typeof evidence.operator !== 'string' || evidence.operator.length < 2) throw new Error('operator')
+          if (evidence.checks === null || typeof evidence.checks !== 'object') throw new Error('checks')
+          for (const key of required) if (evidence.checks[key] !== true) throw new Error(`check missing: ${key}`)
+          NODE
+          cat browser-evidence.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: browser-evidence
+          path: browser-evidence.json
+          if-no-files-found: error

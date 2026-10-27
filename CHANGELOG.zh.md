@@ -20,8 +20,8 @@
 - archive preview 使用 UTF-8 字节准入；WebCrypto 缺失或 reject 返回明确 `cryptoUnavailable`。
 - 连接错误分类、可展开转义详情、composer 独立 ARIA、meter 语义、窄屏/粗指针触控尺寸。
 - 七版本兼容元数据三处一致、受版本控制 compatibility runner、一次打包的 candidate/promote workflows；新增真实
-  `TypertGatewayService` smoke，从精确 artifact 导入，覆盖 owner/guest edit、Session 资源拒绝、maintenance
-  拒绝和 missing-principal fail closed。
+  `TypertGatewayService` smoke，将精确 artifact 安装到隔离的 rc.3/rc.4 依赖图，覆盖 owner/guest edit、
+  Session 资源在业务前拒绝、maintenance 拒绝、cancellation 和 missing-principal fail closed。
 
 ### 验证
 

@@ -178,8 +178,8 @@ keys, profile data, or local screenshots containing private content.
 
 `.github/workflows/release-candidate.yml` is the only producer of an rc.5 tarball. It runs source gates, the
 compatibility sentinels, one `npm pack`, then exact-artifact package smoke, packed recovery smoke, and the
-Gateway/browser jobs. The Gateway job calls the real tracked Gateway smoke; the browser job still fails closed until its tracked
-real script exists. Do not treat a source-only run as release evidence. Every consumer downloads the same `release-candidate` artifact and must use
+Gateway/browser jobs. The Gateway job runs the exact artifact on isolated rc.3/rc.4 graphs. Browser recovery is a protected manual
+environment gate; promotion requires its successful, SHA-bound evidence run. Do not treat a source-only run as release evidence. Every consumer downloads the same `release-candidate` artifact and must use
 `--artifact`/`--sha256`; no consumer may pack again.
 
 `.github/workflows/release-promote.yml` is protected by the `release` environment and is the only promotion path.

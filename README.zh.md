@@ -99,10 +99,10 @@ Host 在 `session/created` 时初始化记录，并在首次 prompt 前的 `agen
 
 ## 安装
 
-`dsh-charter@0.1.0-rc.5` 是 release 分支上的当前 **候选版本**，尚未发布；registry 当前仍是
-`0.1.0-rc.4`。下面的 rc.5 精确安装命令只在发布提交生成产物后适用。频道策略是 RC 发布到 `next`，并在稳定版
-出现前让 `latest` 也指向最新 RC（npm 会保留 `latest` tag，由我们决定其指向；这是我们的策略，不是 npm 的强制
-要求）。
+`dsh-charter@0.1.0-rc.5` 是当前候选版本。只有 `npm view dsh-charter@0.1.0-rc.5 version` 返回该版本后，
+才使用下面的 rc.5 精确安装命令；在此之前继续使用最新已发布 RC（`0.1.0-rc.4`）。频道策略是 RC 发布到
+`next`，并在稳定版出现前让 `latest` 也指向最新 RC（npm 会保留 `latest` tag，由我们决定其指向；这是我们的
+策略，不是 npm 的强制要求）。
 
 > **通过 npm/CLI 安装时请固定精确版本。** pnpm 11+ 默认启用 `minimumReleaseAge = 1440` 分钟（24 小时），
 > 新发布的版本在这个窗口内不会参与正常解析。此时不带版本的安装或更新（`dsh-charter`、`@next`、`@latest`）
@@ -300,7 +300,7 @@ npm run verify:compaction # 手工真实模型 compaction 校验（不在 check 
 ```
 
 测试覆盖纯内核、真实 Host 组合、storage domain、Remote framing、历史抽取、客户端状态和 factory bundle
-注册。当前树有 **347 个测试**；rc.5 七版本本地矩阵在所有声明版本上通过。当前证据见[验证记录](docs/verification.zh.md)。
+注册。当前树有 **348 个测试**；rc.5 七版本本地矩阵在所有声明版本上通过。当前证据见[验证记录](docs/verification.zh.md)。
 
 ## 致谢
 
