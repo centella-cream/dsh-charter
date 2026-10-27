@@ -137,6 +137,28 @@ commit is pushed and public CI is green on that commit. Publish the verified tar
 `latest` to the newest RC is deliberate project policy until a stable release exists — do not describe it as an
 npm requirement. Never rebuild after tagging.
 
+## Compatibility regression is a push/release gate
+
+Every version push or release must run a compatibility regression across **all declared DSH versions and every new DSH
+version that is not yet tracked**. This is a release requirement, not optional evidence.
+
+- Declared versions are the exact set repeated in `package.json` `engines.dsh`, every
+  `@deepseek-ai/dsh-*` peer range, and `dsh.compatibility.dshReleases`. Run typecheck, build, and the full test suite
+  against each one in an isolated dependency graph.
+- Before the run, discover the current untracked DSH surface: npm `dist-tags` (`latest`, `next`), the newest published
+  versions, and any new release that appeared since the last matrix. Probe those versions with typecheck/build/tests
+  even when they are not declared yet.
+- Use the candidate/version artifact where the gate is about release bytes; use the source tree for development-branch
+  pushes. Record the exact Node/npm versions and every resolved `@deepseek-ai/dsh-*` version in the evidence.
+- Any missing package, peer drift, silent drop, or version auto-resolution is a failure. Do not hide it with
+  `--legacy-peer-deps`, `--force`, by deleting dependencies, or by declaring a matrix PASS from stale `.tmp/` data.
+- If a new DSH version passes, add it to all declaration sites and docs in one change. If it fails, either fix the
+  adapter or keep it explicitly unsupported in the release notes; never silently claim compatibility.
+- The compatibility result is a pre-push/pre-release gate: a failing minimum or current version blocks the branch push
+  for a release candidate, PR approval, tag, and npm publish.
+- Gateway and browser acceptance remain separate gates; a green source matrix does not replace exact-artifact,
+  production-Remote, or real-profile evidence.
+
 ## Diagnosing an install/update failure — runbook
 
 1. Record `dsh --version`, OS, profile type (Desktop/Web), and the exact UI/CLI error code or gate message.
@@ -151,6 +173,8 @@ npm requirement. Never rebuild after tagging.
 
 - [ ] Scope matches the version boundary in the roadmap; rc.5 contains no 0.2 capability.
 - [ ] `npm ci && npm run check` passes on the final tree (typecheck, build, remote/client smoke, Vitest).
+- [ ] Compatibility regression covers every declared DSH version **and** the current untracked npm `latest`/`next`
+      versions; evidence records Node/npm and every resolved DSH package; a failing minimum/current version blocks push.
 - [ ] `npm pack` was run once; `SHA256SUMS` matches the artifact; exact-artifact and packed recovery smokes pass
       on those bytes without rebuilding.
 - [ ] Exact CLI install verified; unversioned Desktop Plugins path verified or explicitly blocked by the maturity
@@ -173,6 +197,7 @@ npm run smoke:package                         # packs, verifies tarball, consume
 npm run smoke:package -- --artifact dist/dsh-charter-<version>.tgz --sha256 SHA256SUMS  # exact bytes, no rebuild
 node scripts/verify/recovery-smoke.mjs --artifact dist/dsh-charter-<version>.tgz --sha256 SHA256SUMS
 npm run verify:compaction -- --session <id> --home <DSH_HOME>   # manual, needs a model
+node scripts/verify/compat-matrix.mjs --versions all            # declared versions; add new/untracked versions too
 ```
 
 Public CI (`.github/workflows/ci.yml`) runs `npm run check` and `npm run smoke:package` on Node `22.19.0` and
