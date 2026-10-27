@@ -1,0 +1,181 @@
+name: Release candidate
+
+# One producer pack; every downstream consumer uses the same artifact ID.
+# Candidate evidence is never enough to publish: promotion is a separate,
+# environment-protected workflow (release-promote.yml).
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Exact package version to verify
+        required: true
+        default: 0.1.0-rc.5
+
+permissions:
+  contents: read
+
+jobs:
+  source-gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.19.0'
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run test
+      - run: npm run smoke:remote
+      - run: npm run smoke:client
+
+  compatibility:
+    runs-on: ubuntu-latest
+    needs: source-gates
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.19.0'
+          cache: npm
+      - run: npm ci
+      - run: node scripts/verify/compat-matrix.mjs --versions minimum,old-boundary,current --out compat-matrix.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: compat-evidence
+          path: compat-matrix.json
+          if-no-files-found: error
+
+  producer-pack:
+    runs-on: ubuntu-latest
+    needs: source-gates
+    outputs:
+      artifact-name: ${{ steps.meta.outputs.artifact_name }}
+      sha256: ${{ steps.meta.outputs.sha256 }}
+      pack-commit: ${{ steps.meta.outputs.pack_commit }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.19.0'
+          cache: npm
+      - run: npm ci
+      - name: Pack exactly once
+        run: |
+          rm -rf dist && mkdir -p dist
+          npm pack --pack-destination dist
+          test "$(find dist -maxdepth 1 -name '*.tgz' | wc -l)" -eq 1
+      - name: Write checksums and metadata
+        id: meta
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          TGZ=$(find dist -maxdepth 1 -name '*.tgz' | head -1)
+          SHA=$(sha256sum "$TGZ" | awk '{print $1}')
+          BASE=$(basename "$TGZ")
+          printf '%s  %s\n' "$SHA" "$BASE" > dist/SHA256SUMS
+          cp dist/SHA256SUMS SHA256SUMS
+          printf '%s\n' "$SHA" >> "$GITHUB_OUTPUT"
+          printf 'artifact-name=%s\n' "release-candidate" >> "$GITHUB_OUTPUT"
+          printf 'pack-commit=%s\n' "$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+          SHA="$SHA" BASE="$BASE" node -e "const fs=require('fs');fs.writeFileSync('release-metadata.json',JSON.stringify({version:process.env.VERSION,commit:process.env.GITHUB_SHA,runId:process.env.GITHUB_RUN_ID,artifactSha256:process.env.SHA,artifact:process.env.BASE},null,2)+'\\n')"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-candidate
+          path: |
+            dist/*.tgz
+            dist/SHA256SUMS
+            release-metadata.json
+          if-no-files-found: error
+
+  exact-artifact:
+    runs-on: ubuntu-latest
+    needs: producer-pack
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.19.0'
+          cache: npm
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-candidate
+          path: candidate
+      - run: |
+          npm ci
+          mkdir -p dist
+          cp candidate/*.tgz candidate/SHA256SUMS dist/
+          npm run smoke:package -- --artifact "dist/$(ls dist/*.tgz | xargs -n1 basename)" --sha256 dist/SHA256SUMS
+
+  packed-recovery:
+    runs-on: ubuntu-latest
+    needs: producer-pack
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.19.0'
+          cache: npm
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-candidate
+          path: candidate
+      - run: |
+          npm ci
+          mkdir -p dist
+          cp candidate/*.tgz candidate/SHA256SUMS dist/
+          node scripts/verify/recovery-smoke.mjs --artifact "dist/$(ls dist/*.tgz | xargs -n1 basename)" --sha256 dist/SHA256SUMS
+
+  gateway-matrix:
+    runs-on: ubuntu-latest
+    needs: producer-pack
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-candidate
+          path: candidate
+      - name: Real Gateway acceptance (fail closed until wired)
+        run: |
+          if [ ! -f scripts/verify/gateway-smoke.mjs ]; then
+            echo "::error::Real Gateway acceptance is not wired; rc.5 cannot be released from this candidate."
+            exit 1
+          fi
+          node scripts/verify/gateway-smoke.mjs --artifact "candidate/$(basename candidate/*.tgz)"
+
+  browser-recovery:
+    runs-on: ubuntu-latest
+    needs: producer-pack
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-candidate
+          path: candidate
+      - name: Real browser recovery (fail closed until wired)
+        run: |
+          if [ ! -f scripts/verify/browser-recovery.mjs ]; then
+            echo "::error::Real browser recovery is not wired; rc.5 cannot be released from this candidate."
+            exit 1
+          fi
+          node scripts/verify/browser-recovery.mjs --artifact "candidate/$(basename candidate/*.tgz)"
+
+  candidate-summary:
+    if: always()
+    runs-on: ubuntu-latest
+    needs: [source-gates, compatibility, producer-pack, exact-artifact, packed-recovery, gateway-matrix, browser-recovery]
+    steps:
+      - name: Summarize candidate gates
+        run: |
+          echo "Candidate version: ${{ inputs.version }}"
+          echo "Producer commit: ${{ needs.producer-pack.outputs.pack-commit }}"
+          echo "Artifact SHA-256: ${{ needs.producer-pack.outputs.sha256 }}"
+          echo "A green candidate is not a release; promote it separately with release-promote.yml."
+          test "${{ needs.source-gates.result }}" = success
+          test "${{ needs.compatibility.result }}" = success
+          test "${{ needs.producer-pack.result }}" = success
+          test "${{ needs.exact-artifact.result }}" = success
+          test "${{ needs.packed-recovery.result }}" = success
+          test "${{ needs.gateway-matrix.result }}" = success
+          test "${{ needs.browser-recovery.result }}" = success
