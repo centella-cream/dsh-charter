@@ -42,11 +42,15 @@ describe('published DSH compatibility metadata', () => {
     const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')) as {
       engines: Record<string, string>
       peerDependencies: Record<string, string>
+      dsh?: { compatibility?: { dshReleases?: Record<string, string> } }
     }
     expect(pkg.engines.dsh).toBe(expected)
     const peers = Object.entries(pkg.peerDependencies).filter(([name]) => name.startsWith('@deepseek-ai/dsh-'))
     expect(peers.length).toBeGreaterThan(0)
     for (const [name, range] of peers) expect(range, name).toBe(expected)
+    const releases = pkg.dsh?.compatibility?.dshReleases ?? {}
+    expect(Object.keys(releases).sort()).toEqual(expected.split(' || ').sort())
+    for (const [version, status] of Object.entries(releases)) expect(status, version).toBe('compatible')
   })
 })
 

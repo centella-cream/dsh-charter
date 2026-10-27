@@ -1,0 +1,81 @@
+name: Promote release candidate
+
+# Promotion is deliberately separate from candidate production and protected by
+# an environment with required reviewers. It never builds or packs. It verifies
+# that C+1 differs from the candidate's C only in the root SHA256SUMS, then
+# tags, creates the GitHub Release, and publishes the exact candidate tarball.
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_run_id:
+        description: Successful release-candidate workflow run id
+        required: true
+      candidate_commit:
+        description: Pack source commit C recorded by the candidate
+        required: true
+      candidate_sha256:
+        description: Tarball SHA-256 recorded by the candidate
+        required: true
+      version:
+        description: Exact version to publish, e.g. 0.1.0-rc.5
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    environment: release
+    env:
+      GH_TOKEN: ${{ github.token }}
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.19.0'
+          cache: npm
+      - name: Download the candidate artifact
+        run: |
+          rm -rf candidate && mkdir candidate
+          gh run download "${{ inputs.candidate_run_id }}" -n release-candidate -D candidate
+          test "$(find candidate -maxdepth 1 -name '*.tgz' | wc -l)" -eq 1
+      - name: Verify C+1 changes only the root checksum file
+        run: |
+          C="${{ inputs.candidate_commit }}"
+          git fetch origin "$C" --depth=1
+          CHANGED=$(git diff --name-only "$C" HEAD)
+          test "$CHANGED" = "SHA256SUMS"
+          TGZ=$(find candidate -maxdepth 1 -name '*.tgz' | head -1)
+          SHA=$(sha256sum "$TGZ" | awk '{print $1}')
+          test "$SHA" = "${{ inputs.candidate_sha256 }}"
+          grep -q "$SHA" SHA256SUMS
+          grep -q "$SHA" candidate/SHA256SUMS
+          test "$(node -p "require('./package.json').version")" = "${{ inputs.version }}"
+      - name: Re-run exact-artifact smoke without build or pack
+        run: |
+          npm ci
+          mkdir -p dist && cp candidate/*.tgz dist/
+          npm run smoke:package -- --artifact "dist/$(basename candidate/*.tgz)" --sha256 SHA256SUMS
+          node scripts/verify/recovery-smoke.mjs --artifact "dist/$(basename candidate/*.tgz)" --sha256 SHA256SUMS
+      - name: Tag, release, and publish the exact tarball
+        run: |
+          TAG="v${{ inputs.version }}"
+          git tag -a "$TAG" -m "dsh-charter ${{ inputs.version }} sha256 ${{ inputs.candidate_sha256 }}"
+          git push origin "$TAG"
+          gh release create "$TAG" candidate/*.tgz candidate/SHA256SUMS \
+            --title "dsh-charter ${{ inputs.version }}" \
+            --notes-file "docs/release-notes/${{ inputs.version }}.md" \
+            --verify-tag --prerelease
+          npm config set //registry.npmjs.org/:_authToken "$NPM_TOKEN"
+          npm publish "candidate/$(basename candidate/*.tgz)" --access public --tag next
+      - name: Verify registry version, tags, and downloaded digest
+        run: |
+          npm view "dsh-charter@${{ inputs.version }}" version
+          npm dist-tag ls dsh-charter
+          npm pack "dsh-charter@${{ inputs.version }}" --pack-destination /tmp/published >/dev/null
+          sha256sum /tmp/published/*.tgz
