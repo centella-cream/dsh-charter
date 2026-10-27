@@ -28,12 +28,12 @@ The reason is a correctness defect inside the promised 0.1 workflow: every compa
 
 ## 2. Current Release State
 
-- Source version is `0.1.0-rc.4`; its Git tag, GitHub Release, and npm package are public.
-- The rc.4 artifact digest is `40a9e195d9e4d20861edbe07adce9c53ea685fc3deabee0d1aab0e98af11b70d`, matching tracked `SHA256SUMS`.
-- rc.4 is a compatibility-only patch adding exact support claims for DSH `0.2.1-rc.3` and `rc.4` without runtime behavior changes.
-- npm `latest` and `next` both point to rc.4.
-
-The Git tag, GitHub assets, and npm version are immutable. rc.5 uses a new version and artifact. Dynamic README/verification/releasing status is corrected during rc.5 convergence without rewriting rc.4 history.
+- The released version is `0.1.0-rc.4`; its Git tag, GitHub Release assets, and npm package are public and immutable.
+- rc.4 is a compatibility-only patch adding exact support claims for DSH `0.2.1-rc.3` and `rc.4` without runtime
+  behavior changes. npm `latest` and `next` currently point to rc.4.
+- The rc.5 candidate lives on `release/0.1.0-rc.5`. It is not tagged, released, or published; its implementation,
+  verification, and artifact evidence are collected on that branch.
+- rc.5 uses a new version and artifact. Published rc.4 history is never rewritten.
 
 ## 3. Why rc.5
 

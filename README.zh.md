@@ -315,8 +315,8 @@ npm run verify:compaction # 手工真实模型 compaction 校验（不在 check 
 
 - [设计规格](docs/design/charter-design.zh.md)
 - [设计评审](docs/design/charter-design-review.zh.md)
-- [0.1.0-rc.3 升级方案](docs/design/rc3-recovery-plan.zh.md)
 - [0.1.0-rc.5 稳定化方案](docs/design/rc5-stabilization-plan.zh.md)
+- [发布说明](docs/release-notes/README.md)
 - [版本路线：0.1 稳定化与 0.2 产品升级](docs/design/version-roadmap.zh.md)
 - [兼容矩阵](docs/design/compatibility.zh.md)
 - [使用与运维指南](docs/user-guide.zh.md)

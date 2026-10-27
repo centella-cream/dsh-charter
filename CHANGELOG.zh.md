@@ -173,7 +173,6 @@ owner 可以导出完整归档并将其恢复到同一 Session lifecycle。
 - 版本与当前发布文档迁移到 `0.1.0-rc.2`；保留 `0.1.0-rc.1` 的历史证据与 CHANGELOG 记录。
 - 渠道策略显式化且是有意选择：rc.2 发布到 `next` dist-tag，同时在稳定版出现前把 `latest` 也指向最新 RC。
   这是当前策略（npm 会保留一个 `latest` tag，我们决定它指向哪里），不是 npm 的强制要求，也不声称是 npm 行为。
-- 新增 rc.2 发布说明 `docs/release-notes/0.1.0-rc.2.md`（位于 npm `files` 白名单之外）。
 
 ## 0.1.0-rc.1 — 2026-10-22
 

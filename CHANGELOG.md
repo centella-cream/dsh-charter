@@ -201,7 +201,6 @@ Small patch candidate: a Pane hook-order crash fix, a security upgrade, and rele
 - Channel policy is now explicit and deliberate: rc.2 is published under the `next` dist-tag, and we also point
   `latest` at the newest RC until a stable release exists. This is our current policy (npm keeps a `latest` tag and
   we choose where it points), not an npm requirement or a claim about npm's behavior.
-- Added release notes for rc.2 at `docs/release-notes/0.1.0-rc.2.md` (outside the npm `files` whitelist).
 
 ## 0.1.0-rc.1 — 2026-10-22
 

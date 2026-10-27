@@ -348,8 +348,8 @@ Their ideas informed the design review; no source code is copied, and these proj
 
 - [Design specification](docs/design/charter-design.md)
 - [Design review](docs/design/charter-design-review.md)
-- [0.1.0-rc.3 upgrade plan](docs/design/rc3-recovery-plan.md)
 - [0.1.0-rc.5 stabilization plan](docs/design/rc5-stabilization-plan.md)
+- [Release notes](docs/release-notes/README.md)
 - [Version roadmap: 0.1 stabilization and the 0.2 product upgrade](docs/design/version-roadmap.md)
 - [Compatibility matrix](docs/design/compatibility.md)
 - [User and operator guide](docs/user-guide.md)

@@ -26,18 +26,17 @@
 
 ## 2. 当前发布状态
 
-### 2.1 已完成
+### 2.1 已发布版本
 
-- 当前源码版本是 `0.1.0-rc.4`。
-- `v0.1.0-rc.4` tag、GitHub Release 和 npm 版本已发布。
-- GitHub Release 资产 `dsh-charter-0.1.0-rc.4.tgz` 的 SHA-256 是 `40a9e195d9e4d20861edbe07adce9c53ea685fc3deabee0d1aab0e98af11b70d`，与仓库 `SHA256SUMS` 一致。
+- 已发布版本是 `0.1.0-rc.4`；其 tag、GitHub Release 资产和 npm 包均已公开且不可修改。
 - rc.4 是 compatibility-only patch，增加 DSH `0.2.1-rc.3`/`rc.4` 精确兼容声明，不改变插件运行时行为。
+- npm `latest` 和 `next` 当前指向 rc.4。
 
-### 2.2 渠道已对齐
+### 2.2 rc.5 候选
 
-截至基准日，npm registry 的 `latest` 和 `next` 都指向 rc.4。GitHub 资产、npm 包和仓库 `SHA256SUMS` 必须继续保持同一 digest，不重新构建或覆盖 rc.4。
-
-已推送 tag、GitHub Release 和 npm 版本都不可变。rc.5 使用新的版本号、tag 和产物。README、verification 和 releasing 中的动态状态在 rc.5 文档收敛时修正，rc.4 的兼容性历史保持不变。
+- rc.5 候选位于 `release/0.1.0-rc.5` 分支，尚未创建 tag、GitHub Release 或 npm 发布。
+- rc.5 的实现、验证和 artifact evidence 在该分支收敛；不会重写 rc.4 的发布历史。
+- rc.5 使用新的版本号、tag 和产物。
 
 ## 3. 为什么是 rc.5
 
