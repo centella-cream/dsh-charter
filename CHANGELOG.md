@@ -5,6 +5,33 @@ English | [中文](CHANGELOG.zh.md)
 All notable changes to `dsh-charter` are recorded here. The project follows a pre-1.0 version line while the
 DSH plugin ABI is still moving.
 
+## 0.1.0-rc.5 — 2026-10-27
+
+Pre-stable correctness and release-hardening candidate. No new 0.2 capability, domain, Remote method, or
+persistent schema version.
+
+### Added
+
+- Visible-only history review: bootstrap candidates start unselected, the review exposes a stable 40-row window,
+  and fresh planning/text admission only see shown rows. Replay still sends the exact retained request.
+- Forward-schema read-only fence: a higher finite `recordSchemaVersion` is `future-schema / recoverable:false`;
+  prompt/tool/edit/initialize/restore cannot overwrite it, while diagnostic export preserves the raw record.
+- Split local-work discard APIs and UI, with a confirmed full-discard summary; unknown-outcome evidence is cleared
+  only by explicit Abandon.
+- Committed/projected counts, a neutral revision, objective staging controls, explicit Apply block reasons, and
+  empty-Charter CTAs in all terminal bootstrap phases.
+- UTF-8 archive-preview admission; explicit `cryptoUnavailable` when WebCrypto is missing or rejects.
+- Connection error kinds, expandable escaped technical details, composer-specific ARIA labels, meter semantics,
+  and larger narrow/coarse-pointer touch targets.
+- Seven-version compatibility metadata in all declaration sites, a tracked compatibility runner, and one-artifact
+  release candidate/promote workflows.
+
+### Verification
+
+- `npm run check` and the current exact-artifact/packed smoke commands are the source of truth; real Gateway,
+  browser recovery, Desktop ABI, and real-model compaction remain separate acceptance gates.
+- No record schema version bump and no domain change; rc.4 records remain readable.
+
 ## 0.1.0-rc.4 — 2026-10-27
 
 Compatibility-only patch for DSH `0.2.1-rc.3` and `0.2.1-rc.4`. `0.1.0-rc.3` declared exactly five DSH versions

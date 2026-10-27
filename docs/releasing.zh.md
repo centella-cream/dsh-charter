@@ -9,15 +9,15 @@ CI，再构建已验证产物，然后打 tag，最后发布。已推送的 tag 
 
 公开 GitHub 仓库已创建：<https://github.com/centella-cream/dsh-charter>。本树已把 `package.json` 的
 `repository`、`homepage`、`bugs` 指向该仓库；如果 checkout 还没有 `origin`，请先配置。下面的发布状态是动态的，
-每次发布前都必须重新核对。如果暂存 RC 期间还留有临时本地 `v0.1.0-rc.4` tag，请在元数据/CI commit 前删除——
+每次发布前都必须重新核对。如果暂存 RC 期间还留有临时本地 `v0.1.0-rc.5` tag，请在元数据/CI commit 前删除——
 除非 tag 是在公开门禁之后创建，否则不能保留：
 
 ```bash
-git tag -d v0.1.0-rc.4   # 仅当它存在；它从未被推送
+git tag -d v0.1.0-rc.5   # 仅当它存在；它从未被推送
 git remote -v            # origin 必须指向公开仓库
 ```
 
-如需内部追溯，可使用只在本地存在的标记 tag（例如 `v0.1.0-rc.4-build`）；它绝不推送，也不是发布 tag。
+如需内部追溯，可使用只在本地存在的标记 tag（例如 `v0.1.0-rc.5-build`）；它绝不推送，也不是发布 tag。
 
 先准备仓库与公开门禁：
 
@@ -31,11 +31,11 @@ git remote -v            # origin 必须指向公开仓库
    `npm run check` 与普通 `npm run smoke:package`；exact-artifact 模式不是 CI job）。
 
 随后按顺序：从最终源码**只构建一次**发布 tarball，对同一文件运行 exact-artifact smoke
-（`npm run smoke:package -- --artifact dist/dsh-charter-0.1.0-rc.4.tgz --sha256 SHA256SUMS`，同时校验 SHA-256）与
+（`npm run smoke:package -- --artifact dist/dsh-charter-0.1.0-rc.5.tgz --sha256 SHA256SUMS`，同时校验 SHA-256）与
 **打包产物 recovery smoke**
-（`node scripts/verify/recovery-smoke.mjs --artifact dist/dsh-charter-0.1.0-rc.4.tgz --sha256 SHA256SUMS`：导出 →
+（`node scripts/verify/recovery-smoke.mjs --artifact dist/dsh-charter-0.1.0-rc.5.tgz --sha256 SHA256SUMS`：导出 →
 删除目标 → 恢复 → 两次重启比较 digest/投影 → 健康目标拒绝覆盖 → 打包 Host 的存储故障矩阵），
-并在同一文件上做 fresh-profile UI 检查，然后创建最终 annotated `v0.1.0-rc.4` tag，GitHub Release 与
+并在同一文件上做 fresh-profile UI 检查，然后创建最终 annotated `v0.1.0-rc.5` tag，GitHub Release 与
 `npm publish --tag next` 复用同一份已验证 tarball。tag 只有在 digest commit 已进入 `main`、公开 CI 在该 commit
 通过之后才创建；在验证前推 tag 会让发布产物依赖未经门禁的树。
 
@@ -45,7 +45,7 @@ git remote -v            # origin 必须指向公开仓库
 
 ## 2. 发布前检查
 
-- 版本在 `package.json`、`CHANGELOG.md` / `CHANGELOG.zh.md` 中一致更新；本树是预发布（`0.1.0-rc.4`），必须
+- 版本在 `package.json`、`CHANGELOG.md` / `CHANGELOG.zh.md` 中一致更新；本树是预发布（`0.1.0-rc.5`），必须
   使用非 latest dist-tag 发布；
 - 新支持的 DSH prerelease 已重新核对兼容矩阵；
 - 工作树中没有密钥、私人对话或 `.tmp` 产物。
@@ -63,7 +63,7 @@ npm run smoke:package
 client bundle（Host/Remote 运行时 import 由工作区 build smoke 覆盖）。CI 在推送的元数据 commit 上运行
 `npm run check` 与**普通模式**的 `npm run smoke:package`；它不运行 exact-artifact 模式。exact-artifact 检查是
 **本地发布门禁**：在构建最终 tarball 之后、打 tag/推送/发布之前，用
-`npm run smoke:package -- --artifact dist/dsh-charter-0.1.0-rc.4.tgz --sha256 SHA256SUMS` 验证这批确切字节而不重新
+`npm run smoke:package -- --artifact dist/dsh-charter-0.1.0-rc.5.tgz --sha256 SHA256SUMS` 验证这批确切字节而不重新
 打包。它会先按提供的 sums 文件校验 SHA-256、校验每个 tar member 与 packed manifest，再对同一文件执行
 manifest/files/modes/exports、空 consumer 安装、packed `core` import 与 client bundle 检查；绝不 build 或 pack。
 如果希望在 CI 中做 exact-artifact 验证，需要新增一个消费已发布产物的独立 release workflow——当前 CI 不做这件事。
@@ -82,8 +82,8 @@ manifest/files/modes/exports、空 consumer 安装、packed `core` import 与 cl
 
 ```bash
 npm pack
-mkdir -p dist && mv dsh-charter-0.1.0-rc.4.tgz dist/
-(cd dist && shasum -a 256 dsh-charter-0.1.0-rc.4.tgz > SHA256SUMS)
+mkdir -p dist && mv dsh-charter-0.1.0-rc.5.tgz dist/
+(cd dist && shasum -a 256 dsh-charter-0.1.0-rc.5.tgz > SHA256SUMS)
 ```
 
 把同一 digest 写入仓库根部 tracked 的 `SHA256SUMS`。根部文件刻意不在 npm `files` 白名单内，因此提交它不会改变
@@ -105,7 +105,7 @@ git push origin main
 DSH_HOME=/tmp/dsh-charter-release-home \
   dsh --profile release-smoke --from-default-profile web --dump-config >/dev/null
 DSH_HOME=/tmp/dsh-charter-release-home \
-  dsh plugin --profile release-smoke add dist/dsh-charter-0.1.0-rc.4.tgz
+  dsh plugin --profile release-smoke add dist/dsh-charter-0.1.0-rc.5.tgz
 DSH_HOME=/tmp/dsh-charter-release-home \
   dsh --profile release-smoke --no-open --port 19399
 ```
@@ -114,16 +114,16 @@ DSH_HOME=/tmp/dsh-charter-release-home \
 公开 CI 在该 commit 上通过之后，才在这个确切 commit 上创建 annotated tag 并只推送一次：
 
 ```bash
-git tag -a v0.1.0-rc.4 -m "dsh-charter 0.1.0-rc.4"
-git push origin v0.1.0-rc.4
+git tag -a v0.1.0-rc.5 -m "dsh-charter 0.1.0-rc.5"
+git push origin v0.1.0-rc.5
 ```
 
 已推送的 tag 绝不移动；tag 有误时提升版本号，而不是移动 tag。从该 tag 创建 GitHub release，并附加**已经构建
-并验证过**的 `dist/dsh-charter-0.1.0-rc.4.tgz` 和 `dist/SHA256SUMS` —— 打 tag 之后不要再运行 `npm pack`，
+并验证过**的 `dist/dsh-charter-0.1.0-rc.5.tgz` 和 `dist/SHA256SUMS` —— 打 tag 之后不要再运行 `npm pack`，
 直接发布已构建好的文件：
 
 ```bash
-npm publish dist/dsh-charter-0.1.0-rc.4.tgz --access public --tag next
+npm publish dist/dsh-charter-0.1.0-rc.5.tgz --access public --tag next
 ```
 
 验证记录 8.4 记录通过门禁的 source commit，并指向 tracked 的随发布产物 digest；tracked 根部 `SHA256SUMS` 与
@@ -145,3 +145,15 @@ npm publish dist/dsh-charter-0.1.0-rc.4.tgz --access public --tag next
 - 若测试了新的 DSH 版本，更新兼容矩阵；
 - 保持 `docs/archive/` 不被 git 跟踪；它只包含本地历史设计材料，并且不在 npm `files` 白名单内，保证
   GitHub 与 npm 内容一致。
+
+## rc.5 单产物自动化
+
+`.github/workflows/release-candidate.yml` 是 rc.5 tarball 的唯一 producer：source gates、compatibility sentinels、
+一次 `npm pack`、exact-artifact package smoke、packed recovery smoke，以及 Gateway/browser jobs。Gateway/browser
+在真实 tracked 脚本存在前 fail closed；不要把只跑了 source 的 run 当成发布证据。所有 consumer 下载同一个
+`release-candidate` artifact，并使用 `--artifact`/`--sha256`，不得再次 pack。
+
+`.github/workflows/release-promote.yml` 由 `release` environment 保护，是唯一 promotion 路径。它要求 candidate
+run id、source commit C、artifact SHA-256 和精确版本；验证 C→C+1 只修改根 `SHA256SUMS`，不 build/pack 重跑
+exact-artifact smoke，然后 tag C+1、创建 GitHub Release，并把同一 tarball 以 `next` 发布。candidate 全绿且
+release 明确批准前不要运行。

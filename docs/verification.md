@@ -15,7 +15,7 @@ HTML live under `.tmp/` and are excluded from the published package.
 | Item | Result |
 | --- | --- |
 | Strict TypeScript check (7 DSH versions) | Pass |
-| Vitest (7 locally available versions × 331 tests) | Pass |
+| Vitest (current tree; 346 tests) | Pass |
 | Host ESM build + browser single-file bundle | Pass |
 | Remote decorator/resource smoke | Pass (0.1.7/0.2.0 have no resource declaration, as expected) |
 | Browser factory-bundle materialization and `apply` smoke | Pass |
@@ -46,7 +46,7 @@ Results:
 
 - typecheck passes;
 - build passes;
-- 25 test files, 331 tests pass (from `npm test`, which builds and then runs `vitest run`);
+- 26 test files, 346 tests pass on the current tree (from `npm test`, which builds and then runs `vitest run`);
 - `remote-smoke` asserts `watch,bootstrap,edit`, stream mode, and Session resource;
 - `client-smoke` asserts the single-file factory bundle, external-dependency allowlist, no Node-only `Buffer`
   reference, and `apply` registering the tab/pane/Remote contribution;
@@ -122,16 +122,17 @@ Results:
 
 | Version | typecheck | build | Vitest | remote smoke | client smoke |
 | --- | --- | --- | --- | --- | --- |
-| `0.1.7-rc.2` | Pass | Pass | 331/331 | Pass (no-resources warning) | Pass |
-| `0.2.0-rc.1` | Pass | Pass | 331/331 | Pass (no-resources warning) | Pass |
-| `0.2.0-rc.2` | Pass | Pass | 331/331 | Pass (no-resources warning) | Pass |
-| `0.2.1-rc.1` | Pass | Pass | 331/331 | Pass | Pass |
-| `0.2.1-rc.2` | Pass | Pass | 331/331 | Pass | Pass |
-| `0.2.1-rc.3` | Pass | Pass | 331/331 | Pass | Pass |
-| `0.2.1-rc.4` | Pass | Pass | 331/331 | Pass | Pass |
+| `0.1.7-rc.2` | Pass | Pass | 346/346 sentinel | Pass (no-resources warning) | Pass |
+| `0.2.0-rc.1` | Pass | Pass | 331/331 (rc.4 full) | Pass (no-resources warning) | Pass |
+| `0.2.0-rc.2` | Pass | Pass | 331/331 (rc.4 full) | Pass (no-resources warning) | Pass |
+| `0.2.1-rc.1` | Pass | Pass | 331/331 (rc.4 full) | Pass | Pass |
+| `0.2.1-rc.2` | Pass | Pass | 346/346 sentinel | Pass | Pass |
+| `0.2.1-rc.3` | Pass | Pass | 331/331 (rc.4 full) | Pass | Pass |
+| `0.2.1-rc.4` | Pass | Pass | 346/346 sentinel | Pass | Pass |
 
-Re-run on the final `0.1.0-rc.4` tree on 2026-10-27: each version reports 25 test files / 331 tests, and build
-includes the remote/client smoke assertions.
+The rc.5 sentinel run on 2026-10-27 reports 26 test files / 346 tests on `0.1.7-rc.2`, `0.2.1-rc.2`, and
+`0.2.1-rc.4`; the full seven-version rerun was not completed. The remaining cells are the last full rc.4 matrix
+(26 files / 331 tests at that time), not a rc.5 full-matrix claim.
 
 This seven-version matrix is **local evidence**: its version directories and driver script live in the gitignored
 `.tmp/`, so the public CI does not reproduce it. CI (`.github/workflows/ci.yml`) runs the committed gates
@@ -952,6 +953,29 @@ graphs: typecheck, Host ESM build, client bundle, and 25 files / 331 tests all p
 change required. `0.1.0-rc.4` is a compatibility-only patch: peer ranges and `engines.dsh` now include
 `0.2.1-rc.3` and `0.2.1-rc.4`; the primary development baseline moves to `0.2.1-rc.4`. The five older versions
 remain verified and unchanged.
+
+### 8.8 `0.1.0-rc.5` stabilization candidate evidence (2026-10-27)
+
+rc.5 implements the rc.5 plan's product-correctness and release-hardening code: visible-only bootstrap review,
+the forward-schema read-only fence, split local-work discard, committed/projected Apply reasoning, UTF-8 and
+WebCrypto archive preview handling, connection/error/ARIA/touch improvements, seven-version compatibility
+metadata, a tracked compatibility runner, and pack-once candidate/promote workflows. No 0.2 capability or
+persistent schema change was added.
+
+Current-tree evidence:
+
+- `npm run typecheck`: pass.
+- `npm test`: 26 files / 346 tests pass (typecheck + build + Vitest).
+- Focused rc.5 tests cover unselected/bootstrap visible windows, discard independence and unknown-evidence
+  retention, future-schema classification and write denial with byte preservation, UTF-8 preview limits, missing
+  WebCrypto, connection classification, and compatibility metadata consistency.
+- `node scripts/verify/compat-matrix.mjs --versions minimum,old-boundary,current` is the tracked local matrix
+  runner; its evidence is written under `.tmp/` and is not replayed by public CI.
+- `.github/workflows/release-candidate.yml` packs exactly once and makes Gateway/browser jobs fail closed until
+  their real scripts exist. `.github/workflows/release-promote.yml` is the protected, no-build/no-pack promotion
+  path. No tag, GitHub Release, or npm publication was performed for rc.5 in this preparation pass.
+- Real Gateway authorization, exact-artifact browser recovery, Desktop ABI, and real-model compaction remain
+  separate manual/integration gates; this evidence does not claim them.
 
 ## 9. Unsupported verification and accepted non-blocking limitations
 

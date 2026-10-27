@@ -11,15 +11,15 @@ move a tag that has already been pushed and never re-pack the archive after tagg
 The public GitHub repository is <https://github.com/centella-cream/dsh-charter> (created). This tree restores
 `package.json` `repository`, `homepage`, and `bugs` for that repository; configure `origin` to it if the checkout
 does not already have one. Release state below is dynamic and must be re-checked before every release. If a
-provisional local `v0.1.0-rc.4` tag still exists from staging, delete it before the metadata/CI commit — no tag may
+provisional local `v0.1.0-rc.5` tag still exists from staging, delete it before the metadata/CI commit — no tag may
 survive unless it was created after the public gates:
 
 ```bash
-git tag -d v0.1.0-rc.4   # only if it exists; it was never pushed
+git tag -d v0.1.0-rc.5   # only if it exists; it was never pushed
 git remote -v            # origin must point at the public repository
 ```
 
-A local-only marker such as `v0.1.0-rc.4-build` may be used for internal traceability; it is never pushed and is
+A local-only marker such as `v0.1.0-rc.5-build` may be used for internal traceability; it is never pushed and is
 not the release tag.
 
 Prepare the repository and public gates first:
@@ -36,12 +36,12 @@ Prepare the repository and public gates first:
    (CI runs `npm run check` and the normal `npm run smoke:package` only; exact-artifact mode is not a CI job).
 
 Then, in order: build the release tarball **once** from that final source, run the exact-artifact smoke
-(`npm run smoke:package -- --artifact dist/dsh-charter-0.1.0-rc.4.tgz --sha256 SHA256SUMS`, which also verifies the
+(`npm run smoke:package -- --artifact dist/dsh-charter-0.1.0-rc.5.tgz --sha256 SHA256SUMS`, which also verifies the
 SHA-256), the **packed-artifact recovery smoke**
-(`node scripts/verify/recovery-smoke.mjs --artifact dist/dsh-charter-0.1.0-rc.4.tgz --sha256 SHA256SUMS`, covering
+(`node scripts/verify/recovery-smoke.mjs --artifact dist/dsh-charter-0.1.0-rc.5.tgz --sha256 SHA256SUMS`, covering
 export → remove target → restore → two restarts with digest/projection comparison → healthy-target refusal and the
 storage-fault matrix against the packed Host), and a fresh-profile UI check on that same file, then create the final
-annotated `v0.1.0-rc.4` tag, and make
+annotated `v0.1.0-rc.5` tag, and make
 the GitHub Release and `npm publish --tag next` reuse that same verified tarball. The tag is created only after the
 digest commit is on `main` and green in public CI; pushing it before verification would make the release archive
 depend on a tree that has not been gated.
@@ -53,7 +53,7 @@ drift) are disclosed in verification §9 and are not release blockers; do not cl
 ## 2. Preconditions
 
 - The version is bumped consistently (`package.json` + `CHANGELOG.md` / `CHANGELOG.zh.md`). This tree is a
-  pre-release (`0.1.0-rc.4`); do not publish it without a dist-tag.
+  pre-release (`0.1.0-rc.5`); do not publish it without a dist-tag.
 - The profile compatibility matrix has been re-checked for any newly supported DSH prerelease. Record maintenance
   (export/initialize/restore) is owner-only and enabled only on DSH `0.2.1+`; `0.1.7`/`0.2.0` fail closed with
   `RECOVERY_UNSUPPORTED`. Verify the Gateway HTTP body limit exceeds `maxRecoveryBytes` for the target deployment.
@@ -74,7 +74,7 @@ build smokes). CI runs `npm run check` plus the normal `npm run smoke:package` o
 does not run exact-artifact mode. The exact-artifact check is the **local release gate after building the final
 tarball** and before the tag/push/publish step: once the release artifact exists, verify those exact bytes without
 rebuilding with
-`npm run smoke:package -- --artifact dist/dsh-charter-0.1.0-rc.4.tgz --sha256 SHA256SUMS`. It validates the
+`npm run smoke:package -- --artifact dist/dsh-charter-0.1.0-rc.5.tgz --sha256 SHA256SUMS`. It validates the
 artifact's SHA-256 against the supplied sums file, validates every tar member and the packed manifest, then runs
 the same manifest/files/modes/exports, empty-consumer install, packed `core` import, and client-bundle checks on
 that file; it never builds or packs. If exact-artifact verification is wanted in CI, add a separate release
@@ -95,8 +95,8 @@ On the final verified commit (metadata restored, documentation refreshed, CI gre
 
 ```bash
 npm pack
-mkdir -p dist && mv dsh-charter-0.1.0-rc.4.tgz dist/
-(cd dist && shasum -a 256 dsh-charter-0.1.0-rc.4.tgz > SHA256SUMS)
+mkdir -p dist && mv dsh-charter-0.1.0-rc.5.tgz dist/
+(cd dist && shasum -a 256 dsh-charter-0.1.0-rc.5.tgz > SHA256SUMS)
 ```
 
 Write the same digest into the tracked repository-root `SHA256SUMS`. The root file is intentionally outside the
@@ -120,7 +120,7 @@ Install that exact tarball into a fresh profile and verify it:
 DSH_HOME=/tmp/dsh-charter-release-home \
   dsh --profile release-smoke --from-default-profile web --dump-config >/dev/null
 DSH_HOME=/tmp/dsh-charter-release-home \
-  dsh plugin --profile release-smoke add dist/dsh-charter-0.1.0-rc.4.tgz
+  dsh plugin --profile release-smoke add dist/dsh-charter-0.1.0-rc.5.tgz
 DSH_HOME=/tmp/dsh-charter-release-home \
   dsh --profile release-smoke --no-open --port 19399
 ```
@@ -130,16 +130,16 @@ the final digest commit pushed to `main` and public CI green on it — create th
 commit and push it once:
 
 ```bash
-git tag -a v0.1.0-rc.4 -m "dsh-charter 0.1.0-rc.4"
-git push origin v0.1.0-rc.4
+git tag -a v0.1.0-rc.5 -m "dsh-charter 0.1.0-rc.5"
+git push origin v0.1.0-rc.5
 ```
 
 Never move a pushed tag; if the tag is wrong, bump the version instead. Create the GitHub release from that tag
-and attach the **already-built and verified** `dist/dsh-charter-0.1.0-rc.4.tgz` plus `dist/SHA256SUMS` — do not
+and attach the **already-built and verified** `dist/dsh-charter-0.1.0-rc.5.tgz` plus `dist/SHA256SUMS` — do not
 run `npm pack` again after tagging, and publish the already-built file directly:
 
 ```bash
-npm publish dist/dsh-charter-0.1.0-rc.4.tgz --access public --tag next
+npm publish dist/dsh-charter-0.1.0-rc.5.tgz --access public --tag next
 ```
 
 **Channel policy (deliberate):** publish under `next`, then also move `latest` to the newest RC until a stable
@@ -147,7 +147,7 @@ release exists. npm keeps a `latest` tag and we choose where it points; this is 
 requirement:
 
 ```bash
-npm dist-tag add dsh-charter@0.1.0-rc.4 latest
+npm dist-tag add dsh-charter@0.1.0-rc.5 latest
 ```
 
 Verification §8.4 records the gated source commit and points to the tracked shipped-artifact digest; the tracked
@@ -173,3 +173,17 @@ keys, profile data, or local screenshots containing private content.
 - Update the compatibility matrix if a new DSH release was tested.
 - Leave `docs/archive/` untracked; it contains local historical design material only and is outside the npm
   `files` whitelist, so GitHub and npm stay consistent.
+
+## rc.5 one-artifact automation
+
+`.github/workflows/release-candidate.yml` is the only producer of an rc.5 tarball. It runs source gates, the
+compatibility sentinels, one `npm pack`, then exact-artifact package smoke, packed recovery smoke, and the
+Gateway/browser jobs. The Gateway/browser jobs fail closed until their tracked real scripts exist; do not treat a
+source-only run as release evidence. Every consumer downloads the same `release-candidate` artifact and must use
+`--artifact`/`--sha256`; no consumer may pack again.
+
+`.github/workflows/release-promote.yml` is protected by the `release` environment and is the only promotion path.
+It requires candidate run id, source commit C, artifact SHA-256, and exact version; verifies C→C+1 changes only
+the root `SHA256SUMS`, reruns exact-artifact smoke without build/pack, tags C+1, creates the GitHub Release, and
+publishes the exact tarball under `next`. Do not run it until the candidate is green and the release is explicitly
+approved.

@@ -4,6 +4,29 @@
 
 记录 `dsh-charter` 的重要变更。DSH 插件 ABI 仍在演进，项目保持 pre-1.0 版本线。
 
+## 0.1.0-rc.5 — 2026-10-27
+
+稳定版前的正确性与发布硬化候选。不新增 0.2 能力、domain、Remote 方法或持久 schema 版本。
+
+### 新增
+
+- 历史草案仅显示窗口内选择：候选初始未选，稳定展示 40 条窗口；fresh 规划和文本准入只处理当前显示行；
+  unknown replay 仍发送原 retained request。
+- 未来 schema 只读围栏：更高的有限 `recordSchemaVersion` 返回 `future-schema / recoverable:false`，
+  prompt/tool/edit/initialize/restore 均不能覆盖，诊断导出保留原始记录。
+- 拆分本地丢弃 API/UI，全部丢弃需摘要确认；unknown evidence 仅显式 Abandon 清除。
+- committed/projected 计数、中性 revision、objective 暂存控制、明确 Apply 阻塞原因，以及所有 bootstrap
+  终态的 empty-Charter CTA。
+- archive preview 使用 UTF-8 字节准入；WebCrypto 缺失或 reject 返回明确 `cryptoUnavailable`。
+- 连接错误分类、可展开转义详情、composer 独立 ARIA、meter 语义、窄屏/粗指针触控尺寸。
+- 七版本兼容元数据三处一致、受版本控制 compatibility runner、一次打包的 candidate/promote workflows。
+
+### 验证
+
+- 以 `npm run check` 与当前 exact-artifact/packed smoke 命令为准；真实 Gateway、浏览器恢复、Desktop ABI 与
+  真实模型 compaction 仍是独立验收门禁。
+- 不提升 record schema 版本、不改 domain；rc.4 记录保持可读。
+
 ## 0.1.0-rc.4 — 2026-10-27
 
 针对 DSH `0.2.1-rc.3` 与 `0.2.1-rc.4` 的兼容性补丁。`0.1.0-rc.3` 只声明五个 DSH 精确版本，因此在 DSH

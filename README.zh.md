@@ -99,7 +99,7 @@ Host 在 `session/created` 时初始化记录，并在首次 prompt 前的 `agen
 
 ## 安装
 
-`dsh-charter@0.1.0-rc.4` 是当前 npm 预发布版本。当前渠道策略是发布到 `next`，并在稳定版出现前让 `latest` 也指向
+`dsh-charter@0.1.0-rc.5` 是当前 npm 预发布版本。当前渠道策略是发布到 `next`，并在稳定版出现前让 `latest` 也指向
 最新 RC（npm 会保留 `latest` tag，由我们决定其指向；这是我们的策略，不是 npm 的强制要求）。
 
 > **通过 npm/CLI 安装时请固定精确版本。** pnpm 11+ 默认启用 `minimumReleaseAge = 1440` 分钟（24 小时），
@@ -134,7 +134,7 @@ rc.2 隔离（保留但不注入/编辑）；重新升级到 rc.3 后恢复访�
 
 ```bash
 # 固定已发布版本；最新 RC 处于 pnpm release-age 窗口内时这是必需做法。
-dsh plugin --profile web add dsh-charter@0.1.0-rc.4
+dsh plugin --profile web add dsh-charter@0.1.0-rc.5
 ```
 
 固定精确版本可以保证 profile 可复现。`@next` 和 `@latest` 只是 dist-tag，同样受 pnpm release-age 策略影响，
@@ -162,12 +162,12 @@ Release 附带与 `npm publish` 完全相同的 tarball 和 `SHA256SUMS`。
 # 在 checkout 中：
 npm install
 npm run build
-npm pack                         # dsh-charter-0.1.0-rc.4.tgz
-dsh plugin --profile web add ./dsh-charter-0.1.0-rc.4.tgz
+npm pack                         # dsh-charter-0.1.0-rc.5.tgz
+dsh plugin --profile web add ./dsh-charter-0.1.0-rc.5.tgz
 
 # 或下载 GitHub Release 的 tarball + SHA256SUMS 并校验：
 shasum -a 256 -c SHA256SUMS
-dsh plugin --profile web add ./dsh-charter-0.1.0-rc.4.tgz
+dsh plugin --profile web add ./dsh-charter-0.1.0-rc.5.tgz
 ```
 
 `dsh plugin --profile desktop` 会被拥有该 profile 的 Electron app 拒绝；请使用 Desktop 的 Plugins 页面或该
@@ -177,7 +177,7 @@ profile 自己的包管理器。源码开发流程见 [CONTRIBUTING.zh.md](CONTR
 ### 更新
 
 - **Web（npm）**：安装精确目标版本，例如
-  `dsh plugin --profile web add dsh-charter@0.1.0-rc.4`，然后重启/刷新；固定版本 profile 继续使用显式版本。
+  `dsh plugin --profile web add dsh-charter@0.1.0-rc.5`，然后重启/刷新；固定版本 profile 继续使用显式版本。
   新版本发布后不要立即使用裸 `@next`/`@latest`，pnpm 的 release-age 策略可能解析到旧版本；
 - **本地 tarball**：重新构建/下载新 tarball，并重复本地安装命令；这条路径绕过 registry 的 release-age 解析；
 - **Desktop**：使用 **Plugins → Install/Update**。UI 没有精确 npm 版本选择器，因此会遵循插件目录和
@@ -298,7 +298,7 @@ npm run verify:compaction # 手工真实模型 compaction 校验（不在 check 
 ```
 
 测试覆盖纯内核、真实 Host 组合、storage domain、Remote framing、历史抽取、客户端状态和 factory bundle
-注册。当前矩阵：**DSH `0.1.7-rc.2`、`0.2.0-rc.1`/`rc.2`、`0.2.1-rc.1`/`rc.2`/`rc.3`/`rc.4` × 331 个测试全部通过**。命令与证据见[验证记录](docs/verification.zh.md)。
+注册。当前树有 **346 个测试**；rc.5 兼容 sentinel 在 DSH `0.1.7-rc.2`、`0.2.1-rc.2`、`0.2.1-rc.4` 上通过。完整矩阵历史与当前证据见[验证记录](docs/verification.zh.md)。
 
 ## 致谢
 
@@ -316,6 +316,8 @@ npm run verify:compaction # 手工真实模型 compaction 校验（不在 check 
 - [设计规格](docs/design/charter-design.zh.md)
 - [设计评审](docs/design/charter-design-review.zh.md)
 - [0.1.0-rc.3 升级方案](docs/design/rc3-recovery-plan.zh.md)
+- [0.1.0-rc.5 稳定化方案](docs/design/rc5-stabilization-plan.zh.md)
+- [版本路线：0.1 稳定化与 0.2 产品升级](docs/design/version-roadmap.zh.md)
 - [兼容矩阵](docs/design/compatibility.zh.md)
 - [使用与运维指南](docs/user-guide.zh.md)
 - [验证记录](docs/verification.zh.md)
@@ -332,7 +334,7 @@ npm run verify:compaction # 手工真实模型 compaction 校验（不在 check 
 
 ## 状态
 
-Pre-1.0。DSH 插件 ABI 仍在演进；项目对上述版本做兼容验证，并刻意保持兼容层很小。公开仓库为 [centella-cream/dsh-charter](https://github.com/centella-cream/dsh-charter)。当前树是 `0.1.0-rc.4`
+Pre-1.0。DSH 插件 ABI 仍在演进；项目对上述版本做兼容验证，并刻意保持兼容层很小。公开仓库为 [centella-cream/dsh-charter](https://github.com/centella-cream/dsh-charter)。当前树是 `0.1.0-rc.5`
 预发布：真实模型 compaction 验收 **PASS 已于 2026-10-22 记录**（一个匿名评估会话；326 条消息 / 约 228k
 tokens 被压缩，revision 1 契约携带匹配 digest 存活——见验证记录第 8.4 节）。rc.2 候选产物已在本地验证，计划通过 npm 的 `next` dist-tag 发布；按当前渠道策略，稳定版出现前 `latest` 也会指向最新 RC（这是有意的策略选择，不是 npm 的强制要求）。GitHub Release 将附带同一份已验证 tarball。发布稳定 `latest` 前还有一项记录在 8.4 节的人工
 检查：重启 Desktop app 后重新打开会话契约 tab 一次，确认已安装的 bundle/tool ABI。CI

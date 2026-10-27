@@ -108,7 +108,7 @@ The browser registers a `conversation.view` entry; the pane and `charter.watch` 
 
 ## Install
 
-`dsh-charter@0.1.0-rc.4` is the current npm pre-release. Our channel policy is to publish it under `next` and to
+`dsh-charter@0.1.0-rc.5` is the current npm pre-release. Our channel policy is to publish it under `next` and to
 point `latest` at the newest RC until a stable release exists (npm keeps a `latest` tag and we choose where it
 points; this is our policy, not an npm requirement).
 
@@ -150,7 +150,7 @@ a maintenance receipt are isolated (preserved, not injected/edited) by rc.2; upg
 ```bash
 # Pin the published version; required when the newest RC is inside the
 # pnpm release-age window.
-dsh plugin --profile web add dsh-charter@0.1.0-rc.4
+dsh plugin --profile web add dsh-charter@0.1.0-rc.5
 ```
 
 Pin an exact version for reproducible profiles. `@next` and `@latest` follow dist-tags but are still subject to
@@ -182,12 +182,12 @@ importing a local plugin. The GitHub Release ships the same tarball and `SHA256S
 # From a checkout:
 npm install
 npm run build
-npm pack                         # dsh-charter-0.1.0-rc.4.tgz
-dsh plugin --profile web add ./dsh-charter-0.1.0-rc.4.tgz
+npm pack                         # dsh-charter-0.1.0-rc.5.tgz
+dsh plugin --profile web add ./dsh-charter-0.1.0-rc.5.tgz
 
 # Or download the GitHub Release tarball + SHA256SUMS and verify:
 shasum -a 256 -c SHA256SUMS
-dsh plugin --profile web add ./dsh-charter-0.1.0-rc.4.tgz
+dsh plugin --profile web add ./dsh-charter-0.1.0-rc.5.tgz
 ```
 
 `dsh plugin --profile desktop` is intentionally refused by the Electron app that owns that profile; use the
@@ -197,7 +197,7 @@ Desktop Plugins page or that profile's package manager. Source-level development
 ### Update
 
 - **Web (npm):** install the exact target version, e.g.
-  `dsh plugin --profile web add dsh-charter@0.1.0-rc.4`, then restart/refresh. Pinned profiles keep their
+  `dsh plugin --profile web add dsh-charter@0.1.0-rc.5`, then restart/refresh. Pinned profiles keep their
   explicit version entry. Do not use a bare `@next`/`@latest` immediately after a release; pnpm's release-age
   policy can resolve an older version.
 - **Local tarball:** rebuild/download the new tarball and repeat the local install command; this bypasses
@@ -330,7 +330,7 @@ npm run verify:compaction # manual real-model compaction check (not part of chec
 ```
 
 The test suite covers the pure core, real Host composition, storage-domain behavior, Remote framing,
-history extraction, client state, and factory-bundle registration. Current matrix: **331 tests on DSH `0.1.7-rc.2`, `0.2.0-rc.1`/`rc.2`, and `0.2.1-rc.1`/`rc.2`/`rc.3`/`rc.4`**. See the [verification record](docs/verification.md) for commands and evidence.
+history extraction, client state, and factory-bundle registration. The current tree has **346 tests**; the rc.5 compatibility sentinels pass on DSH `0.1.7-rc.2`, `0.2.1-rc.2`, and `0.2.1-rc.4`. See the [verification record](docs/verification.md) for the full matrix history and current evidence.
 
 ## Acknowledgements
 
@@ -349,6 +349,8 @@ Their ideas informed the design review; no source code is copied, and these proj
 - [Design specification](docs/design/charter-design.md)
 - [Design review](docs/design/charter-design-review.md)
 - [0.1.0-rc.3 upgrade plan](docs/design/rc3-recovery-plan.md)
+- [0.1.0-rc.5 stabilization plan](docs/design/rc5-stabilization-plan.md)
+- [Version roadmap: 0.1 stabilization and the 0.2 product upgrade](docs/design/version-roadmap.md)
 - [Compatibility matrix](docs/design/compatibility.md)
 - [User and operator guide](docs/user-guide.md)
 - [Verification record](docs/verification.md)
@@ -366,7 +368,7 @@ security reports, follow [SECURITY.md](SECURITY.md).
 ## Status
 
 Pre-1.0. The DSH plugin ABI is still moving; compatibility is tested against the versions above, and the design
-keeps the compatibility layer deliberately small. The public repository is [centella-cream/dsh-charter](https://github.com/centella-cream/dsh-charter). This tree is the `0.1.0-rc.4` pre-release: the real-model
+keeps the compatibility layer deliberately small. The public repository is [centella-cream/dsh-charter](https://github.com/centella-cream/dsh-charter). This tree is the `0.1.0-rc.5` pre-release: the real-model
 compaction acceptance **PASS is recorded on 2026-10-22** on an anonymized evaluation Session (326 messages /
 ~228k tokens shadowed, revision-1 charter survived with matching digest — see verification §8.4). The rc.2 candidate
 is verified locally and is intended for the npm registry under the `next` dist-tag; under our channel policy
