@@ -14,7 +14,7 @@
 | 验证项 | 结果 |
 | --- | --- |
 | TypeScript 严格类型检查（7 个 DSH 版本） | 通过 |
-| Vitest（7 个本地可用版本 × 331 个测试） | 通过 |
+| Vitest（当前树；346 个测试） | 通过 |
 | Host ESM 构建 + 浏览器单文件 bundle | 通过 |
 | Remote 装饰器/资源 smoke | 通过（0.1.7/0.2.0 按预期无资源声明） |
 | 浏览器 factory bundle 物化与 `apply` smoke | 通过 |
@@ -45,7 +45,7 @@ npm test
 
 - typecheck 通过；
 - build 通过；
-- 25 个测试文件、331 个测试全部通过（来自 `npm test`，即 build 后运行 `vitest run`）；
+- 当前树 26 个测试文件、346 个测试通过（来自 `npm test`，即 build 后运行 `vitest run`）；
 - `remote-smoke` 断言 `watch,bootstrap,edit`、stream mode 和 Session resource；
 - `client-smoke` 断言单文件 factory bundle、外部依赖白名单、不引用 Node-only `Buffer`、`apply` 注册
   tab/pane/Remote contribution。
@@ -113,16 +113,16 @@ npm run build
 
 | 版本 | typecheck | build | Vitest | remote smoke | client smoke |
 | --- | --- | --- | --- | --- | --- |
-| `0.1.7-rc.2` | 通过 | 通过 | 331/331 | 通过（无 resources 警告） | 通过 |
-| `0.2.0-rc.1` | 通过 | 通过 | 331/331 | 通过（无 resources 警告） | 通过 |
-| `0.2.0-rc.2` | 通过 | 通过 | 331/331 | 通过（无 resources 警告） | 通过 |
-| `0.2.1-rc.1` | 通过 | 通过 | 331/331 | 通过 | 通过 |
-| `0.2.1-rc.2` | 通过 | 通过 | 331/331 | 通过 | 通过 |
-| `0.2.1-rc.3` | 通过 | 通过 | 331/331 | 通过 | 通过 |
-| `0.2.1-rc.4` | 通过 | 通过 | 331/331 | 通过 | 通过 |
+| `0.1.7-rc.2` | 通过 | 通过 | 346/346 sentinel | 通过（无 resources 警告） | 通过 |
+| `0.2.0-rc.1` | 通过 | 通过 | 331/331（rc.4 全量） | 通过（无 resources 警告） | 通过 |
+| `0.2.0-rc.2` | 通过 | 通过 | 331/331（rc.4 全量） | 通过（无 resources 警告） | 通过 |
+| `0.2.1-rc.1` | 通过 | 通过 | 331/331（rc.4 全量） | 通过 | 通过 |
+| `0.2.1-rc.2` | 通过 | 通过 | 346/346 sentinel | 通过 | 通过 |
+| `0.2.1-rc.3` | 通过 | 通过 | 331/331（rc.4 全量） | 通过 | 通过 |
+| `0.2.1-rc.4` | 通过 | 通过 | 346/346 sentinel | 通过 | 通过 |
 
-最终 `0.1.0-rc.4` 树在 2026-10-27 重新跑过：每个版本均为 25 个测试文件 / 331 个测试，且 build 内含 remote/client
-smoke 断言。
+rc.5 sentinel 在 2026-10-27 的 `0.1.7-rc.2`、`0.2.1-rc.2`、`0.2.1-rc.4` 上报告 26 个测试文件 / 346 个测试；
+未完成七版本全量 rerun。其余单元格是 rc.4 最后一次全量矩阵（当时 26 个文件 / 331 个测试），不是 rc.5 全量声明。
 
 这个七版本矩阵是**本地证据**：版本目录和驱动脚本位于被 git 忽略的 `.tmp/`，公开 CI 不会复现它。CI
 （`.github/workflows/ci.yml`）在 Node `22.19.0` 与 Node `24` 上运行已提交的门禁（`npm run check` +
@@ -849,6 +849,27 @@ renderer 测试）；未重新生成截图（无干净 demo-only 隔离 profile�
 0.2.1-rc.3 与 0.2.1-rc.4 的完整 DSH 包图重新验证：typecheck、Host ESM build、client bundle 与
 25 files / 331 tests 在两个版本上全部通过，无需修改插件代码。`0.1.0-rc.4` 是兼容性补丁：peer ranges
 与 `engines.dsh` 增加 `0.2.1-rc.3`、`0.2.1-rc.4`，主开发基线移动到 `0.2.1-rc.4`；旧五个版本继续验证。
+
+### 8.8 `0.1.0-rc.5` 稳定化候选证据（2026-10-27）
+
+rc.5 实现了方案的 product-correctness 与发布硬化代码：仅显示窗口的 bootstrap 审阅、未来 schema 只读围栏、
+拆分本地丢弃、committed/projected Apply 原因、UTF-8/WebCrypto archive preview、连接/错误/ARIA/触控改进、
+七版本兼容元数据、受版本控制 compatibility runner，以及一次打包的 candidate/promote workflows。不新增 0.2
+能力或持久 schema。
+
+当前树证据：
+
+- `npm run typecheck`：通过。
+- `npm test`：26 个测试文件 / 346 个测试通过（typecheck + build + Vitest）。
+- rc.5 定向测试覆盖未选择的 bootstrap 可见窗口、丢弃操作独立性与 unknown evidence 保留、future schema
+  分类/写入拒绝/字节保留、UTF-8 preview 边界、WebCrypto 缺失、连接分类、兼容元数据一致性。
+- `node scripts/verify/compat-matrix.mjs --versions minimum,old-boundary,current` 是受版本控制的本地矩阵
+  runner；evidence 位于 `.tmp/`，公开 CI 不复现。
+- `.github/workflows/release-candidate.yml` 只 pack 一次，Gateway/browser job 在真实脚本接入前 fail closed；
+  `.github/workflows/release-promote.yml` 是受保护、不 build/不 pack 的 promotion 路径。本轮未为 rc.5 创建
+  tag、GitHub Release 或 npm 发布。
+- 真实 Gateway 授权、exact-artifact 浏览器恢复、Desktop ABI 与真实模型 compaction 仍是独立人工/集成门禁；
+  本证据不声称它们已通过。
 
 ## 9. 未支持的验证项与已接受的非阻塞限制
 
