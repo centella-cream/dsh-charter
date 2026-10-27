@@ -21,7 +21,7 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 | packed recovery smoke | 通过：export、删除 target、restore、receipt replay、两次 restart、健康目标拒绝、packed fault 子集 |
 | 真实 `TypertGatewayService` | 精确 artifact 在隔离的 DSH `0.2.1-rc.3` / `rc.4` 依赖图上通过 |
 | 兼容 sentinel | `0.1.7-rc.2`、`0.2.1-rc.2`、`0.2.1-rc.4` 通过 |
-| 七版本全量 rerun | 本地通过（每版本 348/348） |
+| 七版本全量 rerun | tracked `compat-matrix --versions all` 通过（每版本 348/348） |
 | 真实浏览器恢复 | 受保护的人工 evidence gate；未自动化 |
 | 真实模型 compaction | 2026-10-22 记录 PASS；仍是人工发布门禁 |
 
@@ -53,15 +53,15 @@ CI（`.github/workflows/ci.yml`）在 Node `22.19.0` / `24` 上运行 `npm run c
 
 | DSH 版本 | 证据 |
 | --- | --- |
-| `0.1.7-rc.2` | 348/348 本地全量矩阵 |
-| `0.2.0-rc.1` | 348/348 本地全量矩阵 |
-| `0.2.0-rc.2` | 348/348 本地全量矩阵 |
-| `0.2.1-rc.1` | 348/348 本地全量矩阵 |
-| `0.2.1-rc.2` | 348/348 本地全量矩阵 |
-| `0.2.1-rc.3` | 348/348 本地全量矩阵 |
-| `0.2.1-rc.4` | 348/348 本地全量矩阵 |
+| `0.1.7-rc.2` | 348/348 tracked matrix PASS |
+| `0.2.0-rc.1` | 348/348 tracked matrix PASS |
+| `0.2.0-rc.2` | 348/348 tracked matrix PASS |
+| `0.2.1-rc.1` | 348/348 tracked matrix PASS |
+| `0.2.1-rc.2` | 348/348 tracked matrix PASS |
+| `0.2.1-rc.3` | 348/348 tracked matrix PASS |
+| `0.2.1-rc.4` | 348/348 tracked matrix PASS |
 
-rc.5 七版本本地矩阵已于 2026-10-27 完成：每个声明版本均通过 typecheck、build 和 348/348 测试。release candidate workflow 会运行同一矩阵；CI 执行前该证据仍属本地。
+rc.5 tracked `compat-matrix --versions all` 已于 2026-10-27 完成：每个声明版本均通过 typecheck、build 和 348/348 测试（pnpm 隔离依赖图，zod 类型归一化）。release candidate workflow 运行同一命令并上传 evidence。
 
 ## 4. 测试覆盖
 
