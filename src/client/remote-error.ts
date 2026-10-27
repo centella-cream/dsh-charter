@@ -25,7 +25,7 @@ const DEFINITE_NOT_EXECUTED = new Set([
  * text. Works across realm/module copies and keeps the browser factory bundle
  * free of an external protocol runtime import.
  */
-function remoteCodeOf(value: unknown): string | undefined {
+export function remoteCodeOf(value: unknown): string | undefined {
   if (typeof value === 'object' && value !== null) {
     const candidate = value as { isDSHRemoteError?: unknown; code?: unknown }
     if (candidate.isDSHRemoteError === true && typeof candidate.code === 'string') return candidate.code
@@ -47,4 +47,38 @@ export function classifyRemoteFailure(value: unknown): RemoteFailureDisposition 
   if (code === undefined) return { kind: 'unknown' }
   if (DEFINITE_NOT_EXECUTED.has(code)) return { kind: 'known', code }
   return { kind: 'unknown' }
+}
+
+export type CharterConnectionErrorKind =
+  | 'timeout'
+  | 'disconnected'
+  | 'host-service-missing'
+  | 'runtime-unsupported'
+  | 'unknown'
+
+const HOST_SERVICE_MISSING = new Set([
+  'remote/service-unavailable',
+  'remote/method-unavailable',
+  'remote/definition-unavailable',
+  'gateway/service-unavailable',
+  'gateway/method-unavailable',
+  'gateway/definition-unavailable',
+])
+
+const RUNTIME_UNSUPPORTED = new Set([
+  'remote-access/denied',
+  'remote-access/forbidden',
+])
+
+/** Classify a connection failure from stable RemoteError codes, never message text. */
+export function classifyConnectionError(
+  value: unknown,
+  fallback: CharterConnectionErrorKind = 'unknown',
+): CharterConnectionErrorKind {
+  const code = remoteCodeOf(value)
+  if (code === undefined) return fallback
+  if (HOST_SERVICE_MISSING.has(code)) return 'host-service-missing'
+  if (RUNTIME_UNSUPPORTED.has(code)) return 'runtime-unsupported'
+  if (code === 'gateway/cancelled' || code === 'gateway/timeout') return 'timeout'
+  return fallback
 }

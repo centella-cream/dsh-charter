@@ -23,11 +23,14 @@ import type {
   CharterSnapshotFrame,
 } from '../remote/wire.js'
 import { CharterDraft } from './draft-store.js'
+import { classifyConnectionError, type CharterConnectionErrorKind } from './remote-error.js'
 
 export interface CharterClientState {
   readonly status: 'connecting' | 'ready' | 'error'
   readonly view: CharterView | null
   readonly error: string | null
+  /** Stable classification of a connection failure; business record failures are not included. */
+  readonly errorKind?: CharterConnectionErrorKind | undefined
 }
 
 export interface CharterSource {
@@ -224,7 +227,7 @@ export class CharterSessionSource implements CharterSource {
     }).catch(error => {
       if (generation !== this.attachGeneration) return
       this.pendingRemote = undefined
-      this.publish({ ...this.state, status: 'error', error: messageOf(error) })
+      this.publish({ ...this.state, status: 'error', error: messageOf(error), errorKind: classifyConnectionError(error) })
     })
   }
 
@@ -242,7 +245,7 @@ export class CharterSessionSource implements CharterSource {
     void this.stop().finally(() => {
       // A later attach owns the state after this detach.
       if (generation !== this.attachGeneration) return
-      this.publish({ ...this.state, status: 'error', error: 'Charter connection is unavailable.' })
+      this.publish({ ...this.state, status: 'error', error: 'Charter connection is unavailable.', errorKind: 'disconnected' })
     })
   }
 
@@ -310,6 +313,7 @@ export class CharterSessionSource implements CharterSource {
         ...this.state,
         status: 'error',
         error: 'Charter connection timed out before the first snapshot.',
+        errorKind: 'timeout',
       })
     }, this.attachTimeoutMs)
     this.watchdog.unref?.()
@@ -334,7 +338,7 @@ export class CharterSessionSource implements CharterSource {
     // for a retry, while a late result from the dead stream must fail the
     // source-generation guards and can never publish ready/clear the draft.
     this.bumpConnection()
-    this.publish({ ...this.state, status: 'error', error: messageOf(error) })
+    this.publish({ ...this.state, status: 'error', error: messageOf(error), errorKind: classifyConnectionError(error, 'disconnected') })
     const disposal = snapshots !== undefined ? snapshots.dispose() : stream?.dispose()
     void disposal?.catch(() => undefined)
   }

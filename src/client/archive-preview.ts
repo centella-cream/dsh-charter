@@ -29,6 +29,7 @@ export interface ArchivePreviewFailure {
     | 'sessionMismatch'
     | 'lifecycleMismatch'
     | 'digestMismatch'
+    | 'cryptoUnavailable'
 }
 
 export type ArchivePreviewResult = ArchivePreviewOk | ArchivePreviewFailure
@@ -37,12 +38,16 @@ function canonicalJson(value: unknown): string {
   return JSON.stringify(value)
 }
 
-async function sha256Text(value: string): Promise<string> {
+async function sha256Text(value: string): Promise<string | null> {
   const bytes = new TextEncoder().encode(value)
   const subtle = globalThis.crypto?.subtle
-  if (subtle === undefined) return ''
-  const digest = await subtle.digest('SHA-256', bytes)
-  return `sha256:${[...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('')}`
+  if (subtle === undefined) return null
+  try {
+    const digest = await subtle.digest('SHA-256', bytes)
+    return `sha256:${[...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('')}`
+  } catch {
+    return null
+  }
 }
 
 /**
@@ -60,7 +65,7 @@ export async function previewArchive(
   } catch {
     return { ok: false, reason: 'invalidJson' }
   }
-  if (serialized.length > expected.maxRecoveryBytes) {
+  if (new TextEncoder().encode(serialized).byteLength > expected.maxRecoveryBytes) {
     return { ok: false, reason: 'fileTooLarge' }
   }
   const parsed = charterRecordArchiveSchema.safeParse(raw)
@@ -73,8 +78,12 @@ export async function previewArchive(
     return { ok: false, reason: 'lifecycleMismatch' }
   }
   const { payloadDigest, ...body } = archive
-  const payloadDigestOk = payloadDigest === await sha256Text(canonicalJson(body))
-  const recordDigestOk = archive.source.recordDigest === await sha256Text(canonicalJson(archive.record))
+  const actualPayload = await sha256Text(canonicalJson(body))
+  if (actualPayload === null) return { ok: false, reason: 'cryptoUnavailable' }
+  const actualRecord = await sha256Text(canonicalJson(archive.record))
+  if (actualRecord === null) return { ok: false, reason: 'cryptoUnavailable' }
+  const payloadDigestOk = payloadDigest === actualPayload
+  const recordDigestOk = archive.source.recordDigest === actualRecord
   if (!payloadDigestOk || !recordDigestOk) return { ok: false, reason: 'digestMismatch' }
   return {
     ok: true,
