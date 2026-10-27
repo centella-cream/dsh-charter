@@ -10,7 +10,7 @@
  * needs npm registry access and a full checkout. It is not a substitute for the
  * real Gateway/browser acceptance jobs.
  */
-import { mkdir, mkdtemp, readFile, rm, writeFile, cp } from 'node:fs/promises'
+import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { spawn } from 'node:child_process'
 import { tmpdir } from 'node:os'
@@ -91,50 +91,107 @@ async function prepareProject(version, workRoot) {
   if (existsSync(dir)) await rm(dir, { recursive: true, force: true })
   await mkdir(dir, { recursive: true })
   await copyTree(ROOT, dir)
-  if (version.localeCompare('0.2.1-rc.3', undefined, { numeric: true }) < 0) {
-    await rm(join(dir, 'tests/gateway'), { recursive: true, force: true })
-  }
   const pkg = JSON.parse(await readFile(join(dir, 'package.json'), 'utf8'))
-  // Explicit per-version test manifest: only packages imported by the shipped
-  // source/tests. Gateway tooling is exercised separately against the artifact.
-  const TEST_DSH_PACKAGES = [
-    '@deepseek-ai/dsh-agent',
-    '@deepseek-ai/dsh-api-gateway',
-    '@deepseek-ai/dsh-client-locale',
-    '@deepseek-ai/dsh-client-ui-conversation',
-    '@deepseek-ai/dsh-client-ui-renderer',
-    '@deepseek-ai/dsh-client-ui-session',
-    '@deepseek-ai/dsh-client-ui-slots',
-    '@deepseek-ai/dsh-session',
-    '@deepseek-ai/dsh-storage',
-    '@deepseek-ai/dsh-storage-domain',
-    '@deepseek-ai/dsh-storage-json',
-    '@deepseek-ai/dsh-system-prompt',
-    '@deepseek-ai/dsh-tools',
-    '@deepseek-ai/dsh-typert-protocol',
-  ]
+  const dshPackages = {
+    '@deepseek-ai/dsh-agent': version,
+    '@deepseek-ai/dsh-api-gateway': version,
+    '@deepseek-ai/dsh-client-locale': version,
+    '@deepseek-ai/dsh-client-ui-conversation': version,
+    '@deepseek-ai/dsh-client-ui-renderer': version,
+    '@deepseek-ai/dsh-client-ui-session': version,
+    '@deepseek-ai/dsh-client-ui-slots': version,
+    '@deepseek-ai/dsh-session': version,
+    '@deepseek-ai/dsh-storage': version,
+    '@deepseek-ai/dsh-storage-domain': version,
+    '@deepseek-ai/dsh-storage-json': version,
+    '@deepseek-ai/dsh-system-prompt': version,
+    '@deepseek-ai/dsh-tools': version,
+    '@deepseek-ai/dsh-typert-protocol': version,
+  }
+  const tools = {
+    '@types/node': '^22.20.0',
+    '@types/react': '^18.3.0',
+    '@types/react-dom': '^18.3.7',
+    '@types/react-test-renderer': '^18.3.1',
+    '@tsdown/css': '^0.22.2',
+    react: '^18.2.0',
+    'react-dom': '^18.3.1',
+    'react-test-renderer': '^18.3.1',
+    tsdown: '0.22.2',
+    typescript: '~5.9.2',
+    vitest: '4.1.12',
+  }
   for (const name of Object.keys(pkg.devDependencies ?? {})) {
-    if (name.startsWith('@deepseek-ai/dsh-')) delete pkg.devDependencies[name]
+    if (name.startsWith('@deepseek-ai/')) delete pkg.devDependencies[name]
   }
-  for (const name of TEST_DSH_PACKAGES) {
-    const cache = join(dir, '.npm-cache')
-    const lookup = await run('npm', [
-      'view', `${name}@${version}`, 'version', '--json', '--cache', cache,
-    ], dir)
-    if (lookup.code !== 0 || lookup.stdoutTail.trim() === '') {
-      throw new Error(`DSH ${version} has no ${name}; refusing an incomplete manifest`)
-    }
-    pkg.devDependencies[name] = version
-  }
+  pkg.devDependencies = { ...pkg.devDependencies, ...dshPackages, ...tools }
+  delete pkg.overrides
+  delete pkg.pnpm
   await writeFile(join(dir, 'package.json'), JSON.stringify(pkg, null, 2) + '\n')
   await rm(join(dir, 'package-lock.json'), { force: true })
-  return dir
+  await rm(join(dir, 'pnpm-lock.yaml'), { force: true })
+  const pnpm = process.env.COMPAT_PNPM ?? 'pnpm'
+  const install = await run(pnpm, ['install', '--ignore-scripts', '--no-frozen-lockfile'], dir)
+  if (install.code === 0) await normalizeZod(dir)
+  return { dir, install }
+}
+
+/**
+ * DSH 0.2.1 packages declare zod 4.4.3 while the plugin pins zod 4.6.7. pnpm
+ * keeps both physical copies, and TypeScript sees two incompatible structural
+ * zod universes. Normalize every nested zod copy to the root 4.6.7 package;
+ * this is a test-graph fix, not a runtime dependency override.
+ */
+async function normalizeZod(dir) {
+  const pnpmDir = join(dir, 'node_modules', '.pnpm')
+  if (!existsSync(pnpmDir)) return []
+  const entries = await readdir(pnpmDir)
+  const zodDirs = entries.filter(name => /^zod@/u.test(name))
+  const root = zodDirs.find(name => name.startsWith('zod@4.6.7')) ?? zodDirs.sort().at(-1)
+  if (root === undefined) return []
+  const source = join(pnpmDir, root, 'node_modules', 'zod')
+  if (!existsSync(source)) return []
+  const normalized = []
+  for (const name of zodDirs) {
+    if (name === root) continue
+    const target = join(pnpmDir, name, 'node_modules', 'zod')
+    if (!existsSync(target)) continue
+    await cp(source, target, { recursive: true, force: true })
+    normalized.push(name)
+  }
+  return normalized
+}
+async function collectResolution(dir, version) {
+  const root = join(dir, 'node_modules', '@deepseek-ai')
+  const packages = {}
+  if (!existsSync(root)) return { packages, agent: null, mismatch: 'node_modules missing' }
+  for (const name of await readdir(root)) {
+    if (!name.startsWith('dsh-')) continue
+    try {
+      const manifest = JSON.parse(await readFile(join(root, name, 'package.json'), 'utf8'))
+      packages[name] = manifest.version
+    } catch { /* partial install */ }
+  }
+  const mismatches = Object.entries(packages).filter(([, installed]) => installed !== version)
+  return {
+    packages,
+    agent: packages['dsh-agent'] ?? null,
+    mismatch: mismatches.length === 0 ? null : mismatches.map(([name, installed]) => `${name}: ${installed} != ${version}`).join(', '),
+  }
 }
 
 async function main() {
   const args = parseArgs(process.argv.slice(2))
   const startedAt = new Date().toISOString()
-  const evidence = { schemaVersion: 1, runner: 'compat-matrix', startedAt, versions: [] }
+  const pnpmVersion = await run('pnpm', ['--version'], ROOT)
+  const evidence = {
+    schemaVersion: 2,
+    runner: 'compat-matrix',
+    startedAt,
+    node: process.version,
+    pnpm: pnpmVersion.stdoutTail.trim(),
+    versions: [],
+  }
   console.log(`compat-matrix: ${args.versions.join(', ')}`)
   if (args.dryRun) {
     for (const version of args.versions) console.log(`would verify DSH ${version} in .tmp/compat-matrix/${version}`)
@@ -144,19 +201,12 @@ async function main() {
   const workRoot = await mkdtemp(join(tmpdir(), 'dsh-charter-compat-'))
   try {
   for (const version of args.versions) {
-    const dir = await prepareProject(version, workRoot)
-    const install = await run('npm', [
-      'install', '--ignore-scripts', '--no-audit', '--no-fund',
-      '--cache', join(dir, '.npm-cache'),
-    ], dir)
-    let resolvedAgent = null
-    try {
-      resolvedAgent = JSON.parse(await readFile(join(dir, 'node_modules/@deepseek-ai/dsh-agent/package.json'), 'utf8')).version
-    } catch { /* install failed; the record captures that */ }
+    const { dir, install } = await prepareProject(version, workRoot)
+    const resolution = await collectResolution(dir, version)
     const peers = Object.keys(JSON.parse(await readFile(join(dir, 'package.json'), 'utf8')).peerDependencies ?? {})
       .filter(name => name.startsWith('@deepseek-ai/dsh-'))
-    let peerMismatch = null
-    if (install.code === 0) {
+    let peerMismatch = resolution.mismatch
+    if (install.code === 0 && peerMismatch === null) {
       for (const name of peers) {
         try {
           const installed = JSON.parse(await readFile(join(dir, 'node_modules', name, 'package.json'), 'utf8')).version
@@ -169,9 +219,10 @@ async function main() {
     }
     const result = {
       version,
-      installedAgent: resolvedAgent,
+      installedAgent: resolution.agent,
       peerMismatch,
       install,
+      resolution,
       typecheck: null,
       build: null,
       test: null,
@@ -189,7 +240,7 @@ async function main() {
     result.passed = install.code === 0 && peerMismatch === null
       && result.typecheck?.code === 0 && result.build?.code === 0 && result.test?.code === 0
     evidence.versions.push(result)
-    console.log(`${result.passed ? 'PASS' : 'FAIL'} DSH ${version} (agent ${resolvedAgent ?? 'missing'})`)
+    console.log(`${result.passed ? 'PASS' : 'FAIL'} DSH ${version} (agent ${resolution.agent ?? 'missing'})`)
     if (!result.passed) process.exitCode = 1
     if (!result.passed) break
     if (!args.keep) await rm(dir, { recursive: true, force: true })

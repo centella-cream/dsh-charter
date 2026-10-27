@@ -39,7 +39,8 @@ jobs:
         with:
           node-version: '22.19.0'
           cache: npm
-      - run: npm ci
+      - run: npm install --global pnpm@12.3.4
+      - run: pnpm --version
       - run: node scripts/verify/compat-matrix.mjs --versions all --out compat-matrix.json
       - uses: actions/upload-artifact@v4
         with:

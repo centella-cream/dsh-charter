@@ -22,7 +22,7 @@ Environment: macOS, Node `v22.23.1`, npm `12.0.2`, pnpm `12.3.4`. Local DSH deve
 | Packed-artifact recovery smoke | Pass: export, target removal, restore, receipt replay, two restarts, healthy-target refusal, packed fault subset |
 | Real `TypertGatewayService` | Pass on exact artifact with isolated DSH `0.2.1-rc.3` and `rc.4` graphs |
 | Compatibility sentinels | Pass on `0.1.7-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4` |
-| Seven-version full rerun | Pass locally (348/348 each) |
+| Seven-version full rerun | Pass via tracked `compat-matrix --versions all` (348/348 each) |
 | Real browser recovery | Manual protected evidence gate; not automated |
 | Real-model compaction | Separately recorded PASS (2026-10-22); still a manual release gate |
 
@@ -54,15 +54,15 @@ The tracked runner creates isolated npm projects and runs typecheck/build/tests 
 
 | DSH version | Evidence |
 | --- | --- |
-| `0.1.7-rc.2` | 348/348 full local matrix; `npm test` on current tree |
-| `0.2.0-rc.1` | 348/348 full local matrix; `npm test` on current tree |
-| `0.2.0-rc.2` | 348/348 full local matrix; `npm test` on current tree |
-| `0.2.1-rc.1` | 348/348 full local matrix; `npm test` on current tree |
-| `0.2.1-rc.2` | 348/348 full local matrix; `npm test` on current tree |
-| `0.2.1-rc.3` | 348/348 full local matrix; `npm test` on current tree |
-| `0.2.1-rc.4` | 348/348 full local matrix; `npm test` on current tree |
+| `0.1.7-rc.2` | 348/348 tracked matrix PASS |
+| `0.2.0-rc.1` | 348/348 tracked matrix PASS |
+| `0.2.0-rc.2` | 348/348 tracked matrix PASS |
+| `0.2.1-rc.1` | 348/348 tracked matrix PASS |
+| `0.2.1-rc.2` | 348/348 tracked matrix PASS |
+| `0.2.1-rc.3` | 348/348 tracked matrix PASS |
+| `0.2.1-rc.4` | 348/348 tracked matrix PASS |
 
-The rc.5 seven-version local matrix completed on 2026-10-27: every declared version passed typecheck, build, and 348/348 tests. The release candidate workflow runs the same matrix; its evidence remains local until CI executes it.
+The rc.5 tracked `compat-matrix --versions all` run completed on 2026-10-27: every declared version passed typecheck, build, and 348/348 tests, using pnpm-isolated dependency graphs with normalized zod types. The release candidate workflow runs the same command and uploads evidence.
 
 ## 4. What the tests cover
 
