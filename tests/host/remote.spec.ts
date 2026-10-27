@@ -196,6 +196,22 @@ describe('charter Remote contract', () => {
     expect(schema.safeParse({ ...outer, archive: undefined }).success).toBe(false)
   })
 
+  it('encodes future-schema record state as non-recoverable and rejects a recoverable form', async () => {
+    const { charterRecordStateSchema } = await import('../../src/remote/wire.js')
+    expect(charterRecordStateSchema.safeParse({
+      kind: 'invalid',
+      reason: 'future-schema',
+      recordDigest: `sha256:${'a'.repeat(64)}`,
+      recoverable: false,
+    }).success).toBe(true)
+    expect(charterRecordStateSchema.safeParse({
+      kind: 'invalid',
+      reason: 'future-schema',
+      recordDigest: `sha256:${'a'.repeat(64)}`,
+      recoverable: true,
+    }).success).toBe(false)
+  })
+
   it('round-trips new error codes and maintenance result/export codecs', () => {
     const view = {
       status: 'unavailable',

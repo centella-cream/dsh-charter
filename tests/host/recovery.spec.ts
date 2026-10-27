@@ -954,3 +954,55 @@ describe('rc.3 queued maintenance lifecycle and fence guards', () => {
     expect(table.get(session.id)).toBeUndefined()
   })
 })
+
+describe('rc.5 forward-schema fence', () => {
+  it('detects a finite higher record schema before loose identity and blocks every write/read path', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-forward-schema-'))
+    roots.push(root)
+    const ctx = await mount(root)
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('future-schema'), identityMeta(1_700_000_004_000))
+    announceStartup(ctx, session)
+    await waitFor(service, session, () => service.view(session).status === 'ready')
+    await service.edit(addItem(session.id, 0, 'future-1', 'Future invariant'))
+    const path = await findRecord(root, session.id)
+    const original = JSON.parse(await readFile(path, 'utf8')) as CharterRecord
+    const future = { ...original, recordSchemaVersion: 2, futureOnlyField: { revision: 99 } }
+    const table = (service as unknown as {
+      sessionsTable: { get: (id: string) => unknown; put: (id: string, value: unknown) => Promise<void> }
+    }).sessionsTable
+    await table.put(session.id, future)
+    await service.ensureSession(session, 'resume')
+    await waitFor(service, session, () => service.view(session).recordState?.kind === 'invalid')
+    const state = service.view(session).recordState
+    expect(state).toMatchObject({ kind: 'invalid', reason: 'future-schema', recoverable: false })
+    expect(service.view(session).status).toBe('unavailable')
+    expect(service.promptText(session)).toBe('')
+    expect(() => service.readForModel(session, 'standing')).toThrow(/not initialized/)
+    expect(await service.edit(addItem(session.id, 1, 'future-2', 'Should not write')))
+      .toMatchObject({ ok: false, code: 'UNAVAILABLE' })
+    expect(await service.initializeRecord({
+      sessionId: session.id,
+      operationId: 'future-init',
+      expectedLifecycle: service.view(session).lifecycle!,
+    })).toMatchObject({ ok: false, code: 'RECORD_CONFLICT' })
+    const exported = service.exportRecord(session.id)
+    expect(exported.ok).toBe(true)
+    if (exported.ok) expect(exported.archive.source.health).toBe('schema-invalid')
+    const beforeBytes = await readFile(path)
+    // A stale rc.4 client request naming reason:schema and the exact digest must not overwrite it.
+    const restore = await service.restoreRecord({
+      sessionId: session.id,
+      operationId: 'future-restore',
+      expectedLifecycle: service.view(session).lifecycle!,
+      expectedTarget: {
+        kind: 'invalid',
+        reason: 'schema',
+        recordDigest: recordDigestOf(future),
+      },
+      archive: exported.ok ? exported.archive : { format: 'dsh-charter-record', formatVersion: 1 },
+    } as never)
+    expect(restore).toMatchObject({ ok: false })
+    expect(await readFile(path)).toEqual(beforeBytes)
+  })
+})

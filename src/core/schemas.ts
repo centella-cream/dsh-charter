@@ -223,8 +223,11 @@ export const charterMaintenanceReceiptSchema = z.object({
   at: z.number().int().nonnegative(),
 }).strict()
 
+/** The only record schema version written by this plugin release. */
+export const CHARTER_RECORD_SCHEMA_VERSION = 1 as const
+
 export const charterRecordSchema = z.object({
-  recordSchemaVersion: z.literal(1),
+  recordSchemaVersion: z.literal(CHARTER_RECORD_SCHEMA_VERSION),
   identity: charterIdentitySchema,
   forkedFrom: z.object({
     sessionId: z.string().min(1),
