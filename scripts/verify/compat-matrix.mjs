@@ -34,15 +34,16 @@ const SENTINELS = {
 }
 
 function parseArgs(argv) {
-  const args = { versions: 'minimum,old-boundary,current', out: '.tmp/compat-matrix.json', dryRun: false, keep: false }
+  const args = { versions: 'minimum,old-boundary,current', out: '.tmp/compat-matrix.json', dryRun: false, keep: false, test: null }
   for (let i = 0; i < argv.length; i += 1) {
     const flag = argv[i]
     if (flag === '--dry-run') args.dryRun = true
     else if (flag === '--keep') args.keep = true
     else if (flag === '--versions') args.versions = argv[++i] ?? ''
     else if (flag === '--out') args.out = argv[++i] ?? args.out
+    else if (flag === '--test') args.test = argv[++i] ?? null
     else if (flag === '--help' || flag === '-h') {
-      console.log('usage: node scripts/verify/compat-matrix.mjs [--versions minimum,old-boundary,current|all|0.2.1-rc.3,...] [--out file] [--dry-run] [--keep]')
+      console.log('usage: node scripts/verify/compat-matrix.mjs [--versions minimum,old-boundary,current|all|0.2.1-rc.3,...] [--test tests/foo.spec.ts] [--out file] [--dry-run] [--keep]')
       process.exit(0)
     } else throw new Error(`unknown argument: ${flag}`)
   }
@@ -90,6 +91,9 @@ async function prepareProject(version, workRoot) {
   if (existsSync(dir)) await rm(dir, { recursive: true, force: true })
   await mkdir(dir, { recursive: true })
   await copyTree(ROOT, dir)
+  if (version.localeCompare('0.2.1-rc.3', undefined, { numeric: true }) < 0) {
+    await rm(join(dir, 'tests/gateway'), { recursive: true, force: true })
+  }
   const pkg = JSON.parse(await readFile(join(dir, 'package.json'), 'utf8'))
   for (const name of Object.keys(pkg.devDependencies ?? {})) {
     if (!name.startsWith('@deepseek-ai/dsh-')) continue
@@ -130,7 +134,11 @@ async function main() {
     if (install.code === 0) {
       result.typecheck = await run(join(dir, 'node_modules/.bin/tsc'), ['--noEmit'], dir)
       result.build = await run('npm', ['run', 'build'], dir)
-      result.test = await run(join(dir, 'node_modules/.bin/vitest'), ['run'], dir)
+      const needsGateway = version.localeCompare('0.2.1-rc.3', undefined, { numeric: true }) >= 0
+      const testArgs = ['run']
+      if (args.test !== null) testArgs.push(args.test)
+      if (!needsGateway) testArgs.push('--exclude', 'tests/gateway/**')
+      result.test = await run(join(dir, 'node_modules/.bin/vitest'), testArgs, dir)
     }
     result.passed = install.code === 0 && result.typecheck?.code === 0 && result.build?.code === 0 && result.test?.code === 0
     evidence.versions.push(result)

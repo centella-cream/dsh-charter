@@ -298,7 +298,7 @@ npm run verify:compaction # 手工真实模型 compaction 校验（不在 check 
 ```
 
 测试覆盖纯内核、真实 Host 组合、storage domain、Remote framing、历史抽取、客户端状态和 factory bundle
-注册。当前树有 **346 个测试**；rc.5 兼容 sentinel 在 DSH `0.1.7-rc.2`、`0.2.1-rc.2`、`0.2.1-rc.4` 上通过。完整矩阵历史与当前证据见[验证记录](docs/verification.zh.md)。
+注册。当前树有 **350 个测试**；rc.5 兼容 sentinel 在 DSH `0.1.7-rc.2`、`0.2.1-rc.2`、`0.2.1-rc.4` 上通过。完整矩阵历史与当前证据见[验证记录](docs/verification.zh.md)。
 
 ## 致谢
 

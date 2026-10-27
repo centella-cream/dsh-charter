@@ -15,7 +15,7 @@ HTML live under `.tmp/` and are excluded from the published package.
 | Item | Result |
 | --- | --- |
 | Strict TypeScript check (7 DSH versions) | Pass |
-| Vitest (current tree; 346 tests) | Pass |
+| Vitest (current tree; 350 tests) | Pass |
 | Host ESM build + browser single-file bundle | Pass |
 | Remote decorator/resource smoke | Pass (0.1.7/0.2.0 have no resource declaration, as expected) |
 | Browser factory-bundle materialization and `apply` smoke | Pass |
@@ -46,7 +46,7 @@ Results:
 
 - typecheck passes;
 - build passes;
-- 26 test files, 346 tests pass on the current tree (from `npm test`, which builds and then runs `vitest run`);
+- 27 test files, 350 tests pass on the current tree (from `npm test`, which builds and then runs `vitest run`);
 - `remote-smoke` asserts `watch,bootstrap,edit`, stream mode, and Session resource;
 - `client-smoke` asserts the single-file factory bundle, external-dependency allowlist, no Node-only `Buffer`
   reference, and `apply` registering the tab/pane/Remote contribution;
@@ -122,16 +122,16 @@ Results:
 
 | Version | typecheck | build | Vitest | remote smoke | client smoke |
 | --- | --- | --- | --- | --- | --- |
-| `0.1.7-rc.2` | Pass | Pass | 346/346 sentinel | Pass (no-resources warning) | Pass |
+| `0.1.7-rc.2` | Pass | Pass | 346/346 sentinel (gateway N/A) | Pass (no-resources warning) | Pass |
 | `0.2.0-rc.1` | Pass | Pass | 331/331 (rc.4 full) | Pass (no-resources warning) | Pass |
 | `0.2.0-rc.2` | Pass | Pass | 331/331 (rc.4 full) | Pass (no-resources warning) | Pass |
 | `0.2.1-rc.1` | Pass | Pass | 331/331 (rc.4 full) | Pass | Pass |
-| `0.2.1-rc.2` | Pass | Pass | 346/346 sentinel | Pass | Pass |
+| `0.2.1-rc.2` | Pass | Pass | 346/346 sentinel (gateway N/A) | Pass | Pass |
 | `0.2.1-rc.3` | Pass | Pass | 331/331 (rc.4 full) | Pass | Pass |
-| `0.2.1-rc.4` | Pass | Pass | 346/346 sentinel | Pass | Pass |
+| `0.2.1-rc.4` | Pass | Pass | 350/350 sentinel | Pass | Pass |
 
-The rc.5 sentinel run on 2026-10-27 reports 26 test files / 346 tests on `0.1.7-rc.2`, `0.2.1-rc.2`, and
-`0.2.1-rc.4`; the full seven-version rerun was not completed. The remaining cells are the last full rc.4 matrix
+The rc.5 sentinel run on 2026-10-27 reports 346 tests on `0.1.7-rc.2`/`0.2.1-rc.2` (gateway test excluded
+because Gateway APIs are absent) and 350 tests on `0.2.1-rc.4`; the full seven-version rerun was not completed. The remaining cells are the last full rc.4 matrix
 (26 files / 331 tests at that time), not a rc.5 full-matrix claim.
 
 This seven-version matrix is **local evidence**: its version directories and driver script live in the gitignored
@@ -965,17 +965,20 @@ persistent schema change was added.
 Current-tree evidence:
 
 - `npm run typecheck`: pass.
-- `npm test`: 26 files / 346 tests pass (typecheck + build + Vitest).
+- `npm test`: 27 files / 350 tests pass (typecheck + build + Vitest).
 - Focused rc.5 tests cover unselected/bootstrap visible windows, discard independence and unknown-evidence
   retention, future-schema classification and write denial with byte preservation, UTF-8 preview limits, missing
   WebCrypto, connection classification, and compatibility metadata consistency.
 - `node scripts/verify/compat-matrix.mjs --versions minimum,old-boundary,current` is the tracked local matrix
   runner; its evidence is written under `.tmp/` and is not replayed by public CI.
-- `.github/workflows/release-candidate.yml` packs exactly once and makes Gateway/browser jobs fail closed until
-  their real scripts exist. `.github/workflows/release-promote.yml` is the protected, no-build/no-pack promotion
+- Real `TypertGatewayService` acceptance is tracked in `tests/gateway/authorization.spec.ts` and runs via
+  `scripts/verify/gateway-smoke.mjs` on DSH `0.2.1-rc.3` and `rc.4` (owner edit, guest edit policy, guest
+  owner-only maintenance refusal, guest purge refusal, and pre-business denial). Gateway smoke PASS on both.
+- `.github/workflows/release-candidate.yml` packs exactly once; its Gateway job calls the real gateway smoke.
+  The browser-recovery/recovery-file script is still pending, so the browser job fails closed. `.github/workflows/release-promote.yml` is the protected, no-build/no-pack promotion
   path. No tag, GitHub Release, or npm publication was performed for rc.5 in this preparation pass.
-- Real Gateway authorization, exact-artifact browser recovery, Desktop ABI, and real-model compaction remain
-  separate manual/integration gates; this evidence does not claim them.
+- Real-browser recovery, Desktop ABI, and real-model compaction remain separate manual/integration gates; this
+  evidence does not claim them.
 
 ## 9. Unsupported verification and accepted non-blocking limitations
 

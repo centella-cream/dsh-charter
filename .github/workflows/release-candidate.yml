@@ -136,13 +136,10 @@ jobs:
         with:
           name: release-candidate
           path: candidate
-      - name: Real Gateway acceptance (fail closed until wired)
+      - name: Real Gateway acceptance
         run: |
-          if [ ! -f scripts/verify/gateway-smoke.mjs ]; then
-            echo "::error::Real Gateway acceptance is not wired; rc.5 cannot be released from this candidate."
-            exit 1
-          fi
-          node scripts/verify/gateway-smoke.mjs --artifact "candidate/$(basename candidate/*.tgz)"
+          npm ci
+          node scripts/verify/gateway-smoke.mjs --versions 0.2.1-rc.3,0.2.1-rc.4 --out gateway-smoke.json
 
   browser-recovery:
     runs-on: ubuntu-latest
