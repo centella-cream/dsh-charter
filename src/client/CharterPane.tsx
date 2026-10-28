@@ -25,6 +25,7 @@ import { CHARTER_LOCALE_NS, type CharterLocaleKey } from './locales.js'
 import { draftAdmission } from './admission.js'
 import {
   bootstrapReplayPending,
+  crossLifecycleUnknown,
   editReplayPending,
   maintenanceReplayPending,
   rebaseAvailable,
@@ -825,11 +826,13 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   // must be invariant across connecting/null → ready and error/null → ready.
   const editReplay = editReplayPending(draftState)
   const bootstrapReplay = bootstrapReplayPending(draftState)
+  const unknownBlocked = draftState.attempt?.status === 'unknown'
+  const oldLifecycleUnknown = crossLifecycleUnknown(draftState)
   useEffect(() => {
-    if (!hasLocalWork || editReplay || bootstrapReplay || saving || bootstrapSaving) setConfirmDiscardAll(false)
-  }, [hasLocalWork, editReplay, bootstrapReplay, saving, bootstrapSaving])
+    if (!hasLocalWork || unknownBlocked || saving || bootstrapSaving) setConfirmDiscardAll(false)
+  }, [hasLocalWork, unknownBlocked, saving, bootstrapSaving])
 
-  const unknownReplay = editReplay || bootstrapReplay
+  const unknownReplay = unknownBlocked
   useEffect(() => {
     if (!unknownReplay) setConfirmAbandon(false)
   }, [unknownReplay])
@@ -938,8 +941,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
     && online
     && editor === null
     && state.status === 'ready'
-    && !editReplay
-    && !bootstrapReplay
+    && !unknownBlocked
   const promptBudget = promptBudgetAdmission(view.promptText, preview, view.limits.maxPromptBytes)
   const previewBytes = promptBudget.previewBytes
   const contextOver = promptBudget.over
@@ -948,10 +950,12 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   // disagree about maxOps/maxItems/maxPendingItems/prompt admission.
   const admission = draftAdmission(view, ops)
   const applyBlocked = !admission.ok
-  const applyBlockReason: 'retry' | 'busy' | 'read-only' | 'no-changes' | 'editor-open'
+  const applyBlockReason: 'retry' | 'lifecycle-abandon' | 'busy' | 'read-only' | 'no-changes' | 'editor-open'
     | 'revision-conflict' | 'connection' | 'quota' | 'stale' | null = editReplay
     ? 'retry'
-    : saving
+    : unknownBlocked
+      ? 'lifecycle-abandon'
+      : saving
       ? 'busy'
       : editor !== null
         ? 'editor-open'
@@ -1196,7 +1200,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
         {visible.length === 0 && <p className="charter-empty">{t(emptyKey)}</p>}
         {visible.map(item => (
           <ItemRow
-            key={item.id}
+            key={`${view?.sessionId ?? ''}:${view?.lifecycle ?? ''}:${item.id}`}
             item={item}
             successor={successorOf(item)}
             editable={editable}
@@ -1295,6 +1299,11 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
             <span role="alert">{t('footer.replayPending')}</span>
           </div>
         )}
+        {oldLifecycleUnknown && (
+          <div className="charter-notice charter-notice--warning">
+            <span role="alert">{t('footer.lifecyclePending')}</span>
+          </div>
+        )}
         {revisionConflict && (
           <div className="charter-notice charter-notice--warning">
             <span role="alert">{t('notice.conflict', { from: baseRevision ?? 0, to: view.revision })}</span>
@@ -1376,7 +1385,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
               : (
                   <>
                     <ActionButton
-                      disabled={ops.length === 0 || saving || editReplay}
+                      disabled={ops.length === 0 || saving || unknownBlocked}
                       onClick={() => { draft.discardStaged(); statusRef.current?.focus() }}
                     >
                       {t('footer.discard')}
@@ -1385,7 +1394,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                       <>
                       <ActionButton
                         variant="outline"
-                        disabled={saving || bootstrapSaving || editReplay || bootstrapReplay || maintenanceReplay}
+                        disabled={saving || bootstrapSaving || unknownBlocked || maintenanceReplay}
                         onClick={discardAll}
                       >
                         {confirmDiscardAll
@@ -1513,7 +1522,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                       {objectiveStaged && (
                         <ActionButton
                           variant="outline"
-                          disabled={!editable || saving || editReplay}
+                          disabled={!editable || saving || unknownBlocked}
                           onClick={() => { draft.unstageObjective(); statusRef.current?.focus() }}
                         >
                           {t('discard.unstageObjective')}
@@ -1594,7 +1603,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                       {objectiveStaged && (
                         <ActionButton
                           variant="outline"
-                          disabled={!editable || saving || editReplay}
+                          disabled={!editable || saving || unknownBlocked}
                           onClick={() => { draft.unstageObjective(); statusRef.current?.focus() }}
                         >
                           {t('discard.unstageObjective')}
@@ -1679,7 +1688,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                     {newInvariant.length > 0 && (
                       <ActionButton
                         variant="outline"
-                        disabled={!editable || saving || editReplay}
+                        disabled={!editable || saving || unknownBlocked}
                         onClick={() => draft.clearComposer('invariant')}
                       >
                         {t('composer.clear')}
@@ -1747,7 +1756,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                     {newDeliverable.length > 0 && (
                       <ActionButton
                         variant="outline"
-                        disabled={!editable || saving || editReplay}
+                        disabled={!editable || saving || unknownBlocked}
                         onClick={() => draft.clearComposer('deliverable')}
                       >
                         {t('composer.clear')}
@@ -2129,15 +2138,17 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                       <span>{t('recovery.inFlight')}</span>
                     </div>
                   )}
-                  {maintenanceReplay && (
+                  {(maintenanceReplay || (unknownBlocked && (draftState.attempt?.kind === 'initialize' || draftState.attempt?.kind === 'restore'))) && (
                     <div className="charter-recovery__problem">
                       <div className="charter-notice" role="status">
                         <span>{t('recovery.unknownOutcome')}</span>
                       </div>
                       <div className="charter-recovery__actions">
-                        <ActionButton variant="primary" onClick={() => void draft.retryMaintenance()}>
-                          {t('recovery.retry')}
-                        </ActionButton>
+                        {maintenanceReplay && (
+                          <ActionButton variant="primary" onClick={() => void draft.retryMaintenance()}>
+                            {t('recovery.retry')}
+                          </ActionButton>
+                        )}
                         <ActionButton variant="outline" onClick={abandonUnknown}>
                           {confirmAbandon ? t('footer.abandonConfirm') : t('recovery.abandon')}
                         </ActionButton>

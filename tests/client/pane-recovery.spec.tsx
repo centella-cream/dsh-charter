@@ -403,3 +403,31 @@ describe('rc.5 archive confirmation binding', () => {
     expect(tree.root.findAll(node => node.type === 'button' && textOf(node) === 'recovery.restoreConfirm')).toHaveLength(0)
   })
 })
+
+describe('cross-lifecycle unknown attempt UI', () => {
+  it('shows Abandon for an old-lifecycle attempt and unlocks after confirmation', async () => {
+    const h = harness(baseView())
+    const draft = new CharterDraft(sessionId, () => h.source)
+    draft.bindLifecycle('life-a')
+    draft.stage(baseView(), {
+      type: 'item.add',
+      item: { clientRef: 'old-life', kind: 'invariant', text: 'Lifecycle A text', order: 0 },
+    })
+    await draft.applyDraft(baseView())
+    expect(draft.getSnapshot().attempt).toMatchObject({ status: 'unknown', lifecycle: 'life-a' })
+    draft.bindLifecycle('life-b')
+    const Pane = CharterPane as unknown as React.ComponentType<Record<string, unknown>>
+    let tree: ReactTestRenderer | undefined
+    act(() => {
+      tree = create(<Pane source={h.source} draft={draft} release={() => undefined} t={(key: string) => key} />)
+    })
+    if (tree === undefined) throw new Error('pane did not render')
+    trees.push(tree)
+    const rendered = tree
+    expect(textOf(rendered.root)).toContain('footer.lifecyclePending')
+    expect(rendered.root.findAll(node => node.type === 'button' && textOf(node) === 'footer.abandon').length).toBe(1)
+    click(rendered, 'footer.abandon')
+    click(rendered, 'footer.abandonConfirm')
+    expect(draft.getSnapshot().attempt).toBeNull()
+  })
+})
