@@ -218,7 +218,7 @@ jobs:
             printf '%s\n' "${ASSETS[@]}" | grep -qx "$(basename candidate/*.tgz)"
             rm -rf /tmp/public-evidence && mkdir /tmp/public-evidence
             gh release download "$TAG" -D /tmp/public-evidence -p 'release-evidence.json'
-            SHA="$CANDIDATE_SHA256" VERSION="$VERSION" CANDIDATE_COMMIT="$CANDIDATE_COMMIT" RELEASE_COMMIT="$RELEASE_COMMIT" RUN_ID="$RUN_ID" BROWSER_EVIDENCE_RUN_ID="$BROWSER_EVIDENCE_RUN_ID" TAG="$TAG" node - <<'NODE'
+            SHA="$CANDIDATE_SHA256" VERSION="$VERSION" CANDIDATE_COMMIT="$CANDIDATE_COMMIT" RELEASE_COMMIT="$RELEASE_COMMIT" RUN_ID="$RUN_ID" BROWSER_EVIDENCE_RUN_ID="$BROWSER_EVIDENCE_RUN_ID" TAG="$TAG" CANDIDATE_ARTIFACT="$(basename candidate/*.tgz)" node - <<'NODE'
           const fs = require('fs')
           const e = JSON.parse(fs.readFileSync('/tmp/public-evidence/release-evidence.json', 'utf8'))
           const expected = {
@@ -231,6 +231,7 @@ jobs:
             tag: process.env.TAG,
           }
           for (const [key, value] of Object.entries(expected)) if (String(e[key]) !== String(value)) throw new Error(`public release evidence ${key} mismatch`)
+          if (e.artifact !== process.env.CANDIDATE_ARTIFACT) throw new Error('public release evidence artifact mismatch')
           NODE
           fi
           if [ "$PUBLISHED" -eq 0 ]; then
@@ -242,6 +243,7 @@ jobs:
           rm -rf /tmp/published && mkdir -p /tmp/published
           npm pack "dsh-charter@$VERSION" --pack-destination /tmp/published >/dev/null
           test "$(sha256sum /tmp/published/*.tgz | awk '{print $1}')" = "$CANDIDATE_SHA256"
+          npm view "dsh-charter@$VERSION" dist.attestations --json | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const a=JSON.parse(s); if(a===undefined||Object.keys(a).length===0) process.exit(1)})
 
       - name: Move next and latest with immediate pre-write checks
         run: |
@@ -305,6 +307,7 @@ jobs:
           if [ "$RELEASE_STATE" = "true:false" ]; then
             gh release upload "$TAG" release-evidence.json --clobber
             gh release edit "$TAG" --draft=false --prerelease
+            test "$(gh release view "$TAG" --json isImmutable -q .isImmutable)" = "true"
           elif [ "$RELEASE_STATE" = "false:true" ]; then
             rm -rf /tmp/release-evidence && mkdir /tmp/release-evidence
             gh release download "$TAG" -D /tmp/release-evidence -p 'release-evidence.json'
