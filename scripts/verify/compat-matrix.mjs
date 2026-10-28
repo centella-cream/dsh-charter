@@ -115,16 +115,16 @@ async function prepareProject(version, workRoot) {
     '@deepseek-ai/dsh-typert-protocol': version,
   }
   const tools = {
-    '@types/node': '^22.20.0',
-    '@types/react': '^18.3.0',
-    '@types/react-dom': '^18.3.7',
-    '@types/react-test-renderer': '^18.3.1',
-    '@tsdown/css': '^0.22.2',
-    react: '^18.2.0',
-    'react-dom': '^18.3.1',
-    'react-test-renderer': '^18.3.1',
+    '@types/node': '22.20.5',
+    '@types/react': '18.3.31',
+    '@types/react-dom': '18.3.7',
+    '@types/react-test-renderer': '18.3.1',
+    '@tsdown/css': '0.22.2',
+    react: '18.3.1',
+    'react-dom': '18.3.1',
+    'react-test-renderer': '18.3.1',
     tsdown: '0.22.2',
-    typescript: '~5.9.2',
+    typescript: '5.9.3',
     vitest: '4.1.12',
   }
   for (const name of Object.keys(pkg.devDependencies ?? {})) {
@@ -149,6 +149,7 @@ async function collectResolution(dir, version) {
   const listed = await run(pnpm, ['list', '--depth', 'Infinity', '--json', '--silent'], dir)
   const root = join(dir, 'node_modules', '@deepseek-ai')
   const packages = {}
+  const resolved = {}
   let graphMismatch = listed.code === 0 ? null : `pnpm list failed: ${listed.code}`
   if (listed.code === 0) {
     try {
@@ -156,10 +157,13 @@ async function collectResolution(dir, version) {
       const walk = (node) => {
         for (const key of ['dependencies', 'devDependencies', 'optionalDependencies']) {
           for (const [name, entry] of Object.entries(node?.[key] ?? {})) {
-            if (name.startsWith('@deepseek-ai/dsh-') && typeof entry?.version === 'string') {
-              const previous = packages[name]
-              if (previous !== undefined && previous !== entry.version) graphMismatch = `${name}: mixed ${previous} and ${entry.version}`
-              else packages[name] = entry.version
+            if (typeof entry?.version === 'string') {
+              resolved[name] = entry.version
+              if (name.startsWith('@deepseek-ai/dsh-')) {
+                const previous = packages[name]
+                if (previous !== undefined && previous !== entry.version) graphMismatch = `${name}: mixed ${previous} and ${entry.version}`
+                else packages[name] = entry.version
+              }
             }
             walk(entry)
           }
@@ -180,6 +184,8 @@ async function collectResolution(dir, version) {
   const lockSha = existsSync(lockPath) ? createHash('sha256').update(await readFile(lockPath)).digest('hex') : null
   return {
     packages,
+    resolved,
+    toolVersions: Object.fromEntries(Object.entries(resolved).filter(([name]) => !name.startsWith('@deepseek-ai/dsh-'))),
     graphMismatch,
     zodDirs,
     lockfileSha256: lockSha,
@@ -198,7 +204,6 @@ async function main() {
     pnpm: pnpmVersion.stdoutTail.trim(),
     versions: [],
   }
-  console.log(`compat-matrix: ${args.versions.join(', ')}`)
   if (args.discover) {
     const cache = join(ROOT, '.tmp', 'npm-cache')
     const tags = await run('npm', ['view', '@deepseek-ai/dsh', 'dist-tags', '--json', '--cache', cache], ROOT)
@@ -212,6 +217,7 @@ async function main() {
     console.log(JSON.stringify({ declared: DECLARED, tags: tagMap, untracked: [...untracked] }, null, 2))
     return
   }
+  console.log(`compat-matrix: ${args.versions.join(', ')}`)
   if (args.dryRun) {
     for (const version of args.versions) console.log(`would verify DSH ${version} in .tmp/compat-matrix/${version}`)
     console.log(`would write ${resolve(ROOT, args.out)}`)
@@ -242,9 +248,6 @@ async function main() {
       peerMismatch,
       install,
       resolution,
-      toolVersions: (() => {
-        try { return JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')).devDependencies } catch { return null }
-      })(),
       typecheck: null,
       build: null,
       test: null,

@@ -51,7 +51,7 @@ separate jobs or manual gates, not claims made by `npm test` alone.
 0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2 || 0.2.1-rc.3 || 0.2.1-rc.4
 ```
 
-The tracked runner creates isolated npm projects and runs typecheck/build/tests per version. Current evidence:
+The tracked runner creates isolated pnpm projects with strict peers and runs typecheck/build/tests per version. Current evidence:
 
 | DSH version | Evidence |
 | --- | --- |
@@ -63,7 +63,7 @@ The tracked runner creates isolated npm projects and runs typecheck/build/tests 
 | `0.2.1-rc.3` | 348/348 tracked matrix PASS |
 | `0.2.1-rc.4` | 348/348 tracked matrix PASS |
 
-The rc.5 tracked `compat-matrix --versions all` run completed on 2026-10-27: every declared version passed typecheck, build, and 348/348 tests, using pnpm-isolated dependency graphs with normalized zod types. The release candidate workflow runs the same command and uploads evidence.
+The rc.5 tracked `compat-matrix --versions all` run completed on 2026-10-27: every declared version passed typecheck, build, and 348/348 tests. Installs use pnpm strict peer resolution, exact tool pins, a single zod 4.6.7 graph, full `pnpm list --depth Infinity` graph validation, and recorded lockfile SHA-256 values. The untracked `0.2.2-alpha.2` probe is recorded as unsupported: install/typecheck/build pass, Host recovery tests fail.
 
 ## 4. What the tests cover
 
@@ -111,7 +111,12 @@ The rc.5 tracked `compat-matrix --versions all` run completed on 2026-10-27: eve
 - Legacy transcript strictness and compaction sequence edge cases remain documented limitations rather than
   closed guarantees.
 
-## 7. Release history (summary)
+## 7. Historical real-model evidence
+
+The detailed real-model compaction run from `v0.1.0-rc.4` remains auditable at the immutable
+[v0.1.0-rc.4 verification §8.4](https://github.com/centella-cream/dsh-charter/blob/v0.1.0-rc.4/docs/verification.md#84-recorded-real-model-run-2026-10-22).
+
+## 8. Release history (summary)
 
 | Version | Date | Key outcome |
 | --- | --- | --- |
@@ -123,7 +128,7 @@ The rc.5 tracked `compat-matrix --versions all` run completed on 2026-10-27: eve
 
 Detailed release-by-release changes are in `CHANGELOG.md`; published tags and GitHub Releases are immutable.
 
-## 8. Cleanup
+## 9. Cleanup
 
 ```bash
 rm -rf .tmp
