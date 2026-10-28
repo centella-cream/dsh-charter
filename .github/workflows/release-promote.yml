@@ -170,7 +170,7 @@ jobs:
           mkdir -p dist && cp candidate/*.tgz dist/
           npm run smoke:package -- --artifact "dist/$(basename candidate/*.tgz)" --sha256 SHA256SUMS
           node scripts/verify/recovery-smoke.mjs --artifact "dist/$(basename candidate/*.tgz)" --sha256 SHA256SUMS
-      - name: Tag, release, and publish the same tarball (reentrant)
+      - name: Tag, draft release, verify assets, and publish (reentrant)
         run: |
           set -euo pipefail
           TAG="v$VERSION"
@@ -187,20 +187,63 @@ jobs:
             git tag -a "$TAG" -m "dsh-charter $VERSION sha256 $CANDIDATE_SHA256"
             git push origin "$TAG"
           fi
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            test "$(gh release view "$TAG" --json isPrerelease -q .isPrerelease)" = "true"
+          RELEASE_STATE=$(gh release view "$TAG" --json isDraft,isPrerelease -q '.isDraft + ":" + .isPrerelease' 2>/dev/null || true)
+          if [ -n "$RELEASE_STATE" ]; then
             rm -rf /tmp/release-assets && mkdir /tmp/release-assets
             gh release download "$TAG" -D /tmp/release-assets -p '*.tgz' -p 'SHA256SUMS'
+            test "$(find /tmp/release-assets -maxdepth 1 -name '*.tgz' | wc -l)" -eq 1
+            test "$(find /tmp/release-assets -maxdepth 1 -name 'SHA256SUMS' | wc -l)" -eq 1
             test "$(sha256sum /tmp/release-assets/*.tgz | awk '{print $1}')" = "$CANDIDATE_SHA256"
             test "$(grep -c "$CANDIDATE_SHA256" /tmp/release-assets/SHA256SUMS)" -ge 1
+            case "$RELEASE_STATE" in
+              true:false|false:true) ;;
+              *) echo "::error::existing release is neither draft nor published prerelease: $RELEASE_STATE"; exit 1 ;;
+            esac
           else
-            gh release create "$TAG" candidate/*.tgz candidate/SHA256SUMS               --title "dsh-charter $VERSION"               --notes-file "docs/release-notes/$VERSION.md"               --verify-tag --prerelease
+            gh release create "$TAG" candidate/*.tgz candidate/SHA256SUMS               --title "dsh-charter $VERSION"               --notes-file "docs/release-notes/$VERSION.md"               --verify-tag --draft
+            RELEASE_STATE="true:false"
+          fi
+          MAIN_CI_RUN=$(node -e "const rs=require('./ci-runs.json').filter(r=>r.headSha===process.env.RELEASE_COMMIT&&r.conclusion==='success'&&r.event==='push'&&r.headBranch==='main'); console.log(rs[0].databaseId)")
+          cat > release-evidence.json <<EOF
+          {
+            "schemaVersion": 1,
+            "version": "$VERSION",
+            "candidateCommit": "$CANDIDATE_COMMIT",
+            "releaseCommit": "$RELEASE_COMMIT",
+            "candidateRunId": "$RUN_ID",
+            "candidateSha256": "$CANDIDATE_SHA256",
+            "browserEvidenceRunId": "$BROWSER_EVIDENCE_RUN_ID",
+            "mainCiRunId": "$MAIN_CI_RUN",
+            "tag": "$TAG",
+            "artifact": "$(basename candidate/*.tgz)"
+          }
+          EOF
+          gh release upload "$TAG" release-evidence.json --clobber
+          if [ "$RELEASE_STATE" = "true:false" ]; then
+            gh release edit "$TAG" --draft=false --prerelease
           fi
           if [ "$PUBLISHED" -eq 0 ]; then
             npm publish "candidate/$(basename candidate/*.tgz)" --access public --tag next --provenance
           fi
+          # Re-read tags immediately before mutation and refuse any rollback.
+          CURRENT_LATEST=$(npm view dsh-charter dist-tags.latest)
+          CURRENT_NEXT=$(npm view dsh-charter dist-tags.next)
+          CURRENT_LATEST="$CURRENT_LATEST" CURRENT_NEXT="$CURRENT_NEXT" VERSION="$VERSION" node - <<'NODE'
+          const parse = value => {
+            const match = /^0\.1\.0-rc\.(\d+)$/u.exec(value ?? '')
+            return match === null ? null : Number(match[1])
+          }
+          const target = parse(process.env.VERSION)
+          for (const [name, current] of [['latest', process.env.CURRENT_LATEST], ['next', process.env.CURRENT_NEXT]]) {
+            const rc = parse(current)
+            if (rc !== null && rc > target) throw new Error(`refusing ${name} rollback ${current} -> ${process.env.VERSION}`)
+          }
+          NODE
           npm dist-tag add "dsh-charter@$VERSION" next
           npm dist-tag add "dsh-charter@$VERSION" latest
+          npm dist-tag ls dsh-charter > dist-tags.txt
+          grep -q "next: $VERSION" dist-tags.txt
+          grep -q "latest: $VERSION" dist-tags.txt
       - name: Verify registry version, tags, and downloaded digest
         run: |
           set -euo pipefail

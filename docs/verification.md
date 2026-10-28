@@ -23,6 +23,7 @@ Environment: macOS, Node `v22.23.1`, npm `12.0.2`, pnpm `12.3.4`. Local DSH deve
 | Real `TypertGatewayService` | Pass on exact artifact with isolated DSH `0.2.1-rc.3` and `rc.4` graphs |
 | Compatibility sentinels | Pass on `0.1.7-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4` |
 | Seven-version full rerun | Pass via tracked `compat-matrix --versions all` (348/348 each) |
+| Untracked `0.2.2-alpha.2` probe | Install/typecheck/build pass; Host recovery tests fail; explicitly unsupported in rc.5 |
 | Real browser recovery | Manual protected evidence gate; not automated |
 | Real-model compaction | Separately recorded PASS (2026-10-22); still a manual release gate |
 

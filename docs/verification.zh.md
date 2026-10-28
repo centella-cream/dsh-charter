@@ -22,6 +22,7 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 | 真实 `TypertGatewayService` | 精确 artifact 在隔离的 DSH `0.2.1-rc.3` / `rc.4` 依赖图上通过 |
 | 兼容 sentinel | `0.1.7-rc.2`、`0.2.1-rc.2`、`0.2.1-rc.4` 通过 |
 | 七版本全量 rerun | tracked `compat-matrix --versions all` 通过（每版本 348/348） |
+| 未跟踪 `0.2.2-alpha.2` probe | 安装/typecheck/build 通过；Host recovery 测试失败；rc.5 明确不支持 |
 | 真实浏览器恢复 | 受保护的人工 evidence gate；未自动化 |
 | 真实模型 compaction | 2026-10-22 记录 PASS；仍是人工发布门禁 |
 

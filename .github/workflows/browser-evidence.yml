@@ -46,7 +46,7 @@ jobs:
           SHA=$(sha256sum candidate/*.tgz | awk '{print $1}')
           test "$SHA" = "$CANDIDATE_SHA256"
           printf '%s' "$EVIDENCE_B64" | base64 -d > browser-evidence.json
-          SHA="$SHA" node - <<'NODE'
+          SHA="$SHA" CANDIDATE_RUN_SHA="$(node -p "require('./candidate-run.json').headSha")" node - <<'NODE'
           const fs = require('fs')
           const evidence = JSON.parse(fs.readFileSync('browser-evidence.json', 'utf8'))
           const required = [
@@ -61,6 +61,7 @@ jobs:
           if (typeof evidence.operator !== 'string' || evidence.operator.length < 2) throw new Error('operator')
           if (typeof evidence.candidateRunId !== 'string' || !/^[1-9][0-9]*$/u.test(evidence.candidateRunId)) throw new Error('candidateRunId')
           if (typeof evidence.candidateCommit !== 'string' || !/^[0-9a-f]{40}$/u.test(evidence.candidateCommit)) throw new Error('candidateCommit')
+          if (evidence.candidateCommit !== process.env.CANDIDATE_RUN_SHA) throw new Error('candidateCommit does not match candidate run headSha')
           if (typeof evidence.artifact !== 'string' || !evidence.artifact.endsWith('.tgz')) throw new Error('artifact')
           if (evidence.checks === null || typeof evidence.checks !== 'object') throw new Error('checks')
           for (const key of required) if (evidence.checks[key] !== true) throw new Error(`check missing: ${key}`)

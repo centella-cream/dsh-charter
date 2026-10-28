@@ -24,6 +24,7 @@ This document answers three questions:
 | `0.1.5-rc.1` / `0.1.5-rc.2` / `0.1.5-rc.3` | Not supported | contract differences too large; see section 4 |
 | `0.1.6-alpha.x` | Not supported | same generation as 0.1.5; not individually verified |
 | `0.2.2-rc.x` | Not declared | peer range does not cover this prerelease; add after verification |
+| `0.2.2-alpha.2` | Not supported | probed 2026-10-27: install/typecheck/build pass, Host recovery tests fail against the new generation; not covered by the rc.5 declaration |
 | `0.3.x` | Not declared | major upgrade requires re-verification |
 
 The DSH peer ranges and `engines.dsh` in `package.json` are exactly the seven verified versions:
@@ -101,13 +102,19 @@ security recommendation is `0.2.1+`.
 
 ## 5. Verification method
 
-Each version uses its own directory and `node_modules`, with the same source copied in:
+Each version uses its own pnpm project with the exact DSH test manifest and the same source copied in; zod is
+resolved to one graph through `pnpm-workspace.yaml` overrides, never by rewriting the virtual store:
 
 ```bash
+pnpm install --ignore-scripts --no-frozen-lockfile
+pnpm list --depth Infinity --json --silent
 ./node_modules/.bin/tsc --noEmit
 npm run build
 ./node_modules/.bin/vitest run
 ```
+
+The runner records the full resolved DSH graph, lockfile SHA-256, Node/pnpm versions, and fails on missing, mixed,
+or auto-resolved DSH versions.
 
 `0.1.7-rc.2`, `0.2.0-rc.2`, and `0.2.1-rc.3`/`rc.4` additionally use the matching DSH CLI to create an isolated profile, install the
 tarball, start Web, and check the boot graph and client bundle HTTP. Results and reproduction commands are in
