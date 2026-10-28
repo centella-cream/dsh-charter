@@ -48,7 +48,7 @@ depend on a tree that has not been gated.
 
 Accepted non-blocking limitations (legacy transcript strictness, compaction sequence edge cases, WAIT diagnostic
 wording, artifact-smoke hardening residuals, outer-JSON platform risk, mutation-receipt retention, doc count
-drift) are disclosed in verification §9 and are not release blockers; do not claim them closed.
+drift) are disclosed in verification §6 and are not release blockers; do not claim them closed.
 
 ## 2. Preconditions
 
@@ -178,7 +178,7 @@ keys, profile data, or local screenshots containing private content.
 
 `.github/workflows/release-candidate.yml` is the only producer of an rc.5 tarball. It runs source gates, the
 compatibility sentinels, one `npm pack`, then exact-artifact package smoke, packed recovery smoke, and the
-Gateway/browser jobs. The Gateway job runs the exact artifact on isolated rc.3/rc.4 graphs. Browser recovery is a protected manual
+the Gateway job and the separate protected manual browser-evidence workflow. The Gateway job runs the exact artifact on isolated rc.3/rc.4 graphs. Browser recovery is a protected manual
 environment gate; promotion requires its successful, SHA-bound evidence run. Do not treat a source-only run as release evidence. Every consumer downloads the same `release-candidate` artifact and must use
 `--artifact`/`--sha256`; no consumer may pack again.
 

@@ -372,7 +372,7 @@ security reports, follow [SECURITY.md](SECURITY.md).
 Pre-1.0. The DSH plugin ABI is still moving; compatibility is tested against the versions above, and the design
 keeps the compatibility layer deliberately small. The public repository is [centella-cream/dsh-charter](https://github.com/centella-cream/dsh-charter). This tree is the `0.1.0-rc.5` pre-release: the real-model
 compaction acceptance **PASS is recorded on 2026-10-22** on an anonymized evaluation Session (326 messages /
-~228k tokens shadowed, revision-1 charter survived with matching digest — see the immutable [v0.1.0-rc.4 verification §8.4](https://github.com/centella-cream/dsh-charter/blob/v0.1.0-rc.4/docs/verification.md#84-recorded-real-model-run-2026-10-22). The rc.2 candidate
+~228k tokens shadowed, revision-1 charter survived with matching digest — see the immutable [v0.1.0-rc.4 verification §8.4](https://github.com/centella-cream/dsh-charter/blob/v0.1.0-rc.4/docs/verification.md#84-recorded-real-model-run-2026-10-22). The rc.5 candidate
 is verified locally and is intended for the npm registry under the `next` dist-tag; under our channel policy
 `latest` also tracks the newest RC until a stable release exists (a deliberate policy choice, not an npm
 requirement). One manual check recorded in the immutable [v0.1.0-rc.4 verification §8.4](https://github.com/centella-cream/dsh-charter/blob/v0.1.0-rc.4/docs/verification.md#84-recorded-real-model-run-2026-10-22) is required before a stable `latest` release: restart the Desktop

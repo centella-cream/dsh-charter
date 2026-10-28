@@ -82,7 +82,9 @@ jobs:
         run: |
           set -euo pipefail
           gh run view "$RUN_ID" --json workflowName,event,conclusion,headSha,status > candidate-run.json
-          node -e "const r=require('./candidate-run.json'); if(r.workflowName!=='Release candidate'||r.conclusion!=='success'||r.status!=='completed'||r.headSha!==process.env.CANDIDATE_COMMIT) { console.error(r); process.exit(1) }"
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID" --jq .path > candidate-path.txt
+          test "$(cat candidate-path.txt)" = ".github/workflows/release-candidate.yml"
+          node -e "const r=require('./candidate-run.json'); if(r.workflowName!=='Release candidate'||r.event!=='workflow_dispatch'||r.conclusion!=='success'||r.status!=='completed'||r.headSha!==process.env.CANDIDATE_COMMIT) { console.error(r); process.exit(1) }"
           gh run view "$RUN_ID" --log-failed >/dev/null 2>&1 || true
       - name: Download and verify the candidate artifact
         run: |
@@ -154,6 +156,7 @@ jobs:
       - name: Verify C+1 changes only the root checksum
         run: |
           set -euo pipefail
+          test "$(git rev-parse "$RELEASE_COMMIT^")" = "$CANDIDATE_COMMIT"
           CHANGED=$(git diff --name-only "$CANDIDATE_COMMIT" "$RELEASE_COMMIT")
           test "$CHANGED" = "SHA256SUMS"
           grep -q "$CANDIDATE_SHA256" SHA256SUMS
@@ -207,6 +210,29 @@ jobs:
           test "$(basename /tmp/release-assets/*.tgz)" = "$(basename candidate/*.tgz)"
           test "$(sha256sum /tmp/release-assets/*.tgz | awk '{print $1}')" = "$CANDIDATE_SHA256"
           test "$(grep -c "$CANDIDATE_SHA256" /tmp/release-assets/SHA256SUMS)" -ge 1
+          if [ "$RELEASE_STATE" = "false:true" ]; then
+            mapfile -t ASSETS < <(gh release view "$TAG" --json assets -q '.assets[].name' | sort)
+            test "${#ASSETS[@]}" -eq 3
+            printf '%s\n' "${ASSETS[@]}" | grep -qx "SHA256SUMS"
+            printf '%s\n' "${ASSETS[@]}" | grep -qx "release-evidence.json"
+            printf '%s\n' "${ASSETS[@]}" | grep -qx "$(basename candidate/*.tgz)"
+            rm -rf /tmp/public-evidence && mkdir /tmp/public-evidence
+            gh release download "$TAG" -D /tmp/public-evidence -p 'release-evidence.json'
+            SHA="$CANDIDATE_SHA256" VERSION="$VERSION" CANDIDATE_COMMIT="$CANDIDATE_COMMIT" RELEASE_COMMIT="$RELEASE_COMMIT" RUN_ID="$RUN_ID" BROWSER_EVIDENCE_RUN_ID="$BROWSER_EVIDENCE_RUN_ID" TAG="$TAG" node - <<'NODE'
+          const fs = require('fs')
+          const e = JSON.parse(fs.readFileSync('/tmp/public-evidence/release-evidence.json', 'utf8'))
+          const expected = {
+            version: process.env.VERSION,
+            candidateCommit: process.env.CANDIDATE_COMMIT,
+            releaseCommit: process.env.RELEASE_COMMIT,
+            candidateRunId: process.env.RUN_ID,
+            candidateSha256: process.env.SHA,
+            browserEvidenceRunId: process.env.BROWSER_EVIDENCE_RUN_ID,
+            tag: process.env.TAG,
+          }
+          for (const [key, value] of Object.entries(expected)) if (String(e[key]) !== String(value)) throw new Error(`public release evidence ${key} mismatch`)
+          NODE
+          fi
           if [ "$PUBLISHED" -eq 0 ]; then
             # Publish under a non-channel tag first; next/latest move only after
             # version, provenance, and tarball readback.
@@ -240,9 +266,11 @@ jobs:
           npm dist-tag add "dsh-charter@$VERSION" next
           check_tags
           npm dist-tag add "dsh-charter@$VERSION" latest
+          npm dist-tag rm "dsh-charter" "promotion-$VERSION" || true
           npm dist-tag ls dsh-charter > dist-tags.txt
           grep -q "next: $VERSION" dist-tags.txt
           grep -q "latest: $VERSION" dist-tags.txt
+          ! grep -q "promotion-$VERSION:" dist-tags.txt
 
       - name: Verify registry and finalize draft Release
         run: |
