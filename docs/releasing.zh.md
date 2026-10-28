@@ -67,14 +67,14 @@ client bundle（Host/Remote 运行时 import 由工作区 build smoke 覆盖）�
 打包。它会先按提供的 sums 文件校验 SHA-256、校验每个 tar member 与 packed manifest，再对同一文件执行
 manifest/files/modes/exports、空 consumer 安装、packed `core` import 与 client bundle 检查；绝不 build 或 pack。
 如果希望在 CI 中做 exact-artifact 验证，需要新增一个消费已发布产物的独立 release workflow——当前 CI 不做这件事。
-已记录的真实模型 compaction `PASS`（验证记录 8.4）就是 compaction 韧性声明的验收证据；下面的手工命令保留
+已记录的真实模型 compaction `PASS`（不可变 [v0.1.0-rc.4 验证记录 8.4](https://github.com/centella-cream/dsh-charter/blob/v0.1.0-rc.4/docs/verification.md#84-recorded-real-model-run-2026-10-22)）就是 compaction 韧性声明的验收证据；下面的手工命令保留
 用于在目标 profile 重新跑一次。
 
 真实模型 compaction 验收是手工步骤：应用会话契约、执行 `/compact`、发送一条消息，然后运行
 `npm run verify:compaction -- --session <id> --home <DSH_HOME>`，并把 `PASS` 证据记录到验证记录第 8 节。
 这项检查需要模型，永远不属于 `npm run check`。记录中的 `PASS` 已代表 compaction 韧性声明被接受；如果提供该
 证据的 Desktop 进程在最后一次包更新后没有重启，发布稳定 `latest` 前重启一次并重新打开会话契约 tab（本次
-`next` 预发布不需要；见 8.4）。
+`next` 预发布不需要；见不可变 [v0.1.0-rc.4 验证记录 8.4](https://github.com/centella-cream/dsh-charter/blob/v0.1.0-rc.4/docs/verification.md#84-recorded-real-model-run-2026-10-22)）。
 
 ## 4. 构建已验证产物、打 tag、推送、发布
 
@@ -126,10 +126,10 @@ git push origin v0.1.0-rc.5
 npm publish dist/dsh-charter-0.1.0-rc.5.tgz --access public --tag next
 ```
 
-验证记录 8.4 记录通过门禁的 source commit，并指向 tracked 的随发布产物 digest；tracked 根部 `SHA256SUMS` 与
+不可变 [v0.1.0-rc.4 验证记录 8.4](https://github.com/centella-cream/dsh-charter/blob/v0.1.0-rc.4/docs/verification.md#84-recorded-real-model-run-2026-10-22) 记录通过门禁的 source commit，并指向 tracked 的随发布产物 digest；tracked 根部 `SHA256SUMS` 与
 `dist/SHA256SUMS` 固定从 tagged tree 构建的产物。
 
-只有在公开仓库链接就位、验证记录 8.4 的重启后复核已记录，且 tagged tree 上 `npm run check`/`smoke:package`
+只有在公开仓库链接就位、不可变 [v0.1.0-rc.4 验证记录 8.4](https://github.com/centella-cream/dsh-charter/blob/v0.1.0-rc.4/docs/verification.md#84-recorded-real-model-run-2026-10-22) 的重启后复核已记录，且 tagged tree 上 `npm run check`/`smoke:package`
 通过后，才发布稳定 `latest` 版本。不要发布 API key、profile 数据或包含私人内容的本地截图。
 
 ## 5. 发布后

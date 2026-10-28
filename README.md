@@ -301,7 +301,7 @@ truncated, or silently dropped.
 | `0.2.2-rc.x`, `0.3.x` | Not declared until verified |
 
 "Supported" means typecheck, build, tests, and Remote/client smoke for that version. Interactive Web UI was
-exercised on `0.2.0-rc.2`; other versions are API/build verified. Real-model compaction end-to-end is a documented manual check (`npm run verify:compaction`, section 8 of the verification record); a **PASS is recorded there (§8.4, 2026-10-22)**.
+exercised on `0.2.0-rc.2`; other versions are API/build verified. Real-model compaction end-to-end is a documented manual check (`npm run verify:compaction`, section 8 of the current verification record); a **PASS is recorded in the immutable [v0.1.0-rc.4 verification §8.4](https://github.com/centella-cream/dsh-charter/blob/v0.1.0-rc.4/docs/verification.md#84-recorded-real-model-run-2026-10-22)**.
 The full matrix and degradation notes are in the [compatibility document](docs/design/compatibility.md).
 `0.1.7`/`0.2.0` have no per-Peer Remote resource authorization; use them only in a trusted single-operator
 environment.
@@ -372,10 +372,10 @@ security reports, follow [SECURITY.md](SECURITY.md).
 Pre-1.0. The DSH plugin ABI is still moving; compatibility is tested against the versions above, and the design
 keeps the compatibility layer deliberately small. The public repository is [centella-cream/dsh-charter](https://github.com/centella-cream/dsh-charter). This tree is the `0.1.0-rc.5` pre-release: the real-model
 compaction acceptance **PASS is recorded on 2026-10-22** on an anonymized evaluation Session (326 messages /
-~228k tokens shadowed, revision-1 charter survived with matching digest — see verification §8.4). The rc.2 candidate
+~228k tokens shadowed, revision-1 charter survived with matching digest — see the immutable [v0.1.0-rc.4 verification §8.4](https://github.com/centella-cream/dsh-charter/blob/v0.1.0-rc.4/docs/verification.md#84-recorded-real-model-run-2026-10-22). The rc.2 candidate
 is verified locally and is intended for the npm registry under the `next` dist-tag; under our channel policy
 `latest` also tracks the newest RC until a stable release exists (a deliberate policy choice, not an npm
-requirement). One manual check recorded in §8.4 is required before a stable `latest` release: restart the Desktop
+requirement). One manual check recorded in the immutable [v0.1.0-rc.4 verification §8.4](https://github.com/centella-cream/dsh-charter/blob/v0.1.0-rc.4/docs/verification.md#84-recorded-real-model-run-2026-10-22) is required before a stable `latest` release: restart the Desktop
 app and reopen the Charter tab once to confirm the installed bundle/tool ABI. CI
 (`.github/workflows/ci.yml`) packs and smoke-tests the installable artifact on Node `22.19.0` and `24`; the local
 gate evidence is recorded in verification §2. Release-state prerequisites, tag ordering, and the exact publish

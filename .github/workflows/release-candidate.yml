@@ -43,12 +43,17 @@ jobs:
       - run: pnpm --version
       - run: node scripts/verify/compat-matrix.mjs --discover > discovered-dsh.json
       - run: node scripts/verify/compat-matrix.mjs --versions all --out compat-matrix.json
+      - name: Probe untracked DSH versions
+        continue-on-error: true
+        run: node scripts/verify/compat-matrix.mjs --versions 0.2.2-alpha.2 --out new-dsh-probe.json
       - uses: actions/upload-artifact@v4
+        if: ${{ always() }}
         with:
           name: compat-evidence
           path: |
             compat-matrix.json
             discovered-dsh.json
+            new-dsh-probe.json
           if-no-files-found: error
 
   producer-pack:
@@ -66,10 +71,16 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Pack exactly once
+        env:
+          VERSION: ${{ inputs.version }}
         run: |
           rm -rf dist && mkdir -p dist
           npm pack --pack-destination dist
           test "$(find dist -maxdepth 1 -name '*.tgz' | wc -l)" -eq 1
+          test "$(node -p 'require("./package.json").version')" = "$VERSION"
+          TGZ=$(find dist -maxdepth 1 -name '*.tgz' | head -1)
+          test "$(basename "$TGZ")" = "dsh-charter-$VERSION.tgz"
+          tar -xOf "$TGZ" package/package.json | VERSION="$VERSION" node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{if(JSON.parse(s).version!==process.env.VERSION)process.exit(1)})"
       - name: Write checksums and metadata
         id: meta
         env:

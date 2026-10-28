@@ -79,7 +79,7 @@ artifact's SHA-256 against the supplied sums file, validates every tar member an
 the same manifest/files/modes/exports, empty-consumer install, packed `core` import, and client-bundle checks on
 that file; it never builds or packs. If exact-artifact verification is wanted in CI, add a separate release
 workflow that consumes the published artifact — the current CI does not. The recorded real-model compaction `PASS`
-(verification §8.4) is the acceptance evidence for the compaction-resilience claim; the manual command below is
+(immutable [v0.1.0-rc.4 verification §8.4](https://github.com/centella-cream/dsh-charter/blob/v0.1.0-rc.4/docs/verification.md#84-recorded-real-model-run-2026-10-22)) is the acceptance evidence for the compaction-resilience claim; the manual command below is
 kept for a fresh target-profile re-run.
 
 Real-model compaction acceptance is manual: apply a charter, run `/compact`, send one message, then run
@@ -87,7 +87,7 @@ Real-model compaction acceptance is manual: apply a charter, run `/compact`, sen
 verification record (section 8). This check needs a model and is never part of `npm run check`. The recorded
 `PASS` means the compaction-resilience claim is accepted; if the Desktop process that served it was not restarted
 after the final package update, restart it once and reopen the Charter tab before publishing a stable `latest`
-(not before this `next` pre-release; see §8.4).
+(not before this `next` pre-release; see the immutable [v0.1.0-rc.4 verification §8.4](https://github.com/centella-cream/dsh-charter/blob/v0.1.0-rc.4/docs/verification.md#84-recorded-real-model-run-2026-10-22)).
 
 ## 4. Build the verified artifact, tag, push, publish
 
@@ -150,11 +150,11 @@ requirement:
 npm dist-tag add dsh-charter@0.1.0-rc.5 latest
 ```
 
-Verification §8.4 records the gated source commit and points to the tracked shipped-artifact digest; the tracked
+The immutable [v0.1.0-rc.4 verification §8.4](https://github.com/centella-cream/dsh-charter/blob/v0.1.0-rc.4/docs/verification.md#84-recorded-real-model-run-2026-10-22) records the gated source commit and points to the tracked shipped-artifact digest; the tracked
 root `SHA256SUMS` and `dist/SHA256SUMS` pin the archive built from the tagged tree.
 
 Publish a stable `latest` version only after the public repository links are in place, the post-restart check in
-verification §8.4 is recorded, and `npm run check`/`smoke:package` pass on the tagged tree. Do not publish API
+the immutable [v0.1.0-rc.4 verification §8.4](https://github.com/centella-cream/dsh-charter/blob/v0.1.0-rc.4/docs/verification.md#84-recorded-real-model-run-2026-10-22) is recorded, and `npm run check`/`smoke:package` pass on the tagged tree. Do not publish API
 keys, profile data, or local screenshots containing private content.
 
 ## 5. Post-release
