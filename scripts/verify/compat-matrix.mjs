@@ -139,9 +139,17 @@ async function prepareProject(version, workRoot) {
   // The plugin and DSH 0.2.1 packages pin different zod patch lines. Resolve
   // them to one graph before installation; never rewrite the virtual store.
   await writeFile(join(dir, 'pnpm-workspace.yaml'), "packages:\n  - .\nstrictPeerDependencies: true\noverrides:\n  zod: 4.6.7\n")
+  const lockSource = join(ROOT, 'scripts', 'verify', 'lockfiles', version, 'pnpm-lock.yaml')
+  let frozen = false
+  if (existsSync(lockSource)) {
+    await cp(lockSource, join(dir, 'pnpm-lock.yaml'), { force: true })
+    frozen = true
+  }
   const pnpm = process.env.COMPAT_PNPM ?? 'pnpm'
-  const install = await run(pnpm, ['install', '--ignore-scripts', '--no-frozen-lockfile'], dir)
-  return { dir, install }
+  const install = await run(pnpm, frozen
+    ? ['install', '--ignore-scripts', '--frozen-lockfile']
+    : ['install', '--ignore-scripts', '--no-frozen-lockfile'], dir)
+  return { dir, install, frozen }
 }
 
 async function collectResolution(dir, version) {
@@ -278,7 +286,7 @@ async function main() {
   }
   evidence.finishedAt = new Date().toISOString()
   } finally {
-    await rm(workRoot, { recursive: true, force: true })
+    if (!args.keep) await rm(workRoot, { recursive: true, force: true })
   }
   const out = resolve(ROOT, args.out)
   await mkdir(dirname(out), { recursive: true })
