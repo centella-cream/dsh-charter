@@ -74,13 +74,17 @@ describe('maintenance lifecycle races', () => {
       maintenanceSaving: false,
       maintenanceProblem: { kind: 'unavailable', code: 'UNAVAILABLE' },
     })
-    expect(maintenanceReplayPending(draft.getSnapshot())).toBe(true)
+    expect(maintenanceReplayPending(draft.getSnapshot())).toBe(false)
+    const retained = draft.getSnapshot().attempt
+    await draft.retryMaintenance()
+    expect(draft.getSnapshot().attempt).toBe(retained)
     pending.resolve({ ok: true, replayed: false, committedRevision: 0, view: view() })
     await operation
     // The old completion is fenced by the async generation and cannot unlock or
     // accept the old lifecycle view.
     expect(harness.accepted).toHaveLength(0)
-    expect(maintenanceReplayPending(draft.getSnapshot())).toBe(true)
+    expect(maintenanceReplayPending(draft.getSnapshot())).toBe(false)
+    expect(draft.abandonUnknown()).toBe(true)
   })
 
   it('accepts the authoritative write-uncertain view carried by a failed maintenance result', async () => {

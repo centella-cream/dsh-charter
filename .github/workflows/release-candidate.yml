@@ -46,7 +46,7 @@ jobs:
       - name: Probe every newer untracked DSH version
         run: |
           set -euo pipefail
-          node -e "const d=require('./discovered-dsh.json'); console.log(d.newer.join('\n'))" > probe-list.txt
+          node -e "const d=require('./discovered-dsh.json'); console.log([...new Set([...(d.newer??[]),...(d.distTagTargets??[])])].join('\n'))" > probe-list.txt
           while IFS= read -r version; do
             test -n "$version" || continue
             echo "probing untracked DSH $version"

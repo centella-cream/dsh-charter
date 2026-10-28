@@ -22,7 +22,7 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 | 真实 `TypertGatewayService` | 精确 artifact 在隔离的 DSH `0.2.1-rc.3` / `rc.4` 依赖图上通过 |
 | 兼容 sentinel | `0.1.7-rc.2`、`0.2.1-rc.2`、`0.2.1-rc.4` 通过 |
 | 七版本全量 rerun | tracked `compat-matrix --versions all` 通过（每版本 348/348） |
-| 未跟踪 `0.2.2-alpha.2` probe | 安装/typecheck/build 通过；Host recovery 测试失败；rc.5 明确不支持 |
+| 未跟踪 `0.2.2-alpha.2` probe | strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.5 pins 4.0.5; no tests run；rc.5 明确不支持 |
 | 真实浏览器恢复 | 受保护的人工 evidence gate；未自动化 |
 | 真实模型 compaction | 2026-10-22 记录 PASS；仍是人工发布门禁 |
 
@@ -62,7 +62,7 @@ CI（`.github/workflows/ci.yml`）在 Node `22.19.0` / `24` 上运行 `npm run c
 | `0.2.1-rc.3` | 348/348 tracked matrix PASS |
 | `0.2.1-rc.4` | 348/348 tracked matrix PASS |
 
-rc.5 tracked `compat-matrix --versions all` 已于 2026-10-27 完成：每个声明版本均通过 typecheck、build 和 348/348 测试。安装使用 pnpm strict peer、精确工具版本、单一 zod 4.6.7 图、完整 `pnpm list --depth Infinity` 图校验，并记录 lockfile SHA-256。未跟踪 `0.2.2-alpha.2` 已 probe：install/typecheck/build 通过、Host recovery 测试失败，rc.5 明确不支持。
+rc.5 tracked `compat-matrix --versions all` 已于 2026-10-27 完成：每个声明版本均通过 typecheck、build 和 348/348 测试。安装使用 pnpm strict peer、精确工具版本、单一 zod 4.6.7 图、完整 `pnpm list --depth Infinity` 图校验，并记录 lockfile SHA-256。未跟踪 `0.2.2-alpha.2` 已 probe：strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.5 pins 4.0.5; no tests run，rc.5 明确不支持。
 
 ## 4. 测试覆盖
 
@@ -89,6 +89,7 @@ rc.5 tracked `compat-matrix --versions all` 已于 2026-10-27 完成：每个声
 | 跨 Session/lifecycle archive 拒绝 | PASS |
 | storage 拒绝 fence 与 restart 收敛 | PASS |
 | unknown-outcome exact replay | PASS |
+| 跨 lifecycle attempt lock/abandon | PASS：attempt 变为 unknown，Retry 被阻止，staged work 不写入新 lifecycle |
 | future-schema 诊断导出、不可读写、字节不变 | PASS |
 | visible-only bootstrap 选择与 exact replay | PASS |
 | discard/editor/composer 独立性与 unknown evidence 保留 | PASS |

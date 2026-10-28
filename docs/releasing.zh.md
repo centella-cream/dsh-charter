@@ -76,62 +76,25 @@ manifest/files/modes/exports、空 consumer 安装、packed `core` import 与 cl
 证据的 Desktop 进程在最后一次包更新后没有重启，发布稳定 `latest` 前重启一次并重新打开会话契约 tab（本次
 `next` 预发布不需要；见不可变 [v0.1.0-rc.4 验证记录 8.4](https://github.com/centella-cream/dsh-charter/blob/v0.1.0-rc.4/docs/verification.md#84-recorded-real-model-run-2026-10-22)）。
 
-## 4. 构建已验证产物、打 tag、推送、发布
+## 4. 唯一发布路径
 
-在最终已验证 commit（元数据已恢复、文档已刷新、CI 绿色、所有门禁通过）上：
+`release-candidate.yml` 是发布 tarball 和全部发布 evidence 的唯一生产者。它全绿后，在 candidate `C` 上创建
+只修改根 `SHA256SUMS` 的直接子提交 `C+1`：
 
-```bash
-npm pack
-mkdir -p dist && mv dsh-charter-0.1.0-rc.5.tgz dist/
-(cd dist && shasum -a 256 dsh-charter-0.1.0-rc.5.tgz > SHA256SUMS)
-```
+- `git diff --name-only C C+1` 必须只有 `SHA256SUMS`；
+- `C+1` 必须是 `C` 的直接子提交；
+- 精确 `C+1` commit 上 public CI 必须全绿。
 
-把同一 digest 写入仓库根部 tracked 的 `SHA256SUMS`。根部文件刻意不在 npm `files` 白名单内，因此提交它不会改变
-打包产物的字节。提交后**再次推送 `main`**，让这个最终 digest commit 进入主干，并等待公开 CI 在该 commit 上
-通过：
+然后在受保护的 `release` environment 运行 `release-promote.yml`。它是**唯一**允许创建 tag、GitHub Release
+和 npm channel 的路径。不要为发布手工执行 `git tag`、`gh release`、`npm publish` 或 `npm dist-tag`；这些会绕过
+environment 审批、OIDC、browser evidence 和 release evidence。
 
-```bash
-git push origin main
-# 等待该确切 commit 的公开 CI 通过
-```
+workflow 使用下载的候选 artifact，校验 candidate/browser evidence 与 main-push CI，先发布到临时非 channel tag，
+回读 registry tarball，再移动 `next`/`latest` 并做即时防回退检查；Release 先保持 draft，附加
+`release-evidence.json` 并完成校验后才公开为 prerelease。
 
-绝不能在尚未推送、或公开 CI 未通过的 commit 上创建发布 tag（不要制造只在 tag 上可达的 commit）。打 tag 前先对
-最终 `dist/` 文件运行上面的 exact-artifact 检查；GitHub release 附件、npm publish 输入与校验和文件必须都是这个
-已验证的同一 tarball——此后绝不再重新构建。`dist/` 不进 git，也永远不提交 tarball。
-
-用该 tarball 在全新 profile 中安装并验证：
-
-```bash
-DSH_HOME=/tmp/dsh-charter-release-home \
-  dsh --profile release-smoke --from-default-profile web --dump-config >/dev/null
-DSH_HOME=/tmp/dsh-charter-release-home \
-  dsh plugin --profile release-smoke add dist/dsh-charter-0.1.0-rc.5.tgz
-DSH_HOME=/tmp/dsh-charter-release-home \
-  dsh --profile release-smoke --no-open --port 19399
-```
-
-打开打印的 URL，新建 Session，检查会话契约 tab 和中英文切换。只有当最终 digest commit 已推送到 `main` 且
-公开 CI 在该 commit 上通过之后，才在这个确切 commit 上创建 annotated tag 并只推送一次：
-
-```bash
-git tag -a v0.1.0-rc.5 -m "dsh-charter 0.1.0-rc.5"
-git push origin v0.1.0-rc.5
-```
-
-已推送的 tag 绝不移动；tag 有误时提升版本号，而不是移动 tag。从该 tag 创建 GitHub release，并附加**已经构建
-并验证过**的 `dist/dsh-charter-0.1.0-rc.5.tgz` 和 `dist/SHA256SUMS` —— 打 tag 之后不要再运行 `npm pack`，
-直接发布已构建好的文件：
-
-```bash
-npm publish dist/dsh-charter-0.1.0-rc.5.tgz --access public --tag next
-```
-
-不可变 [v0.1.0-rc.4 验证记录 8.4](https://github.com/centella-cream/dsh-charter/blob/v0.1.0-rc.4/docs/verification.md#84-recorded-real-model-run-2026-10-22) 记录通过门禁的 source commit，并指向 tracked 的随发布产物 digest；tracked 根部 `SHA256SUMS` 与
-`dist/SHA256SUMS` 固定从 tagged tree 构建的产物。
-
-只有在公开仓库链接就位、不可变 [v0.1.0-rc.4 验证记录 8.4](https://github.com/centella-cream/dsh-charter/blob/v0.1.0-rc.4/docs/verification.md#84-recorded-real-model-run-2026-10-22) 的重启后复核已记录，且 tagged tree 上 `npm run check`/`smoke:package`
-通过后，才发布稳定 `latest` 版本。不要发布 API key、profile 数据或包含私人内容的本地截图。
-
+fresh isolated profile 检查仍保留为人工验收步骤，但不授权另一条手工发布路径。candidate workflow 打包后不得重建
+tarball。
 ## 5. 发布后
 
 - 用已发布产物验证 README 安装命令；

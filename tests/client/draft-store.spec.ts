@@ -367,8 +367,9 @@ describe('per-Session draft ownership', () => {
 
   it('ignores an Apply result after the lifecycle was reset', async () => {
     let release: ((value: CharterEditResult) => void) | undefined
+    let calls = 0
     const pending = new Promise<CharterEditResult>(resolve => { release = resolve })
-    const fake = source({ edit: () => pending })
+    const fake = source({ edit: () => { calls += 1; return pending } })
     const draft = new CharterDraft(sessionId, () => fake)
     draft.bindLifecycle('life-a')
     draft.stage(view(0), {
@@ -377,9 +378,19 @@ describe('per-Session draft ownership', () => {
     })
     const applied = draft.applyDraft(view(0))
     await new Promise(resolve => setTimeout(resolve, 0))
-    // A lifecycle frame must not drop an in-flight attempt: the request stays
-    // replayable/abandonable instead of becoming an invisible lock.
+    // A lifecycle frame immediately makes the old in-flight attempt unknown and
+    // keeps it locked; it must never be replayed into the new lifecycle.
     draft.bindLifecycle('life-b')
+    expect(draft.getSnapshot()).toMatchObject({
+      lifecycle: 'life-b',
+      saving: false,
+      attempt: expect.objectContaining({ lifecycle: 'life-a', status: 'unknown' }),
+    })
+    expect(editReplayPending(draft.getSnapshot())).toBe(false)
+    expect(draft.discardStaged()).toBe(false)
+    const callsAfterSwitch = calls
+    await draft.applyDraft(view(0))
+    expect(calls).toBe(callsAfterSwitch)
     release!({ ok: true, replayed: false, committedRevision: 1, ids: {}, view: view(1) })
     await applied
     expect(draft.getSnapshot()).toMatchObject({
@@ -387,10 +398,11 @@ describe('per-Session draft ownership', () => {
       saving: false,
       ops: [expect.objectContaining({ type: 'item.add' })],
       feedback: { kind: 'connection' },
-      attempt: expect.objectContaining({ status: 'unknown' }),
+      attempt: expect.objectContaining({ lifecycle: 'life-a', status: 'unknown' }),
     })
-    // Explicit abandon clears the attempt; a later lifecycle change then resets
-    // the remaining dirty draft normally.
+    expect(editReplayPending(draft.getSnapshot())).toBe(false)
+    // Explicit abandon is the only transition that clears a cross-lifecycle
+    // attempt; a later lifecycle change then resets the remaining dirty draft.
     expect(draft.abandonUnknown()).toBe(true)
     draft.bindLifecycle('life-c')
     expect(draft.getSnapshot()).toMatchObject({ lifecycle: 'life-c', ops: [], attempt: null })
@@ -1783,12 +1795,19 @@ describe('rc.3 maintenance attempts (initialize/restore)', () => {
     expect(firstRequest.archive).toEqual(archiveValue)
     draft.bindLifecycle('life-recovery-2')
     expect(draft.getSnapshot().lifecycle).toBe('life-recovery-2')
-    await draft.retryMaintenance()
-    expect(harness.calls.restore[1]).toEqual(harness.calls.restore[0])
-    expect(draft.getSnapshot()).toMatchObject({
-      attempt: null,
-      maintenanceProblem: { kind: 'request-failed', code: 'LIFECYCLE_MISMATCH' },
+    expect(draft.getSnapshot().attempt).toMatchObject({
+      lifecycle: maintenanceLifecycle,
+      status: 'unknown',
     })
+    expect(maintenanceReplayPending(draft.getSnapshot())).toBe(false)
+    await draft.retryMaintenance()
+    expect(harness.calls.restore).toHaveLength(1)
+    expect(draft.getSnapshot().attempt).toMatchObject({
+      lifecycle: maintenanceLifecycle,
+      status: 'unknown',
+    })
+    expect(draft.abandonUnknown()).toBe(true)
+    expect(draft.getSnapshot().attempt).toBeNull()
   })
 })
 
