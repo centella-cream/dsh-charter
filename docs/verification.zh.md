@@ -62,7 +62,7 @@ CI（`.github/workflows/ci.yml`）在 Node `22.19.0` / `24` 上运行 `npm run c
 | `0.2.1-rc.3` | 348/348 tracked matrix PASS |
 | `0.2.1-rc.4` | 348/348 tracked matrix PASS |
 
-rc.5 tracked `compat-matrix --versions all` 已于 2026-10-27 完成：每个声明版本均通过 typecheck、build 和 348/348 测试（pnpm 隔离依赖图，zod 类型归一化）。release candidate workflow 运行同一命令并上传 evidence。
+rc.5 tracked `compat-matrix --versions all` 已于 2026-10-27 完成：每个声明版本均通过 typecheck、build 和 348/348 测试。安装使用 pnpm strict peer、精确工具版本、单一 zod 4.6.7 图、完整 `pnpm list --depth Infinity` 图校验，并记录 lockfile SHA-256。未跟踪 `0.2.2-alpha.2` 已 probe：install/typecheck/build 通过、Host recovery 测试失败，rc.5 明确不支持。
 
 ## 4. 测试覆盖
 

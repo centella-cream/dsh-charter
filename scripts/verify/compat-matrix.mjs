@@ -138,7 +138,7 @@ async function prepareProject(version, workRoot) {
   await rm(join(dir, 'pnpm-lock.yaml'), { force: true })
   // The plugin and DSH 0.2.1 packages pin different zod patch lines. Resolve
   // them to one graph before installation; never rewrite the virtual store.
-  await writeFile(join(dir, 'pnpm-workspace.yaml'), "packages:\n  - .\noverrides:\n  zod: 4.6.7\n")
+  await writeFile(join(dir, 'pnpm-workspace.yaml'), "packages:\n  - .\nstrictPeerDependencies: true\noverrides:\n  zod: 4.6.7\n")
   const pnpm = process.env.COMPAT_PNPM ?? 'pnpm'
   const install = await run(pnpm, ['install', '--ignore-scripts', '--no-frozen-lockfile'], dir)
   return { dir, install }
@@ -214,7 +214,13 @@ async function main() {
     for (const value of Object.values(tagMap)) if (typeof value === 'string' && !DECLARED.includes(value)) untracked.add(value)
     const published = JSON.parse(versions.stdout)
     for (const value of published) if (typeof value === 'string' && !DECLARED.includes(value)) untracked.add(value)
-    console.log(JSON.stringify({ declared: DECLARED, tags: tagMap, untracked: [...untracked] }, null, 2))
+    const newer = [...untracked].filter(value => {
+      const parse = version => version.split('-')[0].split('.').map(Number)
+      const [aMaj, aMin, aPatch] = parse(value)
+      const [bMaj, bMin, bPatch] = parse(DECLARED.at(-1))
+      return [aMaj - bMaj, aMin - bMin, aPatch - bPatch].find(delta => delta !== 0) > 0
+    }).sort()
+    console.log(JSON.stringify({ declared: DECLARED, tags: tagMap, untracked: [...untracked], newer }, null, 2))
     return
   }
   console.log(`compat-matrix: ${args.versions.join(', ')}`)

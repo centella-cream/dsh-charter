@@ -272,7 +272,7 @@ profile 自己的包管理器。源码开发流程见 [CONTRIBUTING.zh.md](CONTR
 
 “支持”表示该版本通过 typecheck、build、测试以及 Remote/client smoke。真实交互式 Web UI 在 `0.2.0-rc.2`
 上验证；其他版本是 API/build 级验证。真实模型 compaction 端到端已于 **2026-10-22 记录 PASS**（一个匿名评估
-会话；326 条消息 / 约 228k tokens 被压缩，revision 1 契约携带匹配 digest 存活；见验证记录第 8.4 节）。公开发布仍待公开 CI、npm `next` dist-tag 与发布流程等前置项，不再是 compaction 证据。完整矩阵和降级说明见
+会话；326 条消息 / 约 228k tokens 被压缩，revision 1 契约携带匹配 digest 存活；见不可变 [v0.1.0-rc.4 验证记录 8.4](https://github.com/centella-cream/dsh-charter/blob/v0.1.0-rc.4/docs/verification.md#84-recorded-real-model-run-2026-10-22)）。公开发布仍待公开 CI、npm `next` dist-tag 与发布流程等前置项，不再是 compaction 证据。完整矩阵和降级说明见
 [兼容文档](docs/design/compatibility.zh.md)。`0.1.7`/`0.2.0` 没有 per-Peer Remote 资源授权，只能在可信
 单操作者环境使用。
 
@@ -338,7 +338,7 @@ npm run verify:compaction # 手工真实模型 compaction 校验（不在 check 
 
 Pre-1.0。DSH 插件 ABI 仍在演进；项目对上述版本做兼容验证，并刻意保持兼容层很小。公开仓库为 [centella-cream/dsh-charter](https://github.com/centella-cream/dsh-charter)。当前树是 `0.1.0-rc.5`
 预发布：真实模型 compaction 验收 **PASS 已于 2026-10-22 记录**（一个匿名评估会话；326 条消息 / 约 228k
-tokens 被压缩，revision 1 契约携带匹配 digest 存活——见验证记录第 8.4 节）。rc.2 候选产物已在本地验证，计划通过 npm 的 `next` dist-tag 发布；按当前渠道策略，稳定版出现前 `latest` 也会指向最新 RC（这是有意的策略选择，不是 npm 的强制要求）。GitHub Release 将附带同一份已验证 tarball。发布稳定 `latest` 前还有一项记录在 8.4 节的人工
+tokens 被压缩，revision 1 契约携带匹配 digest 存活——见不可变 [v0.1.0-rc.4 验证记录 8.4](https://github.com/centella-cream/dsh-charter/blob/v0.1.0-rc.4/docs/verification.md#84-recorded-real-model-run-2026-10-22)）。rc.5 候选产物已在本地验证，计划通过 npm 的 `next` dist-tag 发布；按当前渠道策略，稳定版出现前 `latest` 也会指向最新 RC（这是有意的策略选择，不是 npm 的强制要求）。GitHub Release 将附带同一份已验证 tarball。发布稳定 `latest` 前还有一项记录在不可变 [v0.1.0-rc.4 验证记录 8.4](https://github.com/centella-cream/dsh-charter/blob/v0.1.0-rc.4/docs/verification.md#84-recorded-real-model-run-2026-10-22) 的人工
 检查：重启 Desktop app 后重新打开会话契约 tab 一次，确认已安装的 bundle/tool ABI。CI
 （`.github/workflows/ci.yml`）在 Node `22.19.0` 与 `24` 上打包并 smoke 测试可安装产物；本地门禁证据记录在验证
 记录第 2 节。发布状态前置项、tag 顺序和确切的发布流程见 [docs/releasing.zh.md](docs/releasing.zh.md)。

@@ -43,9 +43,19 @@ jobs:
       - run: pnpm --version
       - run: node scripts/verify/compat-matrix.mjs --discover > discovered-dsh.json
       - run: node scripts/verify/compat-matrix.mjs --versions all --out compat-matrix.json
-      - name: Probe untracked DSH versions
-        continue-on-error: true
-        run: node scripts/verify/compat-matrix.mjs --versions 0.2.2-alpha.2 --out new-dsh-probe.json
+      - name: Probe every newer untracked DSH version
+        run: |
+          set -euo pipefail
+          node -e "const d=require('./discovered-dsh.json'); console.log(d.newer.join('\n'))" > probe-list.txt
+          while IFS= read -r version; do
+            test -n "$version" || continue
+            echo "probing untracked DSH $version"
+            if node scripts/verify/compat-matrix.mjs --versions "$version" --out "new-dsh-$version.json"; then
+              echo "::error::untracked DSH $version now passes; update declarations instead of continuing"
+              exit 1
+            fi
+            node scripts/verify/check-untracked-probe.mjs "$version" "new-dsh-$version.json"
+          done < probe-list.txt
       - uses: actions/upload-artifact@v4
         if: ${{ always() }}
         with:
@@ -53,7 +63,8 @@ jobs:
           path: |
             compat-matrix.json
             discovered-dsh.json
-            new-dsh-probe.json
+            new-dsh-*.json
+            probe-list.txt
           if-no-files-found: error
 
   producer-pack:
