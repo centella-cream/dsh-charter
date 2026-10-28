@@ -91,6 +91,19 @@ after the final package update, restart it once and reopen the Charter tab befor
 
 ## 4. Single promotion path
 
+Before promotion can run, npm package settings must contain a Trusted Publisher with exactly:
+
+```text
+owner: centella-cream
+repository: dsh-charter
+workflow: release-promote.yml
+environment: release
+permissions: npm publish + npm dist-tag
+```
+
+The repository workflow cannot verify this external setting; absence blocks the OIDC publish.
+
+
 `release-candidate.yml` is the only producer of the release tarball and all release evidence. After it is green,
 create the checksum-only release commit `C+1` on top of candidate `C`:
 

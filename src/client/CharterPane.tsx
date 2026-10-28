@@ -808,12 +808,14 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
       || view.revision !== bootstrapBaseRevision
       || view.objective !== null
       || view.items.length > 0)
+  const unknownBlocked = draftState.attempt?.status === 'unknown'
   const canApplyBootstrap = bootstrap !== null
     && bootstrapPhase === 'draft'
     && state.status === 'ready'
     && ops.length === 0
     && editor === null
     && !bootstrapSaving
+    && !unknownBlocked
     && bootstrapPlan.ops.length > 0
     && !bootstrapObjectiveOver
     && !bootstrapItemsOver
@@ -826,7 +828,6 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   // must be invariant across connecting/null → ready and error/null → ready.
   const editReplay = editReplayPending(draftState)
   const bootstrapReplay = bootstrapReplayPending(draftState)
-  const unknownBlocked = draftState.attempt?.status === 'unknown'
   const oldLifecycleUnknown = crossLifecycleUnknown(draftState)
   useEffect(() => {
     if (!hasLocalWork || unknownBlocked || saving || bootstrapSaving) setConfirmDiscardAll(false)
@@ -950,11 +951,11 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   // disagree about maxOps/maxItems/maxPendingItems/prompt admission.
   const admission = draftAdmission(view, ops)
   const applyBlocked = !admission.ok
-  const applyBlockReason: 'retry' | 'lifecycle-abandon' | 'busy' | 'read-only' | 'no-changes' | 'editor-open'
+  const applyBlockReason: 'retry' | 'lifecycle-abandon' | 'unknown' | 'busy' | 'read-only' | 'no-changes' | 'editor-open'
     | 'revision-conflict' | 'connection' | 'quota' | 'stale' | null = editReplay
     ? 'retry'
     : unknownBlocked
-      ? 'lifecycle-abandon'
+      ? oldLifecycleUnknown ? 'lifecycle-abandon' : 'unknown'
       : saving
       ? 'busy'
       : editor !== null
@@ -1361,7 +1362,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
               ? (
                   <>
                     <ActionButton
-                      disabled={bootstrapReplay ? bootstrapSaving : !canApplyBootstrap}
+                      disabled={unknownBlocked ? true : !canApplyBootstrap}
                       onClick={applyBootstrapDraft}
                       busy={bootstrapSaving}
                     >
@@ -1370,7 +1371,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                         : bootstrapReplay ? t('footer.retryApply') : t('bootstrap.apply')}
                     </ActionButton>
                     <ActionButton
-                      disabled={bootstrapSaving || bootstrapReplay}
+                      disabled={bootstrapSaving || unknownBlocked}
                       onClick={() => draft.dismissBootstrap()}
                     >
                       {t('bootstrap.discard')}
@@ -1867,13 +1868,13 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                         })}
                       </span>
                       <ActionButton
-                        disabled={bootstrapSaving || bootstrapReplay}
+                        disabled={bootstrapSaving || unknownBlocked}
                         onClick={() => draft.setVisibleBootstrapSelected(true)}
                       >
                         {t('bootstrap.selectShown', { count: Math.min(bootstrapItems.length, bootstrapVisibleCount) })}
                       </ActionButton>
                       <ActionButton
-                        disabled={bootstrapSaving || bootstrapReplay}
+                        disabled={bootstrapSaving || unknownBlocked}
                         onClick={() => draft.setVisibleBootstrapSelected(false)}
                       >
                         {t('bootstrap.clearShown')}
@@ -1885,7 +1886,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                         <textarea
                           value={bootstrapObjective}
                           rows={2}
-                          disabled={bootstrapSaving || bootstrapReplay}
+                          disabled={bootstrapSaving || unknownBlocked}
                           aria-label={t('bootstrap.objective')}
                           onChange={event => draft.setBootstrapObjective(event.target.value)}
                         />
@@ -1923,7 +1924,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                                       id={checkboxId}
                                       type="checkbox"
                                       checked={item.selected}
-                                      disabled={bootstrapSaving || bootstrapReplay}
+                                      disabled={bootstrapSaving || unknownBlocked}
                                       aria-label={t('bootstrap.includeAria', { index: index + 1 })}
                                       onChange={event => draft.updateBootstrapItem(item.id, { selected: event.target.checked })}
                                     />
@@ -1934,7 +1935,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                                         id={textId}
                                         value={item.text}
                                         rows={2}
-                                        disabled={bootstrapSaving || bootstrapReplay}
+                                        disabled={bootstrapSaving || unknownBlocked}
                                         onChange={event => draft.updateBootstrapItem(item.id, { text: event.target.value })}
                                       />
                                       <span className="charter-draftfield__meta">
@@ -1956,7 +1957,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                             </div>
                           ))}
                           {ordered.length > visible.length && (
-                            <ActionButton onClick={() => draft.showMoreBootstrapCandidates(40)}>
+                            <ActionButton disabled={bootstrapSaving || unknownBlocked} onClick={() => draft.showMoreBootstrapCandidates(40)}>
                               {t('bootstrap.showMore', { count: Math.min(40, ordered.length - visible.length) })}
                             </ActionButton>
                           )}
@@ -1997,7 +1998,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                       <ActionButton
                         variant="primary"
                         className="charter-actionbar__primary"
-                        disabled={bootstrapReplay ? bootstrapSaving : !canApplyBootstrap}
+                        disabled={unknownBlocked ? true : !canApplyBootstrap}
                         onClick={applyBootstrapDraft}
                         busy={bootstrapSaving}
                       >
@@ -2006,7 +2007,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                           : bootstrapReplay ? t('footer.retryApply') : t('bootstrap.apply')}
                       </ActionButton>
                       <ActionButton
-                        disabled={bootstrapSaving || bootstrapReplay}
+                        disabled={bootstrapSaving || unknownBlocked}
                         onClick={() => draft.dismissBootstrap()}
                       >
                         {t('bootstrap.discard')}

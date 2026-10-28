@@ -78,6 +78,19 @@ manifest/files/modes/exports、空 consumer 安装、packed `core` import 与 cl
 
 ## 4. 唯一发布路径
 
+Promotion 运行前，npm 包设置必须包含完全匹配的 Trusted Publisher：
+
+```text
+owner: centella-cream
+repository: dsh-charter
+workflow: release-promote.yml
+environment: release
+permissions: npm publish + npm dist-tag
+```
+
+仓库无法验证此外部配置；缺失会阻断 OIDC 发布。
+
+
 `release-candidate.yml` 是发布 tarball 和全部发布 evidence 的唯一生产者。它全绿后，在 candidate `C` 上创建
 只修改根 `SHA256SUMS` 的直接子提交 `C+1`：
 

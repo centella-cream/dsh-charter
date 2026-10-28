@@ -94,7 +94,7 @@ The rc.5 tracked `compat-matrix --versions all` run completed on 2026-10-27: eve
 | Cross-session/lifecycle archive rejection | PASS |
 | Storage rejection fences and restart convergence | PASS |
 | Unknown-outcome exact replay | PASS |
-| Cross-lifecycle attempt lock/abandon | PASS: attempt becomes unknown, Retry blocked, staged work not written to the new lifecycle |
+| Cross-lifecycle attempt lock/abandon | PASS: attempt becomes unknown, Retry blocked, Abandon visible in the Pane, staged work not written to the new lifecycle |
 | Future-schema diagnostic export, no reads/writes, byte preservation | PASS |
 | Visible-only bootstrap selection and exact replay | PASS |
 | Discard/editor/composer independence and unknown evidence retention | PASS |
