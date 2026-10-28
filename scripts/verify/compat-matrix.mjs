@@ -28,6 +28,24 @@ const peers = Object.entries(PACKAGE.peerDependencies ?? {})
 if (peers.some(([, range]) => range !== declaredRange)) {
   throw new Error('DSH peer ranges disagree with dsh.compatibility.dshReleases')
 }
+const EXPECTED_DSH_PEERS = [
+  '@deepseek-ai/dsh-agent',
+  '@deepseek-ai/dsh-api-gateway',
+  '@deepseek-ai/dsh-client-locale',
+  '@deepseek-ai/dsh-client-ui-conversation',
+  '@deepseek-ai/dsh-client-ui-renderer',
+  '@deepseek-ai/dsh-client-ui-session',
+  '@deepseek-ai/dsh-client-ui-slots',
+  '@deepseek-ai/dsh-session',
+  '@deepseek-ai/dsh-storage-domain',
+  '@deepseek-ai/dsh-system-prompt',
+  '@deepseek-ai/dsh-tools',
+  '@deepseek-ai/dsh-typert-protocol',
+].sort()
+const actualPeers = peers.map(([name]) => name).sort()
+if (JSON.stringify(actualPeers) !== JSON.stringify(EXPECTED_DSH_PEERS)) {
+  throw new Error(`DSH peer set changed: ${actualPeers.join(', ')}`)
+}
 if (PACKAGE.engines?.dsh !== declaredRange) {
   throw new Error('engines.dsh disagrees with dsh.compatibility.dshReleases')
 }
@@ -218,17 +236,40 @@ async function main() {
     const versions = await run('npm', ['view', '@deepseek-ai/dsh', 'versions', '--json', '--cache', cache], ROOT)
     if (tags.code !== 0 || versions.code !== 0) throw new Error('npm discovery failed')
     const untracked = new Set()
-    const tagMap = JSON.parse(tags.stdout)
+    const tagRaw = JSON.parse(tags.stdout)
+    const tagMap = Array.isArray(tagRaw) ? (tagRaw[0] ?? {}) : tagRaw
     for (const value of Object.values(tagMap)) if (typeof value === 'string' && !DECLARED.includes(value)) untracked.add(value)
     const published = JSON.parse(versions.stdout)
     for (const value of published) if (typeof value === 'string' && !DECLARED.includes(value)) untracked.add(value)
-    const newer = [...untracked].filter(value => {
-      const parse = version => version.split('-')[0].split('.').map(Number)
-      const [aMaj, aMin, aPatch] = parse(value)
-      const [bMaj, bMin, bPatch] = parse(DECLARED.at(-1))
-      return [aMaj - bMaj, aMin - bMin, aPatch - bPatch].find(delta => delta !== 0) > 0
-    }).sort()
-    console.log(JSON.stringify({ declared: DECLARED, tags: tagMap, untracked: [...untracked], newer }, null, 2))
+    const compareSemver = (left, right) => {
+      const parse = value => {
+        const [core, prerelease = ''] = value.split('-')
+        return { core: core.split('.').map(Number), prerelease: prerelease.split('.').filter(Boolean) }
+      }
+      const a = parse(left)
+      const b = parse(right)
+      for (let i = 0; i < 3; i += 1) {
+        if (a.core[i] !== b.core[i]) return a.core[i] - b.core[i]
+      }
+      if (a.prerelease.length === 0 && b.prerelease.length > 0) return 1
+      if (a.prerelease.length > 0 && b.prerelease.length === 0) return -1
+      for (let i = 0; i < Math.max(a.prerelease.length, b.prerelease.length); i += 1) {
+        const x = a.prerelease[i]
+        const y = b.prerelease[i]
+        if (x === undefined) return -1
+        if (y === undefined) return 1
+        const nx = /^\d+$/u.test(x)
+        const ny = /^\d+$/u.test(y)
+        if (nx && ny && Number(x) !== Number(y)) return Number(x) - Number(y)
+        if (nx !== ny) return nx ? -1 : 1
+        if (x !== y) return x < y ? -1 : 1
+      }
+      return 0
+    }
+    const latestDeclared = DECLARED.at(-1)
+    const newer = [...untracked].filter(value => compareSemver(value, latestDeclared) > 0).sort(compareSemver)
+    const distTagTargets = [...new Set(Object.values(tagMap).filter(value => typeof value === 'string' && !DECLARED.includes(value)))]
+    console.log(JSON.stringify({ declared: DECLARED, tags: tagMap, untracked: [...untracked], newer, distTagTargets }, null, 2))
     return
   }
   console.log(`compat-matrix: ${args.versions.join(', ')}`)

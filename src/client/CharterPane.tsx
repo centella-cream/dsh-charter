@@ -424,6 +424,7 @@ function ItemRow({
 }) {
   const [confirmPurge, setConfirmPurge] = useState(false)
   const rowRef = useRef<HTMLElement | null>(null)
+  useEffect(() => { setConfirmPurge(false) }, [item.id, item.lifecycle, editable])
   const menuRef = useRef<HTMLDetailsElement | null>(null)
   const current = item.lifecycle === 'current'
   const terminalHead = item.lifecycle === 'superseded' && item.supersedes === undefined
@@ -676,6 +677,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   } = draftState
   const [showHistoryItems, setShowHistoryItems] = useState(false)
   const bootstrapId = useId()
+  const applyHintId = useId()
   const [confirmAbandon, setConfirmAbandon] = useState(false)
   const [confirmDiscardAll, setConfirmDiscardAll] = useState(false)
   const [archivePreview, setArchivePreview] = useState<ArchivePreview | null>(null)
@@ -894,6 +896,14 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   }, [section, restoreConfirmationKey, recoveryBusy])
 
   useEffect(() => {
+    setConfirmAbandon(false)
+  }, [view?.sessionId, view?.lifecycle, draftState.attempt])
+
+  useEffect(() => {
+    setConfirmDiscardAll(false)
+  }, [view?.sessionId, view?.lifecycle, draftState.ops.length, draftState.editor])
+
+  useEffect(() => {
     if (draftState.maintenanceSaving || maintenanceReplay) return
     if (archiveInputRef.current !== null) archiveInputRef.current.value = ''
   }, [draftState.maintenanceSaving, maintenanceReplay, recordState?.kind])
@@ -943,23 +953,22 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
     ? 'retry'
     : saving
       ? 'busy'
-      : !editable
-        ? 'read-only'
-        : ops.length === 0
-          ? 'no-changes'
-          : editor !== null
-            ? 'editor-open'
-            : revisionConflict
-              ? 'revision-conflict'
-              : !online
-                ? 'connection'
+      : editor !== null
+        ? 'editor-open'
+        : revisionConflict
+          ? 'revision-conflict'
+          : !online
+            ? 'connection'
+            : !editable
+              ? 'read-only'
+              : ops.length === 0
+                ? 'no-changes'
                 : applyBlocked
                   ? 'quota'
                   : null
   const applyHint = applyBlockReason === null
     ? t('footer.applyHint')
     : t(`apply.block.${applyBlockReason}` as never)
-  const applyHintId = 'charter-apply-hint'
   const canRebaseNow = rebaseAvailable(draftState)
   const budgetPercent = Math.min(100, Math.round((previewBytes / view.limits.maxPromptBytes) * 100))
   const message = feedbackText(feedback, t)
@@ -1107,7 +1116,9 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                 ? 'recovery.sessionMismatchPreview'
                 : preview.reason === 'lifecycleMismatch'
                   ? 'recovery.lifecycleMismatchPreview'
-                  : 'recovery.digestMismatchPreview'
+                  : preview.reason === 'cryptoUnavailable'
+                    ? 'recovery.cryptoUnavailable'
+                    : 'recovery.digestMismatchPreview'
         setArchivePreview({
           fileName: file.name,
           errorKey: key,

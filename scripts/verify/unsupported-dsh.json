@@ -1,3 +1,7 @@
 {
-  "0.2.2-alpha.2": "Host recovery ABI changed; install/typecheck/build pass but Host tests fail (54 failures on 2026-10-27). rc.5 does not support this generation."
+  "0.2.2-alpha.2": {
+    "phase": "install",
+    "peer": "@deepseek-ai/cordis",
+    "reason": "DSH 0.2.2-alpha.2 requires Cordis ~4.0.6-alpha.1; rc.5 pins Cordis 4.0.5. Strict-peer install rejects the generation before tests run."
+  }
 }

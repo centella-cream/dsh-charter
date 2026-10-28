@@ -89,74 +89,27 @@ verification record (section 8). This check needs a model and is never part of `
 after the final package update, restart it once and reopen the Charter tab before publishing a stable `latest`
 (not before this `next` pre-release; see the immutable [v0.1.0-rc.4 verification §8.4](https://github.com/centella-cream/dsh-charter/blob/v0.1.0-rc.4/docs/verification.md#84-recorded-real-model-run-2026-10-22)).
 
-## 4. Build the verified artifact, tag, push, publish
+## 4. Single promotion path
 
-On the final verified commit (metadata restored, documentation refreshed, CI green, all gates passing):
+`release-candidate.yml` is the only producer of the release tarball and all release evidence. After it is green,
+create the checksum-only release commit `C+1` on top of candidate `C`:
 
-```bash
-npm pack
-mkdir -p dist && mv dsh-charter-0.1.0-rc.5.tgz dist/
-(cd dist && shasum -a 256 dsh-charter-0.1.0-rc.5.tgz > SHA256SUMS)
-```
+- `git diff --name-only C C+1` must be exactly `SHA256SUMS`;
+- `C+1` must be a direct child of `C`;
+- public CI must be green on the exact `C+1` commit.
 
-Write the same digest into the tracked repository-root `SHA256SUMS`. The root file is intentionally outside the
-npm `files` whitelist, so committing it does not change the packed archive bytes. Commit it, then **push `main`
-again** with that final digest commit and wait for public CI to be green on it:
+Then run `release-promote.yml` from the protected `release` environment. It is the **only** path allowed to
+create the tag, GitHub Release, and npm channels. Do not run manual `git tag`, `gh release`, `npm publish`, or
+`npm dist-tag` commands for a release; they bypass environment approval, OIDC, browser evidence, and release
+evidence.
 
-```bash
-git push origin main
-# wait for the public CI run on this exact commit to pass
-```
+The workflow consumes the downloaded candidate artifact, verifies the candidate/browser evidence and main-push CI,
+publishes under a temporary non-channel tag, verifies the registry tarball, moves `next`/`latest` with immediate
+rollback checks, creates/validates the Release as a draft, attaches `release-evidence.json`, and only then makes
+the GitHub prerelease public.
 
-Never create the release tag on a commit that is not reachable from the pushed, CI-green `main` (no
-tag-only/unpushed commits). Run the exact-artifact **and** recovery smoke checks above on the final `dist/` file
-before tagging; never rebuild after that point; the
-GitHub release asset, the npm publish input, and the checksum file must all point at that same verified tarball —
-never rebuild after this point. `dist/` is gitignored and is never committed.
-
-Install that exact tarball into a fresh profile and verify it:
-
-```bash
-DSH_HOME=/tmp/dsh-charter-release-home \
-  dsh --profile release-smoke --from-default-profile web --dump-config >/dev/null
-DSH_HOME=/tmp/dsh-charter-release-home \
-  dsh plugin --profile release-smoke add dist/dsh-charter-0.1.0-rc.5.tgz
-DSH_HOME=/tmp/dsh-charter-release-home \
-  dsh --profile release-smoke --no-open --port 19399
-```
-
-Open the printed URL, start a Session, and check the Charter tab and English/Chinese switching. Only now — with
-the final digest commit pushed to `main` and public CI green on it — create the final annotated tag on that exact
-commit and push it once:
-
-```bash
-git tag -a v0.1.0-rc.5 -m "dsh-charter 0.1.0-rc.5"
-git push origin v0.1.0-rc.5
-```
-
-Never move a pushed tag; if the tag is wrong, bump the version instead. Create the GitHub release from that tag
-and attach the **already-built and verified** `dist/dsh-charter-0.1.0-rc.5.tgz` plus `dist/SHA256SUMS` — do not
-run `npm pack` again after tagging, and publish the already-built file directly:
-
-```bash
-npm publish dist/dsh-charter-0.1.0-rc.5.tgz --access public --tag next
-```
-
-**Channel policy (deliberate):** publish under `next`, then also move `latest` to the newest RC until a stable
-release exists. npm keeps a `latest` tag and we choose where it points; this is our current policy, not an npm
-requirement:
-
-```bash
-npm dist-tag add dsh-charter@0.1.0-rc.5 latest
-```
-
-The immutable [v0.1.0-rc.4 verification §8.4](https://github.com/centella-cream/dsh-charter/blob/v0.1.0-rc.4/docs/verification.md#84-recorded-real-model-run-2026-10-22) records the gated source commit and points to the tracked shipped-artifact digest; the tracked
-root `SHA256SUMS` and `dist/SHA256SUMS` pin the archive built from the tagged tree.
-
-Publish a stable `latest` version only after the public repository links are in place, the post-restart check in
-the immutable [v0.1.0-rc.4 verification §8.4](https://github.com/centella-cream/dsh-charter/blob/v0.1.0-rc.4/docs/verification.md#84-recorded-real-model-run-2026-10-22) is recorded, and `npm run check`/`smoke:package` pass on the tagged tree. Do not publish API
-keys, profile data, or local screenshots containing private content.
-
+A fresh isolated profile check remains a manual acceptance step, but it does not authorize a separate manual
+publish path. Never rebuild the tarball after the candidate workflow has packed it.
 ## 5. Post-release
 
 - Verify the README install command against the published artifact.
