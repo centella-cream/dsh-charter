@@ -158,10 +158,13 @@ async function prepareProject(version, workRoot) {
   // them to one graph before installation; never rewrite the virtual store.
   await writeFile(join(dir, 'pnpm-workspace.yaml'), "packages:\n  - .\nstrictPeerDependencies: true\noverrides:\n  zod: 4.6.7\n")
   const lockSource = join(ROOT, 'scripts', 'verify', 'lockfiles', version, 'pnpm-lock.yaml')
+  const declared = DECLARED.includes(version)
   let frozen = false
   if (existsSync(lockSource)) {
     await cp(lockSource, join(dir, 'pnpm-lock.yaml'), { force: true })
     frozen = true
+  } else if (declared) {
+    throw new Error(`declared DSH ${version} has no tracked lockfile at scripts/verify/lockfiles/${version}/pnpm-lock.yaml`)
   }
   const pnpm = process.env.COMPAT_PNPM ?? 'pnpm'
   const install = await run(pnpm, frozen
@@ -222,8 +225,11 @@ async function main() {
   const args = parseArgs(process.argv.slice(2))
   const startedAt = new Date().toISOString()
   const pnpmVersion = await run('pnpm', ['--version'], ROOT)
+  const sourceCommit = await run('git', ['rev-parse', 'HEAD'], ROOT)
   const evidence = {
     schemaVersion: 2,
+    sourceCommit: sourceCommit.stdoutTail.trim(),
+    packageVersion: PACKAGE.version,
     runner: 'compat-matrix',
     startedAt,
     node: process.version,
@@ -311,10 +317,8 @@ async function main() {
     if (install.code === 0 && peerMismatch === null) {
       result.typecheck = await run(join(dir, 'node_modules/.bin/tsc'), ['--noEmit'], dir)
       result.build = await run('npm', ['run', 'build'], dir)
-      const needsGateway = version.localeCompare('0.2.1-rc.3', undefined, { numeric: true }) >= 0
       const testArgs = ['run']
       if (args.test !== null) testArgs.push(args.test)
-      if (!needsGateway) testArgs.push('--exclude', 'tests/gateway/**')
       result.test = await run(join(dir, 'node_modules/.bin/vitest'), testArgs, dir)
     }
     result.passed = install.code === 0 && peerMismatch === null

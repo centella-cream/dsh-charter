@@ -223,6 +223,11 @@ export function unknownAttempt(state: Pick<CharterDraftState, 'attempt'>):
   return state.attempt?.status === 'unknown' ? state.attempt : undefined
 }
 
+/** True when an attempt from another lifecycle still locks this draft. */
+export function crossLifecycleUnknown(state: Pick<CharterDraftState, 'attempt' | 'lifecycle'>): boolean {
+  return state.attempt?.status === 'unknown' && state.attempt.lifecycle !== state.lifecycle
+}
+
 /** Lock every draft edit while any durable request is unresolved/in-flight. */
 function replayLocked(state: CharterDraftState): boolean {
   return unknownAttempt(state) !== undefined || state.maintenanceSaving
