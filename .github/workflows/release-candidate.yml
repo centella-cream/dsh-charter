@@ -103,8 +103,8 @@ jobs:
           printf '%s  %s\n' "$SHA" "$BASE" > dist/SHA256SUMS
           cp dist/SHA256SUMS SHA256SUMS
           printf 'sha256=%s\n' "$SHA" >> "$GITHUB_OUTPUT"
-          printf 'artifact-name=%s\n' "release-candidate" >> "$GITHUB_OUTPUT"
-          printf 'pack-commit=%s\n' "$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+          printf 'artifact_name=%s\n' "release-candidate" >> "$GITHUB_OUTPUT"
+          printf 'pack_commit=%s\n' "$GITHUB_SHA" >> "$GITHUB_OUTPUT"
           SHA="$SHA" BASE="$BASE" node -e "const fs=require('fs');fs.writeFileSync('release-metadata.json',JSON.stringify({version:process.env.VERSION,commit:process.env.GITHUB_SHA,runId:process.env.GITHUB_RUN_ID,artifactSha256:process.env.SHA,artifact:process.env.BASE},null,2)+'\\n')"
           grep -q "sha256=$SHA" "$GITHUB_OUTPUT"
           grep -q "\"artifactSha256\": \"$SHA\"" release-metadata.json

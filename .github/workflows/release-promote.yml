@@ -243,7 +243,7 @@ jobs:
           rm -rf /tmp/published && mkdir -p /tmp/published
           npm pack "dsh-charter@$VERSION" --pack-destination /tmp/published >/dev/null
           test "$(sha256sum /tmp/published/*.tgz | awk '{print $1}')" = "$CANDIDATE_SHA256"
-          npm view "dsh-charter@$VERSION" dist.attestations --json | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const a=JSON.parse(s); if(a===undefined||Object.keys(a).length===0) process.exit(1)})
+          npm view "dsh-charter@$VERSION" dist.attestations --json | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const a=JSON.parse(s); if(a===undefined||Object.keys(a).length===0) process.exit(1)})"
 
       - name: Move next and latest with immediate pre-write checks
         run: |

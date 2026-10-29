@@ -83,8 +83,10 @@ function progressLabel(progress: DeliverableProgress | undefined, t: CharterText
   return t(`progress.${progress ?? 'not-started'}`)
 }
 
-function errorLabel(code: CharterErrorCode, t: CharterText): string {
-  return t(`error.${code}`)
+function errorLabel(code: CharterErrorCode | string, t: CharterText): string {
+  const key = `error.${code}`
+  const text = t(key as never)
+  return text === key ? t('error.unexpected') : text
 }
 
 function textIssueMessage(issue: 'empty' | 'control' | 'surrogate', t: CharterText): string {
