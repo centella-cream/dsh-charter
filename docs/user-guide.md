@@ -54,9 +54,10 @@ dsh plugin --profile web add dsh-charter@0.1.0-rc.5   # exact version: reproduci
 dsh plugin --profile web add dsh-charter@next         # newest pre-release
 ```
 
-`0.1.0-rc.5` is the current pre-release under the `next` dist-tag. Under our channel policy `latest` also points
-at the newest RC until a stable release exists (npm keeps a `latest` tag and we choose where it points; this is
-our policy, not an npm requirement). Use the exact version or `@next` for pre-release installs, and use the
+`dsh-charter@0.1.0-rc.5` is the current release candidate. Use the exact rc.5 command below only after
+`npm view dsh-charter@0.1.0-rc.5 version` returns that version; until then continue with the latest published
+RC (`0.1.0-rc.4`). Under our channel policy `latest` also points at the newest RC until a stable release exists
+(npm keeps a `latest` tag and we choose where it points; this is our policy, not an npm requirement). Use the
 offline tarball fallback above only when the registry is unreachable. Pin an explicit version for reproducible
 profiles.
 
