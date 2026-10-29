@@ -470,7 +470,8 @@
 }
 
 .charter-progress select {
-  height: 23px;
+  min-height: 23px;
+  height: auto;
   padding: 0 5px;
   border: 1px solid var(--charter-border);
   border-radius: 5px;
@@ -1338,6 +1339,7 @@
 }
 
 .charter-item__menulist button {
+  min-height: 36px;
   padding: 6px 10px;
   border: 0;
   border-radius: 6px;
@@ -1573,6 +1575,8 @@
 }
 
 @media (max-width: 640px), (pointer: coarse) {
+  .charter-progress select,
+  .charter-item__menulist button,
   .charter-actionbar__actions .charter-button,
   .charter-bootstrap__summary .charter-button,
   .charter-add__foot .charter-button,

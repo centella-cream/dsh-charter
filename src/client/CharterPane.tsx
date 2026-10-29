@@ -27,10 +27,11 @@ import {
   bootstrapReplayPending,
   crossLifecycleUnknown,
   editReplayPending,
+  maintenanceAttempt,
   maintenanceReplayPending,
   rebaseAvailable,
 } from './draft-store.js'
-import { type CharterRecordArchive } from '../core/schemas.js'
+import { type CharterRecordArchive, type CharterRestoreRequest } from '../core/schemas.js'
 import { previewArchive } from './archive-preview.js'
 import {
   activeItems,
@@ -329,6 +330,7 @@ function TextEditor({
   onCancel,
   maxBytes,
   previousBytes,
+  label,
   t,
 }: {
   readonly value: string
@@ -340,8 +342,10 @@ function TextEditor({
   readonly onCancel: () => void
   readonly maxBytes: number
   readonly previousBytes?: number | undefined
+  readonly label?: string | undefined
   readonly t: CharterText
 }) {
+  const budgetId = useId()
   const bytes = normalizedBytes(value)
   const shrinking = previousBytes !== undefined && bytes < previousBytes
   const over = bytes > maxBytes && !shrinking
@@ -369,7 +373,9 @@ function TextEditor({
         autoFocus
         className="charter-editor__input"
         value={value}
-        aria-label={t('editor.charterTextAria')}
+        aria-label={label ?? t('editor.charterTextAria')}
+        aria-invalid={over}
+        aria-describedby={budgetId}
         onChange={event => onChange(event.target.value)}
         onKeyDown={onKeyDown}
       />
@@ -387,7 +393,7 @@ function TextEditor({
         </label>
       )}
       <div className="charter-editor__actions">
-        <span className={over ? 'charter-budget is-over' : 'charter-budget'}>
+        <span id={budgetId} className={over ? 'charter-budget is-over' : 'charter-budget'}>
           {overButShrinking
             ? t('budget.shrinking')
             : over
@@ -841,6 +847,10 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   const recordState = view?.recordState
   const capabilities = view?.capabilities
   const maintenanceReplay = maintenanceReplayPending(draftState)
+  const retainedMaintenance = maintenanceAttempt(draftState)
+  const retainedArchive = retainedMaintenance?.kind === 'restore'
+    ? (retainedMaintenance.request as CharterRestoreRequest).archive as CharterRecordArchive | null | undefined
+    : undefined
   const recoveryBusy = draftState.maintenanceSaving || maintenanceReplay
   const maintenanceProblem = draftState.maintenanceProblem
   // Capability gates the whole recovery section; a raw record must also exist
@@ -905,7 +915,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
 
   useEffect(() => {
     setConfirmDiscardAll(false)
-  }, [view?.sessionId, view?.lifecycle, draftState.ops.length, draftState.editor])
+  }, [view?.sessionId, view?.lifecycle, draftState.ops, draftState.editor, draftState.editorText, draftState.newInvariant, draftState.newDeliverable])
 
   useEffect(() => {
     if (draftState.maintenanceSaving || maintenanceReplay) return
@@ -925,6 +935,8 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
       <main className="charter-root charter-centered">
         <StateMark state="error" />
         <span>{t('error.connection')}</span>
+        {state.errorKind !== undefined && <span>{t(`error.connectionKind.${state.errorKind}` as never)}</span>}
+        <ErrorDetails detail={state.error ?? undefined} t={t} />
         <ActionButton variant="outline" onClick={source.retry}>{t('button.retry')}</ActionButton>
       </main>
     )
@@ -981,8 +993,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   const notice = view.status === 'ready' ? null : statusMessage(view, t)
   const disconnected = state.status === 'error'
   const overBudget = view.overBudget
-  const showEmpty = view.status === 'ready'
-    && !overBudget
+  const showEmpty = !overBudget
     && projectedObjective === null
     && projectedItems.length === 0
     && bootstrapPhase !== 'draft'
@@ -1075,6 +1086,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   }
 
   const chooseArchive = (file: File): void => {
+    if (recoveryBusy || unknownBlocked) return
     const generation = ++archiveGenerationRef.current
     const expectedSessionId = view?.sessionId
     const expectedLifecycle = draftState.lifecycle ?? view?.lifecycle ?? null
@@ -1362,7 +1374,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
               ? (
                   <>
                     <ActionButton
-                      disabled={unknownBlocked ? true : !canApplyBootstrap}
+                      disabled={bootstrapReplay ? bootstrapSaving : !canApplyBootstrap}
                       onClick={applyBootstrapDraft}
                       busy={bootstrapSaving}
                     >
@@ -1482,6 +1494,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                       ?? (bootstrapPhase === 'no-summary' ? t('bootstrap.noSummary')
                         : bootstrapPhase === 'not-live' ? t('bootstrap.notLive')
                           : t('bootstrap.overviewFailed'))}</span>
+                    <ErrorDetails detail={bootstrapProblem?.detail} t={t} />
                     <span className="charter-callout__actions">
                       <ActionButton variant="outline" onClick={() => draft.retryBootstrap(view)}>
                         {t('bootstrap.checkAgain')}
@@ -1547,6 +1560,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                 <div className="charter-overview-grid">
                   <button type="button" className="charter-card charter-statcard" onClick={() => goSection('invariants')}>
                     <span className="charter-kicker">{t('invariants.kicker')}</span>
+                    {ops.length > 0 && <span className="charter-kicker" role="note">{t('overview.afterApply')}</span>}
                     <span className="charter-statcard__value">{activeInvariants.length}</span>
                     <span className="charter-statcard__label">{countLabel(t, activeInvariants.length, 'invariants.one', 'invariants.other')}</span>
                     <span className="charter-statcard__list">
@@ -1558,6 +1572,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                   </button>
                   <button type="button" className="charter-card charter-statcard" onClick={() => goSection('deliverables')}>
                     <span className="charter-kicker">{t('deliverables.kicker')}</span>
+                    {ops.length > 0 && <span className="charter-kicker" role="note">{t('overview.afterApply')}</span>}
                     <span className="charter-statcard__value">{activeDeliverables.length}</span>
                     <span className="charter-statcard__label">{countLabel(t, activeDeliverables.length, 'deliverables.one', 'deliverables.other')}</span>
                     <span className="charter-statcard__list">
@@ -1641,6 +1656,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                         onCancel={() => draft.closeEditor()}
                         maxBytes={view.limits.maxObjectiveBytes}
                         previousBytes={normalizedBytes(projectedObjective?.current.text ?? '')}
+                        label={t('editor.objectiveAria')}
                         t={t}
                       />
                     </div>
@@ -1713,6 +1729,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                       onCancel={() => draft.closeEditor()}
                       maxBytes={view.limits.maxItemBytes}
                       previousBytes={editor.kind === 'edit' ? normalizedBytes(editor.item.text) : undefined}
+                      label={t('editor.invariantAria')}
                       t={t}
                     />
                   </div>
@@ -1781,6 +1798,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                       onCancel={() => draft.closeEditor()}
                       maxBytes={view.limits.maxItemBytes}
                       previousBytes={editor.kind === 'edit' ? normalizedBytes(editor.item.text) : undefined}
+                      label={t('editor.deliverableAria')}
                       t={t}
                     />
                   </div>
@@ -1998,7 +2016,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                       <ActionButton
                         variant="primary"
                         className="charter-actionbar__primary"
-                        disabled={unknownBlocked ? true : !canApplyBootstrap}
+                        disabled={bootstrapReplay ? bootstrapSaving : !canApplyBootstrap}
                         onClick={applyBootstrapDraft}
                         busy={bootstrapSaving}
                       >
@@ -2128,6 +2146,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                           {t('recovery.problem')}
                           {maintenanceProblem.code === undefined ? '' : ` (${errorText(String(maintenanceProblem.code))})`}
                         </span>
+                        <ErrorDetails detail={maintenanceProblem.detail} t={t} />
                       </div>
                       <ActionButton variant="outline" onClick={() => draft.dismissMaintenanceProblem()}>
                         {t('recovery.dismiss')}
@@ -2144,6 +2163,14 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                       <div className="charter-notice" role="status">
                         <span>{t('recovery.unknownOutcome')}</span>
                       </div>
+                      {retainedArchive != null && (
+                        <dl className="charter-recovery__retained">
+                          <div><dt>{t('recovery.sourceSession')}</dt><dd>{retainedArchive.source.sessionId}</dd></div>
+                          <div><dt>{t('recovery.lifecycle')}</dt><dd>{retainedArchive.source.lifecycle}</dd></div>
+                          <div><dt>{t('recovery.previewDigest')}</dt><dd>{retainedArchive.source.recordDigest}</dd></div>
+                          <div><dt>{t('recovery.payloadDigest')}</dt><dd>{retainedArchive.payloadDigest}</dd></div>
+                        </dl>
+                      )}
                       <div className="charter-recovery__actions">
                         {maintenanceReplay && (
                           <ActionButton variant="primary" onClick={() => void draft.retryMaintenance()}>
@@ -2162,6 +2189,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                       ref={archiveInputRef}
                       type="file"
                       accept="application/json,.json"
+                      disabled={recoveryBusy || unknownBlocked}
                       onChange={event => {
                         const file = event.currentTarget.files?.[0]
                         if (file !== undefined) chooseArchive(file)

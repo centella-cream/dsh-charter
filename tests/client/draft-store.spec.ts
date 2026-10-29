@@ -2009,3 +2009,27 @@ describe('rc.5 discard and unknown evidence', () => {
     expect(draft.getSnapshot().ops).toEqual(before.ops)
   })
 })
+
+describe('rc.5 Remote pre-dispatch classification', () => {
+  it('ends an edit attempt with a stable code when the Remote failed before dispatch', async () => {
+    const fake = source({
+      edit: async () => {
+        throw { isDSHRemoteError: true, code: 'gateway/bad-request' }
+      },
+    })
+    const draft = new CharterDraft(sessionId, () => fake)
+    draft.bindLifecycle('life-remote-known')
+    const rev = view(0)
+    draft.stage(rev, {
+      type: 'item.add',
+      item: { clientRef: 'remote-known', kind: 'invariant', text: 'Not executed', order: 0 },
+    })
+    await draft.applyDraft(rev)
+    expect(draft.getSnapshot()).toMatchObject({
+      saving: false,
+      attempt: null,
+      feedback: { kind: 'error', code: 'gateway/bad-request' },
+    })
+    expect(editReplayPending(draft.getSnapshot())).toBe(false)
+  })
+})
