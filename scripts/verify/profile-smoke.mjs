@@ -87,7 +87,13 @@ try {
   }
   child.kill('SIGTERM')
   console.log(`profile-smoke: PASS — fresh DSH ${dshVersion} Web profile installed ${basename(artifact)} (${digest}) and served page/client bundle`)
+} catch (error) {
+  console.error(error)
+  process.exitCode = 1
 } finally {
-  child?.kill('SIGTERM')
+  child?.kill('SIGKILL')
+  child?.stdout?.destroy()
+  child?.stderr?.destroy()
   rmSync(home, { recursive: true, force: true })
 }
+process.exit(process.exitCode ?? 0)
