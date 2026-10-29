@@ -60,6 +60,8 @@
   不存在，插件无法与"记录缺失"区分（见验证记录 4.5）。
 - **可恢复的应用**：结果未知的请求重试时复用同一 mutation id；revision 冲突提供“应用到最新修订”，而不是
   直接丢弃草稿。
+- **可见的构建标识**：会话契约头部在 revision 和条目计数旁显示当前插件版本，截图或支持报告可直接识别构建；
+  如果客户端版本常量与 `package.json` 不一致，回归测试会失败。
 
 会话契约是**声明**，不是执行策略。需要机器强制的限制请使用 Host 权限、sandbox、hook 或工具守卫。
 
@@ -300,7 +302,7 @@ npm run verify:compaction # 手工真实模型 compaction 校验（不在 check 
 ```
 
 测试覆盖纯内核、真实 Host 组合、storage domain、Remote framing、历史抽取、客户端状态和 factory bundle
-注册。当前树有 **359 个测试**；rc.5 tracked 七版本矩阵在所有声明版本上通过。当前证据见[验证记录](docs/verification.zh.md)。
+注册。当前树有 **360 个测试**；rc.5 tracked 七版本矩阵在所有声明版本上通过。当前证据见[验证记录](docs/verification.zh.md)。
 
 ## 致谢
 

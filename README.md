@@ -67,6 +67,9 @@ permission boundary.
   treats it as absent and the plugin cannot distinguish it from a missing record (verification §4.5).
 - **Recoverable applies.** A retry reuses the mutation id of an unknown-outcome request, and a revision
   conflict offers an explicit apply-to-latest action instead of discarding the draft.
+- **Visible build identity.** The Charter header shows the installed plugin version beside the revision and
+  item counts, so a screenshot or support report identifies the build. A regression test fails if the
+  client-side constant drifts from `package.json`.
 
 A charter is a declaration, not an enforcement policy. Use Host permissions, sandbox policy, hooks, or
 execution guards for restrictions that must be machine-enforced.
@@ -332,7 +335,7 @@ npm run verify:compaction # manual real-model compaction check (not part of chec
 ```
 
 The test suite covers the pure core, real Host composition, storage-domain behavior, Remote framing,
-history extraction, client state, and factory-bundle registration. The current tree has **359 tests**; the rc.5 tracked seven-version matrix passes on all declared DSH versions. See the [verification record](docs/verification.md) for the current evidence.
+history extraction, client state, and factory-bundle registration. The current tree has **360 tests**; the rc.5 tracked seven-version matrix passes on all declared DSH versions. See the [verification record](docs/verification.md) for the current evidence.
 
 ## Acknowledgements
 

@@ -34,6 +34,7 @@ const en = {
   'status.legacyHost': 'Connected to an older Host bundle; recovery capabilities are unavailable.',
   'status.overBudget': 'The stored charter is valid but exceeds the current budget limits, so it is not injected. Remove or archive items to bring it back within budget.',
   'status.reconnecting': 'Reconnecting to the charter service; editing is paused and this is the last confirmed state.',
+  'header.version': 'v{version}',
   'header.disclaimer': 'Advisory model context, not an enforced policy or security boundary.',
 
   'empty.kicker': 'Get started',
@@ -377,6 +378,7 @@ const zh: Record<CharterLocaleKey, string> = {
   tab: '会话契约',
   'header.title': '会话契约',
   'header.subtitle': '压缩会改写历史，但你的约定不会。',
+  'header.version': 'v{version}',
   'header.disclaimer': '这是提供给模型的声明性上下文，不强制执行，也不是安全边界。',
   'stats.revision': '修订 {revision}',
   'stats.active': '{count} 生效',

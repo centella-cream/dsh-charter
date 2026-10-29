@@ -88,6 +88,7 @@ describe('rc.5 pane workflow acceptance', () => {
     const draft = new CharterDraft(sessionId, () => source(unavailable))
     draft.bindLifecycle(lifecycle)
     const tree = mount(source(unavailable), draft)
+    expect(textOf(tree.root)).toContain('header.version')
     expect(button(tree, 'objective.set').props.disabled).toBe(true)
     expect(button(tree, 'composer.addInvariant').props.disabled).toBe(true)
   })

@@ -46,6 +46,7 @@ import {
   type ProjectedItem,
 } from './preview.js'
 import { firstDraftTextIssue, type BootstrapPlan } from './bootstrap-plan.js'
+import { CHARTER_VERSION } from '../version.js'
 import './charter.css'
 
 type CharterText = TranslateNS<typeof CHARTER_LOCALE_NS>
@@ -1264,6 +1265,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
           </div>
           <div className="charter-headside">
             <div className="charter-chips">
+              <StatusTag tone="info">{t('header.version', { version: CHARTER_VERSION })}</StatusTag>
               <StatusTag>{t('stats.revision', { revision: view.revision })}</StatusTag>
               <StatusTag>{t('stats.active', { count: committedActive })}</StatusTag>
               <StatusTag>{t('stats.stored', { count: committedStored })}</StatusTag>
