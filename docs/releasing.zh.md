@@ -78,17 +78,19 @@ manifest/files/modes/exports、空 consumer 安装、packed `core` import 与 cl
 
 ## 4. 唯一发布路径
 
-Promotion 运行前，npm 包设置必须包含完全匹配的 Trusted Publisher：
+Promotion 运行前，仓库必须配置受保护的 `NPM_TOKEN` secret，内容为具备 package write 与 2FA bypass 的
+granular automation token。workflow 使用该 token 执行 `npm publish` 和 `npm dist-tag`，**不使用 OIDC**，
+也不生成 provenance attestation。请在 token 过期前轮换，并同步更新 secret。
 
 ```text
-owner: centella-cream
-repository: dsh-charter
-workflow: release-promote.yml
-environment: release
-permissions: npm publish + npm dist-tag
+secret: NPM_TOKEN
+scope: package write
+package: dsh-charter
+2FA: bypass enabled
+expiry: 跟踪并在过期前轮换
 ```
 
-仓库无法验证此外部配置；缺失会阻断 OIDC 发布。
+workflow 无法验证 token 的 scope 或剩余有效期；缺失/过期会阻断发布。
 
 
 `release-candidate.yml` 是发布 tarball 和全部发布 evidence 的唯一生产者。它全绿后，在 candidate `C` 上创建
@@ -100,7 +102,7 @@ permissions: npm publish + npm dist-tag
 
 然后在受保护的 `release` environment 运行 `release-promote.yml`。它是**唯一**允许创建 tag、GitHub Release
 和 npm channel 的路径。不要为发布手工执行 `git tag`、`gh release`、`npm publish` 或 `npm dist-tag`；这些会绕过
-environment 审批、OIDC、browser evidence 和 release evidence。
+environment 审批、token scope、browser evidence 和 release evidence。
 
 workflow 使用下载的候选 artifact，校验 candidate/browser evidence 与 main-push CI，先发布到临时非 channel tag，
 回读 registry tarball，再移动 `next`/`latest` 并做即时防回退检查；Release 先保持 draft，附加

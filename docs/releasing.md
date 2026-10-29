@@ -91,17 +91,20 @@ after the final package update, restart it once and reopen the Charter tab befor
 
 ## 4. Single promotion path
 
-Before promotion can run, npm package settings must contain a Trusted Publisher with exactly:
+Before promotion can run, the repository must have a protected `NPM_TOKEN` secret containing a granular
+automation token with package write permission and 2FA bypass. The workflow uses this token for `npm publish`
+and `npm dist-tag`; it does **not** use OIDC or generate provenance attestations. Rotate the token before its
+expiry and update the secret in the same maintenance window.
 
 ```text
-owner: centella-cream
-repository: dsh-charter
-workflow: release-promote.yml
-environment: release
-permissions: npm publish + npm dist-tag
+secret: NPM_TOKEN
+scope: package write
+package: dsh-charter
+2FA: bypass enabled
+expiry: tracked and rotated before expiry
 ```
 
-The repository workflow cannot verify this external setting; absence blocks the OIDC publish.
+The workflow cannot verify the token's scope or remaining lifetime; a missing/expired token blocks publish.
 
 
 `release-candidate.yml` is the only producer of the release tarball and all release evidence. After it is green,
@@ -113,7 +116,7 @@ create the checksum-only release commit `C+1` on top of candidate `C`:
 
 Then run `release-promote.yml` from the protected `release` environment. It is the **only** path allowed to
 create the tag, GitHub Release, and npm channels. Do not run manual `git tag`, `gh release`, `npm publish`, or
-`npm dist-tag` commands for a release; they bypass environment approval, OIDC, browser evidence, and release
+`npm dist-tag` commands for a release; they bypass environment approval, token scope, browser evidence, and release
 evidence.
 
 The workflow consumes the downloaded candidate artifact, verifies the candidate/browser evidence and main-push CI,

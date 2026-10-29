@@ -28,7 +28,6 @@ on:
 permissions:
   contents: write
   actions: read
-  id-token: write
 
 concurrency:
   group: release-promote
@@ -46,6 +45,7 @@ jobs:
       CANDIDATE_SHA256: ${{ inputs.candidate_sha256 }}
       VERSION: ${{ inputs.version }}
       BROWSER_EVIDENCE_RUN_ID: ${{ inputs.browser_evidence_run_id }}
+      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -56,7 +56,7 @@ jobs:
           node-version: '22.19.0'
           cache: npm
           registry-url: 'https://registry.npmjs.org'
-      - name: Install npm with OIDC publish and dist-tag support
+      - name: Install npm with dist-tag support
         run: |
           set -euo pipefail
           npm install --global npm@11.21.0
@@ -236,14 +236,15 @@ jobs:
           fi
           if [ "$PUBLISHED" -eq 0 ]; then
             # Publish under a non-channel tag first; next/latest move only after
-            # version, provenance, and tarball readback.
-            npm publish "candidate/$(basename candidate/*.tgz)" --access public --tag "promotion-$VERSION" --provenance
+            # version and tarball readback. This uses the repository NPM_TOKEN
+            # granular automation token instead of OIDC/provenance.
+            npm publish "candidate/$(basename candidate/*.tgz)" --access public --tag "promotion-$VERSION"
           fi
           npm view "dsh-charter@$VERSION" version >/dev/null
           rm -rf /tmp/published && mkdir -p /tmp/published
           npm pack "dsh-charter@$VERSION" --pack-destination /tmp/published >/dev/null
           test "$(sha256sum /tmp/published/*.tgz | awk '{print $1}')" = "$CANDIDATE_SHA256"
-          npm view "dsh-charter@$VERSION" dist.attestations --json | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const a=JSON.parse(s); if(a===undefined||Object.keys(a).length===0) process.exit(1)})"
+          npm view "dsh-charter@$VERSION" dist.integrity --json | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const v=JSON.parse(s); if(typeof v!=='string'||v.length===0) process.exit(1)})"
 
       - name: Move next and latest with immediate pre-write checks
         run: |
