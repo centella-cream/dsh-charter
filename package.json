@@ -190,5 +190,10 @@
     "vitest": "4.1.12"
   },
   "icon": "icon.svg",
-  "author": "dsh-charter contributors"
+  "author": "dsh-charter contributors",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "registry": "https://registry.npmjs.org/"
+  }
 }
