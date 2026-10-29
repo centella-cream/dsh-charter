@@ -114,13 +114,15 @@ The browser registers a `conversation.view` entry; the pane and `charter.watch` 
 ### Current release state
 
 - **Latest published RC:** `0.1.0-rc.4` (npm `latest` and `next`, GitHub Release).
-- **Current source:** `0.1.0-rc.5`. The candidate is tagged (`v0.1.0-rc.5`), but npm publication and the
-  GitHub Release are still pending. Do not assume `dsh-charter@0.1.0-rc.5` resolves from the registry yet.
+- **Finalized but npm-delayed:** `0.1.0-rc.5` is tagged (`v0.1.0-rc.5`) with a green candidate and immutable
+  artifact digest. Its npm publication and GitHub prerelease are deferred; it is not installable from npm yet.
+- **Active source:** `0.1.0-rc.6`, unreleased and untagged. It currently contains documentation/version activation
+  work, not a published runtime change.
 - `0.1.0-rc.5` adds review, recovery, accessibility, and release-evidence hardening; it is not a new 0.2
   capability line.
 
-Install the published version for normal use. Use the exact rc.5 command only after
-`npm view dsh-charter@0.1.0-rc.5 version` returns that version; until then the latest published RC is rc.4.
+Install the latest published version for normal use. Do not assume `dsh-charter@0.1.0-rc.5` or rc.6 resolves
+from the registry; the latest published RC remains rc.4.
 Our channel policy is to publish RCs under `next` and to point `latest` at the newest RC until a stable release
 exists (npm keeps a `latest` tag and we choose where it points; this is our policy, not an npm requirement).
 
@@ -156,8 +158,8 @@ Pin an exact version for reproducible profiles. `@next` and `@latest` follow dis
 pnpm's release-age policy, so they are not a reliable way to install a freshly published RC. If the registry is
 unreachable, or you need the exact release artifact, use the offline tarball fallback below.
 
-`dsh-charter@0.1.0-rc.5` is **not yet installable from npm**. The rc.5 candidate artifact exists in release
-evidence; wait for publication before switching a user profile to it.
+`dsh-charter@0.1.0-rc.5` is **not yet installable from npm** (finalized, npm publication deferred), and rc.6 has
+no tagged candidate yet. Wait for publication before switching a user profile.
 
 Restart `dsh web` (or let profile HMR recompose), then refresh the page. The profile's `package.json` gains the
 dependency and bundle entry.
@@ -187,14 +189,16 @@ shasum -a 256 -c SHA256SUMS
 dsh plugin --profile web add ./dsh-charter-0.1.0-rc.4.tgz
 ```
 
-For an unpublished rc.5 candidate, build/pack only from the tagged tree and treat it as release evidence, not
-as a normal user install:
+The finalized rc.5 candidate can be inspected from its tag as release evidence, not as a normal user install:
 
 ```bash
 git checkout v0.1.0-rc.5
 npm install && npm run build && npm pack
 dsh plugin --profile web add ./dsh-charter-0.1.0-rc.5.tgz
 ```
+
+The active rc.6 tree has no tagged candidate; do not distribute a locally built rc.6 tarball before a candidate
+and release evidence exist.
 
 `dsh plugin --profile desktop` is intentionally refused by the Electron app that owns that profile; use the
 Desktop Plugins page or that profile's package manager. Source-level development is described in
@@ -379,12 +383,13 @@ design keeps the compatibility layer deliberately small.
 Current release state (2026-10-29):
 
 - **Published:** `0.1.0-rc.4` — npm `latest`/`next`, GitHub Release, immutable tag.
-- **Candidate:** `0.1.0-rc.5` — candidate run green, exact artifact SHA-256
-  `94e27acf8851ad5423defd06a41253171317f4e805af809fe8e8e7a9ce83a939`, tag `v0.1.0-rc.5` points at the
-  checksum-only C+1 commit.
-- **Pending before calling rc.5 published:** npm token publication, GitHub prerelease, protected browser
-  evidence, and Promotion. The repository `main` includes the token-publish workflow; no GitHub Release or npm
-  version exists for rc.5 yet.
+- **Finalized, npm-delayed:** `0.1.0-rc.5` — candidate green, exact artifact SHA-256
+  `94e27acf8851ad5423defd06a41253171317f4e805af809fe8e8e7a9ce83a939`, tag `v0.1.0-rc.5` at the
+  checksum-only C+1 commit. No npm version or GitHub Release yet.
+- **Active, unpublished:** `0.1.0-rc.6` — documentation/version activation only so far; not tagged and not
+  built as a release candidate.
+- **Pending for rc.5:** npm token publication, GitHub prerelease, protected browser evidence, and Promotion.
+  The repository `main` includes the token-publish workflow.
 - The real-model compaction acceptance PASS remains recorded on the immutable
   [v0.1.0-rc.4 verification §8.4](https://github.com/centella-cream/dsh-charter/blob/v0.1.0-rc.4/docs/verification.md#84-recorded-real-model-run-2026-10-22).
 

@@ -17,6 +17,7 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
   `dsh-charter-0.1.0-rc.5.tgz` 的 SHA-256 为
   `94e27acf8851ad5423defd06a41253171317f4e805af809fe8e8e7a9ce83a939`。
 - 发布提交：`C=d138d65dc4f1b2628dc043f2dd437ea213112a4d`，`C+1=tag v0.1.0-rc.5=0a6ccc5`。
+- 当前源码：`0.1.0-rc.6`（未发布、未打 tag；文档/版本号启用）。
 - 待完成：npm token 发布、GitHub prerelease、受保护 browser evidence、Promotion。
 
 | 项目 | 结果 |

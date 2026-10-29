@@ -104,12 +104,13 @@ Host 在 `session/created` 时初始化记录，并在首次 prompt 前的 `agen
 ### 当前发布状态
 
 - **最新已发布 RC：** `0.1.0-rc.4`（npm `latest` 和 `next`，GitHub Release）。
-- **当前源码：** `0.1.0-rc.5`。候选产物已打 tag（`v0.1.0-rc.5`），但 npm 发布和 GitHub Release 仍待完成。
-  不要假设 `dsh-charter@0.1.0-rc.5` 已能从 registry 安装。
+- **已定版但 npm 延迟：** `0.1.0-rc.5` 已打 tag（`v0.1.0-rc.5`），candidate 全绿，产物 digest 不可变；
+  npm 发布和 GitHub prerelease 延迟，尚不能从 npm 安装。
+- **当前源码：** `0.1.0-rc.6`，未发布、未打 tag。当前只包含文档/版本号启用工作，不是已发布运行时变更。
 - `0.1.0-rc.5` 只包含审阅、恢复、无障碍和发布证据硬化，不新增 0.2 能力线。
 
-普通使用请安装已发布版本。只有 `npm view dsh-charter@0.1.0-rc.5 version` 返回该版本后，才使用 rc.5
-精确安装命令；在此之前最新已发布 RC 是 rc.4。频道策略是 RC 发布到 `next`，并在稳定版出现前让 `latest`
+普通使用请安装最新已发布版本。不要假设 `dsh-charter@0.1.0-rc.5` 或 rc.6 已能从 registry 安装；最新已发布
+RC 仍是 rc.4。频道策略是 RC 发布到 `next`，并在稳定版出现前让 `latest`
 也指向最新 RC（npm 会保留 `latest` tag，由我们决定其指向；这是我们的策略，不是 npm 的强制要求）。
 
 完整的恢复/记录健康契约见[使用与运维指南](docs/user-guide.zh.md)和[验证记录](docs/verification.zh.md)。
@@ -140,8 +141,8 @@ dsh plugin --profile web add dsh-charter@0.1.0-rc.4
 固定精确版本可以保证 profile 可复现。`@next` 和 `@latest` 只是 dist-tag，同样受 pnpm release-age 策略影响，
 不能可靠地用来安装刚发布的 RC。registry 不可达、或需要精确发布产物时，使用下面的离线 tarball 回退方式。
 
-`dsh-charter@0.1.0-rc.5` **尚不能从 npm 安装**。rc.5 候选产物只存在于发布证据中；切换用户 profile 前请等
-正式发布。
+`dsh-charter@0.1.0-rc.5` **尚不能从 npm 安装**（已定版但发布延迟）；rc.6 尚无 tagged candidate。切换用户
+profile 前请等正式发布。
 
 重启 `dsh web`（或等待 profile HMR 重新组合），然后刷新页面。profile 的 `package.json` 会增加依赖和
 bundle 选择。
@@ -168,13 +169,15 @@ shasum -a 256 -c SHA256SUMS
 dsh plugin --profile web add ./dsh-charter-0.1.0-rc.4.tgz
 ```
 
-未发布的 rc.5 候选只能从 tag 构建/打包，并作为发布证据，不作为普通用户安装路径：
+已定版的 rc.5 候选可从 tag 构建/打包并作为发布证据，不作为普通用户安装路径：
 
 ```bash
 git checkout v0.1.0-rc.5
 npm install && npm run build && npm pack
 dsh plugin --profile web add ./dsh-charter-0.1.0-rc.5.tgz
 ```
+
+当前 rc.6 树没有 tagged candidate；在 candidate 和 release evidence 存在前，不要分发本地构建的 rc.6 tarball。
 
 `dsh plugin --profile desktop` 会被拥有该 profile 的 Electron app 拒绝；请使用 Desktop 的 Plugins 页面或该
 profile 自己的包管理器。源码开发流程见 [CONTRIBUTING.zh.md](CONTRIBUTING.zh.md)；不要把 `git clone` 当作普通
@@ -345,11 +348,12 @@ Pre-1.0。DSH 插件 ABI 仍在演进；项目对上述版本做兼容验证，�
 当前发布状态（2026-10-29）：
 
 - **已发布：** `0.1.0-rc.4` — npm `latest`/`next`、GitHub Release、不可变 tag。
-- **候选：** `0.1.0-rc.5` — candidate run 通过，精确产物 SHA-256
+- **已定版，npm 延迟：** `0.1.0-rc.5` — candidate 全绿，精确产物 SHA-256
   `94e27acf8851ad5423defd06a41253171317f4e805af809fe8e8e7a9ce83a939`，tag `v0.1.0-rc.5` 指向
-  checksum-only C+1 commit。
-- **在称为 rc.5 已发布前仍需完成：** npm token 发布、GitHub prerelease、受保护的 browser evidence 和
-  Promotion。`main` 已包含 token 发布 workflow；rc.5 尚无 GitHub Release 或 npm version。
+  checksum-only C+1 commit。尚无 npm version 或 GitHub Release。
+- **当前启用，未发布：** `0.1.0-rc.6` — 目前只有文档/版本号启用工作，未打 tag，也未构建 release candidate。
+- **rc.5 待完成：** npm token 发布、GitHub prerelease、受保护 browser evidence 和 Promotion。`main` 已包含
+  token 发布 workflow。
 - 真实模型 compaction 验收 PASS 仍记录在不可变
   [v0.1.0-rc.4 验证记录 8.4](https://github.com/centella-cream/dsh-charter/blob/v0.1.0-rc.4/docs/verification.md#84-recorded-real-model-run-2026-10-22)。
 

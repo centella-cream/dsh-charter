@@ -12,13 +12,14 @@ The release path is:
 
 ```text
 0.1.0-rc.4 (published compatibility patch)
-  → 0.1.0-rc.5
+  → 0.1.0-rc.5 (finalized; npm publication deferred)
+  → 0.1.0-rc.6 (active source; unreleased)
   → 0.1.0 stable
   → 0.1.1 only if stable needs a compatible patch
   → 0.2.0-alpha.1 ... 0.2.0-rc.1 → 0.2.0
 ```
 
-The current candidate release is **`0.1.0-rc.5`**, not `0.1.1-rc.1`. rc.4 remains public as a DSH `0.2.1-rc.3`/`rc.4` compatibility-only patch and cannot receive more content. rc.5 is implemented and tagged; npm publication and the GitHub prerelease are still pending.
+The finalized candidate is **`0.1.0-rc.5`**; its npm publication and GitHub prerelease are deferred. The active source is **`0.1.0-rc.6`**, which is unreleased and untagged. `0.1.1-rc.1` remains a post-stable patch spelling, not another rc.6.
 
 rc.5 fixed the correctness defect inside the promised 0.1 workflow: previously every compaction-history candidate started selected, the UI rendered only 40, and Apply could include selected candidates the user had not seen. That conflicted with the mandatory human-review promise; the rc.5 review flow now starts with no selections and never submits hidden rows.
 
@@ -34,6 +35,8 @@ rc.5 fixed the correctness defect inside the promised 0.1 workflow: previously e
   exact artifact digest is recorded in the root `SHA256SUMS`. The tag points at the checksum-only C+1 commit.
 - rc.5 is **not published yet**: npm publication, the GitHub prerelease, protected browser evidence, and
   Promotion are pending. Do not describe it as installable from npm.
+- rc.6 is active in the source tree but **unreleased and untagged**. It currently carries documentation/version
+  activation work; a fresh candidate is required before any tag or publication.
 - `main` contains the token-publish workflow used by the remaining promotion path. Published rc.4 history is
   never rewritten.
 
@@ -118,7 +121,7 @@ rc.5 adds no `CharterOp`, record field, persistent schema version, Remote method
 
 ## 5. Stable and `0.1.1`
 
-After rc.5 is published, enter feature freeze and publish `0.1.0` only after data-safety, authorization, review, browser, Desktop ABI, compatibility, documentation, and final-artifact gates pass.
+After rc.5 publication is resolved, enter feature freeze and publish `0.1.0` only after data-safety, authorization, review, browser, Desktop ABI, compatibility, documentation, and final-artifact gates pass.
 
 Any runtime, wire, storage, or recovery change found during stable preparation requires another `0.1.0-rc.N`.
 

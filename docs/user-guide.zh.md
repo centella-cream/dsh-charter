@@ -22,14 +22,15 @@ dsh --profile web --dump-config | grep -n "charter" || true
 
 ## 2. 安装
 
-> **安装渠道。** 维护者发布 `next` dist-tag 后，可按精确版本或 tag 安装；如果 registry 中还没有列出该 tag，
-> 请使用从本 checkout 构建并验证过的本地 tarball。
+> **安装渠道。** 最新已发布 RC 是 `0.1.0-rc.4`；`0.1.0-rc.5` 已定版并打 tag，但**尚未发布到 npm 或
+> GitHub Release**。`0.1.0-rc.6` 是当前源码版本，同样未发布、未打 tag。普通使用请安装已发布 rc.4 精确版本；
+> 只有候选验证或 registry 不可达时才使用已验证的本地 tarball。
 
 ### 2.1 环境要求
 
 - DSH：只支持[兼容矩阵](design/compatibility.zh.md)中列出的版本（`0.1.7-rc.2`、`0.2.0-rc.1`/`rc.2`、
-  `0.2.1-rc.1`/`rc.2`）。在扩展矩阵前不声明支持更新的 stable/RC 版本；完整 per-Peer Remote 资源授权要求
-  `0.2.1+`。
+  `0.2.1-rc.1`/`rc.2`/`rc.3`/`rc.4`）。在扩展矩阵前不声明支持更新的 stable/RC 版本；完整 per-Peer Remote
+  资源授权要求 `0.2.1+`。
 - Node.js **`^22.19.0 || >=24.0.0`**。
 - Web 或 Desktop profile。
 
@@ -50,7 +51,7 @@ Desktop 若支持本地插件导入，可在 Plugins 页面安装同一个 tarba
 
 ```bash
 dsh plugin --profile web add dsh-charter@0.1.0-rc.4   # 最新已发布 RC：可复现
-dsh plugin --profile web add dsh-charter@next          # 在 rc.5 发布前仍指向 rc.4
+dsh plugin --profile web add dsh-charter@next          # 在 rc.5/rc.6 发布前仍指向 rc.4
 ```
 
 `dsh-charter@0.1.0-rc.4` 是最新已发布 RC，npm `next`/`latest` 当前均指向它。rc.5 已实现并打 tag，
@@ -64,7 +65,7 @@ dsh plugin --profile web add dsh-charter@next          # 在 rc.5 发布前仍�
 
 ```json
 {
-  "dependencies": { "dsh-charter": "0.1.0-rc.5" },
+  "dependencies": { "dsh-charter": "0.1.0-rc.4" },
   "dsh": { "profile": { "bundles": ["...", "dsh-charter"] } }
 }
 ```

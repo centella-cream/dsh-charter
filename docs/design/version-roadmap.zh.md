@@ -10,13 +10,15 @@
 
 ```text
 0.1.0-rc.4（兼容性补丁，已发布）
-  → 0.1.0-rc.5
+  → 0.1.0-rc.5（已定版，npm 发布延迟）
+  → 0.1.0-rc.6（当前源码，未发布）
   → 0.1.0 stable
   → 0.1.1（仅在 stable 后确有兼容补丁时）
   → 0.2.0-alpha.1 ... 0.2.0-rc.1 → 0.2.0
 ```
 
-当前候选版本是 **`0.1.0-rc.5`**，不选择 `0.1.1-rc.1`。rc.4 已作为 DSH `0.2.1-rc.3`/`rc.4` 兼容性补丁公开发布，不能追加新内容。rc.5 已实现并打 tag；npm 发布和 GitHub prerelease 仍待完成。
+已定版候选是 **`0.1.0-rc.5`**；其 npm 发布和 GitHub prerelease 延迟。当前源码版本是 **`0.1.0-rc.6`**，
+未发布、未打 tag。`0.1.1-rc.1` 仍是 stable 之后的补丁语义，不是 rc.6 的另一种写法。
 
 rc.5 修复了与产品承诺冲突的审阅正确性问题：此前历史草案全部候选默认选中，界面一次只展示前 40 条，Apply 可能提交尚未展示的候选；README 同时声明“人工审阅是强制的”。rc.5 的审阅流程现在初始不选中，也不会提交隐藏行。
 
@@ -38,6 +40,8 @@ rc.5 修复了与产品承诺冲突的审阅正确性问题：此前历史草案
   `SHA256SUMS`；tag 指向 checksum-only C+1 commit。
 - rc.5 **尚未发布**：npm 发布、GitHub prerelease、受保护 browser evidence 和 Promotion 仍待完成。不要把
   rc.5 描述为可从 npm 安装。
+- rc.6 已在源码启用，但**未发布、未打 tag**。当前只承载文档/版本号启用工作；任何 tag 或发布前都必须重新
+  构建 candidate。
 - `main` 已包含剩余 promotion 路径使用的 token 发布 workflow。已发布的 rc.4 历史永不改写。
 
 ## 3. 为什么是 rc.5
@@ -172,7 +176,7 @@ rc.4 已把 `0.2.1-rc.3` 和 `rc.4` 加入 `engines.dsh` 与 peer ranges。rc.5 
 
 ## 5. 从 rc.5 到 `0.1.0` stable
 
-rc.5 发布后进入 feature freeze。满足以下条件后发布 `0.1.0`：
+rc.5 发布状态确定后进入 feature freeze。满足以下条件后发布 `0.1.0`：
 
 - rc.5 没有未关闭的数据损坏、授权、审阅误提交或 unknown-outcome 缺陷。
 - live Gateway、真实 recovery UI、Desktop 重启 ABI 检查完成并记录。

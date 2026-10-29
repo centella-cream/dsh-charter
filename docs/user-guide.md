@@ -23,9 +23,10 @@ For a Web or Desktop profile the plugin registers:
 
 ## 2. Install
 
-> **Install channels.** The latest published RC is `0.1.0-rc.4`; `0.1.0-rc.5` is implemented and tagged but
-> **not yet published to npm or released on GitHub**. Install the published rc.4 exact version for normal use.
-> Use the verified local tarball only for candidate verification or when the registry is unreachable.
+> **Install channels.** The latest published RC is `0.1.0-rc.4`; `0.1.0-rc.5` is finalized and tagged but
+> **not yet published to npm or released on GitHub**. `0.1.0-rc.6` is the active source version and is also
+> unreleased/untagged. Install the published rc.4 exact version for normal use. Use the verified local tarball
+> only for candidate verification or when the registry is unreachable.
 
 ### 2.1 Requirements
 
@@ -52,7 +53,7 @@ dependency is a local `file:` path. Prefer npm install in §2.3 when the registr
 
 ```bash
 dsh plugin --profile web add dsh-charter@0.1.0-rc.4   # latest published RC: reproducible
-dsh plugin --profile web add dsh-charter@next          # currently rc.4 until rc.5 is published
+dsh plugin --profile web add dsh-charter@next          # currently rc.4 until rc.5/rc.6 are published
 ```
 
 `dsh-charter@0.1.0-rc.4` is the latest published RC, and npm `next`/`latest` currently point at it. rc.5 is

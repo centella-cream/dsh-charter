@@ -5,6 +5,26 @@ English | [中文](CHANGELOG.zh.md)
 All notable changes to `dsh-charter` are recorded here. The project follows a pre-1.0 version line while the
 DSH plugin ABI is still moving.
 
+## 0.1.0-rc.6 — unreleased
+
+Documentation and version-activation candidate. No runtime behavior, record schema, Remote method, model tool, or
+domain change yet.
+
+### Documentation
+
+- Consolidated the release, version, verification, compatibility, user-guide, and README documentation around
+  the actual release state: rc.4 published, rc.5 finalized but npm-delayed, rc.6 active and unpublished.
+- Removed stale pre-tag instructions and outdated install claims.
+- Added the version badge in the Charter header as an accepted rc.5 scope addition; the rc.6 client constant is
+  synchronized with `package.json` by the existing drift test.
+
+### Release state
+
+- `0.1.0-rc.5` remains finalized and immutable (tag `v0.1.0-rc.5`, exact artifact digest in `SHA256SUMS`); its npm
+  publication is deferred.
+- `0.1.0-rc.6` is active in the source tree but **not tagged and not published**. A new candidate must be built
+  from this tree before any tag or Promotion.
+
 ## 0.1.0-rc.5 — 2026-10-29
 
 Pre-stable correctness and release-hardening candidate. Tagged and candidate-green; npm publication and the GitHub Release are still pending. No new 0.2 capability, domain, Remote method, or

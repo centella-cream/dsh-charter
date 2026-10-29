@@ -18,6 +18,7 @@ Current release state (2026-10-29):
   `dsh-charter-0.1.0-rc.5.tgz` with SHA-256
   `94e27acf8851ad5423defd06a41253171317f4e805af809fe8e8e7a9ce83a939`.
 - Release commits: `C=d138d65dc4f1b2628dc043f2dd437ea213112a4d`, `C+1=tag v0.1.0-rc.5=0a6ccc5`.
+- Active source: `0.1.0-rc.6` (unreleased, untagged; documentation/version activation).
 - Pending: npm token publication, GitHub prerelease, protected browser evidence, Promotion.
 
 | Item | Result |

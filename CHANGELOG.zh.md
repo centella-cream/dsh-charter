@@ -4,6 +4,23 @@
 
 记录 `dsh-charter` 的重要变更。DSH 插件 ABI 仍在演进，项目保持 pre-1.0 版本线。
 
+## 0.1.0-rc.6 — 未发布
+
+文档与版本号启用候选。暂不包含运行时行为、record schema、Remote 方法、模型工具或 domain 变更。
+
+### 文档
+
+- 围绕实际发布状态统一 README、发布、版本、验证、兼容性和用户指南：rc.4 已发布，rc.5 已定版但 npm 延迟，
+  rc.6 已在源码启用但未发布。
+- 清理过期 pre-tag 指令和旧安装声明。
+- rc.5 已接受的范围补充（Charter 页头版本徽标）保留；rc.6 客户端版本常量由现有 drift 测试与
+  `package.json` 同步。
+
+### 发布状态
+
+- `0.1.0-rc.5` 已定版且不可变（tag `v0.1.0-rc.5`，精确产物 digest 在 `SHA256SUMS`）；npm 发布延迟。
+- `0.1.0-rc.6` 已在源码启用，但**未打 tag、未发布**。任何 tag 或 Promotion 前都必须从当前树重新构建 candidate。
+
 ## 0.1.0-rc.5 — 2026-10-29
 
 稳定版前的正确性与发布硬化候选。已打 tag 且 candidate 全绿；npm 发布和 GitHub Release 仍待完成。不新增 0.2 能力、domain、Remote 方法或持久 schema 版本。
