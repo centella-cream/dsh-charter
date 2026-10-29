@@ -169,7 +169,17 @@ jobs:
           name: release-candidate
           path: candidate
       - name: Fresh DSH Web profile install and serve
-        run: node scripts/verify/profile-smoke.mjs --artifact "candidate/$(basename candidate/*.tgz)" --sha256 candidate/SHA256SUMS 2>&1 | tee profile-smoke.log
+        run: |
+          set -euo pipefail
+          i=0
+          for version in 0.1.7-rc.2 0.2.0-rc.2 0.2.1-rc.2 0.2.1-rc.4; do
+            i=$((i + 1))
+            node scripts/verify/profile-smoke.mjs \
+              --artifact "candidate/$(basename candidate/*.tgz)" \
+              --sha256 candidate/SHA256SUMS \
+              --dsh-version "$version" \
+              --port "$((19600 + i))" 2>&1 | tee -a profile-smoke.log
+          done
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: ${{ always() }}
         with:
