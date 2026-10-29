@@ -13,7 +13,7 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 | 项目 | 结果 |
 | --- | --- |
 | TypeScript 严格检查 | 当前树通过 |
-| Vitest | 26 个测试文件 / 353 个测试通过（`npm test`，先 build） |
+| Vitest | 26 个测试文件 / 354 个测试通过（`npm test`，先 build） |
 | Host ESM 构建 + 浏览器 factory bundle | 通过 |
 | Remote 契约与 client smoke | 通过 |
 | 普通 package smoke | 通过 |
@@ -21,7 +21,7 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 | packed recovery smoke | 通过：export、删除 target、restore、receipt replay、两次 restart、健康目标拒绝、packed fault 子集 |
 | 真实 `TypertGatewayService` | 精确 artifact 在隔离的 DSH `0.2.1-rc.3` / `rc.4` 依赖图上通过 |
 | 兼容 sentinel | `0.1.7-rc.2`、`0.2.1-rc.2`、`0.2.1-rc.4` 通过 |
-| 七版本全量 rerun | tracked `compat-matrix --versions all` 通过（每版本 353/353） |
+| 七版本全量 rerun | tracked `compat-matrix --versions all` 通过（每版本 354/354） |
 | 未跟踪 `0.2.2-alpha.2` probe | strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.5 pins 4.0.5; no tests run；rc.5 明确不支持 |
 | 真实浏览器恢复 | 受保护的人工 evidence gate；未自动化 |
 | 真实模型 compaction | 2026-10-22 记录 PASS；仍是人工发布门禁 |
@@ -54,15 +54,15 @@ CI（`.github/workflows/ci.yml`）在 Node `22.19.0` / `24` 上运行 `npm run c
 
 | DSH 版本 | 证据 |
 | --- | --- |
-| `0.1.7-rc.2` | 353/353 tracked matrix PASS |
-| `0.2.0-rc.1` | 353/353 tracked matrix PASS |
-| `0.2.0-rc.2` | 353/353 tracked matrix PASS |
-| `0.2.1-rc.1` | 353/353 tracked matrix PASS |
-| `0.2.1-rc.2` | 353/353 tracked matrix PASS |
-| `0.2.1-rc.3` | 353/353 tracked matrix PASS |
-| `0.2.1-rc.4` | 353/353 tracked matrix PASS |
+| `0.1.7-rc.2` | 354/354 tracked matrix PASS |
+| `0.2.0-rc.1` | 354/354 tracked matrix PASS |
+| `0.2.0-rc.2` | 354/354 tracked matrix PASS |
+| `0.2.1-rc.1` | 354/354 tracked matrix PASS |
+| `0.2.1-rc.2` | 354/354 tracked matrix PASS |
+| `0.2.1-rc.3` | 354/354 tracked matrix PASS |
+| `0.2.1-rc.4` | 354/354 tracked matrix PASS |
 
-rc.5 tracked `compat-matrix --versions all` 已于 2026-10-27 完成：每个声明版本均通过 typecheck、build 和 353/353 测试。安装使用 pnpm strict peer、精确工具版本、单一 zod 4.6.7 图、完整 `pnpm list --depth Infinity` 图校验，并记录 lockfile SHA-256。未跟踪 `0.2.2-alpha.2` 已 probe：strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.5 pins 4.0.5; no tests run，rc.5 明确不支持。
+rc.5 tracked `compat-matrix --versions all` 已于 2026-10-27 完成：每个声明版本均通过 typecheck、build 和 354/354 测试。安装使用 pnpm strict peer、精确工具版本、单一 zod 4.6.7 图、完整 `pnpm list --depth Infinity` 图校验，并记录 lockfile SHA-256。未跟踪 `0.2.2-alpha.2` 已 probe：strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.5 pins 4.0.5; no tests run，rc.5 明确不支持。
 
 ## 4. 测试覆盖
 

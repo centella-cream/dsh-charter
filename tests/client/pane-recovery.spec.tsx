@@ -431,3 +431,47 @@ describe('cross-lifecycle unknown attempt UI', () => {
     expect(draft.getSnapshot().attempt).toBeNull()
   })
 })
+
+describe('rc.5 bootstrap exact retry from Pane', () => {
+  it('replays the same lifecycle bootstrap request verbatim', async () => {
+    const h = harness(baseView())
+    const requests: import('../../src/core/schemas.js').CharterEditRequest[] = []
+    ;(h.source as unknown as { bootstrap: () => Promise<unknown> }).bootstrap = async () => ({
+      available: true,
+      proposal: {
+        objective: 'Reviewed objective',
+        invariants: ['Reviewed invariant'],
+        deliverables: [],
+        source: { summarySeq: 1, at: 1 },
+      },
+    })
+    ;(h.source as unknown as { edit: (request: import('../../src/core/schemas.js').CharterEditRequest) => Promise<never> }).edit = async request => {
+      requests.push(request)
+      throw new Error('carrier loss')
+    }
+    const draft = new CharterDraft(sessionId, () => h.source)
+    draft.bindLifecycle(lifecycle)
+    draft.ensureBootstrap(baseView(), true)
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
+      if (draft.getSnapshot().bootstrapPhase === 'draft') break
+    }
+    await draft.applyBootstrap(baseView())
+    expect(draft.getSnapshot().attempt).toMatchObject({ kind: 'bootstrap', status: 'unknown' })
+    const Pane = CharterPane as unknown as React.ComponentType<Record<string, unknown>>
+    let tree: ReactTestRenderer | undefined
+    act(() => {
+      tree = create(<Pane source={h.source} draft={draft} release={() => undefined} t={(key: string) => key} />)
+    })
+    if (tree === undefined) throw new Error('pane did not render')
+    trees.push(tree)
+    click(tree, 'footer.retryApply')
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
+    expect(requests).toHaveLength(2)
+    expect(requests[1]).toMatchObject({
+      mutationId: requests[0]!.mutationId,
+      baseRevision: requests[0]!.baseRevision,
+      ops: requests[0]!.ops,
+    })
+  })
+})
