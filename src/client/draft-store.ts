@@ -368,8 +368,8 @@ export class CharterDraft {
   get isEmpty(): boolean {
     return this.state.ops.length === 0
       && this.state.editor === null
-      && this.state.newInvariant.trim().length === 0
-      && this.state.newDeliverable.trim().length === 0
+      && this.state.newInvariant.length === 0
+      && this.state.newDeliverable.length === 0
       && this.state.attempt === null
       && this.state.bootstrapPhase !== 'draft'
       && this.state.bootstrap === null
@@ -587,6 +587,9 @@ export class CharterDraft {
     if (this.state.saving || this.state.bootstrapSaving) return { ok: false, reason: 'busy' }
     if (this.state.ops.length > 0) return { ok: false, reason: 'stagedOps' }
     if (this.state.editor !== null) return { ok: false, reason: 'editorOpen' }
+    if (this.state.newInvariant.length > 0 || this.state.newDeliverable.length > 0) {
+      return { ok: false, reason: 'composerText' }
+    }
     if (this.state.bootstrap !== null || this.state.bootstrapPhase === 'checking') {
       return { ok: false, reason: 'historyDraft' }
     }
@@ -983,6 +986,15 @@ export class CharterDraft {
       }
     } catch (error) {
       if (!current()) return
+      const disposition = classifyRemoteFailure(error)
+      if (disposition.kind === 'known') {
+        this.update({
+          saving: false,
+          attempt: null,
+          feedback: { kind: 'error', code: disposition.code as CharterErrorCode },
+        })
+        return
+      }
       console.error('charter: edit request failed', error)
       const attempt = this.state.attempt
       this.update({
@@ -1366,6 +1378,15 @@ export class CharterDraft {
       }
     } catch (error) {
       if (!current()) return
+      const disposition = classifyRemoteFailure(error)
+      if (disposition.kind === 'known') {
+        this.update({
+          bootstrapSaving: false,
+          attempt: null,
+          bootstrapProblem: { kind: 'save-failed', code: disposition.code as CharterErrorCode },
+        })
+        return
+      }
       console.error('charter: bootstrap replay failed', error)
       // The outcome is still unknown: keep the visible reviewed payload and the
       // replayable attempt so an explicit Retry can recover.
@@ -1491,6 +1512,15 @@ export class CharterDraft {
       }
     } catch (error) {
       if (!current()) return
+      const disposition = classifyRemoteFailure(error)
+      if (disposition.kind === 'known') {
+        this.update({
+          bootstrapSaving: false,
+          attempt: null,
+          bootstrapProblem: { kind: 'save-failed', code: disposition.code as CharterErrorCode },
+        })
+        return
+      }
       console.error('charter: bootstrap apply failed', error)
       // Unknown outcome: keep the reviewed payload and the replayable attempt.
       const attempt = this.state.attempt

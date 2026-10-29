@@ -335,7 +335,8 @@ export class CharterService extends Service {
     return { recordMaintenance: true }
   }
 
-  private async runMutationQueue<T>(sessionId: SessionIdType, task: () => Promise<T>): Promise<T> {
+  private async runMutationQueue<T>(session: Session, task: () => Promise<T>): Promise<T> {
+    const sessionId = session.id
     const previous = this.mutationQueues.get(sessionId) ?? Promise.resolve()
     const run = previous.catch(() => undefined).then(task)
     const slot = run.catch(() => undefined)
@@ -691,7 +692,7 @@ export class CharterService extends Service {
     this.recordStates.set(session.id, { kind: 'unknown', reason: 'initializing' })
     let putMayHaveLanded = false
     try {
-      await this.runMutationQueue(session.id, async () => {
+      await this.runMutationQueue(session, async () => {
         signal?.throwIfAborted()
         if (this.ctx.sessions.get(session.id) !== session) return
         const current = table.get(session.id)
@@ -733,6 +734,10 @@ export class CharterService extends Service {
         putMayHaveLanded = true
         await table.put(session.id, record)
         putMayHaveLanded = false
+        if (this.ctx.sessions.get(session.id) !== session) {
+          this.fenceWrite(session.id, 'startup')
+          return
+        }
         if (this.writeUncertain.has(session.id)) return
         this.waitingForParent.delete(session.id)
         this.recordStates.set(session.id, { kind: 'healthy', recordDigest: recordDigestOf(record) })
@@ -1199,13 +1204,18 @@ export class CharterService extends Service {
     if (state.kind !== 'healthy') {
       return unavailableResult(
         'UNAVAILABLE',
-        state.kind === 'unknown' ? 'Charter is initializing' : 'This Charter record is not editable in its current state',
+        state.kind === 'invalid' && state.reason === 'future-schema'
+          ? 'This Charter was written by a newer dsh-charter schema; upgrade the plugin before editing. Diagnostic export is available, but restore is disabled.'
+          : state.kind === 'unknown' ? 'Charter is initializing' : 'This Charter record is not editable in its current state',
         this.view(session),
       )
     }
 
     try {
-      return await this.runMutationQueue(session.id, async () => {
+      return await this.runMutationQueue(session, async () => {
+        if (this.ctx.sessions.get(session.id) !== session) {
+          return unavailableResult('LIFECYCLE_MISMATCH', 'The Session lifecycle changed before this edit could run', this.view(session))
+        }
         const table = this.requireTable()
         const current = this.recordFor(session)
         if (current === undefined) {
@@ -1238,6 +1248,10 @@ export class CharterService extends Service {
             produced = true
             return nextRecord
           })
+          if (this.ctx.sessions.get(session.id) !== session) {
+            this.fenceWrite(session.id, 'edit')
+            return unavailableResult('UNAVAILABLE', 'The Session lifecycle changed while the edit was being written; the Session is fenced', this.view(session))
+          }
           this.recordStates.set(session.id, {
             kind: 'healthy',
             recordDigest: recordDigestOf(table.get(session.id)),
@@ -1449,7 +1463,10 @@ export class CharterService extends Service {
     if (request.expectedLifecycle !== lifecycle) {
       return { ok: false, code: 'LIFECYCLE_MISMATCH', message: 'The Session lifecycle changed since preview' }
     }
-    return this.runMutationQueue(session.id, async (): Promise<CharterRecordOperationResult> => {
+    return this.runMutationQueue(session, async (): Promise<CharterRecordOperationResult> => {
+      if (this.ctx.sessions.get(session.id) !== session) {
+        return { ok: false, code: 'LIFECYCLE_MISMATCH', message: 'The Session lifecycle changed before initialize could run' }
+      }
       const queuedFailure = this.queuedMaintenanceFailure(session, lifecycle, request.expectedLifecycle)
       if (queuedFailure !== undefined) return queuedFailure
       const table = this.requireTable()
@@ -1465,7 +1482,13 @@ export class CharterService extends Service {
           }
           return { ok: false, code: 'RECORD_CONFLICT', message: 'A healthy Charter record already exists' }
         }
-        return { ok: false, code: 'RECORD_CONFLICT', message: 'The target record changed; export or restore it instead' }
+        return {
+          ok: false,
+          code: 'RECORD_CONFLICT',
+          message: inspection.state.kind === 'invalid' && inspection.state.reason === 'future-schema'
+            ? 'This Charter was written by a newer dsh-charter schema; upgrade the plugin. Diagnostic export is available, but restore is disabled.'
+            : 'The target record changed; export or restore it instead',
+        }
       }
       try {
         const empty = createEmptyRecord(identityOf(session), this.config)
@@ -1489,10 +1512,12 @@ export class CharterService extends Service {
         }), this.config)
         await table.put(session.id, next)
         if (this.ctx.sessions.get(session.id) !== session) {
+          this.fenceWrite(session.id, 'initialize')
           return {
             ok: false,
-            code: 'LIFECYCLE_MISMATCH',
-            message: 'The Session lifecycle changed while the operation was being written',
+            code: 'UNAVAILABLE',
+            message: 'The Session lifecycle changed while initialize was being written; the Session is fenced until restart',
+            view: this.view(session),
           }
         }
         this.recordStates.set(session.id, { kind: 'healthy', recordDigest: recordDigestOf(next) })
@@ -1581,7 +1606,10 @@ export class CharterService extends Service {
       if (error instanceof CharterError) return { ok: false, code: 'INVALID_ARCHIVE', message: error.message }
       throw error
     }
-    return this.runMutationQueue(session.id, async (): Promise<CharterRecordOperationResult> => {
+    return this.runMutationQueue(session, async (): Promise<CharterRecordOperationResult> => {
+      if (this.ctx.sessions.get(session.id) !== session) {
+        return { ok: false, code: 'LIFECYCLE_MISMATCH', message: 'The Session lifecycle changed before restore could run' }
+      }
       const queuedFailure = this.queuedMaintenanceFailure(session, lifecycle, request.expectedLifecycle)
       if (queuedFailure !== undefined) return queuedFailure
       const table = this.requireTable()
@@ -1649,10 +1677,12 @@ export class CharterService extends Service {
         }), this.config)
         await table.put(session.id, next)
         if (this.ctx.sessions.get(session.id) !== session) {
+          this.fenceWrite(session.id, 'restore')
           return {
             ok: false,
-            code: 'LIFECYCLE_MISMATCH',
-            message: 'The Session lifecycle changed while the operation was being written',
+            code: 'UNAVAILABLE',
+            message: 'The Session lifecycle changed while restore was being written; the Session is fenced until restart',
+            view: this.view(session),
           }
         }
         this.recordStates.set(session.id, { kind: 'healthy', recordDigest: recordDigestOf(next) })

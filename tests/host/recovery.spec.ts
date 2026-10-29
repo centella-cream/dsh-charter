@@ -908,8 +908,8 @@ describe('rc.3 queued maintenance lifecycle and fence guards', () => {
     let release!: () => void
     const blocker = new Promise<void>(resolve => { release = resolve })
     const queued = (service as unknown as {
-      runMutationQueue: (id: SessionId, task: () => Promise<void>) => Promise<void>
-    }).runMutationQueue(session.id, () => blocker)
+      runMutationQueue: (owner: typeof session, task: () => Promise<void>) => Promise<void>
+    }).runMutationQueue(session, () => blocker)
     const operation = service.initializeRecord({
       sessionId: session.id,
       operationId: 'queued-lifecycle-op',
@@ -927,6 +927,91 @@ describe('rc.3 queued maintenance lifecycle and fence guards', () => {
     expect(table.get(session.id)).toBeUndefined()
   })
 
+  it('refuses a queued edit after its Session object is replaced', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-queued-edit-lifecycle-'))
+    roots.push(root)
+    const ctx = await mount(root)
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('queued-edit-lifecycle'), identityMeta(1_700_000_003_050))
+    announceStartup(ctx, session, 'startup')
+    await waitFor(service, session, () => service.view(session).status === 'ready')
+    const table = (service as unknown as { sessionsTable: { get: (id: SessionId) => unknown; put: (id: SessionId, value: unknown) => Promise<void> } }).sessionsTable
+    const before = table.get(session.id)
+    let release!: () => void
+    const blocker = new Promise<void>(resolve => { release = resolve })
+    const queued = (service as unknown as {
+      runMutationQueue: (owner: typeof session, task: () => Promise<void>) => Promise<void>
+    }).runMutationQueue(session, () => blocker)
+    const operation = service.edit(addItem(session.id, 0, 'queued-edit', 'A lifecycle'))
+    const replacement = { ...session, header: { ...session.header, createdAt: session.header.createdAt + 1 } } as never
+    ;(ctx.sessions as unknown as { get: (id: SessionId) => unknown }).get = () => replacement
+    release()
+    await queued
+    await expect(operation).resolves.toMatchObject({ ok: false, code: 'LIFECYCLE_MISMATCH' })
+    expect(table.get(session.id)).toEqual(before)
+  })
+
+  it('fences an initialize whose deferred put lands after the Session is replaced', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-deferred-init-lifecycle-'))
+    roots.push(root)
+    const ctx = await mount(root)
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('deferred-init-lifecycle'), identityMeta(1_700_000_003_070))
+    await service.ensureSession(session, 'resume')
+    const lifecycle = service.view(session).lifecycle!
+    const table = (service as unknown as { sessionsTable: { get: (id: SessionId) => unknown; put: (id: SessionId, value: unknown) => Promise<void> } }).sessionsTable
+    const originalPut = table.put.bind(table)
+    let releasePut!: () => void
+    let markStarted!: () => void
+    const started = new Promise<void>(resolve => { markStarted = resolve })
+    const blocked = new Promise<void>(resolve => { releasePut = resolve })
+    table.put = async (id, value) => {
+      markStarted()
+      await blocked
+      await originalPut(id, value)
+    }
+    const operation = service.initializeRecord({
+      sessionId: session.id,
+      operationId: 'deferred-init-lifecycle-op',
+      expectedLifecycle: lifecycle,
+    })
+    await started
+    const replacement = { ...session, header: { ...session.header, createdAt: session.header.createdAt + 1 } } as never
+    ;(ctx.sessions as unknown as { get: (id: SessionId) => unknown }).get = () => replacement
+    releasePut()
+    await expect(operation).resolves.toMatchObject({ ok: false, code: 'UNAVAILABLE' })
+    expect((service as unknown as { writeUncertain: Map<string, string> }).writeUncertain.get(session.id)).toBe('initialize')
+    expect(table.get(session.id)).toBeDefined()
+  })
+
+  it('fences an edit whose deferred update lands after the Session is replaced', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-deferred-edit-lifecycle-'))
+    roots.push(root)
+    const ctx = await mount(root)
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('deferred-edit-lifecycle'), identityMeta(1_700_000_003_080))
+    announceStartup(ctx, session, 'startup')
+    await waitFor(service, session, () => service.view(session).status === 'ready')
+    const table = (service as unknown as { sessionsTable: { update: (id: SessionId, fn: (stored: unknown) => unknown) => Promise<unknown> } }).sessionsTable
+    const originalUpdate = table.update.bind(table)
+    let releaseUpdate!: () => void
+    let markStarted!: () => void
+    const started = new Promise<void>(resolve => { markStarted = resolve })
+    const blocked = new Promise<void>(resolve => { releaseUpdate = resolve })
+    table.update = async (id, fn) => {
+      markStarted()
+      await blocked
+      return originalUpdate(id, fn)
+    }
+    const operation = service.edit(addItem(session.id, 0, 'deferred-edit', 'A lifecycle'))
+    await started
+    const replacement = { ...session, header: { ...session.header, createdAt: session.header.createdAt + 1 } } as never
+    ;(ctx.sessions as unknown as { get: (id: SessionId) => unknown }).get = () => replacement
+    releaseUpdate()
+    await expect(operation).resolves.toMatchObject({ ok: false, code: 'UNAVAILABLE' })
+    expect((service as unknown as { writeUncertain: Map<string, string> }).writeUncertain.get(session.id)).toBe('edit')
+  })
+
   it('refuses a queued maintenance after another writer fences the Session', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-queued-fence-'))
     roots.push(root)
@@ -939,8 +1024,8 @@ describe('rc.3 queued maintenance lifecycle and fence guards', () => {
     let release!: () => void
     const blocker = new Promise<void>(resolve => { release = resolve })
     const queued = (service as unknown as {
-      runMutationQueue: (id: SessionId, task: () => Promise<void>) => Promise<void>
-    }).runMutationQueue(session.id, () => blocker)
+      runMutationQueue: (owner: typeof session, task: () => Promise<void>) => Promise<void>
+    }).runMutationQueue(session, () => blocker)
     const operation = service.initializeRecord({
       sessionId: session.id,
       operationId: 'queued-fence-op',
