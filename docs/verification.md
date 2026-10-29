@@ -64,7 +64,7 @@ The tracked runner creates isolated pnpm projects with strict peers and runs typ
 | `0.2.1-rc.3` | 349/349 tracked matrix PASS |
 | `0.2.1-rc.4` | 349/349 tracked matrix PASS |
 
-The final rc.5 tracked `compat-matrix --versions all` calibration ran on 2026-10-29 at `b4b396f`: every declared version passed typecheck, build, and 349/349 tests. Installs use pnpm strict peer resolution, exact tool pins, a single zod 4.6.7 graph, full `pnpm list --depth Infinity` graph validation, and recorded lockfile SHA-256 values. The untracked `0.2.2-alpha.2` probe is recorded as unsupported: strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.5 pins 4.0.5; no tests run.
+The final rc.5 tracked `compat-matrix --versions all` calibration ran on 2026-10-29: every declared version passed typecheck, build, and 349/349 tests. Installs use pnpm strict peer resolution, exact tool pins, a single zod 4.6.7 graph, full `pnpm list --depth Infinity` graph validation, and recorded lockfile SHA-256 values. The untracked `0.2.2-alpha.2` probe is recorded as unsupported: strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.5 pins 4.0.5; no tests run.
 
 ## 4. What the tests cover
 
