@@ -1012,6 +1012,74 @@ describe('rc.3 queued maintenance lifecycle and fence guards', () => {
     expect((service as unknown as { writeUncertain: Map<string, string> }).writeUncertain.get(session.id)).toBe('edit')
   })
 
+  it('fences a startup whose deferred put lands after the Session is replaced', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-deferred-startup-lifecycle-'))
+    roots.push(root)
+    const ctx = await mount(root)
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('deferred-startup-lifecycle'), identityMeta(1_700_000_003_090))
+    const table = (service as unknown as { sessionsTable: { put: (id: SessionId, value: unknown) => Promise<void> } }).sessionsTable
+    const originalPut = table.put.bind(table)
+    let releasePut!: () => void
+    let markStarted!: () => void
+    const started = new Promise<void>(resolve => { markStarted = resolve })
+    const blocked = new Promise<void>(resolve => { releasePut = resolve })
+    table.put = async (id, value) => {
+      markStarted()
+      await blocked
+      await originalPut(id, value)
+    }
+    announceStartup(ctx, session, 'startup')
+    await started
+    const replacement = { ...session, header: { ...session.header, createdAt: session.header.createdAt + 1 } } as never
+    ;(ctx.sessions as unknown as { get: (id: SessionId) => unknown }).get = () => replacement
+    releasePut()
+    await waitFor(service, session, () => (service as unknown as { writeUncertain: Map<string, string> }).writeUncertain.has(session.id))
+    expect((service as unknown as { writeUncertain: Map<string, string> }).writeUncertain.get(session.id)).toBe('startup')
+  })
+
+  it('fences a restore whose deferred put lands after the Session is replaced', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-deferred-restore-lifecycle-'))
+    roots.push(root)
+    const ctx = await mount(root)
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('deferred-restore-lifecycle'), identityMeta(1_700_000_003_100))
+    await service.ensureSession(session, 'resume')
+    const lifecycle = service.view(session).lifecycle!
+    const archive = buildRecordArchive({
+      sessionId: session.id,
+      lifecycle,
+      health: 'healthy',
+      revision: 0,
+      record: createEmptyRecord({ createdAt: 1_700_000_003_100, cwd: '/work' }, DEFAULT_CHARTER_LIMITS),
+      exportedAt: 1,
+    })
+    const table = (service as unknown as { sessionsTable: { put: (id: SessionId, value: unknown) => Promise<void> } }).sessionsTable
+    const originalPut = table.put.bind(table)
+    let releasePut!: () => void
+    let markStarted!: () => void
+    const started = new Promise<void>(resolve => { markStarted = resolve })
+    const blocked = new Promise<void>(resolve => { releasePut = resolve })
+    table.put = async (id, value) => {
+      markStarted()
+      await blocked
+      await originalPut(id, value)
+    }
+    const operation = service.restoreRecord({
+      sessionId: session.id,
+      operationId: 'deferred-restore-lifecycle-op',
+      expectedLifecycle: lifecycle,
+      expectedTarget: { kind: 'absent-unconfirmed' },
+      archive,
+    })
+    await started
+    const replacement = { ...session, header: { ...session.header, createdAt: session.header.createdAt + 1 } } as never
+    ;(ctx.sessions as unknown as { get: (id: SessionId) => unknown }).get = () => replacement
+    releasePut()
+    await expect(operation).resolves.toMatchObject({ ok: false, code: 'UNAVAILABLE' })
+    expect((service as unknown as { writeUncertain: Map<string, string> }).writeUncertain.get(session.id)).toBe('restore')
+  })
+
   it('refuses a queued maintenance after another writer fences the Session', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-queued-fence-'))
     roots.push(root)
