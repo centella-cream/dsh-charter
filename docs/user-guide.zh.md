@@ -49,14 +49,15 @@ Desktop 若支持本地插件导入，可在 Plugins 页面安装同一个 tarba
 ### 2.3 npm / Registry 安装（推荐）— Web profile 按版本或 tag
 
 ```bash
-dsh plugin --profile web add dsh-charter@0.1.0-rc.5   # 精确版本：可复现
-dsh plugin --profile web add dsh-charter@next         # 最新预发布
+dsh plugin --profile web add dsh-charter@0.1.0-rc.4   # 最新已发布 RC：可复现
+dsh plugin --profile web add dsh-charter@next          # 在 rc.5 发布前仍指向 rc.4
 ```
 
-`dsh-charter@0.1.0-rc.5` 是当前候选版本。只有 `npm view dsh-charter@0.1.0-rc.5 version` 返回该版本后，
-才使用下面的 rc.5 精确安装命令；在此之前继续使用最新已发布 RC（`0.1.0-rc.4`）。按当前渠道策略，稳定版
-出现前 `latest` 也会指向最新 RC（npm 会保留 `latest` tag，由我们决定其指向；这是我们的策略，不是 npm 的
-强制要求）。只有 registry 不可达时才使用上面的离线 tarball 回退。固定明确版本可以让 profile 可复现。
+`dsh-charter@0.1.0-rc.4` 是最新已发布 RC，npm `next`/`latest` 当前均指向它。rc.5 已实现并打 tag，
+但**尚不能从 npm 安装**；只有 `npm view dsh-charter@0.1.0-rc.5 version` 返回该版本后才能使用 rc.5 命令。
+按当前渠道策略，稳定版出现前 `latest` 也会指向最新 RC（npm 会保留 `latest` tag，由我们决定其指向；这是
+我们的策略，不是 npm 的强制要求）。只有 registry 不可达或候选验证时才使用离线 tarball 回退。固定明确版本
+可以让 profile 可复现。
 
 重启 `dsh web`，或让 HMR 重新组合 profile，然后刷新页面。profile 的 `package.json` 会增加依赖和 bundle
 选择：

@@ -4,9 +4,9 @@
 
 记录 `dsh-charter` 的重要变更。DSH 插件 ABI 仍在演进，项目保持 pre-1.0 版本线。
 
-## 0.1.0-rc.5 — 2026-10-27
+## 0.1.0-rc.5 — 2026-10-29
 
-稳定版前的正确性与发布硬化候选。不新增 0.2 能力、domain、Remote 方法或持久 schema 版本。
+稳定版前的正确性与发布硬化候选。已打 tag 且 candidate 全绿；npm 发布和 GitHub Release 仍待完成。不新增 0.2 能力、domain、Remote 方法或持久 schema 版本。
 
 ### 新增
 
@@ -28,6 +28,7 @@
 - 以 `npm run check` 与当前 exact-artifact/packed smoke 命令为准；真实 Gateway、浏览器恢复、Desktop ABI 与
   真实模型 compaction 仍是独立验收门禁。
 - 不提升 record schema 版本、不改 domain；rc.4 记录保持可读。
+- 发布状态：tag `v0.1.0-rc.5` 已存在，精确产物 SHA-256 记录在 `SHA256SUMS`；rc.5 尚未发布到 npm。
 
 ## 0.1.0-rc.4 — 2026-10-27
 

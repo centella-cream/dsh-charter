@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![GitHub](https://img.shields.io/badge/GitHub-centella--cream%2Fdsh--charter-181717?logo=github)](https://github.com/centella-cream/dsh-charter)
-[![DSH](https://img.shields.io/badge/DSH-5%20verified%20RC%20versions-4b6bfb)](docs/design/compatibility.zh.md)
+[![DSH](https://img.shields.io/badge/DSH-7%20verified%20RC%20versions-4b6bfb)](docs/design/compatibility.zh.md)
 [![Node](https://img.shields.io/badge/node-%5E22.19%20%7C%7C%20%3E%3D24-339933)](package.json)
 [![Status: preview](https://img.shields.io/badge/status-preview-orange)](#状态)
 
@@ -101,29 +101,25 @@ Host 在 `session/created` 时初始化记录，并在首次 prompt 前的 `agen
 
 ## 安装
 
-`dsh-charter@0.1.0-rc.5` 是当前候选版本。只有 `npm view dsh-charter@0.1.0-rc.5 version` 返回该版本后，
-才使用下面的 rc.5 精确安装命令；在此之前继续使用最新已发布 RC（`0.1.0-rc.4`）。频道策略是 RC 发布到
-`next`，并在稳定版出现前让 `latest` 也指向最新 RC（npm 会保留 `latest` tag，由我们决定其指向；这是我们的
-策略，不是 npm 的强制要求）。
+### 当前发布状态
+
+- **最新已发布 RC：** `0.1.0-rc.4`（npm `latest` 和 `next`，GitHub Release）。
+- **当前源码：** `0.1.0-rc.5`。候选产物已打 tag（`v0.1.0-rc.5`），但 npm 发布和 GitHub Release 仍待完成。
+  不要假设 `dsh-charter@0.1.0-rc.5` 已能从 registry 安装。
+- `0.1.0-rc.5` 只包含审阅、恢复、无障碍和发布证据硬化，不新增 0.2 能力线。
+
+普通使用请安装已发布版本。只有 `npm view dsh-charter@0.1.0-rc.5 version` 返回该版本后，才使用 rc.5
+精确安装命令；在此之前最新已发布 RC 是 rc.4。频道策略是 RC 发布到 `next`，并在稳定版出现前让 `latest`
+也指向最新 RC（npm 会保留 `latest` tag，由我们决定其指向；这是我们的策略，不是 npm 的强制要求）。
+
+完整的恢复/记录健康契约见[使用与运维指南](docs/user-guide.zh.md)和[验证记录](docs/verification.zh.md)。
+简要说明：记录使用结构化健康状态；DSH `0.2.1+` 上 export/restore 为 owner-only；健康记录不会被覆盖；
+写入被拒绝时只围栏该 Session，直到 Host 重启。
 
 > **通过 npm/CLI 安装时请固定精确版本。** pnpm 11+ 默认启用 `minimumReleaseAge = 1440` 分钟（24 小时），
 > 新发布的版本在这个窗口内不会参与正常解析。此时不带版本的安装或更新（`dsh-charter`、`@next`、`@latest`）
 > 可能解析到旧版本；如果该旧版本没有声明支持当前 DSH runtime，会被兼容性检查拒绝。精确发布版本不经过这条
 > 无版本解析路径。不要通过 exact-version exemption 强行启用未声明兼容的旧版本。
-
-### 恢复与记录健康（0.1.0-rc.3+）
-
-rc.3 增加保留权威记录的恢复能力。Pane 会显示结构化的记录状态（healthy、absent-unconfirmed、invalid、
-lifecycle mismatch、unknown、write-uncertain）。DSH `0.2.1+` 上的 owner 可在 **存储与恢复** 区导出完整记录，
-并把校验通过的归档恢复到 **同一 Session lifecycle**；健康记录不能被覆盖，也不支持跨 Session/lifecycle 导入。
-恢复的 Session 没有可读记录时，插件报告“缺失或不可读，无法自动区分”，不会自动创建空记录或从父会话重新 fork；
-用户可执行需两次确认的显式空初始化。存储写入被拒绝时，该 Session 被围栏为 write-uncertain（不注入/不读写），
-直到 Host 重启。
-
-维护操作 owner-only，要求 DSH `0.2.1+` 的 principal/资源约束；`0.1.7`/`0.2.0` 上以 `RECOVERY_UNSUPPORTED`
-fail closed。`maxRecoveryBytes` 默认 4 MiB（至少为记录预算 + 64 KiB，硬上限 16 MiB）；若记录预算无空间，维护被禁用
-（reason `record-limit`），需停止 Host 后离线备份。归档包含用户文本，属敏感数据。写入 maintenance 回执的记录会被
-rc.2 隔离（保留但不注入/编辑）；重新升级到 rc.3 后恢复访问。
 
 ### 环境要求
 
@@ -137,12 +133,15 @@ rc.2 隔离（保留但不注入/编辑）；重新升级到 rc.3 后恢复访�
 #### Web profile — 安装精确版本
 
 ```bash
-# 固定已发布版本；最新 RC 处于 pnpm release-age 窗口内时这是必需做法。
-dsh plugin --profile web add dsh-charter@0.1.0-rc.5
+# 固定最新已发布 RC；它处于 pnpm release-age 窗口内时这是必需做法。
+dsh plugin --profile web add dsh-charter@0.1.0-rc.4
 ```
 
 固定精确版本可以保证 profile 可复现。`@next` 和 `@latest` 只是 dist-tag，同样受 pnpm release-age 策略影响，
 不能可靠地用来安装刚发布的 RC。registry 不可达、或需要精确发布产物时，使用下面的离线 tarball 回退方式。
+
+`dsh-charter@0.1.0-rc.5` **尚不能从 npm 安装**。rc.5 候选产物只存在于发布证据中；切换用户 profile 前请等
+正式发布。
 
 重启 `dsh web`（或等待 profile HMR 重新组合），然后刷新页面。profile 的 `package.json` 会增加依赖和
 bundle 选择。
@@ -159,18 +158,21 @@ Plugins UI 是 Desktop 唯一受支持的安装路径。Desktop 管理插件生�
 
 ### 离线 / 本地 tarball 回退
 
-作为离线/air-gapped 机器、精确发布产物校验，或支持导入本地插件的 Desktop 构建的备用安装路径。GitHub
-Release 附带与 `npm publish` 完全相同的 tarball 和 `SHA256SUMS`。
+作为离线/air-gapped 机器、精确发布产物校验，或支持导入本地插件的 Desktop 构建的备用安装路径。已发布版本
+的 GitHub Release 附带与 `npm publish` 完全相同的 tarball 和 `SHA256SUMS`。
 
 ```bash
-# 在 checkout 中：
-npm install
-npm run build
-npm pack                         # dsh-charter-0.1.0-rc.5.tgz
-dsh plugin --profile web add ./dsh-charter-0.1.0-rc.5.tgz
-
-# 或下载 GitHub Release 的 tarball + SHA256SUMS 并校验：
+# 已发布 rc.4 产物（与 GitHub Release 相同字节）：
+gh release download v0.1.0-rc.4 --pattern '*.tgz' --pattern SHA256SUMS
 shasum -a 256 -c SHA256SUMS
+dsh plugin --profile web add ./dsh-charter-0.1.0-rc.4.tgz
+```
+
+未发布的 rc.5 候选只能从 tag 构建/打包，并作为发布证据，不作为普通用户安装路径：
+
+```bash
+git checkout v0.1.0-rc.5
+npm install && npm run build && npm pack
 dsh plugin --profile web add ./dsh-charter-0.1.0-rc.5.tgz
 ```
 
@@ -180,9 +182,10 @@ profile 自己的包管理器。源码开发流程见 [CONTRIBUTING.zh.md](CONTR
 
 ### 更新
 
-- **Web（npm）**：安装精确目标版本，例如
-  `dsh plugin --profile web add dsh-charter@0.1.0-rc.5`，然后重启/刷新；固定版本 profile 继续使用显式版本。
-  新版本发布后不要立即使用裸 `@next`/`@latest`，pnpm 的 release-age 策略可能解析到旧版本；
+- **Web（npm）**：安装精确已发布目标版本，例如
+  `dsh plugin --profile web add dsh-charter@0.1.0-rc.4`，然后重启/刷新；固定版本 profile 继续使用显式版本。
+  新版本发布后不要立即使用裸 `@next`/`@latest`，pnpm 的 release-age 策略可能解析到旧版本；rc.5 正式发布前
+  不要切换；
 - **本地 tarball**：重新构建/下载新 tarball，并重复本地安装命令；这条路径绕过 registry 的 release-age 解析；
 - **Desktop**：使用 **Plugins → Install/Update**。UI 没有精确 npm 版本选择器，因此会遵循插件目录和
   release-age 策略。如果解析到旧版本并被兼容性检查拒绝，等目标版本成熟后重试；对支持本地插件导入的构建，
@@ -272,9 +275,10 @@ profile 自己的包管理器。源码开发流程见 [CONTRIBUTING.zh.md](CONTR
 | `0.1.5-rc.1` 及更早 | 不支持 |
 | `0.2.2-rc.x`、`0.3.x` | 验证前不声明 |
 
-“支持”表示该版本通过 typecheck、build、测试以及 Remote/client smoke。真实交互式 Web UI 在 `0.2.0-rc.2`
-上验证；其他版本是 API/build 级验证。真实模型 compaction 端到端已于 **2026-10-22 记录 PASS**（一个匿名评估
-会话；326 条消息 / 约 228k tokens 被压缩，revision 1 契约携带匹配 digest 存活；见不可变 [v0.1.0-rc.4 验证记录 8.4](https://github.com/centella-cream/dsh-charter/blob/v0.1.0-rc.4/docs/verification.md#84-recorded-real-model-run-2026-10-22)）。公开发布仍待公开 CI、npm `next` dist-tag 与发布流程等前置项，不再是 compaction 证据。完整矩阵和降级说明见
+“支持”表示该版本通过 typecheck、build、测试以及 Remote/client smoke。fresh Web profile 安装、启动、页面和
+client bundle 检查已在 `0.1.7-rc.2`、`0.2.0-rc.2`、`0.2.1-rc.2`、`0.2.1-rc.4` 通过；其他版本是 API/build
+级验证。真实模型 compaction 端到端已于 **2026-10-22 记录 PASS**（一个匿名评估会话；326 条消息 / 约 228k
+tokens 被压缩，revision 1 契约携带匹配 digest 存活；见不可变 [v0.1.0-rc.4 验证记录 8.4](https://github.com/centella-cream/dsh-charter/blob/v0.1.0-rc.4/docs/verification.md#84-recorded-real-model-run-2026-10-22)）。完整矩阵和降级说明见
 [兼容文档](docs/design/compatibility.zh.md)。`0.1.7`/`0.2.0` 没有 per-Peer Remote 资源授权，只能在可信
 单操作者环境使用。
 
@@ -318,15 +322,13 @@ npm run verify:compaction # 手工真实模型 compaction 校验（不在 check 
 ## 文档
 
 - [设计规格](docs/design/charter-design.zh.md)
-- [设计评审](docs/design/charter-design-review.zh.md)
-- [0.1.0-rc.5 稳定化方案](docs/design/rc5-stabilization-plan.zh.md)
-- [发布说明](docs/release-notes/README.md)
-- [版本路线：0.1 稳定化与 0.2 产品升级](docs/design/version-roadmap.zh.md)
-- [兼容矩阵](docs/design/compatibility.zh.md)
 - [使用与运维指南](docs/user-guide.zh.md)
+- [兼容矩阵](docs/design/compatibility.zh.md)
 - [验证记录](docs/verification.zh.md)
-- [调研记录](docs/research/charter-research.zh.md)
+- [发布说明](docs/release-notes/README.md)
+- [版本路线](docs/design/version-roadmap.zh.md)
 - [发布清单](docs/releasing.zh.md)
+- 历史设计/调研文档仍保留在 `docs/design/` 和 `docs/research/`，但不再是当前操作说明。
 
 所有长文档都有中英文版本，页首可切换。
 
@@ -338,12 +340,21 @@ npm run verify:compaction # 手工真实模型 compaction 校验（不在 check 
 
 ## 状态
 
-Pre-1.0。DSH 插件 ABI 仍在演进；项目对上述版本做兼容验证，并刻意保持兼容层很小。公开仓库为 [centella-cream/dsh-charter](https://github.com/centella-cream/dsh-charter)。当前树是 `0.1.0-rc.5`
-预发布：真实模型 compaction 验收 **PASS 已于 2026-10-22 记录**（一个匿名评估会话；326 条消息 / 约 228k
-tokens 被压缩，revision 1 契约携带匹配 digest 存活——见不可变 [v0.1.0-rc.4 验证记录 8.4](https://github.com/centella-cream/dsh-charter/blob/v0.1.0-rc.4/docs/verification.md#84-recorded-real-model-run-2026-10-22)）。rc.5 候选产物已在本地验证，计划通过 npm 的 `next` dist-tag 发布；按当前渠道策略，稳定版出现前 `latest` 也会指向最新 RC（这是有意的策略选择，不是 npm 的强制要求）。GitHub Release 将附带同一份已验证 tarball。发布稳定 `latest` 前还有一项记录在不可变 [v0.1.0-rc.4 验证记录 8.4](https://github.com/centella-cream/dsh-charter/blob/v0.1.0-rc.4/docs/verification.md#84-recorded-real-model-run-2026-10-22) 的人工
-检查：重启 Desktop app 后重新打开会话契约 tab 一次，确认已安装的 bundle/tool ABI。CI
-（`.github/workflows/ci.yml`）在 Node `22.19.0` 与 `24` 上打包并 smoke 测试可安装产物；本地门禁证据记录在验证
-记录第 2 节。发布状态前置项、tag 顺序和确切的发布流程见 [docs/releasing.zh.md](docs/releasing.zh.md)。
+Pre-1.0。DSH 插件 ABI 仍在演进；项目对上述版本做兼容验证，并刻意保持兼容层很小。
+
+当前发布状态（2026-10-29）：
+
+- **已发布：** `0.1.0-rc.4` — npm `latest`/`next`、GitHub Release、不可变 tag。
+- **候选：** `0.1.0-rc.5` — candidate run 通过，精确产物 SHA-256
+  `94e27acf8851ad5423defd06a41253171317f4e805af809fe8e8e7a9ce83a939`，tag `v0.1.0-rc.5` 指向
+  checksum-only C+1 commit。
+- **在称为 rc.5 已发布前仍需完成：** npm token 发布、GitHub prerelease、受保护的 browser evidence 和
+  Promotion。`main` 已包含 token 发布 workflow；rc.5 尚无 GitHub Release 或 npm version。
+- 真实模型 compaction 验收 PASS 仍记录在不可变
+  [v0.1.0-rc.4 验证记录 8.4](https://github.com/centella-cream/dsh-charter/blob/v0.1.0-rc.4/docs/verification.md#84-recorded-real-model-run-2026-10-22)。
+
+CI（`.github/workflows/ci.yml`）在 Node `22.19.0` 与 `24` 上打包并 smoke 测试可安装产物；candidate、
+browser evidence 和 promotion 是独立门禁。不要从 green candidate 推断已经发布。
 
 ## 许可证
 

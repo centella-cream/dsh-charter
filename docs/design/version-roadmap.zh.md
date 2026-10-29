@@ -2,7 +2,7 @@
 
 [English](version-roadmap.md) | 中文
 
-基准日期：2026-10-27。
+基准日期：2026-10-29。
 
 ## 1. 决策
 
@@ -16,9 +16,9 @@
   → 0.2.0-alpha.1 ... 0.2.0-rc.1 → 0.2.0
 ```
 
-下一开发版本选择 **`0.1.0-rc.5`**，不选择 `0.1.1-rc.1`。rc.4 已作为 DSH `0.2.1-rc.3`/`rc.4` 兼容性补丁公开发布，不能追加新内容。
+当前候选版本是 **`0.1.0-rc.5`**，不选择 `0.1.1-rc.1`。rc.4 已作为 DSH `0.2.1-rc.3`/`rc.4` 兼容性补丁公开发布，不能追加新内容。rc.5 已实现并打 tag；npm 发布和 GitHub prerelease 仍待完成。
 
-原因不是继续往 `0.1.0` 塞新功能，而是当前代码仍有一个与产品承诺冲突的审阅正确性问题：历史草案的全部候选默认选中，但界面一次只展示前 40 条，Apply 会把尚未展示的候选一起提交。README 同时声明“人工审阅是强制的”。在这个问题关闭前，不应把 rc.4 直接提升为 stable。
+rc.5 修复了与产品承诺冲突的审阅正确性问题：此前历史草案全部候选默认选中，界面一次只展示前 40 条，Apply 可能提交尚未展示的候选；README 同时声明“人工审阅是强制的”。rc.5 的审阅流程现在初始不选中，也不会提交隐藏行。
 
 `0.1.1-rc.1` 只有在 `0.1.0` stable 已发布、并且出现一组需要候选验证的向后兼容补丁时才成立。它不是 `0.1.0-rc.5` 的另一种写法。
 
@@ -28,15 +28,17 @@
 
 ### 2.1 已发布版本
 
-- 已发布版本是 `0.1.0-rc.4`；其 tag、GitHub Release 资产和 npm 包均已公开且不可修改。
+- 最新已发布版本是 `0.1.0-rc.4`；其 tag、GitHub Release 资产和 npm 包均已公开且不可修改。npm `latest` 和
+  `next` 当前指向 rc.4。
 - rc.4 是 compatibility-only patch，增加 DSH `0.2.1-rc.3`/`rc.4` 精确兼容声明，不改变插件运行时行为。
-- npm `latest` 和 `next` 当前指向 rc.4。
 
 ### 2.2 rc.5 候选
 
-- rc.5 候选位于 `release/0.1.0-rc.5` 分支，尚未创建 tag、GitHub Release 或 npm 发布。
-- rc.5 的实现、验证和 artifact evidence 在该分支收敛；不会重写 rc.4 的发布历史。
-- rc.5 使用新的版本号、tag 和产物。
+- rc.5 已实现并冻结。源码已打 `v0.1.0-rc.5` tag；candidate workflow 全绿，精确产物 digest 记录在根
+  `SHA256SUMS`；tag 指向 checksum-only C+1 commit。
+- rc.5 **尚未发布**：npm 发布、GitHub prerelease、受保护 browser evidence 和 Promotion 仍待完成。不要把
+  rc.5 描述为可从 npm 安装。
+- `main` 已包含剩余 promotion 路径使用的 token 发布 workflow。已发布的 rc.4 历史永不改写。
 
 ## 3. 为什么是 rc.5
 
@@ -60,7 +62,7 @@ SemVer 顺序是：
 
 ## 4. `0.1.0-rc.5` 范围
 
-rc.5 定位为 **审阅正确性、交互安全与稳定版证据收敛**。不新增领域能力，不扩展持久化模型或 Remote 方法。详细实施见 [rc5-stabilization-plan.zh.md](rc5-stabilization-plan.zh.md)。
+rc.5 定位为 **审阅正确性、交互安全与稳定版证据收敛**。不新增领域能力，不扩展持久化模型或 Remote 方法。**状态：已完成并冻结；实施计划为历史文档。** 见 [rc5-stabilization-plan.zh.md](rc5-stabilization-plan.zh.md) 与[验证记录](../verification.zh.md)。
 
 ### 4.1 P0：历史草案必须显式审阅
 

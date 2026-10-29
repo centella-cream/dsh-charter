@@ -16,7 +16,7 @@ silently truncated; the browser bundle stays a single self-contained factory; th
 ## Version line — read these before assuming a version or scope
 
 - `docs/design/version-roadmap.md` (Chinese `version-roadmap.zh.md` is normative when details differ) owns the
-  version line and scope boundaries. Current line: published `0.1.0-rc.4` → `0.1.0-rc.5` → `0.1.0` stable →
+  version line and scope boundaries. Current line: published `0.1.0-rc.4` → `0.1.0-rc.5` (candidate green and tagged; npm/GitHub Release pending) → `0.1.0` stable →
   `0.1.1` only if a compatible patch is needed → the `0.2.0` line. `0.1.1-rc.1` is not another spelling of rc.5.
 - `docs/design/rc5-stabilization-plan.md` owns rc.5 implementation and acceptance. rc.5 is product-correctness
   and release hardening; it adds no 0.2 capability.

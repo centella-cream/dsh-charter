@@ -1,136 +1,108 @@
-# 发布 dsh-charter
+# dsh-charter 发布
 
 [English](releasing.md) | 中文
 
-这份清单用于让 GitHub/npm 发布可复现，并避免发布过期的 client bundle。顺序是刻意设计的：先仓库元数据与
-CI，再构建已验证产物，然后打 tag，最后发布。已推送的 tag 绝不移动，打 tag 后绝不重新打包。
+这是当前发布清单，取代早期按 rc 编写的暂存说明。已发布的 tag、GitHub Release 和 npm 版本不可变：不移动
+tag、不删除已发布 Release、不在打 tag 后重建字节。
 
-## 1. 外部前置条件 — 公开仓库准备
+## 当前状态（2026-10-29）
 
-公开 GitHub 仓库已创建：<https://github.com/centella-cream/dsh-charter>。本树已把 `package.json` 的
-`repository`、`homepage`、`bugs` 指向该仓库；如果 checkout 还没有 `origin`，请先配置。下面的发布状态是动态的，
-每次发布前都必须重新核对。如果暂存 RC 期间还留有临时本地 `v0.1.0-rc.5` tag，请在元数据/CI commit 前删除——
-除非 tag 是在公开门禁之后创建，否则不能保留：
+- **已发布：** `0.1.0-rc.4` — npm `latest`/`next`、GitHub Release、不可变 tag。
+- **当前候选：** `0.1.0-rc.5` — 已实现并冻结。Candidate workflow run `40864078201` 全绿；精确产物
+  SHA-256 为 `94e27acf8851ad5423defd06a41253171317f4e805af809fe8e8e7a9ce83a939`，根 `SHA256SUMS`
+  已记录。tag `v0.1.0-rc.5` 指向 checksum-only C+1 commit `0a6ccc5`。
+- **尚未发布：** rc.5 没有 npm version，也没有 GitHub Release；受保护 browser evidence 与 Promotion 仍
+  待完成。`main` 已包含 repository-token 发布 workflow。
+- 不要创建第二个 rc.5 tag，也不要发布重建的 tarball。如果未来 Promotion 仍尝试创建 tag，必须先与已推送的
+  tag 对齐后再运行。
 
-```bash
-git tag -d v0.1.0-rc.5   # 仅当它存在；它从未被推送
-git remote -v            # origin 必须指向公开仓库
+## 1. 准备源码
+
+1. 确认范围符合[版本路线](design/version-roadmap.zh.md)和当前稳定化计划；候选版本不夹带计划外功能。
+2. 在同一次修改中更新全部元数据：`package.json` version、`engines.dsh`、peer ranges、
+   `dsh.compatibility.dshReleases`、`package-lock.json`、README/README.zh、兼容文档、验证记录、
+   CHANGELOG、release notes 和根 `SHA256SUMS`。
+3. 运行 `npm ci`、`npm run check` 和普通 `npm run smoke:package`。
+4. 对每个声明 DSH 版本跑兼容回归，并 probe 未跟踪的 `next`/`latest` 版本；缺失、peer drift 或未验证版本
+   阻断发布。
+5. 只推送 `main`；工作树不得包含 secrets、用户记录或 `.tmp` 产物。
+
+## 2. 只构建一次候选字节
+
+`release-candidate.yml` 是发布字节的唯一生产者：执行 source gates、compatibility、一次 `npm pack`、
+exact-artifact package smoke、packed-recovery smoke、exact artifact Gateway 验收和 fresh Web profile
+安装/启动 evidence。所有下游必须下载同一个 artifact 并传 `--artifact`/`--sha256`；下游不得重建或重新打包。
+
+Candidate 全绿后，在 candidate `C` 上创建只改 checksum 的 `C+1`：
+
+- `git diff --name-only C C+1` 只有 `SHA256SUMS`；
+- `C+1` 是 `C` 的直接子提交；
+- public CI 在精确 `C+1` 上全绿；
+- tag 指向 `C+1`，不是 `C`。
+
+rc.5 已完成：`C=d138d65`，`C+1/tag=0a6ccc5`。不要重新打 tag。
+
+## 3. Browser evidence
+
+真实浏览器恢复 evidence 是受保护的人工门禁。必须针对精确候选 tarball 在真实 Web profile 完成：
+
+```text
+fresh profile → export → archive select → restore → reload → Host restart
+→ healthy-target refusal → UTF-8 + error-detail + viewport/accessibility checks
 ```
 
-如需内部追溯，可使用只在本地存在的标记 tag（例如 `v0.1.0-rc.5-build`）；它绝不推送，也不是发布 tag。
+通过受保护 `release` environment 的 `browser-evidence.yml` 记录机器可校验 JSON；必须绑定 candidate run、
+head SHA、artifact SHA-256 和 restore digests。本地 fixture、source-only smoke 或 green candidate 都不能
+替代该门禁。
 
-先准备仓库与公开门禁：
+## 4. Promotion
 
-1. 确认 `origin` 指向 `https://github.com/centella-cream/dsh-charter`（公开仓库已创建）；
-2. 确认 `package.json` 的 `repository`、`homepage`、`bugs` 指向该 URL（本树已恢复）；
-3. 启用并验证仓库的**私有安全报告**（security advisories/private reporting）在发布前可用；
-4. 更新所有发生变化的可变发布状态描述（仓库元数据、公开 CI 状态、发布前置项），重跑 `npm run check` 与
-   **普通** `npm run smoke:package`，并把文档刷新并入同一个元数据/CI状态/文档更新 commit；
-5. 只推送 `main`，此时不要推 tag（`git push origin main`；不要用 `--follow-tags`）；
-6. 等待 `.github/workflows/ci.yml` 的公开 CI 在 Node `22.19.0` 与 `24` 上对该 commit 变绿（CI 只运行
-   `npm run check` 与普通 `npm run smoke:package`；exact-artifact 模式不是 CI job）。
+Promotion 是唯一允许创建 GitHub Release 和移动 npm channel 的路径。
 
-随后按顺序：从最终源码**只构建一次**发布 tarball，对同一文件运行 exact-artifact smoke
-（`npm run smoke:package -- --artifact dist/dsh-charter-0.1.0-rc.5.tgz --sha256 SHA256SUMS`，同时校验 SHA-256）与
-**打包产物 recovery smoke**
-（`node scripts/verify/recovery-smoke.mjs --artifact dist/dsh-charter-0.1.0-rc.5.tgz --sha256 SHA256SUMS`：导出 →
-删除目标 → 恢复 → 两次重启比较 digest/投影 → 健康目标拒绝覆盖 → 打包 Host 的存储故障矩阵），
-并在同一文件上做 fresh-profile UI 检查，然后创建最终 annotated `v0.1.0-rc.5` tag，GitHub Release 与
-`npm publish --tag next` 复用同一份已验证 tarball。tag 只有在 digest commit 已进入 `main`、公开 CI 在该 commit
-通过之后才创建；在验证前推 tag 会让发布产物依赖未经门禁的树。
+### Repository token
 
-已接受的非阻塞限制（legacy transcript 严格性、compaction 序列边界、WAIT 诊断措辞、artifact-smoke 固化残余、
-外层 JSON 平台风险、mutation receipt 保留窗口、文档计数漂移）在验证记录第 9 节披露，不是发布阻塞项；不要声称
-这些限制已关闭。
-
-## 2. 发布前检查
-
-- 版本在 `package.json`、`CHANGELOG.md` / `CHANGELOG.zh.md` 中一致更新；本树是预发布（`0.1.0-rc.5`），必须
-  使用非 latest dist-tag 发布；
-- 新支持的 DSH prerelease 已重新核对兼容矩阵；
-- 工作树中没有密钥、私人对话或 `.tmp` 产物。
-
-## 3. 验证
-
-```bash
-npm ci
-npm run check
-npm run smoke:package
-```
-
-`npm run check` 必须通过 typecheck、build、Remote smoke、client smoke 和完整 Vitest；
-`npm run smoke:package` 另外会打包 tarball 并校验必需文件、所有 `exports` 目标、packed `core` import 和 packed
-client bundle（Host/Remote 运行时 import 由工作区 build smoke 覆盖）。CI 在推送的元数据 commit 上运行
-`npm run check` 与**普通模式**的 `npm run smoke:package`；它不运行 exact-artifact 模式。exact-artifact 检查是
-**本地发布门禁**：在构建最终 tarball 之后、打 tag/推送/发布之前，用
-`npm run smoke:package -- --artifact dist/dsh-charter-0.1.0-rc.5.tgz --sha256 SHA256SUMS` 验证这批确切字节而不重新
-打包。它会先按提供的 sums 文件校验 SHA-256、校验每个 tar member 与 packed manifest，再对同一文件执行
-manifest/files/modes/exports、空 consumer 安装、packed `core` import 与 client bundle 检查；绝不 build 或 pack。
-如果希望在 CI 中做 exact-artifact 验证，需要新增一个消费已发布产物的独立 release workflow——当前 CI 不做这件事。
-已记录的真实模型 compaction `PASS`（不可变 [v0.1.0-rc.4 验证记录 8.4](https://github.com/centella-cream/dsh-charter/blob/v0.1.0-rc.4/docs/verification.md#84-recorded-real-model-run-2026-10-22)）就是 compaction 韧性声明的验收证据；下面的手工命令保留
-用于在目标 profile 重新跑一次。
-
-真实模型 compaction 验收是手工步骤：应用会话契约、执行 `/compact`、发送一条消息，然后运行
-`npm run verify:compaction -- --session <id> --home <DSH_HOME>`，并把 `PASS` 证据记录到验证记录第 8 节。
-这项检查需要模型，永远不属于 `npm run check`。记录中的 `PASS` 已代表 compaction 韧性声明被接受；如果提供该
-证据的 Desktop 进程在最后一次包更新后没有重启，发布稳定 `latest` 前重启一次并重新打开会话契约 tab（本次
-`next` 预发布不需要；见不可变 [v0.1.0-rc.4 验证记录 8.4](https://github.com/centella-cream/dsh-charter/blob/v0.1.0-rc.4/docs/verification.md#84-recorded-real-model-run-2026-10-22)）。
-
-## 4. 唯一发布路径
-
-Promotion 运行前，仓库必须配置受保护的 `NPM_TOKEN` secret，内容为具备 package write 与 2FA bypass 的
-granular automation token。workflow 使用该 token 执行 `npm publish` 和 `npm dist-tag`，**不使用 OIDC**，
-也不生成 provenance attestation。请在 token 过期前轮换，并同步更新 secret。
+Promotion 使用受保护 repository secret：
 
 ```text
 secret: NPM_TOKEN
 scope: package write
 package: dsh-charter
 2FA: bypass enabled
-expiry: 跟踪并在过期前轮换
+expiry: 过期前跟踪并轮换
 ```
 
-workflow 无法验证 token 的 scope 或剩余有效期；缺失/过期会阻断发布。
+不使用 OIDC，也不生成 provenance attestation。缺失、过期或 scope 不足都会阻断发布；请在过期前轮换并同步
+secret。
 
+### 运行
 
-`release-candidate.yml` 是发布 tarball 和全部发布 evidence 的唯一生产者。它全绿后，在 candidate `C` 上创建
-只修改根 `SHA256SUMS` 的直接子提交 `C+1`：
+在受保护 `release` environment 运行 `release-promote.yml`，输入：
 
-- `git diff --name-only C C+1` 必须只有 `SHA256SUMS`；
-- `C+1` 必须是 `C` 的直接子提交；
-- 精确 `C+1` commit 上 public CI 必须全绿。
+```text
+candidate_run_id, candidate_commit=C, release_commit=C+1,
+candidate_sha256, version, browser_evidence_run_id
+```
 
-然后在受保护的 `release` environment 运行 `release-promote.yml`。它是**唯一**允许创建 tag、GitHub Release
-和 npm channel 的路径。不要为发布手工执行 `git tag`、`gh release`、`npm publish` 或 `npm dist-tag`；这些会绕过
-environment 审批、token scope、browser evidence 和 release evidence。
+workflow 校验 candidate/browser evidence 与 main-push CI，使用临时非 channel tag 发布精确 tarball，
+回读 registry bytes，移动 `next`/`latest` 并做防回退检查，创建/校验 GitHub Release、附加
+`release-evidence.json`，最后才公开 prerelease。
 
-workflow 使用下载的候选 artifact，校验 candidate/browser evidence 与 main-push CI，先发布到临时非 channel tag，
-回读 registry tarball，再移动 `next`/`latest` 并做即时防回退检查；Release 先保持 draft，附加
-`release-evidence.json` 并完成校验后才公开为 prerelease。
+不要为发布手工执行 `npm publish`、`npm dist-tag` 或 `gh release`；它们会绕过 environment 审批、token
+scope、browser evidence 和 release evidence。
 
-fresh isolated profile 检查仍保留为人工验收步骤，但不授权另一条手工发布路径。candidate workflow 打包后不得重建
-tarball。
 ## 5. 发布后
 
-- 用已发布产物验证 README 安装命令；
-- 渠道策略（当前，有意选择）：预发布发布到 `next`，并在稳定版出现前把 `latest` 也指向最新 RC。npm 会保留
-  `latest` tag，由我们决定其指向；不要把这一点描述成 npm 的强制要求。`@next` 与精确版本仍是预发布渠道。
-  rc.3 tarball 会在其 README/user-guide/发布说明中携带这一定义；
-- 记住已记录的残留风险（验证记录 4.5）：**外层 JSON 不可读**的契约记录会被 JSON storage backend 当作不存在，
-  插件侧 API 无法将其与"记录缺失"区分。不要宣称"损坏数据总是被保留"：保证需区分内部 schema/一致性不合法
-  记录（插件隔离并保留）与外层 JSON malformed/不可读或外层 version 被拒绝（已知覆盖风险，需停止 Host 并从
-  备份恢复）。打 tag 前重新检查不可变文档，确保这一限制仍然写明。
-- 若测试了新的 DSH 版本，更新兼容矩阵；
-- 保持 `docs/archive/` 不被 git 跟踪；它只包含本地历史设计材料，并且不在 npm `files` 白名单内，保证
-  GitHub 与 npm 内容一致。
+- 用实际发布产物验证 README 安装命令。
+- 核对 npm `version`、`dist-tags` 和 tarball digest 与 candidate 一致。
+- 只有新 DSH 版本通过完整回归后才更新兼容矩阵。
+- 保留 outer-JSON 风险披露：完全不可读的外层 JSON 会被 JSON backend 当作不存在，插件无法区分；必须停止
+  Host 并从备份恢复。这与内部 schema/consistency invalid 记录不同，后者会被隔离并保留。
+- `docs/archive/` 保持 untracked；它只保存本地历史材料，且不在 npm `files` 白名单内。
 
-## rc.5 单产物自动化
+## 6. Channel policy
 
-`.github/workflows/release-candidate.yml` 是 rc.5 tarball 的唯一 producer：source gates、compatibility sentinels、
-一次 `npm pack`、exact-artifact package smoke、packed recovery smoke，以及 Gateway job 和独立受保护的人工 browser-evidence workflow。Gateway job 在隔离的 rc.3/rc.4 依赖图上运行精确 artifact；browser recovery 是受保护的人工 environment gate，promotion 要求成功的、绑定 SHA 的 evidence run；不要把只跑了 source 的 run 当成发布证据。所有 consumer 下载同一个
-`release-candidate` artifact，并使用 `--artifact`/`--sha256`，不得再次 pack。
+RC 发布到 `next`；稳定版出现前，`latest` 也有意指向最新 RC。npm 保留 `latest` tag，由项目决定其指向；
+这是项目策略，不是 npm 的强制要求。精确版本仍是可复现安装路径。
 
-`.github/workflows/release-promote.yml` 由 `release` environment 保护，是唯一 promotion 路径。它要求 candidate
-run id、source commit C、artifact SHA-256 和精确版本；验证 C→C+1 只修改根 `SHA256SUMS`，不 build/pack 重跑
-exact-artifact smoke，然后 tag C+1、创建 GitHub Release，并把同一 tarball 以 `next` 发布。candidate 全绿且
-release 明确批准前不要运行。
+固定版本安装应使用精确版本，并考虑 pnpm release-age：新发布 RC 在窗口结束前可能不会参与无版本解析；不要
+绕过兼容性门禁，也不要安装未声明的旧版本。

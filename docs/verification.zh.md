@@ -2,13 +2,22 @@
 
 [English](verification.md) | 中文
 
-验证日期：2026-10-27。本文件是当前证据记录；历史逐提交的叙事保留在 Git 历史和 Changelog。临时目录、profile、
+验证日期：2026-10-29。本文件是当前证据记录；历史逐提交的叙事保留在 Git 历史和 Changelog。临时目录、profile、
 tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 
 环境：macOS，Node `v22.23.1`，npm `12.0.2`，pnpm `12.3.4`。本地 DSH 开发基线：`0.2.1-rc.4`（当前 npm
 `next`）。
 
 ## 1. 当前结论
+
+当前发布状态（2026-10-29）：
+
+- 已发布：`0.1.0-rc.4`（npm `latest`/`next`、GitHub Release）。
+- 候选：`0.1.0-rc.5`，candidate run `40864078201` 全绿，精确产物
+  `dsh-charter-0.1.0-rc.5.tgz` 的 SHA-256 为
+  `94e27acf8851ad5423defd06a41253171317f4e805af809fe8e8e7a9ce83a939`。
+- 发布提交：`C=d138d65dc4f1b2628dc043f2dd437ea213112a4d`，`C+1=tag v0.1.0-rc.5=0a6ccc5`。
+- 待完成：npm token 发布、GitHub prerelease、受保护 browser evidence、Promotion。
 
 | 项目 | 结果 |
 | --- | --- |
@@ -17,7 +26,7 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 | Host ESM 构建 + 浏览器 factory bundle | 通过 |
 | Remote 契约与 client smoke | 通过 |
 | 普通 package smoke | 通过 |
-| exact-artifact package smoke | 对最终 `.tgz` 字节通过，不重建 |
+| exact-artifact package smoke | 对最终 `.tgz` 字节（`94e27acf…`）通过，不重建 |
 | packed recovery smoke | 通过：export、删除 target、restore、receipt replay、两次 restart、健康目标拒绝、packed fault 子集 |
 | 真实 `TypertGatewayService` | 精确 artifact 在隔离的 DSH `0.2.1-rc.3` / `rc.4` 依赖图上通过 |
 | 兼容 sentinel | `0.1.7-rc.2`、`0.2.1-rc.2`、`0.2.1-rc.4` 通过 |
@@ -62,7 +71,7 @@ CI（`.github/workflows/ci.yml`）在 Node `22.19.0` / `24` 上运行 `npm run c
 | `0.2.1-rc.3` | 362/362 tracked matrix PASS |
 | `0.2.1-rc.4` | 362/362 tracked matrix PASS |
 
-rc.5 tracked `compat-matrix --versions all` 已于 2026-10-27 完成：每个声明版本均通过 typecheck、build 和 362/362 测试。安装使用 pnpm strict peer、精确工具版本、单一 zod 4.6.7 图、完整 `pnpm list --depth Infinity` 图校验，并记录 lockfile SHA-256。未跟踪 `0.2.2-alpha.2` 已 probe：strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.5 pins 4.0.5; no tests run，rc.5 明确不支持。
+rc.5 tracked `compat-matrix --versions all` 已于 2026-10-29 完成：每个声明版本均通过 typecheck、build 和 362/362 测试。安装使用 pnpm strict peer、精确工具版本、单一 zod 4.6.7 图、完整 `pnpm list --depth Infinity` 图校验，并记录 lockfile SHA-256。未跟踪 `0.2.2-alpha.2` 已 probe：strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.5 pins 4.0.5; no tests run，rc.5 明确不支持。
 
 ## 4. 测试覆盖
 
@@ -114,7 +123,7 @@ rc.5 tracked `compat-matrix --versions all` 已于 2026-10-27 完成：每个声
 | `0.1.0-rc.2` | 2026-10-24 | Pane hook-order 恢复、依赖安全更新、发布渠道文档 |
 | `0.1.0-rc.3` | 2026-10-26 | 权威恢复：结构化 record state、archive export/initialize/restore、write-uncertain fence |
 | `0.1.0-rc.4` | 2026-10-27 | 仅兼容性：支持 DSH `0.2.1-rc.3`/`rc.4` |
-| `0.1.0-rc.5` | 2026-10-27 | 稳定化候选：visible-only review、future-schema fence、safe discard、UTF-8/error/a11y 硬化 |
+| `0.1.0-rc.5` | 2026-10-29 | candidate 全绿并打 tag：visible-only review、future-schema fence、safe discard、UTF-8/error/a11y 硬化；npm/Release 待发布 |
 
 逐版本详细变更见 `CHANGELOG.md`；已发布 tag 与 GitHub Release 不可修改。
 

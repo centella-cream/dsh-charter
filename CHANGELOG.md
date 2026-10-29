@@ -5,9 +5,9 @@ English | [中文](CHANGELOG.zh.md)
 All notable changes to `dsh-charter` are recorded here. The project follows a pre-1.0 version line while the
 DSH plugin ABI is still moving.
 
-## 0.1.0-rc.5 — 2026-10-27
+## 0.1.0-rc.5 — 2026-10-29
 
-Pre-stable correctness and release-hardening candidate. No new 0.2 capability, domain, Remote method, or
+Pre-stable correctness and release-hardening candidate. Tagged and candidate-green; npm publication and the GitHub Release are still pending. No new 0.2 capability, domain, Remote method, or
 persistent schema version.
 
 ### Added
@@ -33,6 +33,7 @@ persistent schema version.
 - `npm run check` and the current exact-artifact/packed smoke commands are the source of truth; real Gateway,
   browser recovery, Desktop ABI, and real-model compaction remain separate acceptance gates.
 - No record schema version bump and no domain change; rc.4 records remain readable.
+- Release state: tag `v0.1.0-rc.5` exists, exact artifact SHA-256 is recorded in `SHA256SUMS`; rc.5 is not published to npm yet.
 
 ## 0.1.0-rc.4 — 2026-10-27
 

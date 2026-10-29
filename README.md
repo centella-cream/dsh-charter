@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![GitHub](https://img.shields.io/badge/GitHub-centella--cream%2Fdsh--charter-181717?logo=github)](https://github.com/centella-cream/dsh-charter)
-[![DSH](https://img.shields.io/badge/DSH-5%20verified%20RC%20versions-4b6bfb)](docs/design/compatibility.md)
+[![DSH](https://img.shields.io/badge/DSH-7%20verified%20RC%20versions-4b6bfb)](docs/design/compatibility.md)
 [![Node](https://img.shields.io/badge/node-%5E22.19%20%7C%7C%20%3E%3D24-339933)](package.json)
 [![Status: preview](https://img.shields.io/badge/status-preview-orange)](#status)
 
@@ -111,34 +111,29 @@ The browser registers a `conversation.view` entry; the pane and `charter.watch` 
 
 ## Install
 
-`dsh-charter@0.1.0-rc.5` is the current release candidate. Use the exact rc.5 install commands below only after
-`npm view dsh-charter@0.1.0-rc.5 version` returns that version; until then continue with the latest published
-RC (`0.1.0-rc.4`). Our channel policy is to publish RCs under `next` and to point `latest` at the newest RC
-until a stable release exists (npm keeps a `latest` tag and we choose where it points; this is our policy, not
-an npm requirement).
+### Current release state
+
+- **Latest published RC:** `0.1.0-rc.4` (npm `latest` and `next`, GitHub Release).
+- **Current source:** `0.1.0-rc.5`. The candidate is tagged (`v0.1.0-rc.5`), but npm publication and the
+  GitHub Release are still pending. Do not assume `dsh-charter@0.1.0-rc.5` resolves from the registry yet.
+- `0.1.0-rc.5` adds review, recovery, accessibility, and release-evidence hardening; it is not a new 0.2
+  capability line.
+
+Install the published version for normal use. Use the exact rc.5 command only after
+`npm view dsh-charter@0.1.0-rc.5 version` returns that version; until then the latest published RC is rc.4.
+Our channel policy is to publish RCs under `next` and to point `latest` at the newest RC until a stable release
+exists (npm keeps a `latest` tag and we choose where it points; this is our policy, not an npm requirement).
+
+The full recovery/record-health contract is in the [user guide](docs/user-guide.md) and the
+[verification record](docs/verification.md). In short, records use a structured health state; export/restore is
+owner-only on DSH `0.2.1+`, healthy records are not overwritten, and a rejected write fences only that Session
+until a Host restart.
 
 > **Pin an exact version for npm/CLI installation.** pnpm 11+ applies a default `minimumReleaseAge` of 1440
 > minutes (24 hours) before resolving a newly published release. During that window, unversioned resolution
 > (`dsh-charter`, `@next`, or `@latest`) can select an older release that does not declare compatibility with the
 > current DSH runtime, and DSH will reject it. An exact published version does not use that unversioned resolution
 > path. Do not bypass the compatibility gate with an exact-version exemption for an older, undeclared release.
-
-### Recovery and record health (0.1.0-rc.3+)
-
-The rc.3 release adds authority-preserving recovery. The Pane shows a structured record state (healthy,
-absent-unconfirmed, invalid, lifecycle mismatch, unknown, or write-uncertain). Owners on DSH `0.2.1+` can export the
-complete record and restore a validated archive to the **same Session lifecycle** through the **Storage & recovery**
-section; a healthy record can never be overwritten and cross-Session/lifecycle import is unsupported. When a restored
-Session has no readable record the plugin reports "missing or unreadable; cannot be distinguished automatically" and
-does not create an empty record or re-fork from the parent; an explicit, twice-confirmed empty initialization is
-available. A rejected storage write fences that Session as write-uncertain (no injection/read/write) until a Host
-restart.
-
-Maintenance is owner-only, requires DSH `0.2.1+` principal/resource enforcement, and fails closed with
-`RECOVERY_UNSUPPORTED` on `0.1.7`/`0.2.0`. `maxRecoveryBytes` defaults to 4 MiB (at least the record budget + 64 KiB,
-16 MiB hard ceiling); if the record budget leaves no room, maintenance is disabled with reason `record-limit` and an
-offline backup after stopping the Host is required. Archives contain user text and are sensitive. Records written with
-a maintenance receipt are isolated (preserved, not injected/edited) by rc.2; upgrading back to rc.3 restores access.
 
 ### Requirements
 
@@ -153,14 +148,16 @@ a maintenance receipt are isolated (preserved, not injected/edited) by rc.2; upg
 #### Web profile — install an exact version
 
 ```bash
-# Pin the published version; required when the newest RC is inside the
-# pnpm release-age window.
-dsh plugin --profile web add dsh-charter@0.1.0-rc.5
+# Pin the latest published RC; required when it is inside pnpm's release-age window.
+dsh plugin --profile web add dsh-charter@0.1.0-rc.4
 ```
 
 Pin an exact version for reproducible profiles. `@next` and `@latest` follow dist-tags but are still subject to
 pnpm's release-age policy, so they are not a reliable way to install a freshly published RC. If the registry is
 unreachable, or you need the exact release artifact, use the offline tarball fallback below.
+
+`dsh-charter@0.1.0-rc.5` is **not yet installable from npm**. The rc.5 candidate artifact exists in release
+evidence; wait for publication before switching a user profile to it.
 
 Restart `dsh web` (or let profile HMR recompose), then refresh the page. The profile's `package.json` gains the
 dependency and bundle entry.
@@ -181,17 +178,21 @@ owns the plugin lifecycle and hot-applies the new bundle.
 ### Offline / local tarball fallback
 
 Use this path as a backup for air-gapped machines, exact-artifact verification, or Desktop builds that support
-importing a local plugin. The GitHub Release ships the same tarball and `SHA256SUMS` used by `npm publish`.
+importing a local plugin. Published releases ship the same tarball and `SHA256SUMS` used by `npm publish`.
 
 ```bash
-# From a checkout:
-npm install
-npm run build
-npm pack                         # dsh-charter-0.1.0-rc.5.tgz
-dsh plugin --profile web add ./dsh-charter-0.1.0-rc.5.tgz
-
-# Or download the GitHub Release tarball + SHA256SUMS and verify:
+# Published rc.4 artifact (same bytes as the GitHub Release):
+gh release download v0.1.0-rc.4 --pattern '*.tgz' --pattern SHA256SUMS
 shasum -a 256 -c SHA256SUMS
+dsh plugin --profile web add ./dsh-charter-0.1.0-rc.4.tgz
+```
+
+For an unpublished rc.5 candidate, build/pack only from the tagged tree and treat it as release evidence, not
+as a normal user install:
+
+```bash
+git checkout v0.1.0-rc.5
+npm install && npm run build && npm pack
 dsh plugin --profile web add ./dsh-charter-0.1.0-rc.5.tgz
 ```
 
@@ -201,10 +202,10 @@ Desktop Plugins page or that profile's package manager. Source-level development
 
 ### Update
 
-- **Web (npm):** install the exact target version, e.g.
-  `dsh plugin --profile web add dsh-charter@0.1.0-rc.5`, then restart/refresh. Pinned profiles keep their
+- **Web (npm):** install the exact published target version, e.g.
+  `dsh plugin --profile web add dsh-charter@0.1.0-rc.4`, then restart/refresh. Pinned profiles keep their
   explicit version entry. Do not use a bare `@next`/`@latest` immediately after a release; pnpm's release-age
-  policy can resolve an older version.
+  policy can resolve an older version. Switch to rc.5 only after npm publication.
 - **Local tarball:** rebuild/download the new tarball and repeat the local install command; this bypasses
   registry release-age resolution.
 - **Desktop:** use **Plugins → Install/Update**. The UI has no exact npm version selector, so it follows the
@@ -303,8 +304,9 @@ truncated, or silently dropped.
 | `0.1.5-rc.1` and earlier | Not supported |
 | `0.2.2-rc.x`, `0.3.x` | Not declared until verified |
 
-"Supported" means typecheck, build, tests, and Remote/client smoke for that version. Interactive Web UI was
-exercised on `0.2.0-rc.2`; other versions are API/build verified. Real-model compaction end-to-end is a documented manual check (`npm run verify:compaction`, section 8 of the current verification record); a **PASS is recorded in the immutable [v0.1.0-rc.4 verification §8.4](https://github.com/centella-cream/dsh-charter/blob/v0.1.0-rc.4/docs/verification.md#84-recorded-real-model-run-2026-10-22)**.
+Supported" means typecheck, build, tests, and Remote/client smoke for that version. Fresh Web profile install,
+startup, page, and client-bundle checks passed on `0.1.7-rc.2`, `0.2.0-rc.2`, `0.2.1-rc.2`, and `0.2.1-rc.4`;
+other versions are API/build verified. Real-model compaction end-to-end is a documented manual check (`npm run verify:compaction`, section 8 of the current verification record); a **PASS is recorded in the immutable [v0.1.0-rc.4 verification §8.4](https://github.com/centella-cream/dsh-charter/blob/v0.1.0-rc.4/docs/verification.md#84-recorded-real-model-run-2026-10-22)**.
 The full matrix and degradation notes are in the [compatibility document](docs/design/compatibility.md).
 `0.1.7`/`0.2.0` have no per-Peer Remote resource authorization; use them only in a trusted single-operator
 environment.
@@ -352,15 +354,14 @@ Their ideas informed the design review; no source code is copied, and these proj
 ## Documentation
 
 - [Design specification](docs/design/charter-design.md)
-- [Design review](docs/design/charter-design-review.md)
-- [0.1.0-rc.5 stabilization plan](docs/design/rc5-stabilization-plan.md)
-- [Release notes](docs/release-notes/README.md)
-- [Version roadmap: 0.1 stabilization and the 0.2 product upgrade](docs/design/version-roadmap.md)
-- [Compatibility matrix](docs/design/compatibility.md)
 - [User and operator guide](docs/user-guide.md)
+- [Compatibility matrix](docs/design/compatibility.md)
 - [Verification record](docs/verification.md)
-- [Research notes](docs/research/charter-research.md)
+- [Release notes](docs/release-notes/README.md)
+- [Version roadmap](docs/design/version-roadmap.md)
 - [Release checklist](docs/releasing.md)
+- Historical design/research notes remain under `docs/design/` and `docs/research/` but are not current
+  operating instructions.
 
 Every long-form document has an English and Chinese version, linked at the top of each page.
 
@@ -372,17 +373,25 @@ security reports, follow [SECURITY.md](SECURITY.md).
 
 ## Status
 
-Pre-1.0. The DSH plugin ABI is still moving; compatibility is tested against the versions above, and the design
-keeps the compatibility layer deliberately small. The public repository is [centella-cream/dsh-charter](https://github.com/centella-cream/dsh-charter). This tree is the `0.1.0-rc.5` pre-release: the real-model
-compaction acceptance **PASS is recorded on 2026-10-22** on an anonymized evaluation Session (326 messages /
-~228k tokens shadowed, revision-1 charter survived with matching digest — see the immutable [v0.1.0-rc.4 verification §8.4](https://github.com/centella-cream/dsh-charter/blob/v0.1.0-rc.4/docs/verification.md#84-recorded-real-model-run-2026-10-22). The rc.5 candidate
-is verified locally and is intended for the npm registry under the `next` dist-tag; under our channel policy
-`latest` also tracks the newest RC until a stable release exists (a deliberate policy choice, not an npm
-requirement). One manual check recorded in the immutable [v0.1.0-rc.4 verification §8.4](https://github.com/centella-cream/dsh-charter/blob/v0.1.0-rc.4/docs/verification.md#84-recorded-real-model-run-2026-10-22) is required before a stable `latest` release: restart the Desktop
-app and reopen the Charter tab once to confirm the installed bundle/tool ABI. CI
-(`.github/workflows/ci.yml`) packs and smoke-tests the installable artifact on Node `22.19.0` and `24`; the local
-gate evidence is recorded in verification §2. Release-state prerequisites, tag ordering, and the exact publish
-flow live in [docs/releasing.md](docs/releasing.md).
+Pre-1.0. The DSH plugin ABI is still moving; compatibility is tested against the seven versions above, and the
+design keeps the compatibility layer deliberately small.
+
+Current release state (2026-10-29):
+
+- **Published:** `0.1.0-rc.4` — npm `latest`/`next`, GitHub Release, immutable tag.
+- **Candidate:** `0.1.0-rc.5` — candidate run green, exact artifact SHA-256
+  `94e27acf8851ad5423defd06a41253171317f4e805af809fe8e8e7a9ce83a939`, tag `v0.1.0-rc.5` points at the
+  checksum-only C+1 commit.
+- **Pending before calling rc.5 published:** npm token publication, GitHub prerelease, protected browser
+  evidence, and Promotion. The repository `main` includes the token-publish workflow; no GitHub Release or npm
+  version exists for rc.5 yet.
+- The real-model compaction acceptance PASS remains recorded on the immutable
+  [v0.1.0-rc.4 verification §8.4](https://github.com/centella-cream/dsh-charter/blob/v0.1.0-rc.4/docs/verification.md#84-recorded-real-model-run-2026-10-22).
+
+CI (`.github/workflows/ci.yml`) packs and smoke-tests the installable artifact on Node `22.19.0` and `24`;
+release candidate, browser evidence, and promotion workflows are separate gates. Do not infer a publication
+from a green candidate.
+
 
 ## License
 
