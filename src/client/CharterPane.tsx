@@ -2167,6 +2167,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                         <dl className="charter-recovery__retained">
                           <div><dt>{t('recovery.sourceSession')}</dt><dd>{retainedArchive.source.sessionId}</dd></div>
                           <div><dt>{t('recovery.lifecycle')}</dt><dd>{retainedArchive.source.lifecycle}</dd></div>
+                          <div><dt>{t('recovery.previewRevision')}</dt><dd>{retainedArchive.source.revision ?? '-'}</dd></div>
                           <div><dt>{t('recovery.previewDigest')}</dt><dd>{retainedArchive.source.recordDigest}</dd></div>
                           <div><dt>{t('recovery.payloadDigest')}</dt><dd>{retainedArchive.payloadDigest}</dd></div>
                         </dl>
