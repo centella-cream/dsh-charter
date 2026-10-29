@@ -10,6 +10,13 @@ DSH plugin ABI is still moving.
 Documentation and version-activation candidate. No runtime behavior, record schema, Remote method, model tool, or
 domain change yet.
 
+### Added
+
+- A help affordance on every Charter navigation section; hovering or focusing the `?` badge shows a one-sentence
+  description of Overview, Objective, Invariants, Deliverables, History draft, Context, or Storage & recovery.
+- The Context preview has Formatted JSON and Exact text modes. Formatted JSON is pretty-printed for reading, while
+  the exact view and byte counter retain the model-visible bytes.
+
 ### Documentation
 
 - Consolidated the release, version, verification, compatibility, user-guide, and README documentation around

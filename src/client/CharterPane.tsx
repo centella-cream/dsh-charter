@@ -79,6 +79,17 @@ function formatBytes(t: CharterText, bytes: number): string {
     : t('unit.kib', { value: (bytes / 1_024).toFixed(bytes < 10_240 ? 1 : 0) })
 }
 
+/** Pretty-print the JSON body of the rendered prompt for reading; exact bytes remain available. */
+function formatCharterPreview(preview: string): string | null {
+  const start = preview.indexOf('{')
+  if (start < 0) return null
+  try {
+    return preview.slice(0, start) + JSON.stringify(JSON.parse(preview.slice(start)), null, 2)
+  } catch {
+    return null
+  }
+}
+
 function progressLabel(progress: DeliverableProgress | undefined, t: CharterText): string {
   return t(`progress.${progress ?? 'not-started'}`)
 }
@@ -694,6 +705,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   const [confirmAbandon, setConfirmAbandon] = useState(false)
   const [confirmDiscardAll, setConfirmDiscardAll] = useState(false)
   const [archivePreview, setArchivePreview] = useState<ArchivePreview | null>(null)
+  const [previewMode, setPreviewMode] = useState<'formatted' | 'exact'>('formatted')
   const [confirmRecovery, setConfirmRecovery] = useState<'initialize' | 'restore' | null>(null)
   const [confirmRestoreKey, setConfirmRestoreKey] = useState<string | null>(null)
   const [exportProblem, setExportProblem] = useState<string | null>(null)
@@ -780,6 +792,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
     () => (view === null ? '' : previewPrompt(view, effectiveOps)),
     [view, effectiveOps],
   )
+  const formattedPreview = useMemo(() => formatCharterPreview(preview), [preview])
   const bootstrapPromptBytes = useMemo(
     () => (view === null || bootstrapPhase !== 'draft' ? 0 : utf8Bytes(previewPrompt(view, bootstrapPlan.ops))),
     [view, bootstrapPhase, bootstrapPlan.ops],
@@ -1467,24 +1480,31 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
           <nav className="charter-nav" aria-label={t('nav.label')}>
             <span className="charter-nav__label">{t('nav.label')}</span>
             {([
-              { id: 'overview' as const, label: t('nav.overview') },
-              { id: 'objective' as const, label: t('nav.objective'), dot: projectedObjective !== null },
-              { id: 'invariants' as const, label: t('nav.invariants'), badge: invariants.length },
-              { id: 'deliverables' as const, label: t('nav.deliverables'), badge: deliverables.length },
-              { id: 'history' as const, label: t('nav.history'), dot: bootstrapPhase !== 'idle' },
-              { id: 'context' as const, label: t('nav.context') },
-              { id: 'recovery' as const, label: t('nav.recovery') },
+              { id: 'overview' as const, label: t('nav.overview'), help: t('nav.overviewHelp') },
+              { id: 'objective' as const, label: t('nav.objective'), help: t('nav.objectiveHelp'), dot: projectedObjective !== null },
+              { id: 'invariants' as const, label: t('nav.invariants'), help: t('nav.invariantsHelp'), badge: invariants.length },
+              { id: 'deliverables' as const, label: t('nav.deliverables'), help: t('nav.deliverablesHelp'), badge: deliverables.length },
+              { id: 'history' as const, label: t('nav.history'), help: t('nav.historyHelp'), dot: bootstrapPhase !== 'idle' },
+              { id: 'context' as const, label: t('nav.context'), help: t('nav.contextHelp') },
+              { id: 'recovery' as const, label: t('nav.recovery'), help: t('nav.recoveryHelp') },
             ] as const).map(item => (
               <button
                 key={item.id}
                 type="button"
                 className={`charter-nav__item${section === item.id ? ' is-active' : ''}`}
                 aria-current={section === item.id ? 'page' : undefined}
+                title={item.help}
                 onClick={() => goSection(item.id)}
               >
                 <span className="charter-nav__text">{item.label}</span>
                 {'badge' in item && item.badge !== undefined && <span className="charter-nav__badge">{item.badge}</span>}
                 {'dot' in item && item.dot === true && <span className="charter-nav__dot" aria-hidden="true" />}
+                <span
+                  className="charter-nav__help"
+                  data-tooltip={item.help}
+                  title={item.help}
+                  aria-hidden="true"
+                />
               </button>
             ))}
           </nav>
@@ -2306,7 +2326,33 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                 {(draftOpen || bootstrapReplay) && ops.length === 0 && (
                   <div className="charter-notice" role="note">{t('footer.draftStatus')}</div>
                 )}
-                <pre>{preview || t('preview.empty')}</pre>
+                <div className="charter-preview__toolbar" role="group" aria-label={t('preview.viewLabel')}>
+                  <button
+                    type="button"
+                    className={`charter-preview__view${previewMode === 'formatted' ? ' is-active' : ''}`}
+                    aria-pressed={previewMode === 'formatted'}
+                    disabled={preview === '' || formattedPreview === null}
+                    onClick={() => setPreviewMode('formatted')}
+                  >
+                    {t('preview.formatted')}
+                  </button>
+                  <button
+                    type="button"
+                    className={`charter-preview__view${previewMode === 'exact' ? ' is-active' : ''}`}
+                    aria-pressed={previewMode === 'exact'}
+                    onClick={() => setPreviewMode('exact')}
+                  >
+                    {t('preview.exact')}
+                  </button>
+                  <span className="charter-hint">
+                    {previewMode === 'formatted' ? t('preview.formattedHint') : t('preview.exactHint')}
+                  </span>
+                </div>
+                <pre>{preview === ''
+                  ? t('preview.empty')
+                  : previewMode === 'formatted' && formattedPreview !== null
+                    ? formattedPreview
+                    : preview}</pre>
                 <p className="charter-hint">{t('budget.recordLimit', { limit: formatBytes(t, view.limits.maxRecordBytes) })}</p>
               </section>
             )}

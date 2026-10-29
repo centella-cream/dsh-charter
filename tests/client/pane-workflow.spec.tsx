@@ -180,3 +180,58 @@ describe('rc.5 pane workflow Apply/objective acceptance', () => {
     expect(tree.root.findAll(node => node.props.id === describedBy && textOf(node).includes('apply.block.no-changes'))).toHaveLength(1)
   })
 })
+
+describe('rc.6 pane help and formatted preview', () => {
+  it('gives every navigation section a help affordance', () => {
+    const ready = view({ revision: 0 })
+    const src = source(ready)
+    const draft = new CharterDraft(sessionId, () => src)
+    draft.bindLifecycle(lifecycle)
+    const tree = mount(src, draft)
+    const helps = tree.root.findAll(node => node.props.className === 'charter-nav__help')
+    expect(helps).toHaveLength(7)
+    expect(helps.map(node => node.props['data-tooltip'])).toEqual([
+      'nav.overviewHelp',
+      'nav.objectiveHelp',
+      'nav.invariantsHelp',
+      'nav.deliverablesHelp',
+      'nav.historyHelp',
+      'nav.contextHelp',
+      'nav.recoveryHelp',
+    ])
+  })
+
+  it('shows the context preview as formatted JSON by default', () => {
+    const ready = view({
+      revision: 1,
+      objective: {
+        original: { text: 'Ship the release', setAtRevision: 1 },
+        current: { text: 'Ship the release', setAtRevision: 1 },
+      },
+      items: [{
+        id: 'inv-1',
+        clientRef: 'inv-1',
+        kind: 'invariant',
+        text: 'Keep the public API stable',
+        order: 0,
+        review: 'accepted',
+        lifecycle: 'current',
+        verification: { state: 'unchecked' },
+        origin: 'user',
+        createdRevision: 1,
+      } as unknown as CharterItem],
+    })
+    const src = source(ready)
+    const draft = new CharterDraft(sessionId, () => src)
+    draft.bindLifecycle(lifecycle)
+    const tree = mount(src, draft)
+    const context = tree.root.findAll(node => node.type === 'button' && textOf(node).includes('nav.context'))[0]
+    if (context === undefined) throw new Error('no context navigation item')
+    act(() => context.props.onClick())
+    const pre = tree.root.findAll(node => node.type === 'pre')[0]
+    expect(pre).toBeDefined()
+    expect(textOf(pre!)).toContain('"objective"')
+    expect(textOf(pre!)).toContain('\n  "invariants"')
+    expect(textOf(pre!)).toContain('"Keep the public API stable"')
+  })
+})

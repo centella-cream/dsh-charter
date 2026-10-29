@@ -806,6 +806,43 @@
   margin-bottom: 8px;
 }
 
+.charter-preview__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0 0 8px;
+  flex-wrap: wrap;
+}
+
+.charter-preview__view {
+  min-height: 26px;
+  padding: 3px 8px;
+  border: 1px solid var(--charter-border);
+  border-radius: 6px;
+  color: var(--dsw-alias-label-secondary, #777);
+  background: transparent;
+  font: inherit;
+  font-size: 10.5px;
+  cursor: pointer;
+}
+
+.charter-preview__view:hover {
+  color: var(--dsw-alias-label-primary, inherit);
+  background: var(--dsw-alias-interactive-bg-hover, rgba(127, 127, 127, 0.08));
+}
+
+.charter-preview__view.is-active {
+  color: var(--charter-brand);
+  border-color: color-mix(in srgb, var(--charter-brand) 45%, var(--charter-border));
+  background: color-mix(in srgb, var(--charter-brand) 8%, transparent);
+  font-weight: 600;
+}
+
+.charter-preview__view:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
 .charter-preview pre {
   max-height: 300px;
   margin: 0;
@@ -967,7 +1004,6 @@
 
 .charter-nav__badge {
   min-width: 18px;
-  margin-left: auto;
   padding: 0 5px;
   border-radius: 999px;
   color: var(--dsw-alias-label-tertiary, #999);
@@ -986,13 +1022,70 @@
 .charter-nav__dot {
   width: 5px;
   height: 5px;
-  margin-left: auto;
   border-radius: 50%;
   background: var(--charter-brand);
 }
 
 .charter-nav__badge + .charter-nav__dot {
   margin-left: 0;
+}
+
+.charter-nav__help {
+  position: relative;
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  margin-left: auto;
+  flex: 0 0 16px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--charter-border);
+  border-radius: 50%;
+  color: var(--dsw-alias-label-tertiary, #999);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: help;
+}
+
+.charter-nav__help:hover,
+.charter-nav__help:focus-visible {
+  color: var(--charter-brand);
+  border-color: var(--charter-brand);
+}
+
+.charter-nav__help::before {
+  content: "?";
+}
+
+.charter-nav__help::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 30;
+  width: min(250px, 70vw);
+  padding: 7px 9px;
+  border: 1px solid var(--charter-border);
+  border-radius: 7px;
+  color: var(--dsw-alias-label-primary, inherit);
+  background: var(--dsw-alias-bg-base, #fff);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--dsw-alias-label-primary, #000) 16%, transparent);
+  font-size: 10.5px;
+  font-weight: 400;
+  line-height: 1.45;
+  text-align: left;
+  white-space: normal;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+.charter-nav__help:hover::after,
+.charter-nav__help:focus-visible::after {
+  visibility: visible;
+  opacity: 1;
 }
 
 .charter-content {
@@ -1577,6 +1670,8 @@
 @media (max-width: 640px), (pointer: coarse) {
   .charter-progress select,
   .charter-item__menulist button,
+  .charter-preview__view,
+  .charter-nav__help,
   .charter-actionbar__actions .charter-button,
   .charter-bootstrap__summary .charter-button,
   .charter-add__foot .charter-button,

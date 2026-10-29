@@ -130,7 +130,8 @@ summary keep the normal empty state.
    the View tab bar). The Charter tab is registered once at a stable high order, so it follows Chat, Trajectory, and
    common plugin tabs without re-registering itself.
 2. Use the left section navigation: **Overview / Objective / Invariants / Deliverables / History draft /
-   Context**. History is always available: it shows the current bootstrap phase and offers **Check again**.
+   Context / Storage & recovery**. Every section has a `?` help badge; hover or focus it for a one-sentence
+   description. History is always available: it shows the current bootstrap phase and offers **Check again**.
    Narrow windows turn this navigation into a horizontal tab strip.
 3. In **Objective**, set the objective. The original objective is written once and is immutable.
 4. In **Invariants**, add constraints that must remain visible, for example:
@@ -140,7 +141,8 @@ summary keep the normal empty state.
 5. In **Deliverables**, add outcomes with `not-started` / `in-progress` / `blocked` / `done` / `cancelled`.
    The tab label and every pane string follow the active DSH language: **Charter** in English, **会话契约** in Chinese.
 6. Every change first enters a draft, and the list itself renders the projected result immediately. **Preview
-   context** shows the exact user-role text and byte count the model will see after Apply.
+   context** shows the model-visible context in **Formatted JSON** (pretty-printed for reading) or **Exact text**
+   (raw bytes); the byte counter always reflects the exact text.
 7. **Apply** commits atomically. On success the revision increases and the next request sees it. A network
    failure keeps the same mutation id so Retry can safely replay an unknown-outcome write.
 8. If another tab or process commits first, the pane keeps the draft and offers **Apply draft to revision N**;

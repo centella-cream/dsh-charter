@@ -84,6 +84,8 @@ execution guards for restrictions that must be machine-enforced.
 - Sticky Preview / Discard / Apply toolbar and an exact preview of the model-visible user-role context.
 - History draft extraction from `compaction/summary`; deterministic, no model call, no automatic write.
 - English/Chinese UI, light/dark themes, keyboard focus states, and container-query responsiveness.
+- Self-explaining navigation: every section has a hover/focus `?` help badge with a one-sentence purpose.
+- Context preview in Formatted JSON or Exact text mode; formatted JSON is for reading, exact bytes remain visible.
 - Read-only `charter_read` tool with a compact standing projection; one-time fork copy; explicit degraded
   states across restart, compaction, unload, corrupted records, and over-budget configurations.
 
@@ -341,7 +343,7 @@ npm run verify:compaction # manual real-model compaction check (not part of chec
 ```
 
 The test suite covers the pure core, real Host composition, storage-domain behavior, Remote framing,
-history extraction, client state, and factory-bundle registration. The current tree has **362 tests**; the rc.5 tracked seven-version matrix passes on all declared DSH versions. See the [verification record](docs/verification.md) for the current evidence.
+history extraction, client state, and factory-bundle registration. The current tree has **364 tests**; the seven-version matrix passes on all declared DSH versions. See the [verification record](docs/verification.md) for the current evidence.
 
 ## Acknowledgements
 

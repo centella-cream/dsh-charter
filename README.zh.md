@@ -74,6 +74,8 @@
 - 吸顶的预览/丢弃/应用工具栏，以及模型实际收到的 user-role 上下文精确预览。
 - 从 `compaction/summary` 确定性生成历史草案；不调用模型，不自动写入。
 - 中英文界面、明暗主题、键盘焦点和容器查询响应式布局。
+- 自解释导航：每个栏目都有悬停/聚焦 `?` 帮助徽标，展示一句话栏目说明。
+- 上下文预览支持“格式化 JSON / 精确文本”；格式化视图便于阅读，精确视图保留模型实际字节。
 - 只读 `charter_read` 工具（紧凑 standing 投影）；fork 一次性复制；重启、压缩、卸载、记录损坏和预算收紧时
   都有明确降级状态。
 
@@ -309,7 +311,7 @@ npm run verify:compaction # 手工真实模型 compaction 校验（不在 check 
 ```
 
 测试覆盖纯内核、真实 Host 组合、storage domain、Remote framing、历史抽取、客户端状态和 factory bundle
-注册。当前树有 **362 个测试**；rc.5 tracked 七版本矩阵在所有声明版本上通过。当前证据见[验证记录](docs/verification.zh.md)。
+注册。当前树有 **364 个测试**；七版本矩阵在所有声明版本上通过。当前证据见[验证记录](docs/verification.zh.md)。
 
 ## 致谢
 
