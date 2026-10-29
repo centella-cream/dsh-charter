@@ -300,7 +300,7 @@ npm run verify:compaction # 手工真实模型 compaction 校验（不在 check 
 ```
 
 测试覆盖纯内核、真实 Host 组合、storage domain、Remote framing、历史抽取、客户端状态和 factory bundle
-注册。当前树有 **354 个测试**；rc.5 tracked 七版本矩阵在所有声明版本上通过。当前证据见[验证记录](docs/verification.zh.md)。
+注册。当前树有 **357 个测试**；rc.5 tracked 七版本矩阵在所有声明版本上通过。当前证据见[验证记录](docs/verification.zh.md)。
 
 ## 致谢
 

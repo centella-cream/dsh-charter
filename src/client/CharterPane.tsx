@@ -22,6 +22,7 @@ import type {
   DraftFeedback,
 } from './draft-store.js'
 import { CHARTER_LOCALE_NS, type CharterLocaleKey } from './locales.js'
+import { inspectUserText } from '../core/normalize.js'
 import { draftAdmission } from './admission.js'
 import {
   bootstrapReplayPending,
@@ -45,7 +46,6 @@ import {
   type ProjectedItem,
 } from './preview.js'
 import { firstDraftTextIssue, type BootstrapPlan } from './bootstrap-plan.js'
-import { inspectUserText } from '../core/normalize.js'
 import './charter.css'
 
 type CharterText = TranslateNS<typeof CHARTER_LOCALE_NS>
@@ -267,6 +267,7 @@ function ActionButton({
   disabled = false,
   variant = 'ghost',
   ariaLabel,
+  ariaDescribedBy,
   title,
   busy,
   className,
@@ -276,6 +277,7 @@ function ActionButton({
   readonly disabled?: boolean
   readonly variant?: 'primary' | 'outline' | 'ghost'
   readonly ariaLabel?: string
+  readonly ariaDescribedBy?: string
   readonly title?: string
   readonly busy?: boolean
   readonly className?: string
@@ -287,6 +289,7 @@ function ActionButton({
       onClick={onClick}
       disabled={disabled}
       aria-label={ariaLabel}
+      aria-describedby={ariaDescribedBy}
       title={title}
       aria-busy={busy === true ? true : undefined}
     >
@@ -986,6 +989,14 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   const applyHint = applyBlockReason === null
     ? t('footer.applyHint')
     : t(`apply.block.${applyBlockReason}` as never)
+  const bootstrapHint = bootstrapReplay
+    ? t('apply.block.retry')
+    : bootstrapSaving
+      ? t('apply.block.busy')
+      : canApplyBootstrap
+        ? t('bootstrap.applyHint')
+        : t('apply.block.bootstrap-blocked')
+  const footerHint = (bootstrapPhase === 'draft' || bootstrapReplay) ? bootstrapHint : applyHint
   const canRebaseNow = rebaseAvailable(draftState)
   const budgetPercent = Math.min(100, Math.round((previewBytes / view.limits.maxPromptBytes) * 100))
   const message = feedbackText(feedback, t)
@@ -1361,7 +1372,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                 </span>
               )}
               {messageDetail !== undefined && <ErrorDetails detail={messageDetail} t={t} />}
-              <span className="charter-actionbar__hint" id={applyHintId}>{applyHint}</span>
+              <span className="charter-actionbar__hint" id={applyHintId}>{footerHint}</span>
             </div>
           </div>
           <div className="charter-actionbar__actions">
@@ -1375,6 +1386,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                   <>
                     <ActionButton
                       disabled={bootstrapReplay ? bootstrapSaving : !canApplyBootstrap}
+                      ariaDescribedBy={applyHintId}
                       onClick={applyBootstrapDraft}
                       busy={bootstrapSaving}
                     >
@@ -1428,7 +1440,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                     <ActionButton
                       variant="primary"
                       className="charter-actionbar__primary"
-                      aria-describedby={applyHintId}
+                      ariaDescribedBy={applyHintId}
                       disabled={editReplay ? saving : applyBlockReason !== null}
                       onClick={applyDraft}
                       busy={saving}
@@ -1818,6 +1830,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                     <span role="alert">
                       {bootstrapProblemText(bootstrapProblem, t) ?? t('bootstrap.requestFailed')}
                     </span>
+                    <ErrorDetails detail={bootstrapProblem?.detail} t={t} />
                     <ActionButton onClick={() => draft.retryBootstrap(view)}>{t('button.retry')}</ActionButton>
                   </div>
                 )}
@@ -1826,6 +1839,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                     <span role="status">
                       {bootstrapProblemText(bootstrapProblem, t) ?? t('bootstrap.unavailable')}
                     </span>
+                    <ErrorDetails detail={bootstrapProblem?.detail} t={t} />
                     <ActionButton onClick={() => draft.retryBootstrap(view)}>{t('button.retry')}</ActionButton>
                   </div>
                 )}
@@ -1902,13 +1916,16 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                       <label className="charter-bootstrap__field">
                         <span>{t('bootstrap.objective')}</span>
                         <textarea
+                          id={`${bootstrapId}-objective`}
                           value={bootstrapObjective}
                           rows={2}
                           disabled={bootstrapSaving || unknownBlocked}
                           aria-label={t('bootstrap.objective')}
+                          aria-invalid={bootstrapObjectiveOver || inspectUserText(bootstrapObjective).issue !== undefined}
+                          aria-describedby={`${bootstrapId}-objective-budget`}
                           onChange={event => draft.setBootstrapObjective(event.target.value)}
                         />
-                        <span className={`charter-budget${bootstrapObjectiveOver ? ' is-over' : ''}`}>
+                        <span id={`${bootstrapId}-objective-budget`} className={`charter-budget${bootstrapObjectiveOver ? ' is-over' : ''}`}>
                           {bootstrapObjectiveOver
                             ? t('budget.objectiveOver', { limit: formatBytes(t, view.limits.maxObjectiveBytes) })
                             : `${formatBytes(t, normalizedBytes(bootstrapObjective))} / ${formatBytes(t, view.limits.maxObjectiveBytes)}`}
@@ -1954,9 +1971,11 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                                         value={item.text}
                                         rows={2}
                                         disabled={bootstrapSaving || unknownBlocked}
+                                        aria-invalid={item.text.trim().length === 0 || normalizedBytes(item.text) > view.limits.maxItemBytes || inspectUserText(item.text).issue !== undefined}
+                                        aria-describedby={`${textId}-meta`}
                                         onChange={event => draft.updateBootstrapItem(item.id, { text: event.target.value })}
                                       />
-                                      <span className="charter-draftfield__meta">
+                                      <span className="charter-draftfield__meta" id={`${textId}-meta`}>
                                         {outcome !== undefined && (
                                           <StatusTag tone={outcome === 'active' ? 'success' : 'warning'}>
                                             {outcome === 'active' ? t('bootstrap.outcomeActive') : t('bootstrap.outcomePending')}
@@ -2017,6 +2036,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                         variant="primary"
                         className="charter-actionbar__primary"
                         disabled={bootstrapReplay ? bootstrapSaving : !canApplyBootstrap}
+                        ariaDescribedBy={applyHintId}
                         onClick={applyBootstrapDraft}
                         busy={bootstrapSaving}
                       >
