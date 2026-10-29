@@ -150,3 +150,33 @@ describe('rc.5 pane workflow acceptance', () => {
     expect(candidateText?.props['aria-describedby']).toBeDefined()
   })
 })
+
+describe('rc.5 pane workflow Apply/objective acceptance', () => {
+  it('shows and clears the objective staged tag', () => {
+    const ready = view({ revision: 0 })
+    const src = source(ready)
+    const draft = new CharterDraft(sessionId, () => src)
+    draft.bindLifecycle(lifecycle)
+    draft.stage(ready, { type: 'objective.redirect', text: 'New objective', reason: 'Accepted scope' })
+    const tree = mount(src, draft)
+    expect(textOf(tree.root)).toContain('tag.staged')
+    const unstage = button(tree, 'discard.unstageObjective')
+    act(() => unstage.props.onClick())
+    expect(textOf(tree.root)).not.toContain('tag.staged')
+    expect(tree.root.findAll(node => node.type === 'button' && textOf(node) === 'discard.unstageObjective')).toHaveLength(0)
+  })
+
+  it('shows no-changes as the Apply reason and links it to the disabled Apply button', () => {
+    const ready = view({ revision: 0 })
+    const src = source(ready)
+    const draft = new CharterDraft(sessionId, () => src)
+    draft.bindLifecycle(lifecycle)
+    const tree = mount(src, draft)
+    expect(textOf(tree.root)).toContain('apply.block.no-changes')
+    const apply = button(tree, 'footer.apply')
+    expect(apply.props.disabled).toBe(true)
+    const describedBy = apply.props['aria-describedby'] as string | undefined
+    expect(describedBy).toBeDefined()
+    expect(tree.root.findAll(node => node.props.id === describedBy && textOf(node).includes('apply.block.no-changes'))).toHaveLength(1)
+  })
+})
