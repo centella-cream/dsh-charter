@@ -465,6 +465,8 @@ describe('rc.5 bootstrap exact retry from Pane', () => {
     })
     if (tree === undefined) throw new Error('pane did not render')
     trees.push(tree)
+    const retry = tree.root.findAll(node => node.type === 'button' && textOf(node) === 'footer.retryApply')[0]
+    expect(retry?.props.disabled).toBe(false)
     click(tree, 'footer.retryApply')
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
     expect(requests).toHaveLength(2)

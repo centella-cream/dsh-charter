@@ -218,6 +218,8 @@ const en = {
   'apply.block.connection': 'Reconnect before applying.',
   'apply.block.quota': 'The staged changes exceed a Charter limit.',
   'apply.block.stale': 'The history draft is stale; re-extract it.',
+  'bootstrap.applyHint': 'The reviewed history draft will be written to the empty Charter.',
+  'apply.block.bootstrap-blocked': 'Resolve the bootstrap reason above before applying the reviewed history draft.',
   'footer.applyHint': 'Apply commits every staged change atomically; the model sees it from the next request.',
   'footer.replayed': 'The saved edit was replayed safely.',
 
@@ -586,6 +588,8 @@ const zh: Record<CharterLocaleKey, string> = {
   'apply.block.quota': '暂存修改超过 Charter 限制。',
   'apply.block.stale': '历史草案已过期，请重新抽取。',
   'footer.applyHint': '应用会原子提交全部暂存修改，模型从下一次请求起可见。',
+  'bootstrap.applyHint': '已审阅的历史草案将写入空会话契约。',
+  'apply.block.bootstrap-blocked': '请先处理上方 bootstrap 原因，再应用已审阅草案。',
   'footer.replayed': '已安全重放此前保存的编辑。',
 
   'button.retry': '重试',
