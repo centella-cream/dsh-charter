@@ -23,7 +23,7 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 | 项目 | 结果 |
 | --- | --- |
 | TypeScript 严格检查 | 当前树通过 |
-| Vitest | 29 个测试文件 / 372 个测试通过（`npm test`，先 build） |
+| Vitest | 29 个测试文件 / 373 个测试通过（`npm test`，先 build） |
 | Host ESM 构建 + 浏览器 factory bundle | 通过 |
 | Remote 契约与 client smoke | 通过 |
 | 普通 package smoke | 通过 |
@@ -31,7 +31,7 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 | packed recovery smoke | 通过：export、删除 target、restore、receipt replay、两次 restart、健康目标拒绝、packed fault 子集 |
 | 真实 `TypertGatewayService` | 精确 artifact 在隔离的 DSH `0.2.1-rc.3` / `rc.4` 依赖图上通过 |
 | 兼容 sentinel | `0.1.7-rc.2`、`0.2.1-rc.2`、`0.2.1-rc.4` 通过 |
-| 七版本全量 rerun | tracked `compat-matrix --versions all` 通过（每版本 372/372） |
+| 七版本全量 rerun | tracked `compat-matrix --versions all` 通过（每版本 373/373） |
 | 未跟踪 `0.2.2-alpha.2` probe | strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run；rc.6 明确不支持 |
 | 真实浏览器恢复 | 受保护的人工 evidence gate；未自动化 |
 | 真实模型 compaction | 2026-10-22 记录 PASS；仍是人工发布门禁 |
@@ -64,15 +64,15 @@ CI（`.github/workflows/ci.yml`）在 Node `22.19.0` / `24` 上运行 `npm run c
 
 | DSH 版本 | 证据 |
 | --- | --- |
-| `0.1.7-rc.2` | 372/372 tracked matrix PASS |
-| `0.2.0-rc.1` | 372/372 tracked matrix PASS |
-| `0.2.0-rc.2` | 372/372 tracked matrix PASS |
-| `0.2.1-rc.1` | 372/372 tracked matrix PASS |
-| `0.2.1-rc.2` | 372/372 tracked matrix PASS |
-| `0.2.1-rc.3` | 372/372 tracked matrix PASS |
-| `0.2.1-rc.4` | 372/372 tracked matrix PASS |
+| `0.1.7-rc.2` | 373/373 tracked matrix PASS |
+| `0.2.0-rc.1` | 373/373 tracked matrix PASS |
+| `0.2.0-rc.2` | 373/373 tracked matrix PASS |
+| `0.2.1-rc.1` | 373/373 tracked matrix PASS |
+| `0.2.1-rc.2` | 373/373 tracked matrix PASS |
+| `0.2.1-rc.3` | 373/373 tracked matrix PASS |
+| `0.2.1-rc.4` | 373/373 tracked matrix PASS |
 
-当前 rc.6 源码树已于 2026-10-30 通过 `compat-matrix --versions all`：每个声明版本均通过 typecheck、build 和 372/372 测试。安装使用 pnpm strict peer、精确工具版本、单一 zod 4.6.7 图、完整 `pnpm list --depth Infinity` 图校验，并记录 lockfile SHA-256。未跟踪 `0.2.2-alpha.2` 已 probe：strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run，rc.6 明确不支持。
+当前 rc.6 源码树已于 2026-10-30 通过 `compat-matrix --versions all`：每个声明版本均通过 typecheck、build 和 373/373 测试。安装使用 pnpm strict peer、精确工具版本、单一 zod 4.6.7 图、完整 `pnpm list --depth Infinity` 图校验，并记录 lockfile SHA-256。未跟踪 `0.2.2-alpha.2` 已 probe：strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run，rc.6 明确不支持。
 
 ## 4. 测试覆盖
 
@@ -113,16 +113,16 @@ node scripts/verify/traffic-check.mjs --session <id> --home <DSH_HOME> [--json]
 ```
 
 输出 model attempts（含 `assistant/attempt` stream usage）、active-surface / historical runtime-context
-snapshots、compaction epoch、token usage 归因，以及 `charter_read` 调用和结果字节。本地运行只是**诊断**，
-**不是发布证据**：目前没有归档 transcript digest、脱敏 fixture 或受控 A/B 结果，不能把某次本地观测当作
-cache 命中变化或“当前模型请求实际携带某状态”的证明。
+snapshots、compaction epoch、token usage 归因，以及 `charter_read` 调用和结果字节。本地运行只是**诊断**，**不是发布证据**：下面的记录是本地时点快照，但目前没有脱敏 fixture 或受控 A/B 结果，
+不能把某次本地观测当作 cache 命中变化或“当前模型请求实际携带某状态”的证明。
 
 checker 已有 fixture 测试覆盖；在改变 prompt 投递模型前仍需受控 A/B 实验。
 
 ### 5.1.1 本地诊断（不是发布证据）
 
 2026-10-30 对本地 Session `session-f0aaa8dd-05bf-4a85-9a5e-b4bd016f6dd3`（transcript
-`sha256:1a0f7ad7566fd37ffd00f5aff7d91cec3557f77f370d85e9268022017dbbaf8a`）的一次诊断输出：
+`sha256:d20de764ec2deead1a622cbfd5ebce18c25890e208d79dbd8870ccca030b9db8`，34,748 events；
+live Session，digest 固定为诊断时点）的一次诊断输出：
 
 ```text
 historical runtime snapshots: 21（其中 16 个被 shadow）

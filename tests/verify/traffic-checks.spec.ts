@@ -74,7 +74,6 @@ describe('rc.6 traffic checks', () => {
       result(2, 1, 1, 'bash', 'ok'),
     ])
     expect(report.calls).toBe(0)
-    expect(report.unpairedResults).toBe(0)
     expect(report.unattributedResults).toBe(0)
   })
 
@@ -153,6 +152,16 @@ describe('rc.6 traffic checks', () => {
     expect(report.callDetails[0].redundantReadCandidate).toBe(true)
   })
 
+  it('does not mark view=all as a redundant standing read', () => {
+    const report = summarizeCharterRead([
+      { type: 'tool/call', seq: 2, data: { turn: 1, step: 1, callId: 'c', name: 'charter_read', arguments: '{"view":"all"}' } },
+      result(3, 1, 1, 'c', 'history'),
+    ], [{ seq: 1, charterDigest: 'charter-digest' }])
+    expect(report.calls).toBe(1)
+    expect(report.redundantReads).toBe(0)
+    expect(report.callDetails[0].redundantReadCandidate).toBe(false)
+  })
+
   it('pairs repeated callIds per turn instead of overwriting them', () => {
     const report = summarizeCharterRead([
       { type: 'tool/call', seq: 1, data: { turn: 1, step: 1, callId: 'same', name: 'charter_read', arguments: '{}' } },
@@ -164,7 +173,6 @@ describe('rc.6 traffic checks', () => {
     expect(report.paired).toBe(2)
     expect(report.resultBytes).toBe(11)
     expect(report.ambiguous).toBe(0)
-    expect(report.unpairedResults).toBe(0)
   })
 
   it('pairs modern results through sourceEventSeqs and reports ambiguity', () => {

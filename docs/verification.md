@@ -24,7 +24,7 @@ Current release state (2026-10-30):
 | Item | Result |
 | --- | --- |
 | Strict TypeScript check | Pass on the current tree |
-| Vitest | 29 files / 372 tests pass (`npm test`, which builds first) |
+| Vitest | 29 files / 373 tests pass (`npm test`, which builds first) |
 | Host ESM build + browser factory bundle | Pass |
 | Remote contract and client smoke | Pass |
 | Normal package smoke | Pass |
@@ -32,7 +32,7 @@ Current release state (2026-10-30):
 | Packed-artifact recovery smoke | Pass: export, target removal, restore, receipt replay, two restarts, healthy-target refusal, packed fault subset |
 | Real `TypertGatewayService` | Pass on exact artifact with isolated DSH `0.2.1-rc.3` and `rc.4` graphs |
 | Compatibility sentinels | Pass on `0.1.7-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4` |
-| Seven-version full rerun | Pass via tracked `compat-matrix --versions all` (372/372 each) |
+| Seven-version full rerun | Pass via tracked `compat-matrix --versions all` (373/373 each) |
 | Fresh Web profile matrix | PASS: exact artifact installed and served on DSH `0.1.7-rc.2`, `0.2.0-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4` |
 | Untracked `0.2.2-alpha.2` probe | strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run; explicitly unsupported in rc.6 |
 | Real browser recovery | Manual protected evidence gate; not automated |
@@ -66,15 +66,15 @@ The tracked runner creates isolated pnpm projects with strict peers and runs typ
 
 | DSH version | Evidence |
 | --- | --- |
-| `0.1.7-rc.2` | 372/372 tracked matrix PASS |
-| `0.2.0-rc.1` | 372/372 tracked matrix PASS |
-| `0.2.0-rc.2` | 372/372 tracked matrix PASS |
-| `0.2.1-rc.1` | 372/372 tracked matrix PASS |
-| `0.2.1-rc.2` | 372/372 tracked matrix PASS |
-| `0.2.1-rc.3` | 372/372 tracked matrix PASS |
-| `0.2.1-rc.4` | 372/372 tracked matrix PASS |
+| `0.1.7-rc.2` | 373/373 tracked matrix PASS |
+| `0.2.0-rc.1` | 373/373 tracked matrix PASS |
+| `0.2.0-rc.2` | 373/373 tracked matrix PASS |
+| `0.2.1-rc.1` | 373/373 tracked matrix PASS |
+| `0.2.1-rc.2` | 373/373 tracked matrix PASS |
+| `0.2.1-rc.3` | 373/373 tracked matrix PASS |
+| `0.2.1-rc.4` | 373/373 tracked matrix PASS |
 
-The current rc.6 source tree passed `compat-matrix --versions all` on 2026-10-30: every declared version passed typecheck, build, and 372/372 tests. Installs use pnpm strict peer resolution, exact tool pins, a single zod 4.6.7 graph, full `pnpm list --depth Infinity` graph validation, and recorded lockfile SHA-256 values. The untracked `0.2.2-alpha.2` probe is recorded as unsupported: strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run.
+The current rc.6 source tree passed `compat-matrix --versions all` on 2026-10-30: every declared version passed typecheck, build, and 373/373 tests. Installs use pnpm strict peer resolution, exact tool pins, a single zod 4.6.7 graph, full `pnpm list --depth Infinity` graph validation, and recorded lockfile SHA-256 values. The untracked `0.2.2-alpha.2` probe is recorded as unsupported: strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run.
 
 ## 4. What the tests cover
 
@@ -120,9 +120,9 @@ node scripts/verify/traffic-check.mjs --session <id> --home <DSH_HOME> [--json]
 
 It reports model attempts (including `assistant/attempt` stream usage), active-surface and historical
 runtime-context snapshots, compaction epochs, token usage attribution, and `charter_read` calls/result bytes.
-A local run is **diagnostic only and is not release evidence**: no transcript digest, sanitized fixture, or
-controlled A/B result is archived here yet. Do not cite a local observation as proof that cache hit changed or
-that a particular snapshot state is present in the current model request.
+A local run is **diagnostic only and is not release evidence**: the point-in-time record below is archived in this
+document, but no sanitized fixture or controlled A/B result exists yet. Do not cite a local observation as proof
+that cache hit changed or that a particular snapshot state is present in the current model request.
 
 The checker itself has fixture coverage; a controlled A/B experiment is still required before changing the
 prompt-delivery model.
@@ -130,7 +130,8 @@ prompt-delivery model.
 ### 5.1.1 Local diagnostic (not release evidence)
 
 One local diagnostic run on 2026-10-30 (Session `session-f0aaa8dd-05bf-4a85-9a5e-b4bd016f6dd3`,
-transcript `sha256:1a0f7ad7566fd37ffd00f5aff7d91cec3557f77f370d85e9268022017dbbaf8a`) reported:
+transcript `sha256:d20de764ec2deead1a622cbfd5ebce18c25890e208d79dbd8870ccca030b9db8`, 34,748 events;
+live Session, digest fixed at the diagnostic time) reported:
 
 ```text
 historical runtime snapshots: 21 (16 shadowed)
@@ -145,7 +146,7 @@ charter_read:                 4 calls, all before the first active charter snaps
 This is a **local diagnostic, not release evidence**. It shows that the dominant active-surface growth is the
 DSH runtime-context snapshot append model, not Charter content: unchanged Charter text is repeated when another
 section triggers a new snapshot. The plugin cannot safely stop returning Charter text because the latest snapshot
-is authoritative for injection. rc.6 therefore records this as an upstream/DSh limitation and does not change
+is authoritative for injection. rc.6 therefore records this as an upstream/DSH limitation and does not change
 injection semantics; the tool-description shortening is the only model-visible reduction shipped here.
 
 ## 6. Manual and external gaps

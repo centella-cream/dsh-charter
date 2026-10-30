@@ -183,7 +183,6 @@ export function summarizeCharterRead(events, activeSnapshots = []) {
     legacyKeys.set(key, list)
   }
   let ambiguous = 0
-  let unpairedResults = 0
   let unattributedResults = 0
   let paired = 0
   for (const event of ordered) {
@@ -226,7 +225,7 @@ export function summarizeCharterRead(events, activeSnapshots = []) {
     matched.activeCharterBeforeCall = activeCharter !== undefined
     matched.activeCharterSeq = activeCharter?.seq ?? null
     matched.activeCharterDigest = activeCharter?.charterDigest ?? null
-    matched.redundantReadCandidate = activeCharter !== undefined
+    matched.redundantReadCandidate = activeCharter !== undefined && matched.view === 'standing'
     paired += 1
   }
   const results = calls.filter(call => call.resultBytes !== undefined)
@@ -235,7 +234,6 @@ export function summarizeCharterRead(events, activeSnapshots = []) {
     redundantReads: calls.filter(call => call.redundantReadCandidate === true).length,
     paired,
     unpairedCalls: calls.length - paired,
-    unpairedResults,
     unattributedResults,
     ambiguous,
     views: calls.map(call => call.view),
@@ -364,7 +362,6 @@ export function summarizeTraffic(events) {
   const activeCharterBytes = runtime.active.reduce((sum, snapshot) => sum + snapshot.charterBytes, 0)
   if (read.calls > 0) notes.push(`charter_read calls: ${read.calls}; redundant candidates: ${read.redundantReads}`)
   if (read.redundantReads > 0) warnings.push(`charter_read ran while an active charter snapshot existed: ${read.redundantReads}`)
-  if (read.unpairedResults > 0) warnings.push(`unpaired charter_read results: ${read.unpairedResults}`)
   if (read.unattributedResults > 0) warnings.push(`unattributed tool results: ${read.unattributedResults}`)
   if (read.ambiguous > 0) warnings.push(`ambiguous charter_read pairings: ${read.ambiguous}`)
   const missingUsage = attempts.filter(attempt => attempt.usage === null).length
@@ -391,6 +388,7 @@ export function summarizeTraffic(events) {
       activeLatestCharterBytes: runtime.active.filter(snapshot => snapshot.charterDigest !== undefined).at(-1)?.charterBytes ?? 0,
       charterDuplicateBytes: activeCharterBytes - (runtime.active.filter(snapshot => snapshot.charterDigest !== undefined).at(-1)?.charterBytes ?? 0),
       sectionChurn: summarizeSectionChurn(runtime.active),
+      sectionChurnAll: summarizeSectionChurn(runtime.historical),
     },
     toolSchema: {
       count: toolCount ?? null,

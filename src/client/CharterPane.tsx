@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent, type ReactNode } from 'react'
+import { Fragment, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent, type ReactNode } from 'react'
 import type {
   PropsLocale,
   PropsRuntime,
@@ -1488,23 +1488,25 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
               { id: 'context' as const, label: t('nav.context'), help: t('nav.contextHelp') },
               { id: 'recovery' as const, label: t('nav.recovery'), help: t('nav.recoveryHelp') },
             ] as const).map(item => (
-              <button
-                key={item.id}
-                type="button"
-                className={`charter-nav__item${section === item.id ? ' is-active' : ''}`}
-                aria-current={section === item.id ? 'page' : undefined}
-                aria-description={item.help}
-                onClick={() => goSection(item.id)}
-              >
-                <span className="charter-nav__text">{item.label}</span>
-                {'badge' in item && item.badge !== undefined && <span className="charter-nav__badge">{item.badge}</span>}
-                {'dot' in item && item.dot === true && <span className="charter-nav__dot" aria-hidden="true" />}
-                <span
-                  className="charter-nav__help"
-                  data-tooltip={item.help}
-                  aria-hidden="true"
-                />
-              </button>
+              <Fragment key={item.id}>
+                <button
+                  type="button"
+                  className={`charter-nav__item${section === item.id ? ' is-active' : ''}`}
+                  aria-current={section === item.id ? 'page' : undefined}
+                  aria-describedby={`charter-nav-help-${item.id}`}
+                  onClick={() => goSection(item.id)}
+                >
+                  <span className="charter-nav__text">{item.label}</span>
+                  {'badge' in item && item.badge !== undefined && <span className="charter-nav__badge">{item.badge}</span>}
+                  {'dot' in item && item.dot === true && <span className="charter-nav__dot" aria-hidden="true" />}
+                  <span
+                    className="charter-nav__help"
+                    data-tooltip={item.help}
+                    aria-hidden="true"
+                  />
+                </button>
+                <span id={`charter-nav-help-${item.id}`} className="charter-sr-only">{item.help}</span>
+              </Fragment>
             ))}
           </nav>
 
@@ -2344,9 +2346,11 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                     {t('preview.exact')}
                   </button>
                   <span className="charter-hint">
-                    {previewMode === 'formatted'
-                      ? formattedPreview === null ? t('preview.formattedUnavailable') : t('preview.formattedHint')
-                      : t('preview.exactHint')}
+                    {preview === ''
+                      ? t('preview.emptyHint')
+                      : previewMode === 'formatted'
+                        ? formattedPreview === null ? t('preview.formattedUnavailable') : t('preview.formattedHint')
+                        : t('preview.exactHint')}
                   </span>
                 </div>
                 <pre>{preview === ''

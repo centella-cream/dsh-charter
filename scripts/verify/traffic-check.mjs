@@ -15,7 +15,7 @@ import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { join, basename } from 'node:path'
+import { join } from 'node:path'
 import { parseTranscript } from './compaction-checks.mjs'
 import { summarizeTraffic } from './traffic-checks.mjs'
 
@@ -65,12 +65,15 @@ function findSessionLog(home, sessionId, project) {
   const projects = project === undefined ? readdirSync(root).sort() : [project]
   const matches = []
   for (const name of projects) {
-    const directory = join(root, name, sessionId)
-    if (!existsSync(directory)) continue
-    const files = readdirSync(directory).filter(file => LOG_NAMES.has(file))
-    if (files.length === 0) continue
-    if (files.length > 1) fail(`multiple session logs found for ${sessionId}; pass --log`)
-    matches.push(join(directory, files[0]))
+    const candidates = sessionId.startsWith('session-') ? [sessionId] : [sessionId, `session-${sessionId}`]
+    for (const candidate of candidates) {
+      const directory = join(root, name, candidate)
+      if (!existsSync(directory)) continue
+      const files = readdirSync(directory).filter(file => LOG_NAMES.has(file))
+      if (files.length === 0) continue
+      if (files.length > 1) fail(`multiple session logs found for ${candidate}; pass --log`)
+      matches.push(join(directory, files[0]))
+    }
   }
   if (matches.length === 0) fail(`no session transcript found for ${sessionId} under ${root}`)
   if (matches.length > 1) fail(`session id ${sessionId} appears in multiple projects; pass --project or --log`)
@@ -85,12 +88,15 @@ function main() {
     ? fail('no Session: pass --session <id>, --log <file>, or set DSH_SESSION_ID')
     : findSessionLog(home, requestedSession, args.project))
   if (!existsSync(logFile)) fail(`session log not found: ${logFile}`)
-  const sessionId = args.session ?? basename(join(logFile, '..')) ?? requestedSession
-  if (!SESSION_ID.test(sessionId)) fail(`unsafe Session id: ${JSON.stringify(sessionId)}`)
   const source = readTranscript(logFile)
   const parsed = parseTranscript(source)
   if (!parsed.complete) {
     fail(`transcript is corrupt; refusing to summarize skipped lines: ${JSON.stringify(parsed.errors)}`)
+  }
+  const header = parsed.events.find(event => event.type === 'session' && typeof event.id === 'string')
+  const sessionId = header?.id ?? requestedSession
+  if (sessionId === undefined || !SESSION_ID.test(sessionId)) {
+    fail(`transcript has no valid Session header id; pass --session only with a matching log`)
   }
   const report = {
     ...summarizeTraffic(parsed.events),
@@ -117,10 +123,11 @@ function main() {
   console.log(`  runtime snapshots: historical ${report.runtime.historical.snapshots}, active ${report.runtime.activeSurface.snapshots}, current epoch all ${report.runtime.currentCompactionEpochAll.snapshots} / active ${report.runtime.currentCompactionEpochActive.snapshots}, shadowed ${report.runtime.shadowed}`)
   console.log(`  runtime bytes: active ${report.runtime.activeSurfacePayloadBytes}, duplicate ${report.runtime.duplicateBytes}, latest ${report.runtime.activeSurface.latest?.bytes ?? 0}`)
   console.log(`  charter bytes: active ${report.runtime.activeCharterPayloadBytes}, latest ${report.runtime.activeLatestCharterBytes}, duplicate ${report.runtime.charterDuplicateBytes}`)
-  console.log(`  section churn: ${report.runtime.sectionChurn.events} changes${report.runtime.sectionChurn.sections.length === 0 ? '' : ` (${report.runtime.sectionChurn.sections.map(entry => `${entry.name}:${entry.changes}`).join(', ')})`}`)
+  console.log(`  section churn active: ${report.runtime.sectionChurn.events} changes${report.runtime.sectionChurn.sections.length === 0 ? '' : ` (${report.runtime.sectionChurn.sections.map(entry => `${entry.name}:${entry.changes}`).join(', ')})`}`)
+  console.log(`  section churn all: ${report.runtime.sectionChurnAll.events} changes`)
   console.log(`  tool schema: ${report.toolSchema.count ?? 'n/a'} tools, ${report.toolSchema.bytes ?? 'n/a'} B, charter_read ${report.toolSchema.charterReadToolBytes ?? 'n/a'} B`)
   console.log(`  cache: read ${report.modelAttempts.usage.cacheReadTokens}, write ${report.modelAttempts.usage.cacheWriteTokens}, reported attempts ${report.modelAttempts.usage.cacheReportedAttempts}`)
-  console.log(`  charter_read: ${report.charterRead.calls} calls, ${report.charterRead.paired} paired, ${report.charterRead.resultBytes} B results, ${report.charterRead.redundantReads} redundant candidates, ${report.charterRead.ambiguous} ambiguous, ${report.charterRead.unpairedResults} unpaired results`)
+  console.log(`  charter_read: ${report.charterRead.calls} calls, ${report.charterRead.paired} paired, ${report.charterRead.resultBytes} B results, ${report.charterRead.redundantReads} redundant candidates, ${report.charterRead.ambiguous} ambiguous`)
   for (const note of report.notes ?? []) console.log(`  NOTE: ${note}`)
   for (const warning of report.warnings) console.log(`  WARN: ${warning}`)
 }
