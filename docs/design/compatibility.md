@@ -2,7 +2,7 @@
 
 English | [中文](compatibility.zh.md)
 
-Research/verification baseline: 2026-10-29.
+Research/verification baseline: 2026-10-30.
 
 This document answers three questions:
 
@@ -24,7 +24,7 @@ This document answers three questions:
 | `0.1.5-rc.1` / `0.1.5-rc.2` / `0.1.5-rc.3` | Not supported | contract differences too large; see section 4 |
 | `0.1.6-alpha.x` | Not supported | same generation as 0.1.5; not individually verified |
 | `0.2.2-rc.x` | Not declared | peer range does not cover this prerelease; add after verification |
-| `0.2.2-alpha.2` | Not supported | probed 2026-10-29: strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run; not covered by the rc.5 declaration |
+| `0.2.2-alpha.2` | Not supported | probed 2026-10-30: strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run; not covered by the rc.6 declaration |
 | `0.3.x` | Not declared | major upgrade requires re-verification |
 
 The DSH peer ranges and `engines.dsh` in `package.json` are exactly the seven verified versions:

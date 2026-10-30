@@ -343,7 +343,7 @@ npm run verify:compaction # manual real-model compaction check (not part of chec
 ```
 
 The test suite covers the pure core, real Host composition, storage-domain behavior, Remote framing,
-history extraction, client state, and factory-bundle registration. The current tree has **364 tests**; the seven-version matrix passes on all declared DSH versions. See the [verification record](docs/verification.md) for the current evidence.
+history extraction, client state, and factory-bundle registration. The current tree has **368 tests**; the seven-version matrix passes on all declared DSH versions. See the [verification record](docs/verification.md) for the current evidence.
 
 ## Acknowledgements
 
@@ -382,13 +382,13 @@ security reports, follow [SECURITY.md](SECURITY.md).
 Pre-1.0. The DSH plugin ABI is still moving; compatibility is tested against the seven versions above, and the
 design keeps the compatibility layer deliberately small.
 
-Current release state (2026-10-29):
+Current release state (2026-10-30):
 
 - **Published:** `0.1.0-rc.4` — npm `latest`/`next`, GitHub Release, immutable tag.
 - **Finalized, npm-delayed:** `0.1.0-rc.5` — candidate green, exact artifact SHA-256
   `94e27acf8851ad5423defd06a41253171317f4e805af809fe8e8e7a9ce83a939`, tag `v0.1.0-rc.5` at the
   checksum-only C+1 commit. No npm version or GitHub Release yet.
-- **Active, unpublished:** `0.1.0-rc.6` — documentation/version activation only so far; not tagged and not
+- **Active, unpublished:** `0.1.0-rc.6` — documentation, UI help/preview, and traffic observation only so far; not tagged and not
   built as a release candidate.
 - **Pending for rc.5:** npm token publication, GitHub prerelease, protected browser evidence, and Promotion.
   The repository `main` includes the token-publish workflow.

@@ -108,7 +108,7 @@ Host 在 `session/created` 时初始化记录，并在首次 prompt 前的 `agen
 - **最新已发布 RC：** `0.1.0-rc.4`（npm `latest` 和 `next`，GitHub Release）。
 - **已定版但 npm 延迟：** `0.1.0-rc.5` 已打 tag（`v0.1.0-rc.5`），candidate 全绿，产物 digest 不可变；
   npm 发布和 GitHub prerelease 延迟，尚不能从 npm 安装。
-- **当前源码：** `0.1.0-rc.6`，未发布、未打 tag。当前只包含文档/版本号启用工作，不是已发布运行时变更。
+- **当前源码：** `0.1.0-rc.6`，未发布、未打 tag。当前只包含文档、UI 帮助/预览和流量观测工作，不是已发布运行时变更。
 - `0.1.0-rc.5` 只包含审阅、恢复、无障碍和发布证据硬化，不新增 0.2 能力线。
 
 普通使用请安装最新已发布版本。不要假设 `dsh-charter@0.1.0-rc.5` 或 rc.6 已能从 registry 安装；最新已发布
@@ -311,7 +311,7 @@ npm run verify:compaction # 手工真实模型 compaction 校验（不在 check 
 ```
 
 测试覆盖纯内核、真实 Host 组合、storage domain、Remote framing、历史抽取、客户端状态和 factory bundle
-注册。当前树有 **364 个测试**；七版本矩阵在所有声明版本上通过。当前证据见[验证记录](docs/verification.zh.md)。
+注册。当前树有 **368 个测试**；七版本矩阵在所有声明版本上通过。当前证据见[验证记录](docs/verification.zh.md)。
 
 ## 致谢
 
@@ -347,13 +347,13 @@ npm run verify:compaction # 手工真实模型 compaction 校验（不在 check 
 
 Pre-1.0。DSH 插件 ABI 仍在演进；项目对上述版本做兼容验证，并刻意保持兼容层很小。
 
-当前发布状态（2026-10-29）：
+当前发布状态（2026-10-30）：
 
 - **已发布：** `0.1.0-rc.4` — npm `latest`/`next`、GitHub Release、不可变 tag。
 - **已定版，npm 延迟：** `0.1.0-rc.5` — candidate 全绿，精确产物 SHA-256
   `94e27acf8851ad5423defd06a41253171317f4e805af809fe8e8e7a9ce83a939`，tag `v0.1.0-rc.5` 指向
   checksum-only C+1 commit。尚无 npm version 或 GitHub Release。
-- **当前启用，未发布：** `0.1.0-rc.6` — 目前只有文档/版本号启用工作，未打 tag，也未构建 release candidate。
+- **当前启用，未发布：** `0.1.0-rc.6` — 目前只有文档、UI 帮助/预览和流量观测工作，未打 tag，也未构建 release candidate。
 - **rc.5 待完成：** npm token 发布、GitHub prerelease、受保护 browser evidence 和 Promotion。`main` 已包含
   token 发布 workflow。
 - 真实模型 compaction 验收 PASS 仍记录在不可变

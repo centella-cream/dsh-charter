@@ -5,10 +5,11 @@ export function defineCharterReadTool(charter: CharterService): ToolDefinition {
   return defineTool({
     name: 'charter_read',
     description:
-      'Read the current user-authored session charter (read-only). The standing charter is normally already '
-      + 'present in runtime context; call this only when the user asks to verify it or needs inactive/history '
-      + 'entries. standing returns the current working set; all returns a bounded debug page (64 items / 32 KiB) '
-      + 'with truncated and objectiveTruncated flags.',
+      'Read the current user-authored session charter (read-only). The standing charter is normally present '
+      + 'in runtime context when automatic injection is available; do not call standing merely to restate that '
+      + 'context. Call it when the context may be absent or stale, or when revision/verification details are '
+      + 'needed. standing can be large; use all only for inactive/history entries (bounded to 64 items / 32 KiB, '
+      + 'with truncated and objectiveTruncated flags).',
     parameters: {
       view: {
         type: 'string',

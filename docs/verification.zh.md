@@ -2,7 +2,7 @@
 
 [English](verification.md) | 中文
 
-验证日期：2026-10-29。本文件是当前证据记录；历史逐提交的叙事保留在 Git 历史和 Changelog。临时目录、profile、
+验证日期：2026-10-30。本文件是当前证据记录；历史逐提交的叙事保留在 Git 历史和 Changelog。临时目录、profile、
 tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 
 环境：macOS，Node `v22.23.1`，npm `12.0.2`，pnpm `12.3.4`。本地 DSH 开发基线：`0.2.1-rc.4`（当前 npm
@@ -10,20 +10,20 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 
 ## 1. 当前结论
 
-当前发布状态（2026-10-29）：
+当前发布状态（2026-10-30）：
 
 - 已发布：`0.1.0-rc.4`（npm `latest`/`next`、GitHub Release）。
 - 候选：`0.1.0-rc.5`，candidate run `40864078201` 全绿，精确产物
   `dsh-charter-0.1.0-rc.5.tgz` 的 SHA-256 为
   `94e27acf8851ad5423defd06a41253171317f4e805af809fe8e8e7a9ce83a939`。
 - 发布提交：`C=d138d65dc4f1b2628dc043f2dd437ea213112a4d`，`C+1=tag v0.1.0-rc.5=0a6ccc5`。
-- 当前源码：`0.1.0-rc.6`（未发布、未打 tag；文档/版本号启用）。
+- 当前源码：`0.1.0-rc.6`（未发布、未打 tag；文档/UI/流量观测）。
 - 待完成：npm token 发布、GitHub prerelease、受保护 browser evidence、Promotion。
 
 | 项目 | 结果 |
 | --- | --- |
 | TypeScript 严格检查 | 当前树通过 |
-| Vitest | 28 个测试文件 / 364 个测试通过（`npm test`，先 build） |
+| Vitest | 29 个测试文件 / 368 个测试通过（`npm test`，先 build） |
 | Host ESM 构建 + 浏览器 factory bundle | 通过 |
 | Remote 契约与 client smoke | 通过 |
 | 普通 package smoke | 通过 |
@@ -31,8 +31,8 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 | packed recovery smoke | 通过：export、删除 target、restore、receipt replay、两次 restart、健康目标拒绝、packed fault 子集 |
 | 真实 `TypertGatewayService` | 精确 artifact 在隔离的 DSH `0.2.1-rc.3` / `rc.4` 依赖图上通过 |
 | 兼容 sentinel | `0.1.7-rc.2`、`0.2.1-rc.2`、`0.2.1-rc.4` 通过 |
-| 七版本全量 rerun | tracked `compat-matrix --versions all` 通过（每版本 364/364） |
-| 未跟踪 `0.2.2-alpha.2` probe | strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.5 pins 4.0.5; no tests run；rc.5 明确不支持 |
+| 七版本全量 rerun | tracked `compat-matrix --versions all` 通过（每版本 368/368） |
+| 未跟踪 `0.2.2-alpha.2` probe | strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run；rc.6 明确不支持 |
 | 真实浏览器恢复 | 受保护的人工 evidence gate；未自动化 |
 | 真实模型 compaction | 2026-10-22 记录 PASS；仍是人工发布门禁 |
 
@@ -64,15 +64,15 @@ CI（`.github/workflows/ci.yml`）在 Node `22.19.0` / `24` 上运行 `npm run c
 
 | DSH 版本 | 证据 |
 | --- | --- |
-| `0.1.7-rc.2` | 364/364 tracked matrix PASS |
-| `0.2.0-rc.1` | 364/364 tracked matrix PASS |
-| `0.2.0-rc.2` | 364/364 tracked matrix PASS |
-| `0.2.1-rc.1` | 364/364 tracked matrix PASS |
-| `0.2.1-rc.2` | 364/364 tracked matrix PASS |
-| `0.2.1-rc.3` | 364/364 tracked matrix PASS |
-| `0.2.1-rc.4` | 364/364 tracked matrix PASS |
+| `0.1.7-rc.2` | 368/368 tracked matrix PASS |
+| `0.2.0-rc.1` | 368/368 tracked matrix PASS |
+| `0.2.0-rc.2` | 368/368 tracked matrix PASS |
+| `0.2.1-rc.1` | 368/368 tracked matrix PASS |
+| `0.2.1-rc.2` | 368/368 tracked matrix PASS |
+| `0.2.1-rc.3` | 368/368 tracked matrix PASS |
+| `0.2.1-rc.4` | 368/368 tracked matrix PASS |
 
-当前 rc.6 源码树已于 2026-10-29 通过 `compat-matrix --versions all`：每个声明版本均通过 typecheck、build 和 364/364 测试。安装使用 pnpm strict peer、精确工具版本、单一 zod 4.6.7 图、完整 `pnpm list --depth Infinity` 图校验，并记录 lockfile SHA-256。未跟踪 `0.2.2-alpha.2` 已 probe：strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.5 pins 4.0.5; no tests run，rc.5 明确不支持。
+当前 rc.6 源码树已于 2026-10-30 通过 `compat-matrix --versions all`：每个声明版本均通过 typecheck、build 和 368/368 测试。安装使用 pnpm strict peer、精确工具版本、单一 zod 4.6.7 图、完整 `pnpm list --depth Infinity` 图校验，并记录 lockfile SHA-256。未跟踪 `0.2.2-alpha.2` 已 probe：strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run，rc.6 明确不支持。
 
 ## 4. 测试覆盖
 
@@ -112,13 +112,12 @@ CI（`.github/workflows/ci.yml`）在 Node `22.19.0` / `24` 上运行 `npm run c
 node scripts/verify/traffic-check.mjs --session <id> --home <DSH_HOME> [--json]
 ```
 
-输出 step 数、runtime-context snapshots（去重数/总数/最大字节）、`charter:standing` snapshots、assistant
-`usage`（`inputTokens`、`cacheReadTokens`、`cacheWriteTokens`）以及 `charter_read` 调用和结果字节。它是诊断
-证据，不是发布 pass/fail 门禁。
+输出 model attempts（含 `assistant/attempt` stream usage）、active-surface / historical runtime-context
+snapshots、compaction epoch、token usage 归因，以及 `charter_read` 调用和结果字节。本地运行只是**诊断**，
+**不是发布证据**：目前没有归档 transcript digest、脱敏 fixture 或受控 A/B 结果，不能把某次本地观测当作
+cache 命中变化或“当前模型请求实际携带某状态”的证明。
 
-2026-10-30 当前 Session 的代表性观测：4,749 steps、20 个 runtime snapshots（10 distinct）、2 个 charter
-snapshots（1 distinct），并有 `charter_read` 调用；这确认了结构性的快照累积风险。固定 slot/replace 方案在
-获得受控 A/B usage 证据前不实施。
+checker 已有 fixture 测试覆盖；在改变 prompt 投递模型前仍需受控 A/B 实验。
 
 ## 6. 人工/外部缺口
 

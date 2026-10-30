@@ -5,13 +5,13 @@
 这是当前发布清单，取代早期按 rc 编写的暂存说明。已发布的 tag、GitHub Release 和 npm 版本不可变：不移动
 tag、不删除已发布 Release、不在打 tag 后重建字节。
 
-## 当前状态（2026-10-29）
+## 当前状态（2026-10-30）
 
 - **已发布：** `0.1.0-rc.4` — npm `latest`/`next`、GitHub Release、不可变 tag。
 - **已定版候选：** `0.1.0-rc.5` — 已实现并冻结。Candidate workflow run `40864078201` 全绿；精确产物
   SHA-256 为 `94e27acf8851ad5423defd06a41253171317f4e805af809fe8e8e7a9ce83a939`，根 `SHA256SUMS`
   已记录。tag `v0.1.0-rc.5` 指向 checksum-only C+1 commit `0a6ccc5`。
-- **当前源码：** `0.1.0-rc.6`，未发布、未打 tag；目前只有文档/版本号启用工作。
+- **当前源码：** `0.1.0-rc.6`，未发布、未打 tag；目前只有文档、UI 帮助/预览和流量观测工作。
 - **尚未发布：** rc.5 没有 npm version，也没有 GitHub Release；受保护 browser evidence 与 Promotion 仍
   待完成。`main` 已包含 repository-token 发布 workflow。
 - 不要创建第二个 rc.5 tag，也不要发布重建的 tarball。如果未来 Promotion 仍尝试创建 tag，必须先与已推送的

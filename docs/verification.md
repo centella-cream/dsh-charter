@@ -2,7 +2,7 @@
 
 English | [中文](verification.zh.md)
 
-Verification date: 2026-10-29. This is the current evidence record; historical per-commit narratives live in Git
+Verification date: 2026-10-30. This is the current evidence record; historical per-commit narratives live in Git
 history and the Changelog. Temporary directories, profiles, tarballs, and fetched HTML live under `.tmp/` and are
 excluded from the published package.
 
@@ -11,20 +11,20 @@ Environment: macOS, Node `v22.23.1`, npm `12.0.2`, pnpm `12.3.4`. Local DSH deve
 
 ## 1. Current conclusion
 
-Current release state (2026-10-29):
+Current release state (2026-10-30):
 
 - Published: `0.1.0-rc.4` (npm `latest`/`next`, GitHub Release).
 - Candidate: `0.1.0-rc.5`, candidate run `40864078201` green, exact artifact
   `dsh-charter-0.1.0-rc.5.tgz` with SHA-256
   `94e27acf8851ad5423defd06a41253171317f4e805af809fe8e8e7a9ce83a939`.
 - Release commits: `C=d138d65dc4f1b2628dc043f2dd437ea213112a4d`, `C+1=tag v0.1.0-rc.5=0a6ccc5`.
-- Active source: `0.1.0-rc.6` (unreleased, untagged; documentation/version activation).
+- Active source: `0.1.0-rc.6` (unreleased, untagged; documentation/UI/traffic observation).
 - Pending: npm token publication, GitHub prerelease, protected browser evidence, Promotion.
 
 | Item | Result |
 | --- | --- |
 | Strict TypeScript check | Pass on the current tree |
-| Vitest | 28 files / 364 tests pass (`npm test`, which builds first) |
+| Vitest | 29 files / 368 tests pass (`npm test`, which builds first) |
 | Host ESM build + browser factory bundle | Pass |
 | Remote contract and client smoke | Pass |
 | Normal package smoke | Pass |
@@ -32,9 +32,9 @@ Current release state (2026-10-29):
 | Packed-artifact recovery smoke | Pass: export, target removal, restore, receipt replay, two restarts, healthy-target refusal, packed fault subset |
 | Real `TypertGatewayService` | Pass on exact artifact with isolated DSH `0.2.1-rc.3` and `rc.4` graphs |
 | Compatibility sentinels | Pass on `0.1.7-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4` |
-| Seven-version full rerun | Pass via tracked `compat-matrix --versions all` (364/364 each) |
+| Seven-version full rerun | Pass via tracked `compat-matrix --versions all` (368/368 each) |
 | Fresh Web profile matrix | PASS: exact artifact installed and served on DSH `0.1.7-rc.2`, `0.2.0-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4` |
-| Untracked `0.2.2-alpha.2` probe | strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run; explicitly unsupported in rc.5 |
+| Untracked `0.2.2-alpha.2` probe | strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run; explicitly unsupported in rc.6 |
 | Real browser recovery | Manual protected evidence gate; not automated |
 | Real-model compaction | Separately recorded PASS (2026-10-22); still a manual release gate |
 
@@ -66,15 +66,15 @@ The tracked runner creates isolated pnpm projects with strict peers and runs typ
 
 | DSH version | Evidence |
 | --- | --- |
-| `0.1.7-rc.2` | 364/364 tracked matrix PASS |
-| `0.2.0-rc.1` | 364/364 tracked matrix PASS |
-| `0.2.0-rc.2` | 364/364 tracked matrix PASS |
-| `0.2.1-rc.1` | 364/364 tracked matrix PASS |
-| `0.2.1-rc.2` | 364/364 tracked matrix PASS |
-| `0.2.1-rc.3` | 364/364 tracked matrix PASS |
-| `0.2.1-rc.4` | 364/364 tracked matrix PASS |
+| `0.1.7-rc.2` | 368/368 tracked matrix PASS |
+| `0.2.0-rc.1` | 368/368 tracked matrix PASS |
+| `0.2.0-rc.2` | 368/368 tracked matrix PASS |
+| `0.2.1-rc.1` | 368/368 tracked matrix PASS |
+| `0.2.1-rc.2` | 368/368 tracked matrix PASS |
+| `0.2.1-rc.3` | 368/368 tracked matrix PASS |
+| `0.2.1-rc.4` | 368/368 tracked matrix PASS |
 
-The current rc.6 source tree passed `compat-matrix --versions all` on 2026-10-29: every declared version passed typecheck, build, and 364/364 tests. Installs use pnpm strict peer resolution, exact tool pins, a single zod 4.6.7 graph, full `pnpm list --depth Infinity` graph validation, and recorded lockfile SHA-256 values. The untracked `0.2.2-alpha.2` probe is recorded as unsupported: strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run.
+The current rc.6 source tree passed `compat-matrix --versions all` on 2026-10-30: every declared version passed typecheck, build, and 368/368 tests. Installs use pnpm strict peer resolution, exact tool pins, a single zod 4.6.7 graph, full `pnpm list --depth Infinity` graph validation, and recorded lockfile SHA-256 values. The untracked `0.2.2-alpha.2` probe is recorded as unsupported: strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run.
 
 ## 4. What the tests cover
 
@@ -118,14 +118,14 @@ The read-only checker reports context accumulation without changing the Host:
 node scripts/verify/traffic-check.mjs --session <id> --home <DSH_HOME> [--json]
 ```
 
-It reports step count, runtime-context snapshots (distinct/total/max bytes), `charter:standing` snapshots
-(distinct/total/max bytes), assistant `usage` totals (`inputTokens`, `cacheReadTokens`, `cacheWriteTokens`), and
-`charter_read` calls/result bytes. It is diagnostic evidence, not a release pass/fail gate.
+It reports model attempts (including `assistant/attempt` stream usage), active-surface and historical
+runtime-context snapshots, compaction epochs, token usage attribution, and `charter_read` calls/result bytes.
+A local run is **diagnostic only and is not release evidence**: no transcript digest, sanitized fixture, or
+controlled A/B result is archived here yet. Do not cite a local observation as proof that cache hit changed or
+that a particular snapshot state is present in the current model request.
 
-A representative current-Session observation (2026-10-30) showed 4,749 steps, 20 runtime snapshots (10 distinct),
-2 charter snapshots (1 distinct), and `charter_read` calls; this confirms the structural accumulation risk before
-any prompt-delivery redesign. Fixed-slot/replace delivery is intentionally not implemented without controlled
-A/B usage evidence.
+The checker itself has fixture coverage; a controlled A/B experiment is still required before changing the
+prompt-delivery model.
 
 ## 6. Manual and external gaps
 

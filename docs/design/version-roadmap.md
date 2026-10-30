@@ -4,7 +4,7 @@ English | [中文](version-roadmap.zh.md)
 
 > This English file is a non-normative summary. The Chinese roadmap is normative when details differ.
 
-Baseline date: 2026-10-29.
+Baseline date: 2026-10-30.
 
 ## 1. Decision
 
@@ -35,8 +35,7 @@ rc.5 fixed the correctness defect inside the promised 0.1 workflow: previously e
   exact artifact digest is recorded in the root `SHA256SUMS`. The tag points at the checksum-only C+1 commit.
 - rc.5 is **not published yet**: npm publication, the GitHub prerelease, protected browser evidence, and
   Promotion are pending. Do not describe it as installable from npm.
-- rc.6 is active in the source tree but **unreleased and untagged**. It currently carries documentation/version
-  activation work; a fresh candidate is required before any tag or publication.
+- rc.6 is active in the source tree but **unreleased and untagged**. It currently carries documentation, UI, and traffic-observation work; a fresh candidate is required before any tag or publication.
 - `main` contains the token-publish workflow used by the remaining promotion path. Published rc.4 history is
   never rewritten.
 

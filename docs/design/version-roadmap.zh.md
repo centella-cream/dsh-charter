@@ -2,7 +2,7 @@
 
 [English](version-roadmap.md) | 中文
 
-基准日期：2026-10-29。
+基准日期：2026-10-30。
 
 ## 1. 决策
 
@@ -40,7 +40,7 @@ rc.5 修复了与产品承诺冲突的审阅正确性问题：此前历史草案
   `SHA256SUMS`；tag 指向 checksum-only C+1 commit。
 - rc.5 **尚未发布**：npm 发布、GitHub prerelease、受保护 browser evidence 和 Promotion 仍待完成。不要把
   rc.5 描述为可从 npm 安装。
-- rc.6 已在源码启用，但**未发布、未打 tag**。当前只承载文档/版本号启用工作；任何 tag 或发布前都必须重新
+- rc.6 已在源码启用，但**未发布、未打 tag**。当前只承载文档、UI 帮助/预览和流量观测工作；任何 tag 或发布前都必须重新
   构建 candidate。
 - `main` 已包含剩余 promotion 路径使用的 token 发布 workflow。已发布的 rc.4 历史永不改写。
 
