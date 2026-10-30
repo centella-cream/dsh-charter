@@ -81,7 +81,13 @@ export function summarizeRuntimeSnapshots(events) {
       seq: event.seq,
       bytes: Buffer.byteLength(text, 'utf8'),
       digest: digest(text),
-      sections: sections.map(section => section?.name).filter(name => typeof name === 'string'),
+      sections: sections
+        .filter(section => typeof section?.name === 'string')
+        .map(section => ({
+          name: section.name,
+          bytes: Buffer.byteLength(String(section.text ?? ''), 'utf8'),
+          digest: digest(String(section.text ?? '')),
+        })),
       charterBytes: charter === undefined ? 0 : Buffer.byteLength(String(charter.text ?? ''), 'utf8'),
       charterDigest: charter === undefined ? undefined : digest(String(charter.text ?? '')),
       shadowed: isShadowed(event.seq),
@@ -98,6 +104,29 @@ export function summarizeRuntimeSnapshots(events) {
     shadowedCount: snapshots.length - active.length,
     compactionEpoch: epoch,
     lastCompactionSeq: lastCompactionSeq ?? null,
+  }
+}
+
+/** Count section changes between adjacent active snapshots. */
+export function summarizeSectionChurn(activeSnapshots) {
+  const byName = new Map()
+  for (let index = 1; index < activeSnapshots.length; index += 1) {
+    const previous = new Map(activeSnapshots[index - 1].sections.map(section => [section.name, section]))
+    const current = new Map(activeSnapshots[index].sections.map(section => [section.name, section]))
+    const names = new Set([...previous.keys(), ...current.keys()])
+    for (const name of names) {
+      const before = previous.get(name)
+      const after = current.get(name)
+      if (before?.digest === after?.digest) continue
+      const entry = byName.get(name) ?? { name, changes: 0, bytes: 0 }
+      entry.changes += 1
+      entry.bytes += after?.bytes ?? 0
+      byName.set(name, entry)
+    }
+  }
+  return {
+    events: activeSnapshots.length <= 1 ? 0 : [...byName.values()].reduce((sum, entry) => sum + entry.changes, 0),
+    sections: [...byName.values()].sort((left, right) => right.changes - left.changes || left.name.localeCompare(right.name)),
   }
 }
 
@@ -119,7 +148,7 @@ function summarizeSnapshotSet(snapshots, selector = () => true) {
 }
 
 /** Pair charter_read calls/results without relying on a reusable callId alone. */
-export function summarizeCharterRead(events) {
+export function summarizeCharterRead(events, activeSnapshots = []) {
   const ordered = [...events].sort((left, right) => left.seq - right.seq)
   const calls = []
   const callsBySeq = new Map()
@@ -132,6 +161,11 @@ export function summarizeCharterRead(events) {
       callId: event.data?.callId,
       view: 'standing',
       resultBytes: undefined,
+      resultDigest: undefined,
+      activeCharterBeforeCall: false,
+      activeCharterSeq: null,
+      activeCharterDigest: null,
+      redundantReadCandidate: false,
     }
     try {
       const parsed = typeof event.data.arguments === 'string' ? JSON.parse(event.data.arguments) : event.data.arguments
@@ -183,12 +217,22 @@ export function summarizeCharterRead(events) {
       ambiguous += 1
       continue
     }
-    matched.resultBytes = Buffer.byteLength(textOfContent(message.content), 'utf8')
+    const resultText = textOfContent(message.content)
+    matched.resultBytes = Buffer.byteLength(resultText, 'utf8')
+    matched.resultDigest = digest(resultText)
+    const activeCharter = [...activeSnapshots]
+      .filter(snapshot => snapshot.seq < matched.seq && snapshot.charterDigest !== undefined)
+      .at(-1)
+    matched.activeCharterBeforeCall = activeCharter !== undefined
+    matched.activeCharterSeq = activeCharter?.seq ?? null
+    matched.activeCharterDigest = activeCharter?.charterDigest ?? null
+    matched.redundantReadCandidate = activeCharter !== undefined
     paired += 1
   }
   const results = calls.filter(call => call.resultBytes !== undefined)
   return {
     calls: calls.length,
+    redundantReads: calls.filter(call => call.redundantReadCandidate === true).length,
     paired,
     unpairedCalls: calls.length - paired,
     unpairedResults,
@@ -204,7 +248,7 @@ export function summarizeCharterRead(events) {
 export function summarizeTraffic(events) {
   const ordered = [...events].filter(event => event.type !== 'session').sort((left, right) => left.seq - right.seq)
   const runtime = summarizeRuntimeSnapshots(ordered)
-  const read = summarizeCharterRead(ordered)
+  const read = summarizeCharterRead(ordered, runtime.active)
   const attempts = []
   const groups = new Map()
   let stepCount = 0
@@ -213,6 +257,8 @@ export function summarizeTraffic(events) {
   let model
   let contextWindow
   let toolSchemaDigest
+  let toolSchemaBytes
+  let charterReadToolBytes
   let toolCount
   let latestRuntimeDigest
   let latestCharterDigest
@@ -233,8 +279,12 @@ export function summarizeTraffic(events) {
       model = config?.model ?? model
       const tools = event.data?.header?.tools
       if (Array.isArray(tools)) {
+        const serialized = JSON.stringify(tools)
         toolCount = tools.length
-        toolSchemaDigest = digest(JSON.stringify(tools))
+        toolSchemaDigest = digest(serialized)
+        toolSchemaBytes = Buffer.byteLength(serialized, 'utf8')
+        const charterTool = tools.find(tool => tool?.name === 'charter_read')
+        charterReadToolBytes = charterTool === undefined ? 0 : Buffer.byteLength(JSON.stringify(charterTool), 'utf8')
       }
     }
     if (event.type === 'user/message' && event.data?.source?.kind === RUNTIME_CONTEXT) {
@@ -263,6 +313,8 @@ export function summarizeTraffic(events) {
       contextWindow: contextWindow ?? null,
       toolCount: toolCount ?? null,
       toolSchemaDigest: toolSchemaDigest ?? null,
+      toolSchemaBytes: toolSchemaBytes ?? null,
+      charterReadToolBytes: charterReadToolBytes ?? null,
       runtimeDigest: latestRuntimeDigest ?? null,
       charterDigest: latestCharterDigest ?? null,
       compactionEpoch,
@@ -298,8 +350,9 @@ export function summarizeTraffic(events) {
     cacheReportedAttempts: 0,
   })
   const warnings = []
+  const notes = []
   if (runtime.historical.length > runtime.active.length) {
-    warnings.push(`historical runtime snapshots shadowed by surface replacement: ${runtime.shadowedCount}`)
+    notes.push(`historical runtime snapshots shadowed by surface replacement: ${runtime.shadowedCount}`)
   }
   const activeCharterSnapshots = runtime.active.filter(snapshot => snapshot.charterDigest !== undefined)
   if (activeCharterSnapshots.length > 1) {
@@ -309,7 +362,8 @@ export function summarizeTraffic(events) {
   const totalRuntimeBytes = runtime.active.reduce((sum, snapshot) => sum + snapshot.bytes, 0)
   const historicalRuntimeBytes = runtime.historical.reduce((sum, snapshot) => sum + snapshot.bytes, 0)
   const activeCharterBytes = runtime.active.reduce((sum, snapshot) => sum + snapshot.charterBytes, 0)
-  if (read.calls > 0) warnings.push('charter_read was called; inspect whether the runtime context was absent or stale')
+  if (read.calls > 0) notes.push(`charter_read calls: ${read.calls}; redundant candidates: ${read.redundantReads}`)
+  if (read.redundantReads > 0) warnings.push(`charter_read ran while an active charter snapshot existed: ${read.redundantReads}`)
   if (read.unpairedResults > 0) warnings.push(`unpaired charter_read results: ${read.unpairedResults}`)
   if (read.unattributedResults > 0) warnings.push(`unattributed tool results: ${read.unattributedResults}`)
   if (read.ambiguous > 0) warnings.push(`ambiguous charter_read pairings: ${read.ambiguous}`)
@@ -326,14 +380,23 @@ export function summarizeTraffic(events) {
     runtime: {
       historical: summarizeSnapshotSet(runtime.historical),
       activeSurface: summarizeSnapshotSet(runtime.active),
-      currentCompactionEpoch: summarizeSnapshotSet(runtime.currentEpoch),
+      currentCompactionEpochAll: summarizeSnapshotSet(runtime.currentEpoch),
       currentCompactionEpochActive: summarizeSnapshotSet(runtime.currentEpoch.filter(snapshot => !snapshot.shadowed)),
       shadowed: runtime.shadowedCount,
       compactionEpoch: runtime.compactionEpoch,
       historicalPayloadBytes: historicalRuntimeBytes,
       activeSurfacePayloadBytes: totalRuntimeBytes,
+      duplicateBytes: runtime.active.length === 0 ? 0 : totalRuntimeBytes - runtime.active.at(-1).bytes,
       activeCharterPayloadBytes: activeCharterBytes,
       activeLatestCharterBytes: runtime.active.filter(snapshot => snapshot.charterDigest !== undefined).at(-1)?.charterBytes ?? 0,
+      charterDuplicateBytes: activeCharterBytes - (runtime.active.filter(snapshot => snapshot.charterDigest !== undefined).at(-1)?.charterBytes ?? 0),
+      sectionChurn: summarizeSectionChurn(runtime.active),
+    },
+    toolSchema: {
+      count: toolCount ?? null,
+      bytes: toolSchemaBytes ?? null,
+      digest: toolSchemaDigest ?? null,
+      charterReadToolBytes: charterReadToolBytes ?? null,
     },
     modelAttempts: {
       total: attempts.length,
@@ -347,5 +410,6 @@ export function summarizeTraffic(events) {
     },
     charterRead: read,
     warnings,
+    notes,
   }
 }

@@ -17,8 +17,8 @@
 
 ### 可观测性
 
-- 新增 `scripts/verify/traffic-check.mjs`：只读分析 Session transcript，输出 step 数、runtime-context /
-  charter snapshot 累积、assistant token usage，以及 `charter_read` 调用次数和结果字节。
+- 新增 `scripts/verify/traffic-check.mjs`：只读分析 Session transcript，输出 model attempts、active/historical/
+  epoch snapshots、section churn、重复字节、tool schema 字节、token usage，以及冗余 `charter_read` 候选。
 - 缩短 `charter_read` description，避免在 standing charter 已进入 runtime context 时鼓励重复读取。
 
 ### 文档

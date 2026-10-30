@@ -93,6 +93,66 @@ describe('rc.6 traffic checks', () => {
     expect(report.compactionEpoch).toBe(1)
   })
 
+  it('reports duplicate bytes, section churn, and tool-schema bytes', () => {
+    const report = summarizeTraffic([
+      {
+        type: 'user/message',
+        seq: 1,
+        data: {
+          content: [{ type: 'text', text: 'runtime one' }],
+          source: {
+            kind: 'runtime-context',
+            sections: [
+              { name: 'app:web-surface', text: 'a' },
+              { name: 'charter:standing', text: 'same charter' },
+            ],
+          },
+        },
+        surfaceOp: 'append',
+      },
+      {
+        type: 'user/message',
+        seq: 2,
+        data: {
+          content: [{ type: 'text', text: 'runtime two' }],
+          source: {
+            kind: 'runtime-context',
+            sections: [
+              { name: 'app:web-surface', text: 'b' },
+              { name: 'charter:standing', text: 'same charter' },
+            ],
+          },
+        },
+        surfaceOp: 'append',
+      },
+      {
+        type: 'request/header',
+        seq: 3,
+        data: { header: { config: { provider: 'p', model: 'm' }, tools: [
+          { name: 'bash', description: 'b' },
+          { name: 'charter_read', description: 'read' },
+        ] } },
+      },
+    ])
+    expect(report.runtime.activeSurface.snapshots).toBe(2)
+    expect(report.runtime.duplicateBytes).toBeGreaterThan(0)
+    expect(report.runtime.charterDuplicateBytes).toBe(12)
+    expect(report.runtime.sectionChurn.sections).toContainEqual({ name: 'app:web-surface', changes: 1, bytes: 1 })
+    expect(report.toolSchema.bytes).toBeGreaterThan(0)
+    expect(report.toolSchema.charterReadToolBytes).toBeGreaterThan(0)
+    expect(report.toolSchema.count).toBe(2)
+  })
+
+  it('marks a charter_read as redundant when an active charter snapshot already exists', () => {
+    const report = summarizeCharterRead([
+      { type: 'tool/call', seq: 2, data: { turn: 1, step: 1, callId: 'c', name: 'charter_read', arguments: '{}' } },
+      result(3, 1, 1, 'c', 'standing'),
+    ], [{ seq: 1, charterDigest: 'charter-digest' }])
+    expect(report.calls).toBe(1)
+    expect(report.redundantReads).toBe(1)
+    expect(report.callDetails[0].redundantReadCandidate).toBe(true)
+  })
+
   it('pairs repeated callIds per turn instead of overwriting them', () => {
     const report = summarizeCharterRead([
       { type: 'tool/call', seq: 1, data: { turn: 1, step: 1, callId: 'same', name: 'charter_read', arguments: '{}' } },

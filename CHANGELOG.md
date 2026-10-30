@@ -18,8 +18,9 @@ Documentation and version-activation candidate. No product runtime code path, re
 
 ### Observability
 
-- Added `scripts/verify/traffic-check.mjs`, a read-only Session transcript checker reporting step count,
-  runtime-context/charter snapshot accumulation, assistant token usage, and `charter_read` calls/result bytes.
+- Added `scripts/verify/traffic-check.mjs`, a read-only Session transcript checker reporting model attempts,
+  active-surface/historical/epoch snapshots, section churn, duplicate bytes, tool-schema bytes, token usage, and
+  redundant `charter_read` candidates.
 - Shortened the `charter_read` description to discourage redundant reads when the standing charter is already in
   runtime context.
 

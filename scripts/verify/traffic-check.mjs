@@ -114,9 +114,14 @@ function main() {
   console.log(`  events: ${report.events}, turns: ${report.turns}, steps: ${report.steps}`)
   console.log(`  model attempts: ${report.modelAttempts.total} requests, ${report.modelAttempts.successfulMessages} messages, ${report.modelAttempts.failedAttempts} failed/aborted, ${report.modelAttempts.retries} retries`)
   console.log(`  usage: ${report.modelAttempts.unreportedAttempts} unreported, uncached input ${report.modelAttempts.usage.uncachedInputTokens}, billed input ${report.modelAttempts.usage.billedInputTokens ?? 'n/a'}, output ${report.modelAttempts.usage.outputTokens}`)
-  console.log(`  runtime snapshots: historical ${report.runtime.historical.snapshots}, active ${report.runtime.activeSurface.snapshots}, current epoch all ${report.runtime.currentCompactionEpoch.snapshots} / active ${report.runtime.currentCompactionEpochActive.snapshots}, shadowed ${report.runtime.shadowed}`)
-  console.log(`  charter snapshots: historical ${report.runtime.historical.charterSnapshots}, active ${report.runtime.activeSurface.charterSnapshots}, distinct active ${report.runtime.activeSurface.charterDistinct}`)
-  console.log(`  charter_read: ${report.charterRead.calls} calls, ${report.charterRead.paired} paired, ${report.charterRead.resultBytes} B results, ${report.charterRead.ambiguous} ambiguous, ${report.charterRead.unpairedResults} unpaired results`)
+  console.log(`  runtime snapshots: historical ${report.runtime.historical.snapshots}, active ${report.runtime.activeSurface.snapshots}, current epoch all ${report.runtime.currentCompactionEpochAll.snapshots} / active ${report.runtime.currentCompactionEpochActive.snapshots}, shadowed ${report.runtime.shadowed}`)
+  console.log(`  runtime bytes: active ${report.runtime.activeSurfacePayloadBytes}, duplicate ${report.runtime.duplicateBytes}, latest ${report.runtime.activeSurface.latest?.bytes ?? 0}`)
+  console.log(`  charter bytes: active ${report.runtime.activeCharterPayloadBytes}, latest ${report.runtime.activeLatestCharterBytes}, duplicate ${report.runtime.charterDuplicateBytes}`)
+  console.log(`  section churn: ${report.runtime.sectionChurn.events} changes${report.runtime.sectionChurn.sections.length === 0 ? '' : ` (${report.runtime.sectionChurn.sections.map(entry => `${entry.name}:${entry.changes}`).join(', ')})`}`)
+  console.log(`  tool schema: ${report.toolSchema.count ?? 'n/a'} tools, ${report.toolSchema.bytes ?? 'n/a'} B, charter_read ${report.toolSchema.charterReadToolBytes ?? 'n/a'} B`)
+  console.log(`  cache: read ${report.modelAttempts.usage.cacheReadTokens}, write ${report.modelAttempts.usage.cacheWriteTokens}, reported attempts ${report.modelAttempts.usage.cacheReportedAttempts}`)
+  console.log(`  charter_read: ${report.charterRead.calls} calls, ${report.charterRead.paired} paired, ${report.charterRead.resultBytes} B results, ${report.charterRead.redundantReads} redundant candidates, ${report.charterRead.ambiguous} ambiguous, ${report.charterRead.unpairedResults} unpaired results`)
+  for (const note of report.notes ?? []) console.log(`  NOTE: ${note}`)
   for (const warning of report.warnings) console.log(`  WARN: ${warning}`)
 }
 
