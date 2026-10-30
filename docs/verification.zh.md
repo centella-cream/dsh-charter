@@ -5,7 +5,7 @@
 验证日期：2026-10-30。本文件是当前证据记录；历史逐提交的叙事保留在 Git 历史和 Changelog。临时目录、profile、
 tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 
-环境：macOS，Node `v22.23.1`，npm `12.0.2`，pnpm `12.3.4`。本地 DSH 开发基线：`0.2.1-rc.4`（当前 npm
+环境：macOS，Node `v22.23.1`，npm `12.0.2`，pnpm `12.3.4`。本地 DSH 开发基线：`0.2.1-rc.5`（当前 npm
 `next`）。
 
 ## 1. 当前结论
@@ -17,7 +17,7 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
   `dsh-charter-0.1.0-rc.5.tgz` 的 SHA-256 为
   `94e27acf8851ad5423defd06a41253171317f4e805af809fe8e8e7a9ce83a939`。
 - 发布提交：`C=d138d65dc4f1b2628dc043f2dd437ea213112a4d`，`C+1=tag v0.1.0-rc.5=0a6ccc5`。
-- 当前源码：`0.1.0-rc.6`（未发布、未打 tag；文档/UI/流量观测）。
+- 当前源码：`0.1.0-rc.6`（未发布、未打 tag；DSH 0.2.1-rc.5 适配、文档/UI/流量观测）。
 - 待完成：npm token 发布、GitHub prerelease、受保护 browser evidence、Promotion。
 
 | 项目 | 结果 |
@@ -27,12 +27,13 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 | Host ESM 构建 + 浏览器 factory bundle | 通过 |
 | Remote 契约与 client smoke | 通过 |
 | 普通 package smoke | 通过 |
-| exact-artifact package smoke | 对最终 `.tgz` 字节（`94e27acf…`）通过，不重建 |
+| exact-artifact package smoke | 对最终 `.tgz` 字节（`94e27acf…`）通过，不重建；本地 rc.6 验证包也通过 exact package smoke |
 | packed recovery smoke | 通过：export、删除 target、restore、receipt replay、两次 restart、健康目标拒绝、packed fault 子集 |
 | 真实 `TypertGatewayService` | 精确 artifact 在隔离的 DSH `0.2.1-rc.3` / `rc.4` 依赖图上通过 |
-| 兼容 sentinel | `0.1.7-rc.2`、`0.2.1-rc.2`、`0.2.1-rc.4` 通过 |
-| 七版本全量 rerun | tracked `compat-matrix --versions all` 通过（每版本 377/377） |
+| 兼容 sentinel | `0.1.7-rc.2`、`0.2.1-rc.2`、`0.2.1-rc.4`、`0.2.1-rc.5` 通过 |
+| 八版本全量 rerun | tracked `compat-matrix --versions all --allow-new-release` 通过（每版本 377/377） |
 | 未跟踪 `0.2.2-alpha.2` probe | strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run；rc.6 明确不支持 |
+| 本地 Web + Desktop profile | PASS：rc.6 artifact 已安装到两者；Desktop app 仍为 `0.2.1-rc.3`，rc.5 Desktop 验收待 Electron app 更新 |
 | 真实浏览器恢复 | 受保护的人工 evidence gate；未自动化 |
 | 真实模型 compaction | 2026-10-22 记录 PASS；仍是人工发布门禁 |
 
@@ -54,10 +55,10 @@ CI（`.github/workflows/ci.yml`）在 Node `22.19.0` / `24` 上运行 `npm run c
 ## 3. DSH 兼容证据
 
 `package.json` 的 `engines.dsh`、每个 `@deepseek-ai/dsh-*` peer range 和
-`dsh.compatibility.dshReleases` 一致声明七个精确版本：
+`dsh.compatibility.dshReleases` 一致声明八个精确版本：
 
 ```text
-0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2 || 0.2.1-rc.3 || 0.2.1-rc.4
+0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2 || 0.2.1-rc.3 || 0.2.1-rc.4 || 0.2.1-rc.5
 ```
 
 受版本控制的 runner 为每个版本建立隔离 npm 项目，运行 typecheck/build/tests。当前证据：
@@ -71,6 +72,7 @@ CI（`.github/workflows/ci.yml`）在 Node `22.19.0` / `24` 上运行 `npm run c
 | `0.2.1-rc.2` | 377/377 tracked matrix PASS |
 | `0.2.1-rc.3` | 377/377 tracked matrix PASS |
 | `0.2.1-rc.4` | 377/377 tracked matrix PASS |
+| `0.2.1-rc.5` | 377/377 tracked matrix PASS |
 
 当前 rc.6 源码树已于 2026-10-30 通过 `compat-matrix --versions all`：每个声明版本均通过 typecheck、build 和 377/377 测试。安装使用 pnpm strict peer、精确工具版本、单一 zod 4.6.7 图、完整 `pnpm list --depth Infinity` 图校验，并记录 lockfile SHA-256。未跟踪 `0.2.2-alpha.2` 已 probe：strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run，rc.6 明确不支持。
 
@@ -148,7 +150,7 @@ append 模型，而不是 Charter 内容：当其他 section 触发新快照时�
 - 真实浏览器 export → absent → restore → reload/restart 是受保护的人工 evidence gate
   （`.github/workflows/browser-evidence.yml`），尚未由 tracked browser script 自动化；promotion 要求与候选
   SHA 绑定的成功 evidence run。
-- Desktop 重启后的 ABI、交互和 screen reader 仍人工验证。
+- Web/Desktop 通过 host client-module carrier 共用同一个 `dsh.client` bundle。本机 Desktop app 仍为 `0.2.1-rc.3`；完成 rc.5 Desktop 验收需要更新 Electron app 和 profile，并重新执行人工 Desktop ABI/交互门禁。
 - 真实模型 compaction 已于 2026-10-22 记录 PASS，仍是发布人工门禁。
 - 多 Host 写入/lease 不在范围内；单写 Host 限制已记录。
 - 无法读取/格式错误的 **outer** JSON 在 storage 边界与 absence 不可区分；初始化前应停止 Host 并从备份恢复。

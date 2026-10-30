@@ -19,18 +19,19 @@ This document answers three questions:
 | `0.2.0-rc.2` | Supported | same + real profile install/startup, boot graph, bundle HTTP |
 | `0.2.1-rc.1` | Supported | typecheck, build, Vitest suite, remote/client smoke |
 | `0.2.1-rc.2` | Supported | same |
-| `0.2.1-rc.3` | Supported | typecheck, build, Vitest suite, remote/client smoke (full seven-version matrix) |
-| `0.2.1-rc.4` | Supported (primary development baseline) | same |
+| `0.2.1-rc.3` | Supported | typecheck, build, Vitest suite, remote/client smoke (full eight-version matrix) |
+| `0.2.1-rc.4` | Supported | same |
+| `0.2.1-rc.5` | Supported (primary development baseline) | same + real Web profile install/startup, boot graph, bundle HTTP |
 | `0.1.5-rc.1` / `0.1.5-rc.2` / `0.1.5-rc.3` | Not supported | contract differences too large; see section 4 |
 | `0.1.6-alpha.x` | Not supported | same generation as 0.1.5; not individually verified |
 | `0.2.2-rc.x` | Not declared | peer range does not cover this prerelease; add after verification |
 | `0.2.2-alpha.2` | Not supported | probed 2026-10-30: strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run; not covered by the rc.6 declaration |
 | `0.3.x` | Not declared | major upgrade requires re-verification |
 
-The DSH peer ranges and `engines.dsh` in `package.json` are exactly the seven verified versions:
+The DSH peer ranges and `engines.dsh` in `package.json` are exactly the eight verified versions:
 
 ```text
-0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2 || 0.2.1-rc.3 || 0.2.1-rc.4
+0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2 || 0.2.1-rc.3 || 0.2.1-rc.4 || 0.2.1-rc.5
 ```
 
 Exact versions are intentional: a broad range would claim DSH prereleases that the project has not tested.

@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![GitHub](https://img.shields.io/badge/GitHub-centella--cream%2Fdsh--charter-181717?logo=github)](https://github.com/centella-cream/dsh-charter)
-[![DSH](https://img.shields.io/badge/DSH-7%20verified%20RC%20versions-4b6bfb)](docs/design/compatibility.md)
+[![DSH](https://img.shields.io/badge/DSH-8%20verified%20RC%20versions-4b6bfb)](docs/design/compatibility.md)
 [![Node](https://img.shields.io/badge/node-%5E22.19%20%7C%7C%20%3E%3D24-339933)](package.json)
 [![Status: preview](https://img.shields.io/badge/status-preview-orange)](#status)
 
@@ -142,7 +142,7 @@ until a Host restart.
 ### Requirements
 
 - DSH: only the versions listed in the [compatibility matrix](docs/design/compatibility.md) are supported
-  (`0.1.7-rc.2`, `0.2.0-rc.1`/`rc.2`, `0.2.1-rc.1`/`rc.2`/`rc.3`/`rc.4`). Newer stable/RC versions are not claimed until the
+  (`0.1.7-rc.2`, `0.2.0-rc.1`/`rc.2`, `0.2.1-rc.1`/`rc.2`/`rc.3`/`rc.4`/`rc.5`). Newer stable/RC versions are not claimed until the
   matrix is extended; `0.2.1+` is required for per-Peer Remote resource authorization.
 - Node.js **`^22.19.0 || >=24.0.0`**.
 - A Web or Desktop profile.
@@ -177,7 +177,9 @@ an older, undeclared release.
 
 For an immediate or exact install, use the offline tarball fallback below if your Desktop build supports
 importing a local plugin. Otherwise, the Plugins UI is the only supported Desktop installation path. Desktop
-owns the plugin lifecycle and hot-applies the new bundle.
+owns the plugin lifecycle and hot-applies the new bundle. Web and Desktop consume the same `dsh.client`
+web bundle through the host client-module carrier; there is no separate Desktop client entry. The Desktop app
+runtime must itself be one of the declared DSH versions.
 
 ### Offline / local tarball fallback
 
@@ -306,12 +308,12 @@ truncated, or silently dropped.
 | --- | --- |
 | `0.1.7-rc.2` | Supported (minimum) |
 | `0.2.0-rc.1` / `0.2.0-rc.2` | Supported |
-| `0.2.1-rc.1` / `0.2.1-rc.2` / `0.2.1-rc.3` / `0.2.1-rc.4` | Supported (primary baseline: `0.2.1-rc.4`) |
+| `0.2.1-rc.1` / `0.2.1-rc.2` / `0.2.1-rc.3` / `0.2.1-rc.4` / `0.2.1-rc.5` | Supported (primary baseline: `0.2.1-rc.5`) |
 | `0.1.5-rc.1` and earlier | Not supported |
 | `0.2.2-rc.x`, `0.3.x` | Not declared until verified |
 
 Supported" means typecheck, build, tests, and Remote/client smoke for that version. Fresh Web profile install,
-startup, page, and client-bundle checks passed on `0.1.7-rc.2`, `0.2.0-rc.2`, `0.2.1-rc.2`, and `0.2.1-rc.4`;
+startup, page, and client-bundle checks passed on `0.1.7-rc.2`, `0.2.0-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4`, and `0.2.1-rc.5`;
 other versions are API/build verified. Real-model compaction end-to-end is a documented manual check (`npm run verify:compaction`, section 8 of the current verification record); a **PASS is recorded in the immutable [v0.1.0-rc.4 verification §8.4](https://github.com/centella-cream/dsh-charter/blob/v0.1.0-rc.4/docs/verification.md#84-recorded-real-model-run-2026-10-22)**.
 The full matrix and degradation notes are in the [compatibility document](docs/design/compatibility.md).
 `0.1.7`/`0.2.0` have no per-Peer Remote resource authorization; use them only in a trusted single-operator
@@ -343,7 +345,7 @@ npm run verify:compaction # manual real-model compaction check (not part of chec
 ```
 
 The test suite covers the pure core, real Host composition, storage-domain behavior, Remote framing,
-history extraction, client state, and factory-bundle registration. The current tree has **377 tests**; the seven-version matrix passes on all declared DSH versions. See the [verification record](docs/verification.md) for the current evidence.
+history extraction, client state, and factory-bundle registration. The current tree has **377 tests**; the eight-version matrix passes on all declared DSH versions. See the [verification record](docs/verification.md) for the current evidence.
 
 ## Acknowledgements
 
@@ -379,7 +381,7 @@ security reports, follow [SECURITY.md](SECURITY.md).
 
 ## Status
 
-Pre-1.0. The DSH plugin ABI is still moving; compatibility is tested against the seven versions above, and the
+Pre-1.0. The DSH plugin ABI is still moving; compatibility is tested against the eight versions above, and the
 design keeps the compatibility layer deliberately small.
 
 Current release state (2026-10-30):

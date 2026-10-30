@@ -6,10 +6,11 @@
 
 ## 0.1.0-rc.6 — 未发布
 
-文档与版本号启用候选。暂不包含产品运行时路径、record schema、Remote 方法、模型工具或 domain 变更；模型可见的 `charter_read` description 已缩短。
+兼容性、UI 与可观测性候选。除 DSH `0.2.1-rc.5` 元数据和缩短的模型可见 `charter_read` description 外，暂不包含产品运行时路径、record schema、Remote 方法、模型工具或 domain 变更。
 
 ### 新增
 
+- 适配 DSH `0.2.1-rc.5`：同步 `engines.dsh`、所有 DSH peer range、`dsh.compatibility.dshReleases`、受控矩阵和 lockfile；Web/Desktop 共用同一个 `dsh.client` bundle，无需改 API。
 - 每个会话契约导航栏目增加帮助入口；悬停/聚焦 `?` 徽标会显示一句话说明：概览、目标、硬约束、交付物、
   历史草案、上下文、存储与恢复。
 - 上下文预览增加“格式化 JSON / 精确文本”两种模式。格式化 JSON 便于阅读；精确视图和字节计数仍使用模型实际

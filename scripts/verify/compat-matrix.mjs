@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Tracked compatibility runner for rc.5.
+ * Tracked compatibility runner for rc.6.
  *
  * Creates one isolated npm project per DSH version, installs that exact DSH
  * peer graph, then runs typecheck, build, and Vitest. Evidence is JSON so CI
@@ -56,17 +56,18 @@ const SENTINELS = {
   all: DECLARED,
 }
 function parseArgs(argv) {
-  const args = { versions: 'minimum,old-boundary,current', out: '.tmp/compat-matrix.json', dryRun: false, keep: false, test: null, discover: false }
+  const args = { versions: 'minimum,old-boundary,current', out: '.tmp/compat-matrix.json', dryRun: false, keep: false, test: null, discover: false, allowNewRelease: process.env.COMPAT_ALLOW_NEW_RELEASE === '1' }
   for (let i = 0; i < argv.length; i += 1) {
     const flag = argv[i]
     if (flag === '--dry-run') args.dryRun = true
     else if (flag === '--discover') args.discover = true
     else if (flag === '--keep') args.keep = true
+    else if (flag === '--allow-new-release') args.allowNewRelease = true
     else if (flag === '--versions') args.versions = argv[++i] ?? ''
     else if (flag === '--out') args.out = argv[++i] ?? args.out
     else if (flag === '--test') args.test = argv[++i] ?? null
     else if (flag === '--help' || flag === '-h') {
-      console.log('usage: node scripts/verify/compat-matrix.mjs [--versions minimum,old-boundary,current|all|0.2.1-rc.3,...] [--test tests/foo.spec.ts] [--out file] [--dry-run] [--discover] [--keep]')
+      console.log('usage: node scripts/verify/compat-matrix.mjs [--versions minimum,old-boundary,current|all|0.2.1-rc.3,...] [--test tests/foo.spec.ts] [--out file] [--dry-run] [--discover] [--keep] [--allow-new-release]')
       process.exit(0)
     } else throw new Error(`unknown argument: ${flag}`)
   }
@@ -110,7 +111,7 @@ async function copyTree(source, target) {
   })
 }
 
-async function prepareProject(version, workRoot) {
+async function prepareProject(version, workRoot, allowNewRelease) {
   const dir = join(workRoot, version)
   if (existsSync(dir)) await rm(dir, { recursive: true, force: true })
   await mkdir(dir, { recursive: true })
@@ -156,7 +157,8 @@ async function prepareProject(version, workRoot) {
   await rm(join(dir, 'pnpm-lock.yaml'), { force: true })
   // The plugin and DSH 0.2.1 packages pin different zod patch lines. Resolve
   // them to one graph before installation; never rewrite the virtual store.
-  await writeFile(join(dir, 'pnpm-workspace.yaml'), "packages:\n  - .\nstrictPeerDependencies: true\noverrides:\n  zod: 4.6.7\n")
+  const releasePolicy = allowNewRelease ? 'minimumReleaseAge: 0\n' : ''
+  await writeFile(join(dir, 'pnpm-workspace.yaml'), `packages:\n  - .\nstrictPeerDependencies: true\noverrides:\n  zod: 4.6.7\n${releasePolicy}`)
   const lockSource = join(ROOT, 'scripts', 'verify', 'lockfiles', version, 'pnpm-lock.yaml')
   const declared = DECLARED.includes(version)
   let frozen = false
@@ -287,7 +289,7 @@ async function main() {
   const workRoot = await mkdtemp(join(tmpdir(), 'dsh-charter-compat-'))
   try {
   for (const version of args.versions) {
-    const { dir, install } = await prepareProject(version, workRoot)
+    const { dir, install } = await prepareProject(version, workRoot, args.allowNewRelease)
     const resolution = await collectResolution(dir, version)
     const peers = Object.keys(JSON.parse(await readFile(join(dir, 'package.json'), 'utf8')).peerDependencies ?? {})
       .filter(name => name.startsWith('@deepseek-ai/dsh-'))

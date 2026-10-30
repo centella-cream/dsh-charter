@@ -148,7 +148,7 @@ rc.5 定位为 **审阅正确性、交互安全与稳定版证据收敛**。不�
 
 rc.4 已把 `0.2.1-rc.3` 和 `rc.4` 加入 `engines.dsh` 与 peer ranges。rc.5 补齐遗漏的 `dsh.compatibility.dshReleases`，提交可重复的版本矩阵 runner，并重新验证七版本证据。
 
-最低版 `0.1.7-rc.2`、旧 resource 边界 `0.2.0-rc.2`、当前推荐版 `0.2.1-rc.4` 必须完成完整矩阵；其余已支持版本至少运行 typecheck、build、tests 和 smoke。
+最低版 `0.1.7-rc.2`、旧 resource 边界 `0.2.0-rc.2`、当前推荐版 `0.2.1-rc.5` 必须完成完整矩阵；其余已支持版本至少运行 typecheck、build、tests 和 smoke。
 
 未经验证不再扩大范围。若上游新版本破坏公开契约，应记录未支持，而不是在 rc.5 维护第二套实现。
 

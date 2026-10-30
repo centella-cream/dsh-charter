@@ -7,10 +7,11 @@ DSH plugin ABI is still moving.
 
 ## 0.1.0-rc.6 — unreleased
 
-Documentation and version-activation candidate. No product runtime code path, record schema, Remote method, model tool, or domain change yet; the model-facing `charter_read` description was shortened.
+Compatibility, UI, and observability candidate. No product runtime code path, record schema, Remote method, model tool, or domain change beyond DSH `0.2.1-rc.5` metadata and the shortened model-facing `charter_read` description.
 
 ### Added
 
+- DSH `0.2.1-rc.5` compatibility across `engines.dsh`, every DSH peer range, `dsh.compatibility.dshReleases`, the tracked matrix, and its lockfile; the Web/Desktop client entry remains the same `dsh.client` bundle.
 - A help affordance on every Charter navigation section; hovering or focusing the `?` badge shows a one-sentence
   description of Overview, Objective, Invariants, Deliverables, History draft, Context, or Storage & recovery.
 - The Context preview has Formatted JSON and Exact text modes. Formatted JSON is pretty-printed for reading, while

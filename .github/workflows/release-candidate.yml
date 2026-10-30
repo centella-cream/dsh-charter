@@ -42,7 +42,7 @@ jobs:
       - run: npm install --global pnpm@12.3.4
       - run: pnpm --version
       - run: node scripts/verify/compat-matrix.mjs --discover > discovered-dsh.json
-      - run: node scripts/verify/compat-matrix.mjs --versions all --out compat-matrix.json
+      - run: node scripts/verify/compat-matrix.mjs --versions all --allow-new-release --out compat-matrix.json
       - name: Probe every newer untracked DSH version
         run: |
           set -euo pipefail
@@ -50,7 +50,7 @@ jobs:
           while IFS= read -r version; do
             test -n "$version" || continue
             echo "probing untracked DSH $version"
-            if node scripts/verify/compat-matrix.mjs --versions "$version" --out "new-dsh-$version.json"; then
+            if node scripts/verify/compat-matrix.mjs --versions "$version" --allow-new-release --out "new-dsh-$version.json"; then
               echo "::error::untracked DSH $version now passes; update declarations instead of continuing"
               exit 1
             fi

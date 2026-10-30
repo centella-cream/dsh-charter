@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![GitHub](https://img.shields.io/badge/GitHub-centella--cream%2Fdsh--charter-181717?logo=github)](https://github.com/centella-cream/dsh-charter)
-[![DSH](https://img.shields.io/badge/DSH-7%20verified%20RC%20versions-4b6bfb)](docs/design/compatibility.zh.md)
+[![DSH](https://img.shields.io/badge/DSH-8%20verified%20RC%20versions-4b6bfb)](docs/design/compatibility.zh.md)
 [![Node](https://img.shields.io/badge/node-%5E22.19%20%7C%7C%20%3E%3D24-339933)](package.json)
 [![Status: preview](https://img.shields.io/badge/status-preview-orange)](#状态)
 
@@ -127,7 +127,7 @@ RC 仍是 rc.4。频道策略是 RC 发布到 `next`，并在稳定版出现前�
 ### 环境要求
 
 - DSH：只支持[兼容矩阵](docs/design/compatibility.zh.md)中列出的版本（`0.1.7-rc.2`、`0.2.0-rc.1`/`rc.2`、
-  `0.2.1-rc.1`/`rc.2`/`rc.3`/`rc.4`）。在扩展矩阵前不声明支持更新的 stable/RC 版本；per-Peer Remote 资源授权需要 `0.2.1+`。
+  `0.2.1-rc.1`/`rc.2`/`rc.3`/`rc.4`/`rc.5`）。在扩展矩阵前不声明支持更新的 stable/RC 版本；per-Peer Remote 资源授权需要 `0.2.1+`。
 - Node.js **`^22.19.0 || >=24.0.0`**。
 - Web 或 Desktop profile。
 
@@ -157,7 +157,8 @@ bundle 选择。
 **Install**/**Update**。不要关闭该策略，也不要对未声明兼容的旧版本授予 exact-version exemption 来强行安装。
 
 如需立即安装或精确安装，并且你的 Desktop 构建支持导入本地插件，请使用下面的离线 tarball 回退方式；否则
-Plugins UI 是 Desktop 唯一受支持的安装路径。Desktop 管理插件生命周期并热更新新的 bundle。
+Plugins UI 是 Desktop 唯一受支持的安装路径。Desktop 管理插件生命周期并热更新新的 bundle。Web 与 Desktop 通过 host client-module carrier 消费同一个
+`dsh.client` web bundle，不存在单独的 Desktop client 入口；Desktop app 自身的 DSH runtime 必须属于已声明版本。
 
 ### 离线 / 本地 tarball 回退
 
@@ -276,12 +277,12 @@ profile 自己的包管理器。源码开发流程见 [CONTRIBUTING.zh.md](CONTR
 | --- | --- |
 | `0.1.7-rc.2` | 支持（最低版本） |
 | `0.2.0-rc.1` / `0.2.0-rc.2` | 支持 |
-| `0.2.1-rc.1` / `0.2.1-rc.2` / `0.2.1-rc.3` / `0.2.1-rc.4` | 支持（主基线：`0.2.1-rc.4`） |
+| `0.2.1-rc.1` / `0.2.1-rc.2` / `0.2.1-rc.3` / `0.2.1-rc.4` / `0.2.1-rc.5` | 支持（主基线：`0.2.1-rc.5`） |
 | `0.1.5-rc.1` 及更早 | 不支持 |
 | `0.2.2-rc.x`、`0.3.x` | 验证前不声明 |
 
 “支持”表示该版本通过 typecheck、build、测试以及 Remote/client smoke。fresh Web profile 安装、启动、页面和
-client bundle 检查已在 `0.1.7-rc.2`、`0.2.0-rc.2`、`0.2.1-rc.2`、`0.2.1-rc.4` 通过；其他版本是 API/build
+client bundle 检查已在 `0.1.7-rc.2`、`0.2.0-rc.2`、`0.2.1-rc.2`、`0.2.1-rc.4`、`0.2.1-rc.5` 通过；其他版本是 API/build
 级验证。真实模型 compaction 端到端已于 **2026-10-22 记录 PASS**（一个匿名评估会话；326 条消息 / 约 228k
 tokens 被压缩，revision 1 契约携带匹配 digest 存活；见不可变 [v0.1.0-rc.4 验证记录 8.4](https://github.com/centella-cream/dsh-charter/blob/v0.1.0-rc.4/docs/verification.md#84-recorded-real-model-run-2026-10-22)）。完整矩阵和降级说明见
 [兼容文档](docs/design/compatibility.zh.md)。`0.1.7`/`0.2.0` 没有 per-Peer Remote 资源授权，只能在可信
@@ -311,7 +312,7 @@ npm run verify:compaction # 手工真实模型 compaction 校验（不在 check 
 ```
 
 测试覆盖纯内核、真实 Host 组合、storage domain、Remote framing、历史抽取、客户端状态和 factory bundle
-注册。当前树有 **377 个测试**；七版本矩阵在所有声明版本上通过。当前证据见[验证记录](docs/verification.zh.md)。
+注册。当前树有 **377 个测试**；八版本矩阵在所有声明版本上通过。当前证据见[验证记录](docs/verification.zh.md)。
 
 ## 致谢
 

@@ -7,7 +7,7 @@ history and the Changelog. Temporary directories, profiles, tarballs, and fetche
 excluded from the published package.
 
 Environment: macOS, Node `v22.23.1`, npm `12.0.2`, pnpm `12.3.4`. Local DSH development baseline:
-`0.2.1-rc.4` (the current npm `next`).
+`0.2.1-rc.5` (the current npm `next`).
 
 ## 1. Current conclusion
 
@@ -18,7 +18,7 @@ Current release state (2026-10-30):
   `dsh-charter-0.1.0-rc.5.tgz` with SHA-256
   `94e27acf8851ad5423defd06a41253171317f4e805af809fe8e8e7a9ce83a939`.
 - Release commits: `C=d138d65dc4f1b2628dc043f2dd437ea213112a4d`, `C+1=tag v0.1.0-rc.5=0a6ccc5`.
-- Active source: `0.1.0-rc.6` (unreleased, untagged; documentation/UI/traffic observation).
+- Active source: `0.1.0-rc.6` (unreleased, untagged; DSH 0.2.1-rc.5 compatibility, documentation/UI/traffic observation).
 - Pending: npm token publication, GitHub prerelease, protected browser evidence, Promotion.
 
 | Item | Result |
@@ -28,13 +28,14 @@ Current release state (2026-10-30):
 | Host ESM build + browser factory bundle | Pass |
 | Remote contract and client smoke | Pass |
 | Normal package smoke | Pass |
-| Exact-artifact package smoke | Pass on the final `.tgz` bytes (`94e27acf…`) without rebuild |
+| Exact-artifact package smoke | Pass on the final `.tgz` bytes (`94e27acf…`) without rebuild; a local rc.6 validation pack also passed exact package smoke |
 | Packed-artifact recovery smoke | Pass: export, target removal, restore, receipt replay, two restarts, healthy-target refusal, packed fault subset |
 | Real `TypertGatewayService` | Pass on exact artifact with isolated DSH `0.2.1-rc.3` and `rc.4` graphs |
-| Compatibility sentinels | Pass on `0.1.7-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4` |
-| Seven-version full rerun | Pass via tracked `compat-matrix --versions all` (377/377 each) |
-| Fresh Web profile matrix | PASS: exact artifact installed and served on DSH `0.1.7-rc.2`, `0.2.0-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4` |
+| Compatibility sentinels | Pass on `0.1.7-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4`, `0.2.1-rc.5` |
+| Eight-version full rerun | Pass via tracked `compat-matrix --versions all --allow-new-release` (377/377 each) |
+| Fresh Web profile matrix | PASS: local rc.6 artifact installed and served on DSH `0.1.7-rc.2`, `0.2.0-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4`, `0.2.1-rc.5` |
 | Untracked `0.2.2-alpha.2` probe | strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run; explicitly unsupported in rc.6 |
+| Local Web + Desktop profiles | PASS: rc.6 artifact installed in both; Desktop app is still `0.2.1-rc.3`, so rc.5 Desktop acceptance is pending an Electron app update |
 | Real browser recovery | Manual protected evidence gate; not automated |
 | Real-model compaction | Separately recorded PASS (2026-10-22); still a manual release gate |
 
@@ -56,10 +57,10 @@ separate jobs or manual gates, not claims made by `npm test` alone.
 ## 3. DSH compatibility evidence
 
 `package.json` `engines.dsh`, every `@deepseek-ai/dsh-*` peer range, and
-`dsh.compatibility.dshReleases` all declare the same seven exact versions:
+`dsh.compatibility.dshReleases` all declare the same eight exact versions:
 
 ```text
-0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2 || 0.2.1-rc.3 || 0.2.1-rc.4
+0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2 || 0.2.1-rc.3 || 0.2.1-rc.4 || 0.2.1-rc.5
 ```
 
 The tracked runner creates isolated pnpm projects with strict peers and runs typecheck/build/tests per version. Current evidence:
@@ -73,8 +74,9 @@ The tracked runner creates isolated pnpm projects with strict peers and runs typ
 | `0.2.1-rc.2` | 377/377 tracked matrix PASS |
 | `0.2.1-rc.3` | 377/377 tracked matrix PASS |
 | `0.2.1-rc.4` | 377/377 tracked matrix PASS |
+| `0.2.1-rc.5` | 377/377 tracked matrix PASS |
 
-The current rc.6 source tree passed `compat-matrix --versions all` on 2026-10-30: every declared version passed typecheck, build, and 377/377 tests. Installs use pnpm strict peer resolution, exact tool pins, a single zod 4.6.7 graph, full `pnpm list --depth Infinity` graph validation, and recorded lockfile SHA-256 values. The untracked `0.2.2-alpha.2` probe is recorded as unsupported: strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run.
+The current rc.6 source tree passed `compat-matrix --versions all --allow-new-release` on 2026-10-30: every declared version passed typecheck, build, and 377/377 tests. Installs use pnpm strict peer resolution, exact tool pins, a single zod 4.6.7 graph, full `pnpm list --depth Infinity` graph validation, and recorded lockfile SHA-256 values. The untracked `0.2.2-alpha.2` probe is recorded as unsupported: strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run.
 
 ## 4. What the tests cover
 
@@ -158,7 +160,7 @@ injection semantics; the tool-description shortening is the only model-visible r
 - Real browser export → absent target → restore → reload/restart is a manual protected evidence gate
   (`.github/workflows/browser-evidence.yml`); it is not automated by a tracked browser script. Promotion requires
   a successful evidence run bound to the candidate SHA.
-- Desktop ABI after restart and interaction/screen-reader behavior remain manual.
+- Web and Desktop share the same `dsh.client` bundle through the host client-module carrier. The installed Desktop app here is `0.2.1-rc.3`; rc.5 Desktop acceptance requires updating the Electron app and its profile, then repeating the manual Desktop ABI/interaction gate.
 - Real-model compaction was recorded PASS on 2026-10-22 and remains a manual gate for release.
 - Multi-Host writes/leases are out of scope; the single-writer Host limitation is documented.
 - An unreadable/malformed **outer** JSON document is indistinguishable from absence at the storage boundary; stop
