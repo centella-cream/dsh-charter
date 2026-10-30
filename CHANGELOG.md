@@ -30,6 +30,7 @@ Compatibility, UI, and observability candidate. No product runtime code path, re
 - Consolidated the release, version, verification, compatibility, user-guide, and README documentation around
   the actual release state: rc.4 published, rc.5 finalized but npm-delayed, rc.6 active and unpublished.
 - Removed stale pre-tag instructions and outdated install claims.
+- Pinned the toolchain devDependencies to exact versions (React `18.3.1`, TypeScript `5.9.3`, `@types/node` `22.20.5`, `@tsdown/css` `0.22.2`) so the rc.5 compatibility update does not drift with range resolution.
 - Added the version badge in the Charter header as an accepted rc.5 scope addition; the rc.6 client constant is
   synchronized with `package.json` by the existing drift test.
 

@@ -24,7 +24,7 @@ Current release state (2026-10-30):
 | Item | Result |
 | --- | --- |
 | Strict TypeScript check | Pass on the current tree |
-| Vitest | 30 files / 377 tests pass (`npm test`, which builds first) |
+| Vitest | 30 files / 379 tests pass (`npm test`, which builds first) |
 | Host ESM build + browser factory bundle | Pass |
 | Remote contract and client smoke | Pass |
 | Normal package smoke | Pass |
@@ -32,7 +32,7 @@ Current release state (2026-10-30):
 | Packed-artifact recovery smoke | Pass: export, target removal, restore, receipt replay, two restarts, healthy-target refusal, packed fault subset |
 | Real `TypertGatewayService` | Pass on exact artifact with isolated DSH `0.2.1-rc.3` and `rc.4` graphs |
 | Compatibility sentinels | Pass on `0.1.7-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4`, `0.2.1-rc.5` |
-| Eight-version full rerun | Pass via tracked `compat-matrix --versions all --allow-new-release` (377/377 each) |
+| Eight-version full rerun | Pass via tracked `compat-matrix --versions all --allow-new-release` (379/379 each) |
 | Fresh Web profile matrix | PASS: local rc.6 artifact installed and served on DSH `0.1.7-rc.2`, `0.2.0-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4`, `0.2.1-rc.5` |
 | Untracked `0.2.2-alpha.2` probe | strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run; explicitly unsupported in rc.6 |
 | Local Web + Desktop profiles | PASS: rc.6 artifact installed in both; Desktop app is still `0.2.1-rc.3`, so rc.5 Desktop acceptance is pending an Electron app update |
@@ -63,20 +63,20 @@ separate jobs or manual gates, not claims made by `npm test` alone.
 0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2 || 0.2.1-rc.3 || 0.2.1-rc.4 || 0.2.1-rc.5
 ```
 
-The tracked runner creates isolated pnpm projects with strict peers and runs typecheck/build/tests per version. Current evidence:
+The tracked runner creates isolated pnpm projects with strict peers and runs typecheck/build/tests per version. `--allow-new-release` sets only the isolated workspace `minimumReleaseAge: 0` so a just-published exact DSH version can be tested inside the 24-hour window; it does not relax strict peers, does not affect user installs, and is not a release-policy exemption. Current evidence:
 
 | DSH version | Evidence |
 | --- | --- |
-| `0.1.7-rc.2` | 377/377 tracked matrix PASS |
-| `0.2.0-rc.1` | 377/377 tracked matrix PASS |
-| `0.2.0-rc.2` | 377/377 tracked matrix PASS |
-| `0.2.1-rc.1` | 377/377 tracked matrix PASS |
-| `0.2.1-rc.2` | 377/377 tracked matrix PASS |
-| `0.2.1-rc.3` | 377/377 tracked matrix PASS |
-| `0.2.1-rc.4` | 377/377 tracked matrix PASS |
-| `0.2.1-rc.5` | 377/377 tracked matrix PASS |
+| `0.1.7-rc.2` | 379/379 tracked matrix PASS |
+| `0.2.0-rc.1` | 379/379 tracked matrix PASS |
+| `0.2.0-rc.2` | 379/379 tracked matrix PASS |
+| `0.2.1-rc.1` | 379/379 tracked matrix PASS |
+| `0.2.1-rc.2` | 379/379 tracked matrix PASS |
+| `0.2.1-rc.3` | 379/379 tracked matrix PASS |
+| `0.2.1-rc.4` | 379/379 tracked matrix PASS |
+| `0.2.1-rc.5` | 379/379 tracked matrix PASS |
 
-The current rc.6 source tree passed `compat-matrix --versions all --allow-new-release` on 2026-10-30: every declared version passed typecheck, build, and 377/377 tests. Installs use pnpm strict peer resolution, exact tool pins, a single zod 4.6.7 graph, full `pnpm list --depth Infinity` graph validation, and recorded lockfile SHA-256 values. The untracked `0.2.2-alpha.2` probe is recorded as unsupported: strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run.
+The current rc.6 source tree passed `compat-matrix --versions all --allow-new-release` on 2026-10-30: every declared version passed typecheck, build, and 379/379 tests. Installs use pnpm strict peer resolution, exact tool pins, a single zod 4.6.7 graph, full `pnpm list --depth Infinity` graph validation, and recorded lockfile SHA-256 values. The untracked `0.2.2-alpha.2` probe is recorded as unsupported: strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run.
 
 ## 4. What the tests cover
 

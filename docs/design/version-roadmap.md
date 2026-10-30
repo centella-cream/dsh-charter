@@ -110,7 +110,7 @@ This fence adds no record field or Remote method. Same-domain v2 in 0.2 may clai
 
 ### 4.7 DSH compatibility and artifact workflow
 
-- rc.4 already added DSH `0.2.1-rc.3` and `rc.4` to engines and peer ranges. rc.5 completes the compatibility map, adds a reproducible matrix runner, and revalidates all seven releases.
+- rc.4 already added DSH `0.2.1-rc.3` and `rc.4` to engines and peer ranges. rc.5 completes the compatibility map, adds a reproducible matrix runner, and revalidates all seven then-declared releases.
 - Retain full coverage for the minimum release, the old resource-boundary release, and the current recommended release.
 - Add a pack-once release workflow: source gates do not run normal package smoke; one producer packs, and later jobs run exact-artifact package/recovery/profile smoke on that tarball.
 

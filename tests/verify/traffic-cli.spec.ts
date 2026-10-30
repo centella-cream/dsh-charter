@@ -12,23 +12,35 @@ afterEach(async () => {
   await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true })))
 })
 
+async function fixture(directoryName: string, headerId: string): Promise<string> {
+  const home = await mkdtemp(join(tmpdir(), 'traffic-cli-home-'))
+  roots.push(home)
+  const directory = join(home, 'sessions', 'project', directoryName)
+  await mkdir(directory, { recursive: true })
+  const log = join(directory, 'session.v4.jsonl')
+  await writeFile(log, [
+    JSON.stringify({ type: 'session', version: 4, id: headerId, createdAt: 1 }),
+    JSON.stringify({ type: 'step/start', seq: 1, time: 1, data: { turn: 1, step: 1 } }),
+    '',
+  ].join('\n'))
+  return log
+}
+
 describe('traffic-check CLI identity', () => {
-  it('resolves a short Session id and uses the header id for --log', async () => {
-    const home = await mkdtemp(join(tmpdir(), 'traffic-cli-home-'))
-    roots.push(home)
-    const directory = join(home, 'sessions', 'project', 'short-id')
-    await mkdir(directory, { recursive: true })
-    const log = join(directory, 'session.v4.jsonl')
-    await writeFile(log, [
-      JSON.stringify({ type: 'session', version: 4, id: 'short-id', createdAt: 1 }),
-      JSON.stringify({ type: 'step/start', seq: 1, time: 1, data: { turn: 1, step: 1 } }),
-      '',
-    ].join('\n'))
+  it('resolves a bare Session id through the session-<id> directory', async () => {
+    const uuid = 'f0aaa8dd-05bf-4a85-9a5e-b4bd016f6dd3'
+    const log = await fixture(`session-${uuid}`, `session-${uuid}`)
+    const report = JSON.parse(execFileSync(
+      process.execPath,
+      [script, '--session', uuid, '--home', join(log, '..', '..', '..', '..'), '--json'],
+      { encoding: 'utf8' },
+    ))
+    expect(report.sessionId).toBe(`session-${uuid}`)
+  })
 
-    const bySession = JSON.parse(execFileSync(process.execPath, [script, '--session', 'short-id', '--home', home, '--json'], { encoding: 'utf8' }))
-    expect(bySession.sessionId).toBe('short-id')
-
-    const byLog = JSON.parse(execFileSync(process.execPath, [script, '--log', log, '--json'], { encoding: 'utf8' }))
-    expect(byLog.sessionId).toBe('short-id')
+  it('uses the transcript header id for --log when the directory has another name', async () => {
+    const log = await fixture('container', 'real-header-id')
+    const report = JSON.parse(execFileSync(process.execPath, [script, '--log', log, '--json'], { encoding: 'utf8' }))
+    expect(report.sessionId).toBe('real-header-id')
   })
 })

@@ -27,6 +27,7 @@
 - 围绕实际发布状态统一 README、发布、版本、验证、兼容性和用户指南：rc.4 已发布，rc.5 已定版但 npm 延迟，
   rc.6 已在源码启用但未发布。
 - 清理过期 pre-tag 指令和旧安装声明。
+- 工具链 devDependencies 固定精确版本（React `18.3.1`、TypeScript `5.9.3`、`@types/node` `22.20.5`、`@tsdown/css` `0.22.2`），避免 rc.5 适配被范围解析漂移影响。
 - rc.5 已接受的范围补充（Charter 页头版本徽标）保留；rc.6 客户端版本常量由现有 drift 测试与
   `package.json` 同步。
 

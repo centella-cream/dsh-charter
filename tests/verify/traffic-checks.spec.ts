@@ -183,6 +183,16 @@ describe('rc.6 traffic checks', () => {
     expect(report.callDetails[0].redundantReadCandidate).toBe(false)
   })
 
+  it('does not count an ambiguous call as unpaired', () => {
+    const report = summarizeCharterRead([
+      { type: 'tool/call', seq: 1, data: { turn: 1, step: 1, callId: 'a', name: 'charter_read', arguments: '{}' } },
+      { type: 'tool/call', seq: 2, data: { turn: 1, step: 1, callId: 'b', name: 'charter_read', arguments: '{}' } },
+      { type: 'tool/result', seq: 3, data: { turn: 1, step: 1, message: { content: [] } }, sourceEventSeqs: [1, 2] },
+    ])
+    expect(report.ambiguous).toBe(1)
+    expect(report.unpairedCalls).toBe(0)
+  })
+
   it('pairs repeated callIds per turn instead of overwriting them', () => {
     const report = summarizeCharterRead([
       { type: 'tool/call', seq: 1, data: { turn: 1, step: 1, callId: 'same', name: 'charter_read', arguments: '{}' } },

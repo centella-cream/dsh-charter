@@ -345,7 +345,7 @@ npm run verify:compaction # manual real-model compaction check (not part of chec
 ```
 
 The test suite covers the pure core, real Host composition, storage-domain behavior, Remote framing,
-history extraction, client state, and factory-bundle registration. The current tree has **377 tests**; the eight-version matrix passes on all declared DSH versions. See the [verification record](docs/verification.md) for the current evidence.
+history extraction, client state, and factory-bundle registration. The current tree has **379 tests**; the eight-version matrix passes on all declared DSH versions. See the [verification record](docs/verification.md) for the current evidence.
 
 ## Acknowledgements
 
