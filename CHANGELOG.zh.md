@@ -4,9 +4,41 @@
 
 记录 `dsh-charter` 的重要变更。DSH 插件 ABI 仍在演进，项目保持 pre-1.0 版本线。
 
-## 0.1.0-rc.5 — 2026-10-27
+## 0.1.0-rc.6 — 未发布
 
-稳定版前的正确性与发布硬化候选。不新增 0.2 能力、domain、Remote 方法或持久 schema 版本。
+兼容性、UI 与可观测性候选。除 DSH `0.2.1-rc.5` 元数据和缩短的模型可见 `charter_read` description 外，暂不包含产品运行时路径、record schema、Remote 方法、模型工具或 domain 变更。
+
+### 新增
+
+- 适配 DSH `0.2.1-rc.5`：同步 `engines.dsh`、所有 DSH peer range、`dsh.compatibility.dshReleases`、受控矩阵和 lockfile；Web/Desktop 共用同一个 `dsh.client` bundle，无需改 API。
+- 每个会话契约导航栏目增加帮助入口；悬停/聚焦 `?` 徽标会显示一句话说明：概览、目标、硬约束、交付物、
+  历史草案、上下文、存储与恢复。
+- 上下文预览增加“格式化 JSON / 精确文本”两种模式。格式化 JSON 便于阅读；精确视图和字节计数仍使用模型实际
+  可见的原始字节。
+
+### 可观测性
+
+- 新增 `scripts/verify/traffic-check.mjs`：只读分析 Session transcript，输出 model attempts、active/historical/
+  epoch snapshots、section churn、重复字节、tool schema 字节、token usage，以及冗余 `charter_read` 候选。
+- 缩短 `charter_read` description，避免在 standing charter 已进入 runtime context 时鼓励重复读取。
+
+### 文档
+
+- 围绕实际发布状态统一 README、发布、版本、验证、兼容性和用户指南：rc.4 已发布，rc.5 已定版但 npm 延迟，
+  rc.6 已在源码启用但未发布。
+- 清理过期 pre-tag 指令和旧安装声明。
+- 工具链 devDependencies 固定精确版本（React `18.3.1`、TypeScript `5.9.3`、`@types/node` `22.20.5`、`@tsdown/css` `0.22.2`），避免 rc.5 适配被范围解析漂移影响。
+- rc.5 已接受的范围补充（Charter 页头版本徽标）保留；rc.6 客户端版本常量由现有 drift 测试与
+  `package.json` 同步。
+
+### 发布状态
+
+- `0.1.0-rc.5` 已定版且不可变（tag `v0.1.0-rc.5`，精确产物 digest 在 `SHA256SUMS`）；npm 发布延迟。
+- `0.1.0-rc.6` 已在源码启用，但**未打 tag、未发布**。任何 tag 或 Promotion 前都必须从当前树重新构建 candidate。
+
+## 0.1.0-rc.5 — 2026-10-29
+
+稳定版前的正确性与发布硬化候选。已打 tag 且 candidate 全绿；npm 发布和 GitHub Release 仍待完成。不新增 0.2 能力、domain、Remote 方法或持久 schema 版本。
 
 ### 新增
 
@@ -28,6 +60,7 @@
 - 以 `npm run check` 与当前 exact-artifact/packed smoke 命令为准；真实 Gateway、浏览器恢复、Desktop ABI 与
   真实模型 compaction 仍是独立验收门禁。
 - 不提升 record schema 版本、不改 domain；rc.4 记录保持可读。
+- 发布状态：tag `v0.1.0-rc.5` 已存在，精确产物 SHA-256 记录在 `SHA256SUMS`；rc.5 尚未发布到 npm。
 
 ## 0.1.0-rc.4 — 2026-10-27
 

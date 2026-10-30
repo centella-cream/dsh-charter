@@ -4,7 +4,7 @@ English | [中文](version-roadmap.zh.md)
 
 > This English file is a non-normative summary. The Chinese roadmap is normative when details differ.
 
-Baseline date: 2026-10-27.
+Baseline date: 2026-10-30.
 
 ## 1. Decision
 
@@ -12,15 +12,16 @@ The release path is:
 
 ```text
 0.1.0-rc.4 (published compatibility patch)
-  → 0.1.0-rc.5
+  → 0.1.0-rc.5 (finalized; npm publication deferred)
+  → 0.1.0-rc.6 (active source; unreleased)
   → 0.1.0 stable
   → 0.1.1 only if stable needs a compatible patch
   → 0.2.0-alpha.1 ... 0.2.0-rc.1 → 0.2.0
 ```
 
-The next development release is **`0.1.0-rc.5`**, not `0.1.1-rc.1`. rc.4 is already public as a DSH `0.2.1-rc.3`/`rc.4` compatibility-only patch and cannot receive more content.
+The finalized candidate is **`0.1.0-rc.5`**; its npm publication and GitHub prerelease are deferred. The active source is **`0.1.0-rc.6`**, which is unreleased and untagged. `0.1.1-rc.1` remains a post-stable patch spelling, not another rc.6.
 
-The reason is a correctness defect inside the promised 0.1 workflow: every compaction-history candidate starts selected, the UI initially renders only 40, and Apply includes selected candidates that the user has not seen. This conflicts with the README statement that human review is mandatory. It must be fixed before `0.1.0` becomes stable.
+rc.5 fixed the correctness defect inside the promised 0.1 workflow: previously every compaction-history candidate started selected, the UI rendered only 40, and Apply could include selected candidates the user had not seen. That conflicted with the mandatory human-review promise; the rc.5 review flow now starts with no selections and never submits hidden rows.
 
 `0.1.1-rc.1` only makes sense after `0.1.0` stable exists and a compatible patch set needs candidate testing. It is not another spelling of `0.1.0-rc.5`.
 
@@ -28,12 +29,15 @@ The reason is a correctness defect inside the promised 0.1 workflow: every compa
 
 ## 2. Current Release State
 
-- The released version is `0.1.0-rc.4`; its Git tag, GitHub Release assets, and npm package are public and immutable.
-- rc.4 is a compatibility-only patch adding exact support claims for DSH `0.2.1-rc.3` and `rc.4` without runtime
-  behavior changes. npm `latest` and `next` currently point to rc.4.
-- The rc.5 candidate lives on `release/0.1.0-rc.5`. It is not tagged, released, or published; its implementation,
-  verification, and artifact evidence are collected on that branch.
-- rc.5 uses a new version and artifact. Published rc.4 history is never rewritten.
+- The latest published version is `0.1.0-rc.4`; its Git tag, GitHub Release assets, and npm package are public
+  and immutable. npm `latest` and `next` point to rc.4.
+- rc.5 is implemented and frozen. The source is tagged `v0.1.0-rc.5`; the candidate workflow is green, and the
+  exact artifact digest is recorded in the root `SHA256SUMS`. The tag points at the checksum-only C+1 commit.
+- rc.5 is **not published yet**: npm publication, the GitHub prerelease, protected browser evidence, and
+  Promotion are pending. Do not describe it as installable from npm.
+- rc.6 is active in the source tree but **unreleased and untagged**. It currently carries documentation, UI, and traffic-observation work; a fresh candidate is required before any tag or publication.
+- `main` contains the token-publish workflow used by the remaining promotion path. Published rc.4 history is
+  never rewritten.
 
 ## 3. Why rc.5
 
@@ -47,7 +51,7 @@ The confirmed review defect is in the `0.1.0` candidate scope, so it belongs in 
 
 ## 4. `0.1.0-rc.5` Scope
 
-rc.5 is limited to review correctness, forward-schema safety, interaction safety, and stable-release evidence. It adds no domain capability. See [rc5-stabilization-plan.md](rc5-stabilization-plan.md) for the implementation plan.
+rc.5 is limited to review correctness, forward-schema safety, interaction safety, and stable-release evidence. It adds no domain capability. **Status: complete and frozen; the implementation plan is historical.** See [rc5-stabilization-plan.md](rc5-stabilization-plan.md) and the [verification record](../verification.md).
 
 ### 4.1 Mandatory review of history candidates
 
@@ -106,7 +110,7 @@ This fence adds no record field or Remote method. Same-domain v2 in 0.2 may clai
 
 ### 4.7 DSH compatibility and artifact workflow
 
-- rc.4 already added DSH `0.2.1-rc.3` and `rc.4` to engines and peer ranges. rc.5 completes the compatibility map, adds a reproducible matrix runner, and revalidates all seven releases.
+- rc.4 already added DSH `0.2.1-rc.3` and `rc.4` to engines and peer ranges. rc.5 completes the compatibility map, adds a reproducible matrix runner, and revalidates all seven then-declared releases.
 - Retain full coverage for the minimum release, the old resource-boundary release, and the current recommended release.
 - Add a pack-once release workflow: source gates do not run normal package smoke; one producer packs, and later jobs run exact-artifact package/recovery/profile smoke on that tarball.
 
@@ -116,7 +120,7 @@ rc.5 adds no `CharterOp`, record field, persistent schema version, Remote method
 
 ## 5. Stable and `0.1.1`
 
-After rc.5, enter feature freeze and publish `0.1.0` only after data-safety, authorization, review, browser, Desktop ABI, compatibility, documentation, and final-artifact gates pass.
+After rc.5 publication is resolved, enter feature freeze and publish `0.1.0` only after data-safety, authorization, review, browser, Desktop ABI, compatibility, documentation, and final-artifact gates pass.
 
 Any runtime, wire, storage, or recovery change found during stable preparation requires another `0.1.0-rc.N`.
 

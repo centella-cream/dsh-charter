@@ -2,7 +2,7 @@
 
 [English](version-roadmap.md) | 中文
 
-基准日期：2026-10-27。
+基准日期：2026-10-30。
 
 ## 1. 决策
 
@@ -10,15 +10,17 @@
 
 ```text
 0.1.0-rc.4（兼容性补丁，已发布）
-  → 0.1.0-rc.5
+  → 0.1.0-rc.5（已定版，npm 发布延迟）
+  → 0.1.0-rc.6（当前源码，未发布）
   → 0.1.0 stable
   → 0.1.1（仅在 stable 后确有兼容补丁时）
   → 0.2.0-alpha.1 ... 0.2.0-rc.1 → 0.2.0
 ```
 
-下一开发版本选择 **`0.1.0-rc.5`**，不选择 `0.1.1-rc.1`。rc.4 已作为 DSH `0.2.1-rc.3`/`rc.4` 兼容性补丁公开发布，不能追加新内容。
+已定版候选是 **`0.1.0-rc.5`**；其 npm 发布和 GitHub prerelease 延迟。当前源码版本是 **`0.1.0-rc.6`**，
+未发布、未打 tag。`0.1.1-rc.1` 仍是 stable 之后的补丁语义，不是 rc.6 的另一种写法。
 
-原因不是继续往 `0.1.0` 塞新功能，而是当前代码仍有一个与产品承诺冲突的审阅正确性问题：历史草案的全部候选默认选中，但界面一次只展示前 40 条，Apply 会把尚未展示的候选一起提交。README 同时声明“人工审阅是强制的”。在这个问题关闭前，不应把 rc.4 直接提升为 stable。
+rc.5 修复了与产品承诺冲突的审阅正确性问题：此前历史草案全部候选默认选中，界面一次只展示前 40 条，Apply 可能提交尚未展示的候选；README 同时声明“人工审阅是强制的”。rc.5 的审阅流程现在初始不选中，也不会提交隐藏行。
 
 `0.1.1-rc.1` 只有在 `0.1.0` stable 已发布、并且出现一组需要候选验证的向后兼容补丁时才成立。它不是 `0.1.0-rc.5` 的另一种写法。
 
@@ -28,15 +30,19 @@
 
 ### 2.1 已发布版本
 
-- 已发布版本是 `0.1.0-rc.4`；其 tag、GitHub Release 资产和 npm 包均已公开且不可修改。
+- 最新已发布版本是 `0.1.0-rc.4`；其 tag、GitHub Release 资产和 npm 包均已公开且不可修改。npm `latest` 和
+  `next` 当前指向 rc.4。
 - rc.4 是 compatibility-only patch，增加 DSH `0.2.1-rc.3`/`rc.4` 精确兼容声明，不改变插件运行时行为。
-- npm `latest` 和 `next` 当前指向 rc.4。
 
 ### 2.2 rc.5 候选
 
-- rc.5 候选位于 `release/0.1.0-rc.5` 分支，尚未创建 tag、GitHub Release 或 npm 发布。
-- rc.5 的实现、验证和 artifact evidence 在该分支收敛；不会重写 rc.4 的发布历史。
-- rc.5 使用新的版本号、tag 和产物。
+- rc.5 已实现并冻结。源码已打 `v0.1.0-rc.5` tag；candidate workflow 全绿，精确产物 digest 记录在根
+  `SHA256SUMS`；tag 指向 checksum-only C+1 commit。
+- rc.5 **尚未发布**：npm 发布、GitHub prerelease、受保护 browser evidence 和 Promotion 仍待完成。不要把
+  rc.5 描述为可从 npm 安装。
+- rc.6 已在源码启用，但**未发布、未打 tag**。当前只承载文档、UI 帮助/预览和流量观测工作；任何 tag 或发布前都必须重新
+  构建 candidate。
+- `main` 已包含剩余 promotion 路径使用的 token 发布 workflow。已发布的 rc.4 历史永不改写。
 
 ## 3. 为什么是 rc.5
 
@@ -60,7 +66,7 @@ SemVer 顺序是：
 
 ## 4. `0.1.0-rc.5` 范围
 
-rc.5 定位为 **审阅正确性、交互安全与稳定版证据收敛**。不新增领域能力，不扩展持久化模型或 Remote 方法。详细实施见 [rc5-stabilization-plan.zh.md](rc5-stabilization-plan.zh.md)。
+rc.5 定位为 **审阅正确性、交互安全与稳定版证据收敛**。不新增领域能力，不扩展持久化模型或 Remote 方法。**状态：已完成并冻结；实施计划为历史文档。** 见 [rc5-stabilization-plan.zh.md](rc5-stabilization-plan.zh.md) 与[验证记录](../verification.zh.md)。
 
 ### 4.1 P0：历史草案必须显式审阅
 
@@ -140,9 +146,9 @@ rc.5 定位为 **审阅正确性、交互安全与稳定版证据收敛**。不�
 
 ### 4.7 P1：更新 DSH 精确兼容矩阵
 
-rc.4 已把 `0.2.1-rc.3` 和 `rc.4` 加入 `engines.dsh` 与 peer ranges。rc.5 补齐遗漏的 `dsh.compatibility.dshReleases`，提交可重复的版本矩阵 runner，并重新验证七版本证据。
+rc.4 已把 `0.2.1-rc.3` 和 `rc.4` 加入 `engines.dsh` 与 peer ranges。rc.5 补齐遗漏的 `dsh.compatibility.dshReleases`，提交可重复的版本矩阵 runner，并重新验证当时声明的七版本证据。
 
-最低版 `0.1.7-rc.2`、旧 resource 边界 `0.2.0-rc.2`、当前推荐版 `0.2.1-rc.4` 必须完成完整矩阵；其余已支持版本至少运行 typecheck、build、tests 和 smoke。
+最低版 `0.1.7-rc.2`、旧 resource 边界 `0.2.0-rc.2`、当前推荐版 `0.2.1-rc.5` 必须完成完整矩阵；其余已支持版本至少运行 typecheck、build、tests 和 smoke。
 
 未经验证不再扩大范围。若上游新版本破坏公开契约，应记录未支持，而不是在 rc.5 维护第二套实现。
 
@@ -170,7 +176,7 @@ rc.4 已把 `0.2.1-rc.3` 和 `rc.4` 加入 `engines.dsh` 与 peer ranges。rc.5 
 
 ## 5. 从 rc.5 到 `0.1.0` stable
 
-rc.5 发布后进入 feature freeze。满足以下条件后发布 `0.1.0`：
+rc.5 发布状态确定后进入 feature freeze。满足以下条件后发布 `0.1.0`：
 
 - rc.5 没有未关闭的数据损坏、授权、审阅误提交或 unknown-outcome 缺陷。
 - live Gateway、真实 recovery UI、Desktop 重启 ABI 检查完成并记录。

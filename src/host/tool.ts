@@ -5,11 +5,11 @@ export function defineCharterReadTool(charter: CharterService): ToolDefinition {
   return defineTool({
     name: 'charter_read',
     description:
-      'Read the current user-authored session charter. This tool is read-only. '
-      + 'Use the standing view for the complete current objective, active invariants, and active deliverables; '
-      + 'use all only when historical or inactive charter entries are needed. '
-      + 'standing has no fixed byte cap; a maximum-size charter can produce a large response. '
-      + 'all is a bounded debugging projection with full item metadata and chain/source fields; the page and its result envelope stay within 64 items / 32 KiB, omitted items are reported in truncated, and an objective that alone cannot fit is omitted with objectiveTruncated: true.',
+      'Read the current user-authored session charter (read-only). The standing charter is normally present '
+      + 'in runtime context when automatic injection is available; do not call standing merely to restate that '
+      + 'context. Call it when the context may be absent or stale, or when revision/verification details are '
+      + 'needed. standing can be large; use all only for inactive/history entries (bounded to 64 items / 32 KiB, '
+      + 'with truncated and objectiveTruncated flags).',
     parameters: {
       view: {
         type: 'string',

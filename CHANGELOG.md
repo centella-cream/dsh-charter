@@ -5,9 +5,45 @@ English | [中文](CHANGELOG.zh.md)
 All notable changes to `dsh-charter` are recorded here. The project follows a pre-1.0 version line while the
 DSH plugin ABI is still moving.
 
-## 0.1.0-rc.5 — 2026-10-27
+## 0.1.0-rc.6 — unreleased
 
-Pre-stable correctness and release-hardening candidate. No new 0.2 capability, domain, Remote method, or
+Compatibility, UI, and observability candidate. No product runtime code path, record schema, Remote method, model tool, or domain change beyond DSH `0.2.1-rc.5` metadata and the shortened model-facing `charter_read` description.
+
+### Added
+
+- DSH `0.2.1-rc.5` compatibility across `engines.dsh`, every DSH peer range, `dsh.compatibility.dshReleases`, the tracked matrix, and its lockfile; the Web/Desktop client entry remains the same `dsh.client` bundle.
+- A help affordance on every Charter navigation section; hovering or focusing the `?` badge shows a one-sentence
+  description of Overview, Objective, Invariants, Deliverables, History draft, Context, or Storage & recovery.
+- The Context preview has Formatted JSON and Exact text modes. Formatted JSON is pretty-printed for reading, while
+  the exact view and byte counter retain the model-visible bytes.
+
+### Observability
+
+- Added `scripts/verify/traffic-check.mjs`, a read-only Session transcript checker reporting model attempts,
+  active-surface/historical/epoch snapshots, section churn, duplicate bytes, tool-schema bytes, token usage, and
+  redundant `charter_read` candidates.
+- Shortened the `charter_read` description to discourage redundant reads when the standing charter is already in
+  runtime context.
+
+### Documentation
+
+- Consolidated the release, version, verification, compatibility, user-guide, and README documentation around
+  the actual release state: rc.4 published, rc.5 finalized but npm-delayed, rc.6 active and unpublished.
+- Removed stale pre-tag instructions and outdated install claims.
+- Pinned the toolchain devDependencies to exact versions (React `18.3.1`, TypeScript `5.9.3`, `@types/node` `22.20.5`, `@tsdown/css` `0.22.2`) so the rc.5 compatibility update does not drift with range resolution.
+- Added the version badge in the Charter header as an accepted rc.5 scope addition; the rc.6 client constant is
+  synchronized with `package.json` by the existing drift test.
+
+### Release state
+
+- `0.1.0-rc.5` remains finalized and immutable (tag `v0.1.0-rc.5`, exact artifact digest in `SHA256SUMS`); its npm
+  publication is deferred.
+- `0.1.0-rc.6` is active in the source tree but **not tagged and not published**. A new candidate must be built
+  from this tree before any tag or Promotion.
+
+## 0.1.0-rc.5 — 2026-10-29
+
+Pre-stable correctness and release-hardening candidate. Tagged and candidate-green; npm publication and the GitHub Release are still pending. No new 0.2 capability, domain, Remote method, or
 persistent schema version.
 
 ### Added
@@ -33,6 +69,7 @@ persistent schema version.
 - `npm run check` and the current exact-artifact/packed smoke commands are the source of truth; real Gateway,
   browser recovery, Desktop ABI, and real-model compaction remain separate acceptance gates.
 - No record schema version bump and no domain change; rc.4 records remain readable.
+- Release state: tag `v0.1.0-rc.5` exists, exact artifact SHA-256 is recorded in `SHA256SUMS`; rc.5 is not published to npm yet.
 
 ## 0.1.0-rc.4 — 2026-10-27
 

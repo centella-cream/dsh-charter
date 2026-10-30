@@ -23,14 +23,18 @@ For a Web or Desktop profile the plugin registers:
 
 ## 2. Install
 
-> **Install channels.** Once the maintainer publishes the `next` dist-tag, install by exact version or tag; if the
-> tag is not listed in your registry yet, use the verified local tarball built from this checkout.
+> **Install channels.** The latest published RC is `0.1.0-rc.4`; `0.1.0-rc.5` is finalized and tagged but
+> **not yet published to npm or released on GitHub**. `0.1.0-rc.6` is the active source version and is also
+> unreleased/untagged. Install the published rc.4 exact version for normal use. Use the verified local tarball
+> only for candidate verification or when the registry is unreachable.
 
 ### 2.1 Requirements
 
 - DSH: only the versions listed in the [compatibility matrix](design/compatibility.md) are supported
-  (`0.1.7-rc.2`, `0.2.0-rc.1`/`rc.2`, `0.2.1-rc.1`/`rc.2`); newer stable/RC versions are not claimed until the
-  matrix is extended. `0.2.1+` is required for per-Peer Remote resource authorization.
+  (`0.1.7-rc.2`, `0.2.0-rc.1`/`rc.2`, `0.2.1-rc.1`/`rc.2`/`rc.3`/`rc.4`/`rc.5`); newer stable/RC versions are not
+  claimed until the matrix is extended. `0.2.1+` is required for per-Peer Remote resource authorization. DSH
+`0.2.1-rc.5` is source-level support in the unreleased rc.6 tree; published rc.4 and finalized rc.5 artifacts do not
+declare it.
 - Node.js **`^22.19.0 || >=24.0.0`**.
 - A Web or Desktop profile.
 
@@ -40,7 +44,7 @@ For a Web or Desktop profile the plugin registers:
 npm install
 npm run build
 npm pack
-dsh plugin --profile web add ./dsh-charter-0.1.0-rc.5.tgz
+dsh plugin --profile web add ./dsh-charter-0.1.0-rc.6.tgz
 ```
 
 For Desktop, use the Plugins page if local import is available; otherwise install the tarball through the Desktop
@@ -50,16 +54,16 @@ dependency is a local `file:` path. Prefer npm install in §2.3 when the registr
 ### 2.3 npm / Registry install (recommended) — Web profile by version or tag
 
 ```bash
-dsh plugin --profile web add dsh-charter@0.1.0-rc.5   # exact version: reproducible
-dsh plugin --profile web add dsh-charter@next         # newest pre-release
+dsh plugin --profile web add dsh-charter@0.1.0-rc.4   # latest published RC: reproducible
+dsh plugin --profile web add dsh-charter@next          # currently rc.4 until rc.5/rc.6 are published
 ```
 
-`dsh-charter@0.1.0-rc.5` is the current release candidate. Use the exact rc.5 command below only after
-`npm view dsh-charter@0.1.0-rc.5 version` returns that version; until then continue with the latest published
-RC (`0.1.0-rc.4`). Under our channel policy `latest` also points at the newest RC until a stable release exists
-(npm keeps a `latest` tag and we choose where it points; this is our policy, not an npm requirement). Use the
-offline tarball fallback above only when the registry is unreachable. Pin an explicit version for reproducible
-profiles.
+`dsh-charter@0.1.0-rc.4` is the latest published RC, and npm `next`/`latest` currently point at it. rc.5 is
+implemented and tagged but **not yet installable from npm**; use the rc.5 command only after
+`npm view dsh-charter@0.1.0-rc.5 version` returns that version. Under our channel policy `latest` also points at
+the newest RC until a stable release exists (npm keeps a `latest` tag and we choose where it points; this is our
+policy, not an npm requirement). Use the offline tarball fallback only when the registry is unreachable or for
+candidate verification. Pin an explicit version for reproducible profiles.
 
 Restart `dsh web`, or let profile HMR recompose, then refresh the page. The profile's `package.json` gains the
 dependency and bundle selection:
@@ -128,7 +132,8 @@ summary keep the normal empty state.
    the View tab bar). The Charter tab is registered once at a stable high order, so it follows Chat, Trajectory, and
    common plugin tabs without re-registering itself.
 2. Use the left section navigation: **Overview / Objective / Invariants / Deliverables / History draft /
-   Context**. History is always available: it shows the current bootstrap phase and offers **Check again**.
+   Context / Storage & recovery**. Every section has a `?` help badge; hover or focus it for a one-sentence
+   description. History is always available: it shows the current bootstrap phase and offers **Check again**.
    Narrow windows turn this navigation into a horizontal tab strip.
 3. In **Objective**, set the objective. The original objective is written once and is immutable.
 4. In **Invariants**, add constraints that must remain visible, for example:
@@ -138,7 +143,8 @@ summary keep the normal empty state.
 5. In **Deliverables**, add outcomes with `not-started` / `in-progress` / `blocked` / `done` / `cancelled`.
    The tab label and every pane string follow the active DSH language: **Charter** in English, **会话契约** in Chinese.
 6. Every change first enters a draft, and the list itself renders the projected result immediately. **Preview
-   context** shows the exact user-role text and byte count the model will see after Apply.
+   context** shows the model-visible context in **Formatted JSON** (pretty-printed for reading) or **Exact text**
+   (raw bytes); the byte counter always reflects the exact text.
 7. **Apply** commits atomically. On success the revision increases and the next request sees it. A network
    failure keeps the same mutation id so Retry can safely replay an unknown-outcome write.
 8. If another tab or process commits first, the pane keeps the draft and offers **Apply draft to revision N**;

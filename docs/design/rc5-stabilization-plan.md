@@ -4,7 +4,7 @@ English | [中文](rc5-stabilization-plan.zh.md)
 
 > This English file is a non-normative summary. The Chinese implementation plan is normative when details differ.
 
-Plan date: 2026-10-27. Target: `0.1.0-rc.5`.
+Plan date: 2026-10-27. Target: `0.1.0-rc.5`. Status: **complete and frozen; historical implementation plan.**
 
 ## 1. Version Correction
 

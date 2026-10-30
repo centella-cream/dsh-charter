@@ -22,14 +22,15 @@ dsh --profile web --dump-config | grep -n "charter" || true
 
 ## 2. 安装
 
-> **安装渠道。** 维护者发布 `next` dist-tag 后，可按精确版本或 tag 安装；如果 registry 中还没有列出该 tag，
-> 请使用从本 checkout 构建并验证过的本地 tarball。
+> **安装渠道。** 最新已发布 RC 是 `0.1.0-rc.4`；`0.1.0-rc.5` 已定版并打 tag，但**尚未发布到 npm 或
+> GitHub Release**。`0.1.0-rc.6` 是当前源码版本，同样未发布、未打 tag。普通使用请安装已发布 rc.4 精确版本；
+> 只有候选验证或 registry 不可达时才使用已验证的本地 tarball。
 
 ### 2.1 环境要求
 
 - DSH：只支持[兼容矩阵](design/compatibility.zh.md)中列出的版本（`0.1.7-rc.2`、`0.2.0-rc.1`/`rc.2`、
-  `0.2.1-rc.1`/`rc.2`）。在扩展矩阵前不声明支持更新的 stable/RC 版本；完整 per-Peer Remote 资源授权要求
-  `0.2.1+`。
+  `0.2.1-rc.1`/`rc.2`/`rc.3`/`rc.4`/`rc.5`）。在扩展矩阵前不声明支持更新的 stable/RC 版本；完整 per-Peer Remote
+  资源授权要求 `0.2.1+`。DSH `0.2.1-rc.5` 是未发布 rc.6 源码级支持；已发布 rc.4 和已定版 rc.5 产物均未声明该版本。
 - Node.js **`^22.19.0 || >=24.0.0`**。
 - Web 或 Desktop profile。
 
@@ -39,7 +40,7 @@ dsh --profile web --dump-config | grep -n "charter" || true
 npm install
 npm run build
 npm pack
-dsh plugin --profile web add ./dsh-charter-0.1.0-rc.5.tgz
+dsh plugin --profile web add ./dsh-charter-0.1.0-rc.6.tgz
 ```
 
 Desktop 若支持本地插件导入，可在 Plugins 页面安装同一个 tarball；否则通过 Desktop profile 自己的包管理器
@@ -49,21 +50,22 @@ Desktop 若支持本地插件导入，可在 Plugins 页面安装同一个 tarba
 ### 2.3 npm / Registry 安装（推荐）— Web profile 按版本或 tag
 
 ```bash
-dsh plugin --profile web add dsh-charter@0.1.0-rc.5   # 精确版本：可复现
-dsh plugin --profile web add dsh-charter@next         # 最新预发布
+dsh plugin --profile web add dsh-charter@0.1.0-rc.4   # 最新已发布 RC：可复现
+dsh plugin --profile web add dsh-charter@next          # 在 rc.5/rc.6 发布前仍指向 rc.4
 ```
 
-`dsh-charter@0.1.0-rc.5` 是当前候选版本。只有 `npm view dsh-charter@0.1.0-rc.5 version` 返回该版本后，
-才使用下面的 rc.5 精确安装命令；在此之前继续使用最新已发布 RC（`0.1.0-rc.4`）。按当前渠道策略，稳定版
-出现前 `latest` 也会指向最新 RC（npm 会保留 `latest` tag，由我们决定其指向；这是我们的策略，不是 npm 的
-强制要求）。只有 registry 不可达时才使用上面的离线 tarball 回退。固定明确版本可以让 profile 可复现。
+`dsh-charter@0.1.0-rc.4` 是最新已发布 RC，npm `next`/`latest` 当前均指向它。rc.5 已实现并打 tag，
+但**尚不能从 npm 安装**；只有 `npm view dsh-charter@0.1.0-rc.5 version` 返回该版本后才能使用 rc.5 命令。
+按当前渠道策略，稳定版出现前 `latest` 也会指向最新 RC（npm 会保留 `latest` tag，由我们决定其指向；这是
+我们的策略，不是 npm 的强制要求）。只有 registry 不可达或候选验证时才使用离线 tarball 回退。固定明确版本
+可以让 profile 可复现。
 
 重启 `dsh web`，或让 HMR 重新组合 profile，然后刷新页面。profile 的 `package.json` 会增加依赖和 bundle
 选择：
 
 ```json
 {
-  "dependencies": { "dsh-charter": "0.1.0-rc.5" },
+  "dependencies": { "dsh-charter": "0.1.0-rc.4" },
   "dsh": { "profile": { "bundles": ["...", "dsh-charter"] } }
 }
 ```
@@ -116,8 +118,9 @@ npm run build
 1. 打开任意已开始的会话，会话头部会依次出现「对话」「轨迹」「会话契约」。若没有「会话契约」，先确认 profile 的
    boot graph 包含 `dsh-charter/client.js`，并确认会话不是空白 Session（空白 Session 会隐藏 View 标签栏）。
    「会话契约」标签以稳定的高 order 注册一次，因此排在「对话」「轨迹」和常见插件标签之后。
-2. 使用左侧 section 导航：**概览 / 目标 / 硬约束 / 交付物 / 历史草案 / 上下文**。历史草案始终可见，展示当前
-   bootstrap 阶段并提供**重新检查**。窄窗口下自动变成横向 tab。
+2. 使用左侧 section 导航：**概览 / 目标 / 硬约束 / 交付物 / 历史草案 / 上下文 / 存储与恢复**。每个栏目都有
+   `?` 帮助徽标；悬停或聚焦会显示一句话说明。历史草案始终可见，展示当前 bootstrap 阶段并提供**重新检查**。
+   窄窗口下自动变成横向 tab。
 3. 在 **目标** 中设置目标。原始目标只写一次。
 4. 在 **硬约束** 中添加必须长期可见的约束，例如：
    - `Do not modify migrations/`
