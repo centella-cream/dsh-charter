@@ -15,6 +15,12 @@
 - 上下文预览增加“格式化 JSON / 精确文本”两种模式。格式化 JSON 便于阅读；精确视图和字节计数仍使用模型实际
   可见的原始字节。
 
+### 可观测性
+
+- 新增 `scripts/verify/traffic-check.mjs`：只读分析 Session transcript，输出 step 数、runtime-context /
+  charter snapshot 累积、assistant token usage，以及 `charter_read` 调用次数和结果字节。
+- 缩短 `charter_read` description，避免在 standing charter 已进入 runtime context 时鼓励重复读取。
+
 ### 文档
 
 - 围绕实际发布状态统一 README、发布、版本、验证、兼容性和用户指南：rc.4 已发布，rc.5 已定版但 npm 延迟，

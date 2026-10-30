@@ -110,6 +110,23 @@ The current rc.6 source tree passed `compat-matrix --versions all` on 2026-10-29
 | Visible-only bootstrap selection and exact replay | PASS |
 | Discard/editor/composer independence and unknown evidence retention | PASS |
 
+## 5.1 Traffic / cache observation
+
+The read-only checker reports context accumulation without changing the Host:
+
+```bash
+node scripts/verify/traffic-check.mjs --session <id> --home <DSH_HOME> [--json]
+```
+
+It reports step count, runtime-context snapshots (distinct/total/max bytes), `charter:standing` snapshots
+(distinct/total/max bytes), assistant `usage` totals (`inputTokens`, `cacheReadTokens`, `cacheWriteTokens`), and
+`charter_read` calls/result bytes. It is diagnostic evidence, not a release pass/fail gate.
+
+A representative current-Session observation (2026-10-30) showed 4,749 steps, 20 runtime snapshots (10 distinct),
+2 charter snapshots (1 distinct), and `charter_read` calls; this confirms the structural accumulation risk before
+any prompt-delivery redesign. Fixed-slot/replace delivery is intentionally not implemented without controlled
+A/B usage evidence.
+
 ## 6. Manual and external gaps
 
 - Real browser export → absent target → restore → reload/restart is a manual protected evidence gate

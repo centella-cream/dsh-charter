@@ -104,6 +104,22 @@ CI（`.github/workflows/ci.yml`）在 Node `22.19.0` / `24` 上运行 `npm run c
 | visible-only bootstrap 选择与 exact replay | PASS |
 | discard/editor/composer 独立性与 unknown evidence 保留 | PASS |
 
+## 5.1 流量 / cache 观测
+
+只读 checker 不改变 Host，报告上下文累积：
+
+```bash
+node scripts/verify/traffic-check.mjs --session <id> --home <DSH_HOME> [--json]
+```
+
+输出 step 数、runtime-context snapshots（去重数/总数/最大字节）、`charter:standing` snapshots、assistant
+`usage`（`inputTokens`、`cacheReadTokens`、`cacheWriteTokens`）以及 `charter_read` 调用和结果字节。它是诊断
+证据，不是发布 pass/fail 门禁。
+
+2026-10-30 当前 Session 的代表性观测：4,749 steps、20 个 runtime snapshots（10 distinct）、2 个 charter
+snapshots（1 distinct），并有 `charter_read` 调用；这确认了结构性的快照累积风险。固定 slot/replace 方案在
+获得受控 A/B usage 证据前不实施。
+
 ## 6. 人工/外部缺口
 
 - 真实浏览器 export → absent → restore → reload/restart 是受保护的人工 evidence gate

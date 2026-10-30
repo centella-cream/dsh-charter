@@ -17,6 +17,13 @@ domain change yet.
 - The Context preview has Formatted JSON and Exact text modes. Formatted JSON is pretty-printed for reading, while
   the exact view and byte counter retain the model-visible bytes.
 
+### Observability
+
+- Added `scripts/verify/traffic-check.mjs`, a read-only Session transcript checker reporting step count,
+  runtime-context/charter snapshot accumulation, assistant token usage, and `charter_read` calls/result bytes.
+- Shortened the `charter_read` description to discourage redundant reads when the standing charter is already in
+  runtime context.
+
 ### Documentation
 
 - Consolidated the release, version, verification, compatibility, user-guide, and README documentation around
