@@ -185,6 +185,7 @@ export function summarizeCharterRead(events, activeSnapshots = []) {
   let ambiguous = 0
   let unattributedResults = 0
   let paired = 0
+  const ambiguousCallSeqs = new Set()
   for (const event of ordered) {
     if (event.type !== 'tool/result') continue
     const data = event.data ?? {}
@@ -200,6 +201,7 @@ export function summarizeCharterRead(events, activeSnapshots = []) {
       const charterRefs = referenced.filter(call => call !== undefined)
       if (charterRefs.length === 0) continue
       if (referenced.length !== 1 || charterRefs.length !== 1) {
+        for (const seq of source) if (callsBySeq.has(seq)) ambiguousCallSeqs.add(seq)
         ambiguous += 1
         continue
       }
@@ -208,8 +210,12 @@ export function summarizeCharterRead(events, activeSnapshots = []) {
       const key = `${data.turn}:${data.step}:${message.toolCallId ?? message.source?.callId}`
       const candidates = legacyKeys.get(key) ?? []
       if (candidates.length === 0) continue
-      if (candidates.length > 1) { ambiguous += 1; continue }
-      if (candidates[0].resultBytes !== undefined) { ambiguous += 1; continue }
+      if (candidates.length > 1) {
+        for (const candidate of candidates) ambiguousCallSeqs.add(candidate.seq)
+        ambiguous += 1
+        continue
+      }
+      if (candidates[0].resultBytes !== undefined) { ambiguousCallSeqs.add(candidates[0].seq); ambiguous += 1; continue }
       matched = candidates[0]
     }
     if (matched === undefined || matched.resultBytes !== undefined) {
@@ -233,7 +239,7 @@ export function summarizeCharterRead(events, activeSnapshots = []) {
     calls: calls.length,
     redundantReads: calls.filter(call => call.redundantReadCandidate === true).length,
     paired,
-    unpairedCalls: calls.length - paired,
+    unpairedCalls: calls.filter(call => call.resultBytes === undefined && !ambiguousCallSeqs.has(call.seq)).length,
     unattributedResults,
     ambiguous,
     views: calls.map(call => call.view),
@@ -325,6 +331,8 @@ export function summarizeTraffic(events) {
   const retries = [...groups.values()].reduce((sum, group) => sum + Math.max(0, group.length - 1), 0)
   const usageRows = attempts.flatMap(attempt => attempt.usage === null ? [] : [attempt.usage])
   const unreportedAttempts = attempts.length - usageRows.length
+  const cacheReportedAttempts = usageRows.filter(usage => usage.cacheReported).length
+  const billedInputTokensComplete = attempts.length > 0 && cacheReportedAttempts === attempts.length
   const usageTotals = usageRows.reduce((total, usage) => {
     total.uncachedInputTokens += usage.uncachedInputTokens
     total.outputTokens += usage.outputTokens
@@ -347,6 +355,7 @@ export function summarizeTraffic(events) {
     reasoningTokens: 0,
     cacheReportedAttempts: 0,
   })
+  usageTotals.billedInputTokensComplete = billedInputTokensComplete
   const warnings = []
   const notes = []
   if (runtime.historical.length > runtime.active.length) {

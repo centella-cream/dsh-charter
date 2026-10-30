@@ -1679,6 +1679,13 @@
   overflow-wrap: anywhere;
 }
 
+@media (hover: none) {
+  .charter-nav__item:focus .charter-nav__help::after {
+    visibility: visible;
+    opacity: 1;
+  }
+}
+
 @media (max-width: 640px), (pointer: coarse) {
   .charter-progress select,
   .charter-item__menulist button,

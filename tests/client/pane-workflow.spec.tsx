@@ -201,6 +201,22 @@ describe('rc.6 pane help and formatted preview', () => {
     ])
   })
 
+  it('links navigation help through aria-describedby and explains an empty preview', () => {
+    const ready = view({ revision: 0 })
+    const src = source(ready)
+    const draft = new CharterDraft(sessionId, () => src)
+    draft.bindLifecycle(lifecycle)
+    const tree = mount(src, draft)
+    const overview = tree.root.findAll(node => node.type === 'button' && textOf(node) === 'nav.overview')[0]
+    expect(overview?.props['aria-describedby']).toBe('charter-nav-help-overview')
+    const help = tree.root.findAll(node => node.props.id === 'charter-nav-help-overview')[0]
+    expect(textOf(help!)).toBe('nav.overviewHelp')
+    const context = tree.root.findAll(node => node.type === 'button' && textOf(node).includes('nav.context'))[0]
+    expect(context).toBeDefined()
+    act(() => context!.props.onClick())
+    expect(textOf(tree.root)).toContain('preview.emptyHint')
+  })
+
   it('shows the context preview as formatted JSON by default', () => {
     const ready = view({
       revision: 1,

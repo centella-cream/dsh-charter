@@ -24,7 +24,7 @@ Current release state (2026-10-30):
 | Item | Result |
 | --- | --- |
 | Strict TypeScript check | Pass on the current tree |
-| Vitest | 29 files / 373 tests pass (`npm test`, which builds first) |
+| Vitest | 30 files / 377 tests pass (`npm test`, which builds first) |
 | Host ESM build + browser factory bundle | Pass |
 | Remote contract and client smoke | Pass |
 | Normal package smoke | Pass |
@@ -32,7 +32,7 @@ Current release state (2026-10-30):
 | Packed-artifact recovery smoke | Pass: export, target removal, restore, receipt replay, two restarts, healthy-target refusal, packed fault subset |
 | Real `TypertGatewayService` | Pass on exact artifact with isolated DSH `0.2.1-rc.3` and `rc.4` graphs |
 | Compatibility sentinels | Pass on `0.1.7-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4` |
-| Seven-version full rerun | Pass via tracked `compat-matrix --versions all` (373/373 each) |
+| Seven-version full rerun | Pass via tracked `compat-matrix --versions all` (377/377 each) |
 | Fresh Web profile matrix | PASS: exact artifact installed and served on DSH `0.1.7-rc.2`, `0.2.0-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4` |
 | Untracked `0.2.2-alpha.2` probe | strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run; explicitly unsupported in rc.6 |
 | Real browser recovery | Manual protected evidence gate; not automated |
@@ -66,15 +66,15 @@ The tracked runner creates isolated pnpm projects with strict peers and runs typ
 
 | DSH version | Evidence |
 | --- | --- |
-| `0.1.7-rc.2` | 373/373 tracked matrix PASS |
-| `0.2.0-rc.1` | 373/373 tracked matrix PASS |
-| `0.2.0-rc.2` | 373/373 tracked matrix PASS |
-| `0.2.1-rc.1` | 373/373 tracked matrix PASS |
-| `0.2.1-rc.2` | 373/373 tracked matrix PASS |
-| `0.2.1-rc.3` | 373/373 tracked matrix PASS |
-| `0.2.1-rc.4` | 373/373 tracked matrix PASS |
+| `0.1.7-rc.2` | 377/377 tracked matrix PASS |
+| `0.2.0-rc.1` | 377/377 tracked matrix PASS |
+| `0.2.0-rc.2` | 377/377 tracked matrix PASS |
+| `0.2.1-rc.1` | 377/377 tracked matrix PASS |
+| `0.2.1-rc.2` | 377/377 tracked matrix PASS |
+| `0.2.1-rc.3` | 377/377 tracked matrix PASS |
+| `0.2.1-rc.4` | 377/377 tracked matrix PASS |
 
-The current rc.6 source tree passed `compat-matrix --versions all` on 2026-10-30: every declared version passed typecheck, build, and 373/373 tests. Installs use pnpm strict peer resolution, exact tool pins, a single zod 4.6.7 graph, full `pnpm list --depth Infinity` graph validation, and recorded lockfile SHA-256 values. The untracked `0.2.2-alpha.2` probe is recorded as unsupported: strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run.
+The current rc.6 source tree passed `compat-matrix --versions all` on 2026-10-30: every declared version passed typecheck, build, and 377/377 tests. Installs use pnpm strict peer resolution, exact tool pins, a single zod 4.6.7 graph, full `pnpm list --depth Infinity` graph validation, and recorded lockfile SHA-256 values. The untracked `0.2.2-alpha.2` probe is recorded as unsupported: strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run.
 
 ## 4. What the tests cover
 
@@ -130,15 +130,19 @@ prompt-delivery model.
 ### 5.1.1 Local diagnostic (not release evidence)
 
 One local diagnostic run on 2026-10-30 (Session `session-f0aaa8dd-05bf-4a85-9a5e-b4bd016f6dd3`,
-transcript `sha256:d20de764ec2deead1a622cbfd5ebce18c25890e208d79dbd8870ccca030b9db8`, 34,748 events;
+transcript `sha256:88f47145827ea40c67269dec8fe30fdbff63a8da0fc1c02eeae63871ddbfdb83`, 34,841 events;
 live Session, digest fixed at the diagnostic time) reported:
 
 ```text
-historical runtime snapshots: 21 (16 shadowed)
-active runtime snapshots:     5, 6,129 B total, 4,687 B duplicate over latest
-active charter:               1,467 B total, latest 489 B, 978 B duplicate
-section churn:                app:web-surface ×2, approval:policy ×1,
-                              sandbox:policy ×1, charter:standing ×1
+historical runtime snapshots: 22 (16 shadowed)
+active runtime snapshots:     6, 7,712 B total, 6,129 B duplicate over latest
+active charter:               2,097 B total, latest 630 B, 1,467 B duplicate
+section churn (active):       app:web-surface ×2, charter:standing ×2,
+                              approval:policy ×1, sandbox:policy ×1
+section churn (all history):  app:web-surface ×7, approval:policy ×4,
+                              sandbox:policy ×4, charter:standing ×2,
+                              harness:source ×1, team:identity ×1,
+                              working-directory:current ×1
 tool schema:                  39 tools, 32,173 B; charter_read 805 B
 charter_read:                 4 calls, all before the first active charter snapshot
 ```

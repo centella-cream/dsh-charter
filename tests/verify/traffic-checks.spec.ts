@@ -77,6 +77,27 @@ describe('rc.6 traffic checks', () => {
     expect(report.unattributedResults).toBe(0)
   })
 
+  it('marks missing usage and partial billed totals', () => {
+    const report = summarizeTraffic([
+      { type: 'assistant/attempt', seq: 1, data: { turn: 1, step: 1, stream: [] } },
+      { type: 'assistant/message', seq: 2, data: { turn: 2, step: 1, usage: { inputTokens: 10, outputTokens: 2, cacheReadTokens: 0, cacheWriteTokens: 0 } } },
+    ])
+    expect(report.modelAttempts.missingUsage).toBe(1)
+    expect(report.modelAttempts.unreportedAttempts).toBe(1)
+    expect(report.modelAttempts.usage.billedInputTokens).toBe(10)
+    expect(report.modelAttempts.usage.billedInputTokensComplete).toBe(false)
+  })
+
+  it('reports sectionChurnAll separately from active churn', () => {
+    const report = summarizeTraffic([
+      { type: 'user/message', seq: 1, data: { content: [{ type: 'text', text: 'a' }], source: { kind: 'runtime-context', sections: [{ name: 'app:web-surface', text: 'a' }] } }, surfaceOp: 'append' },
+      { type: 'user/message', seq: 2, data: { content: [{ type: 'text', text: 'b' }], source: { kind: 'runtime-context', sections: [{ name: 'app:web-surface', text: 'b' }] } }, surfaceOp: 'append' },
+      { type: 'assistant/message', seq: 3, data: {}, surfaceOp: { op: 'replace', startSeq: 1, endSeq: 1 } },
+    ])
+    expect(report.runtime.sectionChurn.events).toBe(0)
+    expect(report.runtime.sectionChurnAll.events).toBe(1)
+  })
+
   it('separates historical, active-surface, and current-epoch snapshots', () => {
     const report = summarizeRuntimeSnapshots([
       runtime(1, 'old'),
