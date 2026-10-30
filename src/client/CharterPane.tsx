@@ -1493,7 +1493,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                 type="button"
                 className={`charter-nav__item${section === item.id ? ' is-active' : ''}`}
                 aria-current={section === item.id ? 'page' : undefined}
-                title={item.help}
+                aria-description={item.help}
                 onClick={() => goSection(item.id)}
               >
                 <span className="charter-nav__text">{item.label}</span>
@@ -1502,7 +1502,6 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                 <span
                   className="charter-nav__help"
                   data-tooltip={item.help}
-                  title={item.help}
                   aria-hidden="true"
                 />
               </button>
@@ -2345,7 +2344,9 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                     {t('preview.exact')}
                   </button>
                   <span className="charter-hint">
-                    {previewMode === 'formatted' ? t('preview.formattedHint') : t('preview.exactHint')}
+                    {previewMode === 'formatted'
+                      ? formattedPreview === null ? t('preview.formattedUnavailable') : t('preview.formattedHint')
+                      : t('preview.exactHint')}
                   </span>
                 </div>
                 <pre>{preview === ''

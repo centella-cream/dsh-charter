@@ -24,7 +24,7 @@ Current release state (2026-10-30):
 | Item | Result |
 | --- | --- |
 | Strict TypeScript check | Pass on the current tree |
-| Vitest | 29 files / 368 tests pass (`npm test`, which builds first) |
+| Vitest | 29 files / 370 tests pass (`npm test`, which builds first) |
 | Host ESM build + browser factory bundle | Pass |
 | Remote contract and client smoke | Pass |
 | Normal package smoke | Pass |
@@ -32,7 +32,7 @@ Current release state (2026-10-30):
 | Packed-artifact recovery smoke | Pass: export, target removal, restore, receipt replay, two restarts, healthy-target refusal, packed fault subset |
 | Real `TypertGatewayService` | Pass on exact artifact with isolated DSH `0.2.1-rc.3` and `rc.4` graphs |
 | Compatibility sentinels | Pass on `0.1.7-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4` |
-| Seven-version full rerun | Pass via tracked `compat-matrix --versions all` (368/368 each) |
+| Seven-version full rerun | Pass via tracked `compat-matrix --versions all` (370/370 each) |
 | Fresh Web profile matrix | PASS: exact artifact installed and served on DSH `0.1.7-rc.2`, `0.2.0-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4` |
 | Untracked `0.2.2-alpha.2` probe | strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run; explicitly unsupported in rc.6 |
 | Real browser recovery | Manual protected evidence gate; not automated |
@@ -66,15 +66,15 @@ The tracked runner creates isolated pnpm projects with strict peers and runs typ
 
 | DSH version | Evidence |
 | --- | --- |
-| `0.1.7-rc.2` | 368/368 tracked matrix PASS |
-| `0.2.0-rc.1` | 368/368 tracked matrix PASS |
-| `0.2.0-rc.2` | 368/368 tracked matrix PASS |
-| `0.2.1-rc.1` | 368/368 tracked matrix PASS |
-| `0.2.1-rc.2` | 368/368 tracked matrix PASS |
-| `0.2.1-rc.3` | 368/368 tracked matrix PASS |
-| `0.2.1-rc.4` | 368/368 tracked matrix PASS |
+| `0.1.7-rc.2` | 370/370 tracked matrix PASS |
+| `0.2.0-rc.1` | 370/370 tracked matrix PASS |
+| `0.2.0-rc.2` | 370/370 tracked matrix PASS |
+| `0.2.1-rc.1` | 370/370 tracked matrix PASS |
+| `0.2.1-rc.2` | 370/370 tracked matrix PASS |
+| `0.2.1-rc.3` | 370/370 tracked matrix PASS |
+| `0.2.1-rc.4` | 370/370 tracked matrix PASS |
 
-The current rc.6 source tree passed `compat-matrix --versions all` on 2026-10-30: every declared version passed typecheck, build, and 368/368 tests. Installs use pnpm strict peer resolution, exact tool pins, a single zod 4.6.7 graph, full `pnpm list --depth Infinity` graph validation, and recorded lockfile SHA-256 values. The untracked `0.2.2-alpha.2` probe is recorded as unsupported: strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run.
+The current rc.6 source tree passed `compat-matrix --versions all` on 2026-10-30: every declared version passed typecheck, build, and 370/370 tests. Installs use pnpm strict peer resolution, exact tool pins, a single zod 4.6.7 graph, full `pnpm list --depth Infinity` graph validation, and recorded lockfile SHA-256 values. The untracked `0.2.2-alpha.2` probe is recorded as unsupported: strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run.
 
 ## 4. What the tests cover
 

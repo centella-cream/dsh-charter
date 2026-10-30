@@ -79,12 +79,14 @@ function findSessionLog(home, sessionId, project) {
 
 function main() {
   const args = parseArgs(process.argv.slice(2))
-  const sessionId = args.session ?? process.env.DSH_SESSION_ID
-  if (sessionId === undefined) fail('no Session: pass --session <id>, --log <file>, or set DSH_SESSION_ID')
-  if (!SESSION_ID.test(sessionId)) fail(`unsafe Session id: ${JSON.stringify(sessionId)}`)
   const home = args.home ?? process.env.DSH_HOME ?? join(homedir(), '.dsh')
-  const logFile = args.log ?? findSessionLog(home, sessionId, args.project)
+  const requestedSession = args.session ?? process.env.DSH_SESSION_ID
+  const logFile = args.log ?? (requestedSession === undefined
+    ? fail('no Session: pass --session <id>, --log <file>, or set DSH_SESSION_ID')
+    : findSessionLog(home, requestedSession, args.project))
   if (!existsSync(logFile)) fail(`session log not found: ${logFile}`)
+  const sessionId = args.session ?? basename(join(logFile, '..')) ?? requestedSession
+  if (!SESSION_ID.test(sessionId)) fail(`unsafe Session id: ${JSON.stringify(sessionId)}`)
   const source = readTranscript(logFile)
   const parsed = parseTranscript(source)
   if (!parsed.complete) {
@@ -111,8 +113,8 @@ function main() {
   console.log(`  transcript: sha256:${report.transcriptSha256}${report.incomplete ? ' (incomplete: torn tail)' : ''}`)
   console.log(`  events: ${report.events}, turns: ${report.turns}, steps: ${report.steps}`)
   console.log(`  model attempts: ${report.modelAttempts.total} requests, ${report.modelAttempts.successfulMessages} messages, ${report.modelAttempts.failedAttempts} failed/aborted, ${report.modelAttempts.retries} retries`)
-  console.log(`  usage: ${report.modelAttempts.unreportedAttempts} unreported, uncached input ${report.modelAttempts.usage.uncachedInputTokens}, billed input ${report.modelAttempts.usage.billedInputTokens}, output ${report.modelAttempts.usage.outputTokens}`)
-  console.log(`  runtime snapshots: historical ${report.runtime.historical.snapshots}, active ${report.runtime.activeSurface.snapshots}, current epoch ${report.runtime.currentCompactionEpoch.snapshots}, shadowed ${report.runtime.shadowed}`)
+  console.log(`  usage: ${report.modelAttempts.unreportedAttempts} unreported, uncached input ${report.modelAttempts.usage.uncachedInputTokens}, billed input ${report.modelAttempts.usage.billedInputTokens ?? 'n/a'}, output ${report.modelAttempts.usage.outputTokens}`)
+  console.log(`  runtime snapshots: historical ${report.runtime.historical.snapshots}, active ${report.runtime.activeSurface.snapshots}, current epoch all ${report.runtime.currentCompactionEpoch.snapshots} / active ${report.runtime.currentCompactionEpochActive.snapshots}, shadowed ${report.runtime.shadowed}`)
   console.log(`  charter snapshots: historical ${report.runtime.historical.charterSnapshots}, active ${report.runtime.activeSurface.charterSnapshots}, distinct active ${report.runtime.activeSurface.charterDistinct}`)
   console.log(`  charter_read: ${report.charterRead.calls} calls, ${report.charterRead.paired} paired, ${report.charterRead.resultBytes} B results, ${report.charterRead.ambiguous} ambiguous, ${report.charterRead.unpairedResults} unpaired results`)
   for (const warning of report.warnings) console.log(`  WARN: ${warning}`)

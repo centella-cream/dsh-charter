@@ -150,6 +150,7 @@ export function summarizeCharterRead(events) {
   }
   let ambiguous = 0
   let unpairedResults = 0
+  let unattributedResults = 0
   let paired = 0
   for (const event of ordered) {
     if (event.type !== 'tool/result') continue
@@ -161,7 +162,7 @@ export function summarizeCharterRead(events) {
     const modern = topHas || dataHas
     let matched
     if (modern) {
-      if (!Array.isArray(source) || source.length === 0) { unpairedResults += 1; continue }
+      if (!Array.isArray(source) || source.length === 0) { unattributedResults += 1; continue }
       const referenced = source.map(seq => callsBySeq.get(seq))
       const charterRefs = referenced.filter(call => call !== undefined)
       if (charterRefs.length === 0) continue
@@ -173,11 +174,9 @@ export function summarizeCharterRead(events) {
     } else {
       const key = `${data.turn}:${data.step}:${message.toolCallId ?? message.source?.callId}`
       const candidates = legacyKeys.get(key) ?? []
-      if (candidates.length !== 1) {
-        if (candidates.length > 1) ambiguous += 1
-        else unpairedResults += 1
-        continue
-      }
+      if (candidates.length === 0) continue
+      if (candidates.length > 1) { ambiguous += 1; continue }
+      if (candidates[0].resultBytes !== undefined) { ambiguous += 1; continue }
       matched = candidates[0]
     }
     if (matched === undefined || matched.resultBytes !== undefined) {
@@ -193,6 +192,7 @@ export function summarizeCharterRead(events) {
     paired,
     unpairedCalls: calls.length - paired,
     unpairedResults,
+    unattributedResults,
     ambiguous,
     views: calls.map(call => call.view),
     resultBytes: results.reduce((sum, call) => sum + call.resultBytes, 0),
@@ -216,12 +216,12 @@ export function summarizeTraffic(events) {
   let toolCount
   let latestRuntimeDigest
   let latestCharterDigest
-  let compactionEpoch = runtime.compactionEpoch
+  let compactionEpoch = 0
 
   for (const event of ordered) {
     if (event.type === 'step/start') stepCount += 1
     if (event.type === 'turn/start' || event.type === 'turn/begin') turnCount += 1
-    if (event.type === 'compaction/end') compactionEpoch = runtime.compactionEpoch
+    if (event.type === 'compaction/end') compactionEpoch += 1
     if (event.type === 'request/context') {
       provider = event.data?.provider ?? provider
       model = event.data?.model ?? model
@@ -281,7 +281,7 @@ export function summarizeTraffic(events) {
     if (usage.totalTokens !== undefined) total.totalTokens += usage.totalTokens
     if (usage.reasoningTokens !== undefined) total.reasoningTokens += usage.reasoningTokens
     if (usage.cacheReported) {
-      total.billedInputTokens += usage.uncachedInputTokens + usage.cacheReadTokens + usage.cacheWriteTokens
+      total.billedInputTokens = (total.billedInputTokens ?? 0) + usage.uncachedInputTokens + usage.cacheReadTokens + usage.cacheWriteTokens
       total.cacheReadTokens += usage.cacheReadTokens
       total.cacheWriteTokens += usage.cacheWriteTokens
       total.cacheReportedAttempts += 1
@@ -289,7 +289,7 @@ export function summarizeTraffic(events) {
     return total
   }, {
     uncachedInputTokens: 0,
-    billedInputTokens: 0,
+    billedInputTokens: null,
     cacheReadTokens: 0,
     cacheWriteTokens: 0,
     outputTokens: 0,
@@ -311,9 +311,11 @@ export function summarizeTraffic(events) {
   const activeCharterBytes = runtime.active.reduce((sum, snapshot) => sum + snapshot.charterBytes, 0)
   if (read.calls > 0) warnings.push('charter_read was called; inspect whether the runtime context was absent or stale')
   if (read.unpairedResults > 0) warnings.push(`unpaired charter_read results: ${read.unpairedResults}`)
+  if (read.unattributedResults > 0) warnings.push(`unattributed tool results: ${read.unattributedResults}`)
   if (read.ambiguous > 0) warnings.push(`ambiguous charter_read pairings: ${read.ambiguous}`)
-  const missingUsage = attempts.filter(attempt => attempt.usage === undefined).length
+  const missingUsage = attempts.filter(attempt => attempt.usage === null).length
   if (unreportedAttempts > 0) warnings.push(`model attempts without reported usage: ${unreportedAttempts}`)
+  if (read.unpairedCalls > 0) warnings.push(`charter_read calls without a paired result: ${read.unpairedCalls}`)
 
   return {
     events: ordered.length,
@@ -325,11 +327,13 @@ export function summarizeTraffic(events) {
       historical: summarizeSnapshotSet(runtime.historical),
       activeSurface: summarizeSnapshotSet(runtime.active),
       currentCompactionEpoch: summarizeSnapshotSet(runtime.currentEpoch),
+      currentCompactionEpochActive: summarizeSnapshotSet(runtime.currentEpoch.filter(snapshot => !snapshot.shadowed)),
       shadowed: runtime.shadowedCount,
       compactionEpoch: runtime.compactionEpoch,
       historicalPayloadBytes: historicalRuntimeBytes,
       activeSurfacePayloadBytes: totalRuntimeBytes,
-      activeCharterBytes,
+      activeCharterPayloadBytes: activeCharterBytes,
+      activeLatestCharterBytes: runtime.active.filter(snapshot => snapshot.charterDigest !== undefined).at(-1)?.charterBytes ?? 0,
     },
     modelAttempts: {
       total: attempts.length,

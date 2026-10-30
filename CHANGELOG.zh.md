@@ -6,7 +6,7 @@
 
 ## 0.1.0-rc.6 — 未发布
 
-文档与版本号启用候选。暂不包含运行时行为、record schema、Remote 方法、模型工具或 domain 变更。
+文档与版本号启用候选。暂不包含产品运行时路径、record schema、Remote 方法、模型工具或 domain 变更；模型可见的 `charter_read` description 已缩短。
 
 ### 新增
 

@@ -1049,7 +1049,7 @@
 }
 
 .charter-nav__help:hover,
-.charter-nav__help:focus-visible {
+.charter-nav__item:focus-visible .charter-nav__help {
   color: var(--charter-brand);
   border-color: var(--charter-brand);
 }
@@ -1083,7 +1083,7 @@
 }
 
 .charter-nav__help:hover::after,
-.charter-nav__help:focus-visible::after {
+.charter-nav__item:focus-visible .charter-nav__help::after {
   visibility: visible;
   opacity: 1;
 }
@@ -1241,10 +1241,11 @@
   .charter-nav {
     position: static;
     display: flex;
+    flex-wrap: wrap;
     gap: 2px;
     margin-bottom: 12px;
     padding: 5px;
-    overflow-x: auto;
+    overflow: visible;
     scrollbar-width: thin;
   }
 
@@ -1671,7 +1672,6 @@
   .charter-progress select,
   .charter-item__menulist button,
   .charter-preview__view,
-  .charter-nav__help,
   .charter-actionbar__actions .charter-button,
   .charter-bootstrap__summary .charter-button,
   .charter-add__foot .charter-button,

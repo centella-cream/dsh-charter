@@ -57,6 +57,27 @@ describe('rc.6 traffic checks', () => {
     expect(report.modelAttempts.missingUsage).toBe(0)
   })
 
+  it('assigns the compaction epoch at attempt time, not the final epoch', () => {
+    const report = summarizeTraffic([
+      { type: 'step/start', seq: 1, data: { turn: 1, step: 1 } },
+      { type: 'assistant/message', seq: 2, data: { turn: 1, step: 1, usage: { inputTokens: 1, outputTokens: 1, cacheReadTokens: 0, cacheWriteTokens: 0 } } },
+      { type: 'compaction/end', seq: 3, data: {} },
+      { type: 'step/start', seq: 4, data: { turn: 2, step: 1 } },
+      { type: 'assistant/message', seq: 5, data: { turn: 2, step: 1, usage: { inputTokens: 2, outputTokens: 2, cacheReadTokens: 0, cacheWriteTokens: 0 } } },
+    ])
+    expect(report.modelAttempts.attempts.map((attempt: { compactionEpoch: number }) => attempt.compactionEpoch)).toEqual([0, 1])
+  })
+
+  it('ignores legacy non-charter tool results instead of calling them unpaired charter reads', () => {
+    const report = summarizeCharterRead([
+      { type: 'tool/call', seq: 1, data: { turn: 1, step: 1, callId: 'bash', name: 'bash', arguments: '{}' } },
+      result(2, 1, 1, 'bash', 'ok'),
+    ])
+    expect(report.calls).toBe(0)
+    expect(report.unpairedResults).toBe(0)
+    expect(report.unattributedResults).toBe(0)
+  })
+
   it('separates historical, active-surface, and current-epoch snapshots', () => {
     const report = summarizeRuntimeSnapshots([
       runtime(1, 'old'),

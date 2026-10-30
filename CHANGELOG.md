@@ -7,8 +7,7 @@ DSH plugin ABI is still moving.
 
 ## 0.1.0-rc.6 — unreleased
 
-Documentation and version-activation candidate. No runtime behavior, record schema, Remote method, model tool, or
-domain change yet.
+Documentation and version-activation candidate. No product runtime code path, record schema, Remote method, model tool, or domain change yet; the model-facing `charter_read` description was shortened.
 
 ### Added
 

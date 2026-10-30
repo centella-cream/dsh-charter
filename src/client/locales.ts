@@ -186,6 +186,7 @@ const en = {
   'preview.formatted': 'Formatted JSON',
   'preview.exact': 'Exact text',
   'preview.formattedHint': 'Pretty-printed for reading; byte counts and the exact view use the original text.',
+  'preview.formattedUnavailable': 'Formatted JSON is unavailable; showing the exact text instead.',
   'preview.exactHint': 'The exact user-role text and byte count the model receives.',
 
   'footer.none': 'No staged changes',
@@ -566,6 +567,7 @@ const zh: Record<CharterLocaleKey, string> = {
   'preview.formatted': '格式化 JSON',
   'preview.exact': '精确文本',
   'preview.formattedHint': '为便于阅读而美化；字节数和精确视图使用原始文本。',
+  'preview.formattedUnavailable': '无法格式化 JSON，已显示精确文本。',
   'preview.exactHint': '模型实际收到的 user-role 文本和字节数。',
 
   'footer.none': '没有暂存的修改',
