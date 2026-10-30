@@ -84,8 +84,8 @@ execution guards for restrictions that must be machine-enforced.
 - Sticky Preview / Discard / Apply toolbar and an exact preview of the model-visible user-role context.
 - History draft extraction from `compaction/summary`; deterministic, no model call, no automatic write.
 - English/Chinese UI, light/dark themes, keyboard focus states, and container-query responsiveness.
-- Self-explaining navigation: every section has a hover/focus `?` help badge with a one-sentence purpose.
-- Context preview in Formatted JSON or Exact text mode; formatted JSON is for reading, exact bytes remain visible.
+- Self-explaining navigation (`rc.6`, unreleased): every section has a hover/focus `?` help badge with a one-sentence purpose.
+- Context preview in Formatted JSON or Exact text mode (`rc.6`, unreleased); formatted JSON is for reading, exact bytes remain visible.
 - Read-only `charter_read` tool with a compact standing projection; one-time fork copy; explicit degraded
   states across restart, compaction, unload, corrupted records, and over-budget configurations.
 
@@ -118,8 +118,8 @@ The browser registers a `conversation.view` entry; the pane and `charter.watch` 
 - **Latest published RC:** `0.1.0-rc.4` (npm `latest` and `next`, GitHub Release).
 - **Finalized but npm-delayed:** `0.1.0-rc.5` is tagged (`v0.1.0-rc.5`) with a green candidate and immutable
   artifact digest. Its npm publication and GitHub prerelease are deferred; it is not installable from npm yet.
-- **Active source:** `0.1.0-rc.6`, unreleased and untagged. It currently contains documentation/version activation
-  work, not a published runtime change.
+- **Active source:** `0.1.0-rc.6`, unreleased and untagged. It contains DSH `0.2.1-rc.5` compatibility,
+  navigation help, formatted preview, and observability work, not a published runtime change.
 - `0.1.0-rc.5` adds review, recovery, accessibility, and release-evidence hardening; it is not a new 0.2
   capability line.
 
@@ -144,6 +144,8 @@ until a Host restart.
 - DSH: only the versions listed in the [compatibility matrix](docs/design/compatibility.md) are supported
   (`0.1.7-rc.2`, `0.2.0-rc.1`/`rc.2`, `0.2.1-rc.1`/`rc.2`/`rc.3`/`rc.4`/`rc.5`). Newer stable/RC versions are not claimed until the
   matrix is extended; `0.2.1+` is required for per-Peer Remote resource authorization.
+  DSH `0.2.1-rc.5` is source-level support in the unreleased rc.6 tree; published rc.4 and finalized rc.5
+  artifacts do not declare it. Do not install rc.4 on DSH rc.5.
 - Node.js **`^22.19.0 || >=24.0.0`**.
 - A Web or Desktop profile.
 
@@ -155,6 +157,9 @@ until a Host restart.
 # Pin the latest published RC; required when it is inside pnpm's release-age window.
 dsh plugin --profile web add dsh-charter@0.1.0-rc.4
 ```
+
+> rc.4 defaults all history candidates but renders only the first 40. Do not apply a draft with more than 40
+> candidates. rc.5 is not yet installable from npm.
 
 Pin an exact version for reproducible profiles. `@next` and `@latest` follow dist-tags but are still subject to
 pnpm's release-age policy, so they are not a reliable way to install a freshly published RC. If the registry is

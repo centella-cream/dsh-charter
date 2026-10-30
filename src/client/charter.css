@@ -1075,7 +1075,7 @@
   top: calc(100% + 6px);
   right: 0;
   z-index: 30;
-  width: min(250px, 70vw);
+  width: min(160px, 70vw);
   padding: 7px 9px;
   border: 1px solid var(--charter-border);
   border-radius: 7px;

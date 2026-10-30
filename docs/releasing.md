@@ -15,8 +15,9 @@ tagging.
 - **Active source:** `0.1.0-rc.6`, unreleased and untagged; DSH 0.2.1-rc.5 compatibility, documentation, UI help/preview, and traffic observation so far.
 - **Not yet published:** rc.5 has no npm version and no GitHub Release. Protected browser evidence and
   Promotion are still pending. `main` includes the repository-token publish workflow.
-- Do not create a second rc.5 tag or publish a rebuilt tarball. If a future Promotion expects to create the
-  tag, reconcile that with the already-pushed tag before running it.
+- Do not create a second rc.5 tag or publish a rebuilt tarball. The existing rc.5 `C+1` tag is not the current
+  `main` tip, so the current Promotion workflow cannot promote it. If npm publication resumes, build a fresh
+  candidate from `main`; do not rewrite the published rc.5 tag.
 
 ## 1. Prepare the source
 
@@ -52,7 +53,7 @@ Real browser recovery evidence is a protected manual gate. A human must run the 
 against the exact candidate tarball:
 
 ```text
-fresh profile → export → archive select → restore → reload → Host restart
+fresh profile → export → remove the target while preserving Session lifecycle → restore → reload → Host restart
 → healthy-target refusal → UTF-8 + error-detail + viewport/accessibility checks
 ```
 

@@ -10,7 +10,7 @@ on:
       version:
         description: Exact package version to verify
         required: true
-        default: 0.1.0-rc.5
+        default: 0.1.0-rc.6
 
 permissions:
   contents: read

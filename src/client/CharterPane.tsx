@@ -1494,6 +1494,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                   className={`charter-nav__item${section === item.id ? ' is-active' : ''}`}
                   aria-current={section === item.id ? 'page' : undefined}
                   aria-describedby={`charter-nav-help-${item.id}`}
+                  title={item.help}
                   onClick={() => goSection(item.id)}
                 >
                   <span className="charter-nav__text">{item.label}</span>

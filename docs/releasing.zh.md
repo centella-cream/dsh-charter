@@ -14,8 +14,8 @@ tag、不删除已发布 Release、不在打 tag 后重建字节。
 - **当前源码：** `0.1.0-rc.6`，未发布、未打 tag；目前包含 DSH 0.2.1-rc.5 适配、文档、UI 帮助/预览和流量观测工作。
 - **尚未发布：** rc.5 没有 npm version，也没有 GitHub Release；受保护 browser evidence 与 Promotion 仍
   待完成。`main` 已包含 repository-token 发布 workflow。
-- 不要创建第二个 rc.5 tag，也不要发布重建的 tarball。如果未来 Promotion 仍尝试创建 tag，必须先与已推送的
-  tag 对齐后再运行。
+- 不要创建第二个 rc.5 tag，也不要发布重建的 tarball。现有 rc.5 `C+1` tag 不是当前 `main` tip，当前 Promotion
+  workflow 无法直接推广它；若后续恢复 npm 发布，应从 `main` 重新构建 candidate，不要改写已发布 rc.5 tag。
 
 ## 1. 准备源码
 
@@ -48,7 +48,7 @@ rc.5 已完成：`C=d138d65`，`C+1/tag=0a6ccc5`。不要重新打 tag。
 真实浏览器恢复 evidence 是受保护的人工门禁。必须针对精确候选 tarball 在真实 Web profile 完成：
 
 ```text
-fresh profile → export → archive select → restore → reload → Host restart
+fresh profile → export → 保留 Session lifecycle 并移除 target → restore → reload → Host restart
 → healthy-target refusal → UTF-8 + error-detail + viewport/accessibility checks
 ```
 
