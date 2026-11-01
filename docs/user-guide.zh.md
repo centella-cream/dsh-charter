@@ -37,9 +37,7 @@ dsh --profile web --dump-config | grep -n "charter" || true
 ### 2.2 离线 / 本地 tarball 回退
 
 ```bash
-npm install
-npm run build
-npm pack
+npm pack dsh-charter@0.1.0-rc.5
 dsh plugin --profile web add ./dsh-charter-0.1.0-rc.5.tgz
 ```
 

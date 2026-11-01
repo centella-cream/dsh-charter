@@ -16,7 +16,7 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 - `0.1.0-rc.6`：已撤回；npm deprecated、GitHub release/tag 已删除，未通过发布渠道。
 - 发布提交：`C=d138d65dc4f1b2628dc043f2dd437ea213112a4d`，`C+1=tag v0.1.0-rc.5=0a6ccc5`。
 - 当前源码：`0.1.0-rc.6`（已撤回；源码保留给下一次 candidate）。
-- rc.6 待完成：受保护 browser evidence 和常规发布后检查。
+- rc.5 待完成：恢复规范 GitHub tag/release、受保护 browser evidence 和常规发布后检查。
 
 | 项目 | 结果 |
 | --- | --- |
@@ -31,7 +31,7 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 | 兼容 sentinel | `0.1.7-rc.2`、`0.2.1-rc.2`、`0.2.1-rc.4`、`0.2.1-rc.5` 通过 |
 | 八版本全量 rerun | tracked `compat-matrix --versions all --allow-new-release` 通过（每版本 379/379） |
 | 未跟踪 `0.2.2-alpha.2` probe | strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run；rc.6 明确不支持 |
-| 本地 Web + Desktop profile | PASS：rc.6 artifact 已安装到两者；Desktop app 仍为 `0.2.1-rc.3`，rc.5 Desktop 验收待 Electron app 更新 |
+| 本地 Web + Desktop profile | 撤回前安装过 rc.6 artifact；不作为发布证据。Desktop app 仍为 `0.2.1-rc.3` |
 | 真实浏览器恢复 | 受保护的人工 evidence gate；未自动化 |
 | 真实模型 compaction | 2026-10-22 记录 PASS；仍是人工发布门禁 |
 

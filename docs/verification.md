@@ -15,9 +15,9 @@ Current release state (2026-10-30):
 
 - Published: `0.1.0-rc.5` (npm `latest`/`next`; exact SHA-256 `94e27acf8851ad5423defd06a41253171317f4e805af809fe8e8e7a9ce83a939`). Its canonical GitHub tag/release is missing and pending restoration.
 - `0.1.0-rc.6`: withdrawn; npm version deprecated, GitHub release/tag removed, not accepted for channels.
-- Release commits: `C=d138d65dc4f1b2628dc043f2dd437ea213112a4d`, `C+1=tag v0.1.0-rc.5=0a6ccc5`.
+- Release commit: `C+1=0a6ccc5`; its canonical tag was deleted during recovery and is pending restoration.
 - Active source: `0.1.0-rc.6` (withdrawn; source retained for the next candidate).
-- Pending for the rc.6 release: protected browser evidence and the normal post-release checks.
+- Pending for the rc.5 release: restore the canonical GitHub tag/release, protected browser evidence, and the normal post-release checks.
 
 | Item | Result |
 | --- | --- |
@@ -31,9 +31,9 @@ Current release state (2026-10-30):
 | Real `TypertGatewayService` | Pass on exact artifact with isolated DSH `0.2.1-rc.3` and `rc.4` graphs |
 | Compatibility sentinels | Pass on `0.1.7-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4`, `0.2.1-rc.5` |
 | Eight-version full rerun | Pass via tracked `compat-matrix --versions all --allow-new-release` (379/379 each) |
-| Fresh Web profile matrix | PASS: local rc.6 artifact installed and served on DSH `0.1.7-rc.2`, `0.2.0-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4`, `0.2.1-rc.5` |
+| Fresh Web profile matrix | PASS: local rc.6 artifact (pre-withdrawal) installed and served on DSH `0.1.7-rc.2`, `0.2.0-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4`, `0.2.1-rc.5` |
 | Untracked `0.2.2-alpha.2` probe | strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run; explicitly unsupported in rc.6 |
-| Local Web + Desktop profiles | PASS: rc.6 artifact installed in both; Desktop app is still `0.2.1-rc.3`, so rc.5 Desktop acceptance is pending an Electron app update |
+| Local Web + Desktop profiles | rc.6 artifact was installed before withdrawal; this is not release evidence. Desktop app is still `0.2.1-rc.3` |
 | Real browser recovery | Manual protected evidence gate; not automated |
 | Real-model compaction | Separately recorded PASS (2026-10-22); still a manual release gate |
 

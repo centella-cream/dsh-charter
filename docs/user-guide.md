@@ -40,9 +40,7 @@ For a Web or Desktop profile the plugin registers:
 ### 2.2 Offline / local tarball fallback
 
 ```bash
-npm install
-npm run build
-npm pack
+npm pack dsh-charter@0.1.0-rc.5
 dsh plugin --profile web add ./dsh-charter-0.1.0-rc.5.tgz
 ```
 
