@@ -84,8 +84,8 @@ execution guards for restrictions that must be machine-enforced.
 - Sticky Preview / Discard / Apply toolbar and an exact preview of the model-visible user-role context.
 - History draft extraction from `compaction/summary`; deterministic, no model call, no automatic write.
 - English/Chinese UI, light/dark themes, keyboard focus states, and container-query responsiveness.
-- Self-explaining navigation (`rc.6`, unreleased): every section has a hover/focus `?` help badge with a one-sentence purpose.
-- Context preview in Formatted JSON or Exact text mode (`rc.6`, unreleased); formatted JSON is for reading, exact bytes remain visible.
+- Self-explaining navigation (`rc.6`): every section has a hover/focus `?` help badge with a one-sentence purpose.
+- Context preview in Formatted JSON or Exact text mode (`rc.6`); formatted JSON is for reading, exact bytes remain visible.
 - Read-only `charter_read` tool with a compact standing projection; one-time fork copy; explicit degraded
   states across restart, compaction, unload, corrupted records, and over-budget configurations.
 
@@ -115,16 +115,15 @@ The browser registers a `conversation.view` entry; the pane and `charter.watch` 
 
 ### Current release state
 
-- **Latest published RC:** `0.1.0-rc.4` (npm `latest` and `next`, GitHub Release).
+- **Latest published RC:** `0.1.0-rc.6` (npm `latest` and `next`, GitHub Release).
 - **Finalized but npm-delayed:** `0.1.0-rc.5` is tagged (`v0.1.0-rc.5`) with a green candidate and immutable
-  artifact digest. Its npm publication and GitHub prerelease are deferred; it is not installable from npm yet.
-- **Active source:** `0.1.0-rc.6`, unreleased and untagged. It contains DSH `0.2.1-rc.5` compatibility,
-  navigation help, formatted preview, and observability work, not a published runtime change.
+  artifact digest. Its npm publication remains deferred; it is not installable from npm.
+- **Active source:** `0.1.0-rc.6`, published under `next`/`latest`; it contains DSH `0.2.1-rc.5` compatibility,
+  navigation help, formatted preview, and observability work.
 - `0.1.0-rc.5` adds review, recovery, accessibility, and release-evidence hardening; it is not a new 0.2
   capability line.
 
-Install the latest published version for normal use. Do not assume `dsh-charter@0.1.0-rc.5` or rc.6 resolves
-from the registry; the latest published RC remains rc.4.
+Install the latest published version for normal use: `dsh-charter@0.1.0-rc.6`.
 Our channel policy is to publish RCs under `next` and to point `latest` at the newest RC until a stable release
 exists (npm keeps a `latest` tag and we choose where it points; this is our policy, not an npm requirement).
 
@@ -144,8 +143,8 @@ until a Host restart.
 - DSH: only the versions listed in the [compatibility matrix](docs/design/compatibility.md) are supported
   (`0.1.7-rc.2`, `0.2.0-rc.1`/`rc.2`, `0.2.1-rc.1`/`rc.2`/`rc.3`/`rc.4`/`rc.5`). Newer stable/RC versions are not claimed until the
   matrix is extended; `0.2.1+` is required for per-Peer Remote resource authorization.
-  DSH `0.2.1-rc.5` is source-level support in the unreleased rc.6 tree; published rc.4 and finalized rc.5
-  artifacts do not declare it. Do not install rc.4 on DSH rc.5.
+  DSH `0.2.1-rc.5` is supported by the published rc.6 artifact. Published rc.4 and finalized rc.5 artifacts do
+  not declare it; do not install rc.4 on DSH rc.5.
 - Node.js **`^22.19.0 || >=24.0.0`**.
 - A Web or Desktop profile.
 
@@ -155,18 +154,18 @@ until a Host restart.
 
 ```bash
 # Pin the latest published RC; required when it is inside pnpm's release-age window.
-dsh plugin --profile web add dsh-charter@0.1.0-rc.4
+dsh plugin --profile web add dsh-charter@0.1.0-rc.6
 ```
 
 > rc.4 defaults all history candidates but renders only the first 40. Do not apply a draft with more than 40
-> candidates. rc.5 is not yet installable from npm.
+> candidates. rc.5 remains unavailable from npm; use the published rc.6 artifact for DSH rc.5 support.
 
 Pin an exact version for reproducible profiles. `@next` and `@latest` follow dist-tags but are still subject to
 pnpm's release-age policy, so they are not a reliable way to install a freshly published RC. If the registry is
 unreachable, or you need the exact release artifact, use the offline tarball fallback below.
 
-`dsh-charter@0.1.0-rc.5` is **not yet installable from npm** (finalized, npm publication deferred), and rc.6 has
-no tagged candidate yet. Wait for publication before switching a user profile.
+`dsh-charter@0.1.0-rc.5` is **not installable from npm** (finalized, npm publication deferred). The published
+rc.6 artifact is the latest installable release.
 
 Restart `dsh web` (or let profile HMR recompose), then refresh the page. The profile's `package.json` gains the
 dependency and bundle entry.
@@ -206,8 +205,7 @@ npm install && npm run build && npm pack
 dsh plugin --profile web add ./dsh-charter-0.1.0-rc.5.tgz
 ```
 
-The active rc.6 tree has no tagged candidate; do not distribute a locally built rc.6 tarball before a candidate
-and release evidence exist.
+The published rc.6 tarball is the supported offline artifact; rebuild only when verifying the exact tag.
 
 `dsh plugin --profile desktop` is intentionally refused by the Electron app that owns that profile; use the
 Desktop Plugins page or that profile's package manager. Source-level development is described in
@@ -216,7 +214,7 @@ Desktop Plugins page or that profile's package manager. Source-level development
 ### Update
 
 - **Web (npm):** install the exact published target version, e.g.
-  `dsh plugin --profile web add dsh-charter@0.1.0-rc.4`, then restart/refresh. Pinned profiles keep their
+  `dsh plugin --profile web add dsh-charter@0.1.0-rc.6`, then restart/refresh. Pinned profiles keep their
   explicit version entry. Do not use a bare `@next`/`@latest` immediately after a release; pnpm's release-age
   policy can resolve an older version. Switch to rc.5 only after npm publication.
 - **Local tarball:** rebuild/download the new tarball and repeat the local install command; this bypasses
@@ -391,12 +389,11 @@ design keeps the compatibility layer deliberately small.
 
 Current release state (2026-10-30):
 
-- **Published:** `0.1.0-rc.4` — npm `latest`/`next`, GitHub Release, immutable tag.
+- **Published:** `0.1.0-rc.6` — npm `latest`/`next`, GitHub Release, immutable tag.
 - **Finalized, npm-delayed:** `0.1.0-rc.5` — candidate green, exact artifact SHA-256
   `94e27acf8851ad5423defd06a41253171317f4e805af809fe8e8e7a9ce83a939`, tag `v0.1.0-rc.5` at the
   checksum-only C+1 commit. No npm version or GitHub Release yet.
-- **Active, unpublished:** `0.1.0-rc.6` — documentation, UI help/preview, and traffic observation only so far; not tagged and not
-  built as a release candidate.
+- **Active release:** `0.1.0-rc.6` — published; DSH `0.2.1-rc.5` compatibility, UI help/preview, and observability.
 - **Pending for rc.5:** npm token publication, GitHub prerelease, protected browser evidence, and Promotion.
   The repository `main` includes the token-publish workflow.
 - The real-model compaction acceptance PASS remains recorded on the immutable
