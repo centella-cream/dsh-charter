@@ -11,14 +11,14 @@
 ```text
 0.1.0-rc.4（兼容性补丁，已发布）
   → 0.1.0-rc.5（已定版，npm 发布延迟）
-  → 0.1.0-rc.6（当前源码，未发布）
+  → 0.1.0-rc.6（已撤回；npm deprecated）
   → 0.1.0 stable
   → 0.1.1（仅在 stable 后确有兼容补丁时）
   → 0.2.0-alpha.1 ... 0.2.0-rc.1 → 0.2.0
 ```
 
-已定版候选是 **`0.1.0-rc.5`**；其 npm 发布和 GitHub prerelease 延迟。当前源码版本是 **`0.1.0-rc.6`**，
-未发布、未打 tag。`0.1.1-rc.1` 仍是 stable 之后的补丁语义，不是 rc.6 的另一种写法。
+**`0.1.0-rc.5`** 已发布到 npm，是最新发布版本；其规范 GitHub tag/release 待恢复。**`0.1.0-rc.6`** 在验收前
+撤回，npm 上已 deprecated，且没有 GitHub release/tag。`0.1.1-rc.1` 仍是 stable 之后的补丁语义，不是 rc.6 的另一种写法。
 
 rc.5 修复了与产品承诺冲突的审阅正确性问题：此前历史草案全部候选默认选中，界面一次只展示前 40 条，Apply 可能提交尚未展示的候选；README 同时声明“人工审阅是强制的”。rc.5 的审阅流程现在初始不选中，也不会提交隐藏行。
 
@@ -40,8 +40,8 @@ rc.5 修复了与产品承诺冲突的审阅正确性问题：此前历史草案
   `SHA256SUMS`；tag 指向 checksum-only C+1 commit。
 - rc.5 **尚未发布**：npm 发布、GitHub prerelease、受保护 browser evidence 和 Promotion 仍待完成。不要把
   rc.5 描述为可从 npm 安装。
-- rc.6 已在源码启用，但**未发布、未打 tag**。当前只承载文档、UI 帮助/预览和流量观测工作；任何 tag 或发布前都必须重新
-  构建 candidate。
+- rc.6 仅作为下一次 candidate 的源码保留。它已从 npm 渠道撤回并 deprecated，GitHub release/tag 已删除；再次发布前
+  必须重新构建 candidate 并完成验收。
 - `main` 已包含剩余 promotion 路径使用的 token 发布 workflow。已发布的 rc.4 历史永不改写。
 
 ## 3. 为什么是 rc.5

@@ -22,15 +22,15 @@ dsh --profile web --dump-config | grep -n "charter" || true
 
 ## 2. 安装
 
-> **安装渠道。** 最新已发布 RC 是 `0.1.0-rc.4`；`0.1.0-rc.5` 已定版并打 tag，但**尚未发布到 npm 或
-> GitHub Release**。`0.1.0-rc.6` 是当前源码版本，同样未发布、未打 tag。普通使用请安装已发布 rc.4 精确版本；
-> 只有候选验证或 registry 不可达时才使用已验证的本地 tarball。
+> **安装渠道。** 最新已发布 RC 是 `0.1.0-rc.5`（npm `latest`/`next`）。`0.1.0-rc.6` 曾被误发布，现已
+> deprecated 且 GitHub release/tag 已删除；不要通过发布渠道使用。rc.5 的规范 GitHub tag/release 待恢复。
+> 普通使用请安装已发布 rc.5 精确版本。
 
 ### 2.1 环境要求
 
 - DSH：只支持[兼容矩阵](design/compatibility.zh.md)中列出的版本（`0.1.7-rc.2`、`0.2.0-rc.1`/`rc.2`、
   `0.2.1-rc.1`/`rc.2`/`rc.3`/`rc.4`/`rc.5`）。在扩展矩阵前不声明支持更新的 stable/RC 版本；完整 per-Peer Remote
-  资源授权要求 `0.2.1+`。DSH `0.2.1-rc.5` 是未发布 rc.6 源码级支持；已发布 rc.4 和已定版 rc.5 产物均未声明该版本。
+  资源授权要求 `0.2.1+`。DSH `0.2.1-rc.5` 仅在已撤回的 rc.6 源码/产物中支持；已发布 rc.5 产物未声明该版本。
 - Node.js **`^22.19.0 || >=24.0.0`**。
 - Web 或 Desktop profile。
 
@@ -40,7 +40,7 @@ dsh --profile web --dump-config | grep -n "charter" || true
 npm install
 npm run build
 npm pack
-dsh plugin --profile web add ./dsh-charter-0.1.0-rc.6.tgz
+dsh plugin --profile web add ./dsh-charter-0.1.0-rc.5.tgz
 ```
 
 Desktop 若支持本地插件导入，可在 Plugins 页面安装同一个 tarball；否则通过 Desktop profile 自己的包管理器

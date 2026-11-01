@@ -23,18 +23,17 @@ For a Web or Desktop profile the plugin registers:
 
 ## 2. Install
 
-> **Install channels.** The latest published RC is `0.1.0-rc.4`; `0.1.0-rc.5` is finalized and tagged but
-> **not yet published to npm or released on GitHub**. `0.1.0-rc.6` is the active source version and is also
-> unreleased/untagged. Install the published rc.4 exact version for normal use. Use the verified local tarball
-> only for candidate verification or when the registry is unreachable.
+> **Install channels.** The latest published RC is `0.1.0-rc.5` (npm `latest`/`next`). `0.1.0-rc.6` was
+> published by mistake but is deprecated and its GitHub release/tag were removed; do not use it through channels.
+> The canonical rc.5 GitHub tag/release is pending restoration. Install the published rc.5 exact version for normal
+> use.
 
 ### 2.1 Requirements
 
 - DSH: only the versions listed in the [compatibility matrix](design/compatibility.md) are supported
   (`0.1.7-rc.2`, `0.2.0-rc.1`/`rc.2`, `0.2.1-rc.1`/`rc.2`/`rc.3`/`rc.4`/`rc.5`); newer stable/RC versions are not
   claimed until the matrix is extended. `0.2.1+` is required for per-Peer Remote resource authorization. DSH
-`0.2.1-rc.5` is source-level support in the unreleased rc.6 tree; published rc.4 and finalized rc.5 artifacts do not
-declare it.
+`0.2.1-rc.5` is source-level support only in the deprecated rc.6 tree; the published rc.5 artifact does not declare it.
 - Node.js **`^22.19.0 || >=24.0.0`**.
 - A Web or Desktop profile.
 
@@ -44,7 +43,7 @@ declare it.
 npm install
 npm run build
 npm pack
-dsh plugin --profile web add ./dsh-charter-0.1.0-rc.6.tgz
+dsh plugin --profile web add ./dsh-charter-0.1.0-rc.5.tgz
 ```
 
 For Desktop, use the Plugins page if local import is available; otherwise install the tarball through the Desktop
