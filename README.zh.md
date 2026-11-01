@@ -105,14 +105,13 @@ Host 在 `session/created` 时初始化记录，并在首次 prompt 前的 `agen
 
 ### 当前发布状态
 
-- **最新已发布 RC：** `0.1.0-rc.4`（npm `latest` 和 `next`，GitHub Release）。
+- **最新已发布 RC：** `0.1.0-rc.6`（npm `latest` 和 `next`，GitHub Release）。
 - **已定版但 npm 延迟：** `0.1.0-rc.5` 已打 tag（`v0.1.0-rc.5`），candidate 全绿，产物 digest 不可变；
   npm 发布和 GitHub prerelease 延迟，尚不能从 npm 安装。
 - **当前版本：** `0.1.0-rc.6`，已发布到 npm `latest`/`next`；包含 DSH `0.2.1-rc.5` 适配、导航帮助、格式化预览和流量观测。
 - `0.1.0-rc.5` 只包含审阅、恢复、无障碍和发布证据硬化，不新增 0.2 能力线。
 
-普通使用请安装最新已发布版本。不要假设 `dsh-charter@0.1.0-rc.5` 或 rc.6 已能从 registry 安装；最新已发布
-RC 仍是 rc.4。频道策略是 RC 发布到 `next`，并在稳定版出现前让 `latest`
+普通使用请安装最新已发布版本：`dsh-charter@0.1.0-rc.6`。频道策略是 RC 发布到 `next`，并在稳定版出现前让 `latest`
 也指向最新 RC（npm 会保留 `latest` tag，由我们决定其指向；这是我们的策略，不是 npm 的强制要求）。
 
 完整的恢复/记录健康契约见[使用与运维指南](docs/user-guide.zh.md)和[验证记录](docs/verification.zh.md)。
@@ -127,7 +126,8 @@ RC 仍是 rc.4。频道策略是 RC 发布到 `next`，并在稳定版出现前�
 ### 环境要求
 
 - DSH：只支持[兼容矩阵](docs/design/compatibility.zh.md)中列出的版本（`0.1.7-rc.2`、`0.2.0-rc.1`/`rc.2`、
-  `0.2.1-rc.1`/`rc.2`/`rc.3`/`rc.4`/`rc.5`）。在扩展矩阵前不声明支持更新的 stable/RC 版本；per-Peer Remote 资源授权需要 `0.2.1+`。
+  `0.2.1-rc.1`/`rc.2`/`rc.3`/`rc.4`/`rc.5`）。在扩展矩阵前不声明支持更新的 stable/RC 版本；per-Peer Remote 资源授权需要 `0.2.1+`。DSH `0.2.1-rc.5` 由已发布 rc.6 产物支持；已发布 rc.4 和已定版 rc.5
+  产物均未声明该版本。
 - Node.js **`^22.19.0 || >=24.0.0`**。
 - Web 或 Desktop profile。
 

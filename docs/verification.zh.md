@@ -17,7 +17,7 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
   `94e27acf8851ad5423defd06a41253171317f4e805af809fe8e8e7a9ce83a939`。
 - 发布提交：`C=d138d65dc4f1b2628dc043f2dd437ea213112a4d`，`C+1=tag v0.1.0-rc.5=0a6ccc5`。
 - 当前版本：`0.1.0-rc.6`（已发布；DSH 0.2.1-rc.5 适配、文档/UI/流量观测）。
-- 待完成：受保护 browser evidence 和常规发布后检查。
+- rc.6 待完成：受保护 browser evidence 和常规发布后检查。
 
 | 项目 | 结果 |
 | --- | --- |
