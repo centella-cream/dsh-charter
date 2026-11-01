@@ -142,7 +142,7 @@ Host 在 `session/created` 时初始化记录，并在首次 prompt 前的 `agen
 dsh plugin --profile web add dsh-charter@0.1.0-rc.5
 ```
 
-> rc.4 默认选中全部历史候选，但只渲染前 40 条。超过 40 条候选时不要执行 Apply。rc.5 尚未发布到 npm。
+> rc.4 默认选中全部历史候选，但只渲染前 40 条。超过 40 条候选时不要执行 Apply。当前应使用已发布的 rc.5。
 
 固定精确版本可以保证 profile 可复现。`@next` 和 `@latest` 只是 dist-tag，同样受 pnpm release-age 策略影响，
 不能可靠地用来安装刚发布的 RC。registry 不可达、或需要精确发布产物时，使用下面的离线 tarball 回退方式。

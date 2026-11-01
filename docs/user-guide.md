@@ -53,13 +53,12 @@ dependency is a local `file:` path. Prefer npm install in §2.3 when the registr
 ### 2.3 npm / Registry install (recommended) — Web profile by version or tag
 
 ```bash
-dsh plugin --profile web add dsh-charter@0.1.0-rc.4   # latest published RC: reproducible
-dsh plugin --profile web add dsh-charter@next          # currently rc.4 until rc.5/rc.6 are published
+dsh plugin --profile web add dsh-charter@0.1.0-rc.5   # latest published RC: reproducible
+dsh plugin --profile web add dsh-charter@next          # currently rc.5
 ```
 
-`dsh-charter@0.1.0-rc.4` is the latest published RC, and npm `next`/`latest` currently point at it. rc.5 is
-implemented and tagged but **not yet installable from npm**; use the rc.5 command only after
-`npm view dsh-charter@0.1.0-rc.5 version` returns that version. Under our channel policy `latest` also points at
+`dsh-charter@0.1.0-rc.5` is the latest published RC, and npm `next`/`latest` point at it. rc.6 is deprecated and
+must not be installed through channels. Under our channel policy `latest` also points at
 the newest RC until a stable release exists (npm keeps a `latest` tag and we choose where it points; this is our
 policy, not an npm requirement). Use the offline tarball fallback only when the registry is unreachable or for
 candidate verification. Pin an explicit version for reproducible profiles.

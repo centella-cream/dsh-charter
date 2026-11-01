@@ -36,13 +36,13 @@ Compatibility, UI, and observability candidate. No product runtime code path, re
 
 ### Release state
 
-- `0.1.0-rc.5` remains finalized and immutable (tag `v0.1.0-rc.5`, exact artifact digest in `SHA256SUMS`); its npm
-  publication is deferred.
+- `0.1.0-rc.5` is published to npm (`latest`/`next`); exact artifact digest is in `SHA256SUMS`. Its canonical
+  GitHub tag/release is pending restoration.
 - `0.1.0-rc.6` was withdrawn before formal acceptance. The npm version is deprecated, the GitHub release/tag were removed, and it must not be used through channels.
 
 ## 0.1.0-rc.5 — 2026-10-29
 
-Pre-stable correctness and release-hardening candidate. Tagged and candidate-green; npm publication and the GitHub Release are still pending. No new 0.2 capability, domain, Remote method, or
+Pre-stable correctness and release-hardening candidate. Candidate-green; rc.5 is now published to npm, while its canonical GitHub tag/release is pending restoration. No new 0.2 capability, domain, Remote method, or
 persistent schema version.
 
 ### Added

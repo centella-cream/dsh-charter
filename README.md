@@ -166,8 +166,8 @@ Pin an exact version for reproducible profiles. `@next` and `@latest` follow dis
 pnpm's release-age policy, so they are not a reliable way to install a freshly published RC. If the registry is
 unreachable, or you need the exact release artifact, use the offline tarball fallback below.
 
-`dsh-charter@0.1.0-rc.5` is **not installable from npm** (finalized, npm publication deferred). The published
-rc.6 artifact is the latest installable release.
+`dsh-charter@0.1.0-rc.5` is the latest installable release from npm. rc.6 is deprecated and must not be used
+through channels.
 
 Restart `dsh web` (or let profile HMR recompose), then refresh the page. The profile's `package.json` gains the
 dependency and bundle entry.
@@ -210,7 +210,7 @@ Desktop Plugins page or that profile's package manager. Source-level development
 - **Web (npm):** install the exact published target version, e.g.
   `dsh plugin --profile web add dsh-charter@0.1.0-rc.5`, then restart/refresh. Pinned profiles keep their
   explicit version entry. Do not use a bare `@next`/`@latest` immediately after a release; pnpm's release-age
-  policy can resolve an older version. Switch to rc.5 only after npm publication.
+  policy can resolve an older version. Pin the exact published rc.5 version outside that window.
 - **Local tarball:** rebuild/download the new tarball and repeat the local install command; this bypasses
   registry release-age resolution.
 - **Desktop:** use **Plugins → Install/Update**. The UI has no exact npm version selector, so it follows the

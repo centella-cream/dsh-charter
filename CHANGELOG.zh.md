@@ -33,7 +33,7 @@
 
 ### 发布状态
 
-- `0.1.0-rc.5` 已定版且不可变（tag `v0.1.0-rc.5`，精确产物 digest 在 `SHA256SUMS`）；npm 发布延迟。
+- `0.1.0-rc.5` 已发布到 npm `latest`/`next`；精确产物 digest 在 `SHA256SUMS`。规范 GitHub tag/release 待恢复。
 - `0.1.0-rc.6` 在正式验收前撤回：npm deprecated，GitHub release/tag 已删除，不得通过发布渠道使用。
 
 ## 0.1.0-rc.5 — 2026-10-29
@@ -60,7 +60,7 @@
 - 以 `npm run check` 与当前 exact-artifact/packed smoke 命令为准；真实 Gateway、浏览器恢复、Desktop ABI 与
   真实模型 compaction 仍是独立验收门禁。
 - 不提升 record schema 版本、不改 domain；rc.4 记录保持可读。
-- 发布状态：tag `v0.1.0-rc.5` 已存在，精确产物 SHA-256 记录在 `SHA256SUMS`；rc.5 尚未发布到 npm。
+- 发布状态：rc.5 已发布到 npm；规范 GitHub tag/release 待恢复。
 
 ## 0.1.0-rc.4 — 2026-10-27
 
