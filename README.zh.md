@@ -105,13 +105,15 @@ Host 在 `session/created` 时初始化记录，并在首次 prompt 前的 `agen
 
 ### 当前发布状态
 
-- **最新已发布 RC：** `0.1.0-rc.6`（npm `latest` 和 `next`，GitHub Release）。
-- **已定版但 npm 延迟：** `0.1.0-rc.5` 已打 tag（`v0.1.0-rc.5`），candidate 全绿，产物 digest 不可变；
-  npm 发布和 GitHub prerelease 延迟，尚不能从 npm 安装。
-- **当前版本：** `0.1.0-rc.6`，已发布到 npm `latest`/`next`；包含 DSH `0.2.1-rc.5` 适配、导航帮助、格式化预览和流量观测。
+- **最新已发布 RC：** `0.1.0-rc.5`（npm `latest`/`next`）。其规范 GitHub tag/release 在发布恢复时被我误删，
+  待恢复；npm 产物完整。
+- **`0.1.0-rc.5`：** candidate 全绿，精确产物 digest
+  `94e27acf8851ad5423defd06a41253171317f4e805af809fe8e8e7a9ce83a939`；现已发布到 npm。
+- **已撤回版本：** `0.1.0-rc.6` 在 npm 上标记 deprecated，GitHub release/tag 已删除；未完成正式验收，
+  不得通过发布渠道使用。源码仍是下一次 candidate 的开发树。
 - `0.1.0-rc.5` 只包含审阅、恢复、无障碍和发布证据硬化，不新增 0.2 能力线。
 
-普通使用请安装最新已发布版本：`dsh-charter@0.1.0-rc.6`。频道策略是 RC 发布到 `next`，并在稳定版出现前让 `latest`
+普通使用请安装最新已发布版本：`dsh-charter@0.1.0-rc.5`。频道策略是 RC 发布到 `next`，并在稳定版出现前让 `latest`
 也指向最新 RC（npm 会保留 `latest` tag，由我们决定其指向；这是我们的策略，不是 npm 的强制要求）。
 
 完整的恢复/记录健康契约见[使用与运维指南](docs/user-guide.zh.md)和[验证记录](docs/verification.zh.md)。
@@ -126,8 +128,8 @@ Host 在 `session/created` 时初始化记录，并在首次 prompt 前的 `agen
 ### 环境要求
 
 - DSH：只支持[兼容矩阵](docs/design/compatibility.zh.md)中列出的版本（`0.1.7-rc.2`、`0.2.0-rc.1`/`rc.2`、
-  `0.2.1-rc.1`/`rc.2`/`rc.3`/`rc.4`/`rc.5`）。在扩展矩阵前不声明支持更新的 stable/RC 版本；per-Peer Remote 资源授权需要 `0.2.1+`。DSH `0.2.1-rc.5` 由已发布 rc.6 产物支持；已发布 rc.4 和已定版 rc.5
-  产物均未声明该版本。
+  `0.2.1-rc.1`/`rc.2`/`rc.3`/`rc.4`/`rc.5`）。在扩展矩阵前不声明支持更新的 stable/RC 版本；per-Peer Remote 资源授权需要 `0.2.1+`。DSH `0.2.1-rc.5` 仅由 deprecated 的 rc.6 源码/产物支持，已发布的 rc.5 产物不支持；不要在 DSH rc.5 上
+  安装 rc.4 或 rc.5。
 - Node.js **`^22.19.0 || >=24.0.0`**。
 - Web 或 Desktop profile。
 
@@ -137,15 +139,15 @@ Host 在 `session/created` 时初始化记录，并在首次 prompt 前的 `agen
 
 ```bash
 # 固定最新已发布 RC；它处于 pnpm release-age 窗口内时这是必需做法。
-dsh plugin --profile web add dsh-charter@0.1.0-rc.6
+dsh plugin --profile web add dsh-charter@0.1.0-rc.5
 ```
 
-> rc.4 默认选中全部历史候选，但只渲染前 40 条。超过 40 条候选时不要执行 Apply。rc.5 尚未发布到 npm。
+> rc.4 默认选中全部历史候选，但只渲染前 40 条。超过 40 条候选时不要执行 Apply。当前应使用已发布的 rc.5。
 
 固定精确版本可以保证 profile 可复现。`@next` 和 `@latest` 只是 dist-tag，同样受 pnpm release-age 策略影响，
 不能可靠地用来安装刚发布的 RC。registry 不可达、或需要精确发布产物时，使用下面的离线 tarball 回退方式。
 
-`dsh-charter@0.1.0-rc.5` **尚不能从 npm 安装**（已定版但发布延迟）；rc.6 已是可安装的最新版本。
+`dsh-charter@0.1.0-rc.5` **尚不能从 npm 安装**（已定版但发布延迟）；rc.6 已从发布渠道撤回，等待下一次正式 candidate。
 
 重启 `dsh web`（或等待 profile HMR 重新组合），然后刷新页面。profile 的 `package.json` 会增加依赖和
 bundle 选择。
@@ -167,21 +169,13 @@ Plugins UI 是 Desktop 唯一受支持的安装路径。Desktop 管理插件生�
 的 GitHub Release 附带与 `npm publish` 完全相同的 tarball 和 `SHA256SUMS`。
 
 ```bash
-# 已发布 rc.4 产物（与 GitHub Release 相同字节）：
-gh release download v0.1.0-rc.4 --pattern '*.tgz' --pattern SHA256SUMS
-shasum -a 256 -c SHA256SUMS
-dsh plugin --profile web add ./dsh-charter-0.1.0-rc.4.tgz
-```
-
-已定版的 rc.5 候选可从 tag 构建/打包并作为发布证据，不作为普通用户安装路径：
-
-```bash
-git checkout v0.1.0-rc.5
-npm install && npm run build && npm pack
+# 已发布 rc.5 产物（规范 GitHub Release 待恢复）：
+npm pack dsh-charter@0.1.0-rc.5
+shasum -a 256 dsh-charter-0.1.0-rc.5.tgz
 dsh plugin --profile web add ./dsh-charter-0.1.0-rc.5.tgz
 ```
 
-当前 rc.6 树没有 tagged candidate；在 candidate 和 release evidence 存在前，不要分发本地构建的 rc.6 tarball。
+已发布 rc.5 tarball 是受支持的离线产物；使用 registry digest 校验。不要分发 rc.6。
 
 `dsh plugin --profile desktop` 会被拥有该 profile 的 Electron app 拒绝；请使用 Desktop 的 Plugins 页面或该
 profile 自己的包管理器。源码开发流程见 [CONTRIBUTING.zh.md](CONTRIBUTING.zh.md)；不要把 `git clone` 当作普通
@@ -190,7 +184,7 @@ profile 自己的包管理器。源码开发流程见 [CONTRIBUTING.zh.md](CONTR
 ### 更新
 
 - **Web（npm）**：安装精确已发布目标版本，例如
-  `dsh plugin --profile web add dsh-charter@0.1.0-rc.6`，然后重启/刷新；固定版本 profile 继续使用显式版本。
+  `dsh plugin --profile web add dsh-charter@0.1.0-rc.5`，然后重启/刷新；固定版本 profile 继续使用显式版本。
   新版本发布后不要立即使用裸 `@next`/`@latest`，pnpm 的 release-age 策略可能解析到旧版本；rc.5 正式发布前
   不要切换；
 - **本地 tarball**：重新构建/下载新 tarball，并重复本地安装命令；这条路径绕过 registry 的 release-age 解析；
@@ -351,11 +345,11 @@ Pre-1.0。DSH 插件 ABI 仍在演进；项目对上述版本做兼容验证，�
 
 当前发布状态（2026-10-30）：
 
-- **已发布：** `0.1.0-rc.6` — npm `latest`/`next`、GitHub Release、不可变 tag。
+- **最新发布：** `0.1.0-rc.5` — npm `latest`/`next`；GitHub tag/release 待恢复。
 - **已定版，npm 延迟：** `0.1.0-rc.5` — candidate 全绿，精确产物 SHA-256
   `94e27acf8851ad5423defd06a41253171317f4e805af809fe8e8e7a9ce83a939`，tag `v0.1.0-rc.5` 指向
   checksum-only C+1 commit。尚无 npm version 或 GitHub Release。
-- **已发布：** `0.1.0-rc.6` — DSH `0.2.1-rc.5` 适配、UI 帮助/预览、观测和文档。
+- **已撤回：** `0.1.0-rc.6` — npm deprecated，GitHub release/tag 已删除，未完成正式验收。
 - **rc.5 待完成：** npm token 发布、GitHub prerelease、受保护 browser evidence 和 Promotion。`main` 已包含
   token 发布 workflow。
 - 真实模型 compaction 验收 PASS 仍记录在不可变

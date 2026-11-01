@@ -4,7 +4,7 @@
 
 记录 `dsh-charter` 的重要变更。DSH 插件 ABI 仍在演进，项目保持 pre-1.0 版本线。
 
-## 0.1.0-rc.6 — 2026-11-01
+## 0.1.0-rc.6 — 已撤回
 
 兼容性、UI 与可观测性候选。除 DSH `0.2.1-rc.5` 元数据和缩短的模型可见 `charter_read` description 外，暂不包含产品运行时路径、record schema、Remote 方法、模型工具或 domain 变更。
 
@@ -24,7 +24,7 @@
 
 ### 文档
 
-- 围绕实际发布状态统一 README、发布、版本、验证、兼容性和用户指南：rc.6 已发布，rc.5 已定版但 npm 延迟，
+- 围绕实际发布状态统一 README、发布、版本、验证、兼容性和用户指南：rc.5 已发布，rc.6 已撤回并 deprecated，
   rc.4 为历史发布。
 - 清理过期 pre-tag 指令和旧安装声明。
 - 工具链 devDependencies 固定精确版本（React `18.3.1`、TypeScript `5.9.3`、`@types/node` `22.20.5`、`@tsdown/css` `0.22.2`），避免 rc.5 适配被范围解析漂移影响。
@@ -33,8 +33,8 @@
 
 ### 发布状态
 
-- `0.1.0-rc.5` 已定版且不可变（tag `v0.1.0-rc.5`，精确产物 digest 在 `SHA256SUMS`）；npm 发布延迟。
-- `0.1.0-rc.6` 已发布到 npm `latest`/`next`；tag 和 GitHub Release 使用精确发布产物。
+- `0.1.0-rc.5` 已发布到 npm `latest`/`next`；精确产物 digest 在 `SHA256SUMS`。规范 GitHub tag/release 待恢复。
+- `0.1.0-rc.6` 在正式验收前撤回：npm deprecated，GitHub release/tag 已删除，不得通过发布渠道使用。
 
 ## 0.1.0-rc.5 — 2026-10-29
 
@@ -60,7 +60,7 @@
 - 以 `npm run check` 与当前 exact-artifact/packed smoke 命令为准；真实 Gateway、浏览器恢复、Desktop ABI 与
   真实模型 compaction 仍是独立验收门禁。
 - 不提升 record schema 版本、不改 domain；rc.4 记录保持可读。
-- 发布状态：tag `v0.1.0-rc.5` 已存在，精确产物 SHA-256 记录在 `SHA256SUMS`；rc.5 尚未发布到 npm。
+- 发布状态：rc.5 已发布到 npm；规范 GitHub tag/release 待恢复。
 
 ## 0.1.0-rc.4 — 2026-10-27
 

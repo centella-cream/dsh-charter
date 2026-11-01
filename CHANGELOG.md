@@ -5,7 +5,7 @@ English | [中文](CHANGELOG.zh.md)
 All notable changes to `dsh-charter` are recorded here. The project follows a pre-1.0 version line while the
 DSH plugin ABI is still moving.
 
-## 0.1.0-rc.6 — 2026-11-01
+## 0.1.0-rc.6 — withdrawn
 
 Compatibility, UI, and observability candidate. No product runtime code path, record schema, Remote method, model tool, or domain change beyond DSH `0.2.1-rc.5` metadata and the shortened model-facing `charter_read` description.
 
@@ -28,7 +28,7 @@ Compatibility, UI, and observability candidate. No product runtime code path, re
 ### Documentation
 
 - Consolidated the release, version, verification, compatibility, user-guide, and README documentation around
-  the release state: rc.6 published, rc.5 finalized but npm-delayed, and the historical rc.4 release.
+  the release state: rc.5 published, rc.6 withdrawn and deprecated, and the historical rc.4 release.
 - Removed stale pre-tag instructions and outdated install claims.
 - Pinned the toolchain devDependencies to exact versions (React `18.3.1`, TypeScript `5.9.3`, `@types/node` `22.20.5`, `@tsdown/css` `0.22.2`) so the rc.5 compatibility update does not drift with range resolution.
 - Added the version badge in the Charter header as an accepted rc.5 scope addition; the rc.6 client constant is
@@ -36,13 +36,13 @@ Compatibility, UI, and observability candidate. No product runtime code path, re
 
 ### Release state
 
-- `0.1.0-rc.5` remains finalized and immutable (tag `v0.1.0-rc.5`, exact artifact digest in `SHA256SUMS`); its npm
-  publication is deferred.
-- `0.1.0-rc.6` is published under npm `latest`/`next`; its tag and GitHub Release use the exact published artifact.
+- `0.1.0-rc.5` is published to npm (`latest`/`next`); exact artifact digest is in `SHA256SUMS`. Its canonical
+  GitHub tag/release is pending restoration.
+- `0.1.0-rc.6` was withdrawn before formal acceptance. The npm version is deprecated, the GitHub release/tag were removed, and it must not be used through channels.
 
 ## 0.1.0-rc.5 — 2026-10-29
 
-Pre-stable correctness and release-hardening candidate. Tagged and candidate-green; npm publication and the GitHub Release are still pending. No new 0.2 capability, domain, Remote method, or
+Pre-stable correctness and release-hardening candidate. Candidate-green; rc.5 is now published to npm, while its canonical GitHub tag/release is pending restoration. No new 0.2 capability, domain, Remote method, or
 persistent schema version.
 
 ### Added

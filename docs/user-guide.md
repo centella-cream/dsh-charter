@@ -23,28 +23,25 @@ For a Web or Desktop profile the plugin registers:
 
 ## 2. Install
 
-> **Install channels.** The latest published RC is `0.1.0-rc.4`; `0.1.0-rc.5` is finalized and tagged but
-> **not yet published to npm or released on GitHub**. `0.1.0-rc.6` is the active source version and is also
-> unreleased/untagged. Install the published rc.4 exact version for normal use. Use the verified local tarball
-> only for candidate verification or when the registry is unreachable.
+> **Install channels.** The latest published RC is `0.1.0-rc.5` (npm `latest`/`next`). `0.1.0-rc.6` was
+> published by mistake but is deprecated and its GitHub release/tag were removed; do not use it through channels.
+> The canonical rc.5 GitHub tag/release is pending restoration. Install the published rc.5 exact version for normal
+> use.
 
 ### 2.1 Requirements
 
 - DSH: only the versions listed in the [compatibility matrix](design/compatibility.md) are supported
   (`0.1.7-rc.2`, `0.2.0-rc.1`/`rc.2`, `0.2.1-rc.1`/`rc.2`/`rc.3`/`rc.4`/`rc.5`); newer stable/RC versions are not
   claimed until the matrix is extended. `0.2.1+` is required for per-Peer Remote resource authorization. DSH
-`0.2.1-rc.5` is source-level support in the unreleased rc.6 tree; published rc.4 and finalized rc.5 artifacts do not
-declare it.
+`0.2.1-rc.5` is source-level support only in the deprecated rc.6 tree; the published rc.5 artifact does not declare it.
 - Node.js **`^22.19.0 || >=24.0.0`**.
 - A Web or Desktop profile.
 
 ### 2.2 Offline / local tarball fallback
 
 ```bash
-npm install
-npm run build
-npm pack
-dsh plugin --profile web add ./dsh-charter-0.1.0-rc.6.tgz
+npm pack dsh-charter@0.1.0-rc.5
+dsh plugin --profile web add ./dsh-charter-0.1.0-rc.5.tgz
 ```
 
 For Desktop, use the Plugins page if local import is available; otherwise install the tarball through the Desktop
@@ -54,13 +51,12 @@ dependency is a local `file:` path. Prefer npm install in §2.3 when the registr
 ### 2.3 npm / Registry install (recommended) — Web profile by version or tag
 
 ```bash
-dsh plugin --profile web add dsh-charter@0.1.0-rc.4   # latest published RC: reproducible
-dsh plugin --profile web add dsh-charter@next          # currently rc.4 until rc.5/rc.6 are published
+dsh plugin --profile web add dsh-charter@0.1.0-rc.5   # latest published RC: reproducible
+dsh plugin --profile web add dsh-charter@next          # currently rc.5
 ```
 
-`dsh-charter@0.1.0-rc.4` is the latest published RC, and npm `next`/`latest` currently point at it. rc.5 is
-implemented and tagged but **not yet installable from npm**; use the rc.5 command only after
-`npm view dsh-charter@0.1.0-rc.5 version` returns that version. Under our channel policy `latest` also points at
+`dsh-charter@0.1.0-rc.5` is the latest published RC, and npm `next`/`latest` point at it. rc.6 is deprecated and
+must not be installed through channels. Under our channel policy `latest` also points at
 the newest RC until a stable release exists (npm keeps a `latest` tag and we choose where it points; this is our
 policy, not an npm requirement). Use the offline tarball fallback only when the registry is unreachable or for
 candidate verification. Pin an explicit version for reproducible profiles.

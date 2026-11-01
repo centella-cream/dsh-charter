@@ -12,14 +12,14 @@ The release path is:
 
 ```text
 0.1.0-rc.4 (published compatibility patch)
-  → 0.1.0-rc.5 (finalized; npm publication deferred)
-  → 0.1.0-rc.6 (active source; unreleased)
+  → 0.1.0-rc.5 (published to npm; canonical GitHub tag/release pending restoration)
+  → 0.1.0-rc.6 (withdrawn; deprecated on npm)
   → 0.1.0 stable
   → 0.1.1 only if stable needs a compatible patch
   → 0.2.0-alpha.1 ... 0.2.0-rc.1 → 0.2.0
 ```
 
-The finalized candidate is **`0.1.0-rc.5`**; its npm publication and GitHub prerelease are deferred. The active source is **`0.1.0-rc.6`**, which is unreleased and untagged. `0.1.1-rc.1` remains a post-stable patch spelling, not another rc.6.
+**`0.1.0-rc.5`** is published to npm and is the latest published release; its canonical GitHub tag/release is pending restoration. **`0.1.0-rc.6`** was withdrawn before acceptance, is deprecated on npm, and has no GitHub release/tag. `0.1.1-rc.1` remains a post-stable patch spelling, not another rc.6.
 
 rc.5 fixed the correctness defect inside the promised 0.1 workflow: previously every compaction-history candidate started selected, the UI rendered only 40, and Apply could include selected candidates the user had not seen. That conflicted with the mandatory human-review promise; the rc.5 review flow now starts with no selections and never submits hidden rows.
 
@@ -29,13 +29,10 @@ rc.5 fixed the correctness defect inside the promised 0.1 workflow: previously e
 
 ## 2. Current Release State
 
-- The latest published version is `0.1.0-rc.4`; its Git tag, GitHub Release assets, and npm package are public
-  and immutable. npm `latest` and `next` point to rc.4.
-- rc.5 is implemented and frozen. The source is tagged `v0.1.0-rc.5`; the candidate workflow is green, and the
-  exact artifact digest is recorded in the root `SHA256SUMS`. The tag points at the checksum-only C+1 commit.
-- rc.5 is **not published yet**: npm publication, the GitHub prerelease, protected browser evidence, and
-  Promotion are pending. Do not describe it as installable from npm.
-- rc.6 is active in the source tree but **unreleased and untagged**. It currently carries documentation, UI, and traffic-observation work; a fresh candidate is required before any tag or publication.
+- The latest published version is `0.1.0-rc.5`; npm `latest` and `next` point to it. Its canonical GitHub tag/release
+  was accidentally deleted and is pending restoration; the exact artifact digest is recorded in the root `SHA256SUMS`.
+- rc.4 remains a historical published compatibility patch and is immutable.
+- rc.6 is retained only as source for the next candidate. It was withdrawn from npm channels, deprecated, and its GitHub release/tag were removed; a fresh candidate and acceptance are required before another publication.
 - `main` contains the token-publish workflow used by the remaining promotion path. Published rc.4 history is
   never rewritten.
 
