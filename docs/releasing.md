@@ -8,11 +8,11 @@ tagging.
 
 ## Current state (2026-10-30)
 
-- **Published:** `0.1.0-rc.4` — npm `latest`/`next`, GitHub Release, immutable tag.
+- **Published:** `0.1.0-rc.6` — npm `latest`/`next`, GitHub Release, immutable tag.
 - **Finalized candidate:** `0.1.0-rc.5` — implemented and frozen. Candidate workflow run `40864078201` is green;
   exact artifact SHA-256 is `94e27acf8851ad5423defd06a41253171317f4e805af809fe8e8e7a9ce83a939`; root
   `SHA256SUMS` records it. Tag `v0.1.0-rc.5` points at the checksum-only C+1 commit `0a6ccc5`.
-- **Active source:** `0.1.0-rc.6`, unreleased and untagged; DSH 0.2.1-rc.5 compatibility, documentation, UI help/preview, and traffic observation so far.
+- **Active source:** `0.1.0-rc.6`, published; DSH 0.2.1-rc.5 compatibility, documentation, UI help/preview, and traffic observation.
 - **Not yet published:** rc.5 has no npm version and no GitHub Release. Protected browser evidence and
   Promotion are still pending. `main` includes the repository-token publish workflow.
 - Do not create a second rc.5 tag or publish a rebuilt tarball. The existing rc.5 `C+1` tag is not the current
