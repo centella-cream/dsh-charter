@@ -425,7 +425,7 @@ v1 item/proposal 的来源映射：可证明的 fork 保留 fork 引用；其余
 | M0 合同探针与 ADR | message source、tool context、cursor、record v2、降级、授权矩阵与 UI slot | 冻结 schema、兼容、授权和迁移决策 |
 | `0.2.0` W1 | Core v2、Change Set planner、v1/v2 parser、迁移测试 | v1 prompt 等价；首次 mutation 原子迁移 |
 | `0.2.0` W2 | Review Center、query API、搜索筛选分页、消息 proposal、`charter_propose` | 所有新 proposal 有 provenance；512 条可用 |
-| `0.2.0-beta.1` | validator、integrity/validity、三中心 UI、Pane/store 重构 | 功能完整；开始 feature freeze |
+| `0.2.0` W2.5 | validator、integrity/validity、三中心 UI、Pane/store 重构 | 功能完整；开始 feature freeze |
 | `0.2.0` W3 | 迁移、降级、无障碍、性能、真实 profile、packed artifact | 仅接受发布阻断修复 |
 | `0.2.0` | stable artifact | 全部验收和文档完成 |
 

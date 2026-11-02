@@ -250,7 +250,7 @@ For v1 item provenance, preserve provable fork references; map every other exist
 | M0 probes + ADR | Message/tool sources, cursors, record v2, downgrade, authorization matrix, UI slots | Freeze schema, compatibility, authorization, and migration decisions |
 | `0.2.0` W1 | Core v2, Change Set planner, v1/v2 parser | Prompt equivalence and atomic first-mutation migration |
 | `0.2.0` W2 | Review Center, query API, search/filter/page, message and tool proposals | Every new proposal has provenance; 512-item flow works |
-| `0.2.0-beta.1` | Validators, integrity/validity, three-area UI, Pane/store refactor | Feature complete; feature freeze begins |
+| `0.2.0` W2.5 | Validators, integrity/validity, three-area UI, Pane/store refactor | Feature complete; feature freeze begins |
 | `0.2.0` W3 | Migration, downgrade, accessibility, performance, real profiles, artifact gates | Release blockers only |
 | `0.2.0` | Stable artifact | All acceptance evidence and documentation complete |
 
