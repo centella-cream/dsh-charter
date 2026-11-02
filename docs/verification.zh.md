@@ -16,13 +16,13 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 - `0.1.0-rc.5`：上一个已验收 npm 版本；规范 GitHub tag/release 仍待恢复。
 - 当前版本：`0.1.0-rc.6`，已正式验收。
 - 当前开发线：`0.2.0`（`feat/0.2.0-workspace`）；从 0.2.0 起版本号不使用 `rc` 后缀。
-- 0.2.0 源码证据：35 个测试文件 / 403 个测试，当前开发树八版本矩阵 403/403 通过。
+- 0.2.0 源码证据：35 个测试文件 / 405 个测试，当前开发树八版本矩阵 405/405 通过。
 - 待完成：恢复 rc.5 规范 GitHub tag/release，并完成受保护 browser evidence/发布后检查。
 
 | 项目 | 结果 |
 | --- | --- |
 | TypeScript 严格检查 | 当前树通过 |
-| Vitest | 35 个测试文件 / 403 个测试通过（`npm test`，先 build） |
+| Vitest | 35 个测试文件 / 405 个测试通过（`npm test`，先 build） |
 | Host ESM 构建 + 浏览器 factory bundle | 通过 |
 | Remote 契约与 client smoke | 通过 |
 | 普通 package smoke | 通过 |
@@ -30,7 +30,7 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 | packed recovery smoke | 通过：export、删除 target、restore、receipt replay、两次 restart、健康目标拒绝、packed fault 子集 |
 | 真实 `TypertGatewayService` | 精确 artifact 在隔离的 DSH `0.2.1-rc.3` / `rc.4` 依赖图上通过 |
 | 兼容 sentinel | `0.1.7-rc.2`、`0.2.1-rc.2`、`0.2.1-rc.4`、`0.2.1-rc.5` 通过 |
-| 八版本全量 rerun | tracked `compat-matrix --versions all --allow-new-release` 通过（每版本 403/403） |
+| 八版本全量 rerun | tracked `compat-matrix --versions all --allow-new-release` 通过（每版本 405/405） |
 | 未跟踪 `0.2.2-alpha.2` probe | strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run；rc.6 明确不支持 |
 | 本地 Web + Desktop profile | rc.6 artifact 已安装；Desktop app 仍为 `0.2.1-rc.3`，Desktop 验收需更新 app |
 | 真实浏览器恢复 | 受保护的人工 evidence gate；未自动化 |
@@ -64,16 +64,16 @@ CI（`.github/workflows/ci.yml`）在 Node `22.19.0` / `24` 上运行 `npm run c
 
 | DSH 版本 | 证据 |
 | --- | --- |
-| `0.1.7-rc.2` | 403/403 tracked matrix PASS |
-| `0.2.0-rc.1` | 403/403 tracked matrix PASS |
-| `0.2.0-rc.2` | 403/403 tracked matrix PASS |
-| `0.2.1-rc.1` | 403/403 tracked matrix PASS |
-| `0.2.1-rc.2` | 403/403 tracked matrix PASS |
-| `0.2.1-rc.3` | 403/403 tracked matrix PASS |
-| `0.2.1-rc.4` | 403/403 tracked matrix PASS |
-| `0.2.1-rc.5` | 403/403 tracked matrix PASS |
+| `0.1.7-rc.2` | 405/405 tracked matrix PASS |
+| `0.2.0-rc.1` | 405/405 tracked matrix PASS |
+| `0.2.0-rc.2` | 405/405 tracked matrix PASS |
+| `0.2.1-rc.1` | 405/405 tracked matrix PASS |
+| `0.2.1-rc.2` | 405/405 tracked matrix PASS |
+| `0.2.1-rc.3` | 405/405 tracked matrix PASS |
+| `0.2.1-rc.4` | 405/405 tracked matrix PASS |
+| `0.2.1-rc.5` | 405/405 tracked matrix PASS |
 
-当前 rc.6 源码树已于 2026-10-30 通过 `compat-matrix --versions all`：每个声明版本均通过 typecheck、build 和 403/403 测试。安装使用 pnpm strict peer、精确工具版本、单一 zod 4.6.7 图、完整 `pnpm list --depth Infinity` 图校验，并记录 lockfile SHA-256。未跟踪 `0.2.2-alpha.2` 已 probe：strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run，rc.6 明确不支持。
+当前 rc.6 源码树已于 2026-10-30 通过 `compat-matrix --versions all`：每个声明版本均通过 typecheck、build 和 405/405 测试。安装使用 pnpm strict peer、精确工具版本、单一 zod 4.6.7 图、完整 `pnpm list --depth Infinity` 图校验，并记录 lockfile SHA-256。未跟踪 `0.2.2-alpha.2` 已 probe：strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run，rc.6 明确不支持。
 
 ## 4. 测试覆盖
 
