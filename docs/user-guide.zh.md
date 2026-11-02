@@ -22,23 +22,22 @@ dsh --profile web --dump-config | grep -n "charter" || true
 
 ## 2. 安装
 
-> **安装渠道。** 最新已发布 RC 是 `0.1.0-rc.5`（npm `latest`/`next`）。`0.1.0-rc.6` 曾被误发布，现已
-> deprecated 且 GitHub release/tag 已删除；不要通过发布渠道使用。rc.5 的规范 GitHub tag/release 待恢复。
-> 普通使用请安装已发布 rc.5 精确版本。
+> **安装渠道。** 最新已发布 RC 是 `0.1.0-rc.6`（npm `latest`/`next`），已正式验收。GitHub Release 使用
+> recovery tag `v0.1.0-rc.6-republished`；rc.5 的规范 GitHub tag/release 待恢复。普通使用请安装 rc.6。
 
 ### 2.1 环境要求
 
 - DSH：只支持[兼容矩阵](design/compatibility.zh.md)中列出的版本（`0.1.7-rc.2`、`0.2.0-rc.1`/`rc.2`、
   `0.2.1-rc.1`/`rc.2`/`rc.3`/`rc.4`/`rc.5`）。在扩展矩阵前不声明支持更新的 stable/RC 版本；完整 per-Peer Remote
-  资源授权要求 `0.2.1+`。DSH `0.2.1-rc.5` 仅在已撤回的 rc.6 源码/产物中支持；已发布 rc.5 产物未声明该版本。
+  资源授权要求 `0.2.1+`。DSH `0.2.1-rc.5` 由已发布 rc.6 产物支持；已发布 rc.5 产物未声明该版本。
 - Node.js **`^22.19.0 || >=24.0.0`**。
 - Web 或 Desktop profile。
 
 ### 2.2 离线 / 本地 tarball 回退
 
 ```bash
-npm pack dsh-charter@0.1.0-rc.5
-dsh plugin --profile web add ./dsh-charter-0.1.0-rc.5.tgz
+npm pack dsh-charter@0.1.0-rc.6
+dsh plugin --profile web add ./dsh-charter-0.1.0-rc.6.tgz
 ```
 
 Desktop 若支持本地插件导入，可在 Plugins 页面安装同一个 tarball；否则通过 Desktop profile 自己的包管理器
@@ -48,11 +47,11 @@ Desktop 若支持本地插件导入，可在 Plugins 页面安装同一个 tarba
 ### 2.3 npm / Registry 安装（推荐）— Web profile 按版本或 tag
 
 ```bash
-dsh plugin --profile web add dsh-charter@0.1.0-rc.5   # 最新已发布 RC：可复现
+dsh plugin --profile web add dsh-charter@0.1.0-rc.6   # 最新已发布 RC：可复现
 dsh plugin --profile web add dsh-charter@next          # 当前指向 rc.5
 ```
 
-`dsh-charter@0.1.0-rc.5` 是最新已发布 RC，npm `next`/`latest` 当前均指向它。rc.6 已 deprecated，不得通过渠道安装。
+`dsh-charter@0.1.0-rc.6` 是最新已发布 RC，npm `next`/`latest` 当前均指向它。
 按当前渠道策略，稳定版出现前 `latest` 也会指向最新 RC（npm 会保留 `latest` tag，由我们决定其指向；这是
 我们的策略，不是 npm 的强制要求）。只有 registry 不可达或候选验证时才使用离线 tarball 回退。固定明确版本
 可以让 profile 可复现。

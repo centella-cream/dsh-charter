@@ -13,13 +13,13 @@ The release path is:
 ```text
 0.1.0-rc.4 (published compatibility patch)
   → 0.1.0-rc.5 (published to npm; canonical GitHub tag/release pending restoration)
-  → 0.1.0-rc.6 (withdrawn; deprecated on npm)
+  → 0.1.0-rc.6 (accepted; published with recovery tag)
   → 0.1.0 stable
   → 0.1.1 only if stable needs a compatible patch
   → 0.2.0-alpha.1 ... 0.2.0-rc.1 → 0.2.0
 ```
 
-**`0.1.0-rc.5`** is published to npm and is the latest published release; its canonical GitHub tag/release is pending restoration. **`0.1.0-rc.6`** was withdrawn before acceptance, is deprecated on npm, and has no GitHub release/tag. `0.1.1-rc.1` remains a post-stable patch spelling, not another rc.6.
+**`0.1.0-rc.6`** is published and formally accepted; its GitHub Release uses recovery tag `v0.1.0-rc.6-republished`. **`0.1.0-rc.5`** is the previous accepted release and its canonical GitHub tag/release is pending restoration. `0.1.1-rc.1` remains a post-stable patch spelling, not another rc.6.
 
 rc.5 fixed the correctness defect inside the promised 0.1 workflow: previously every compaction-history candidate started selected, the UI rendered only 40, and Apply could include selected candidates the user had not seen. That conflicted with the mandatory human-review promise; the rc.5 review flow now starts with no selections and never submits hidden rows.
 
@@ -29,10 +29,10 @@ rc.5 fixed the correctness defect inside the promised 0.1 workflow: previously e
 
 ## 2. Current Release State
 
-- The latest published version is `0.1.0-rc.5`; npm `latest` and `next` point to it. Its canonical GitHub tag/release
-  was accidentally deleted and is pending restoration; the exact artifact digest is recorded in the root `SHA256SUMS`.
+- The latest published version is `0.1.0-rc.6`; npm `latest` and `next` point to it, and it passed formal acceptance.
+  Its GitHub Release uses recovery tag `v0.1.0-rc.6-republished`; the exact artifact digest is in `SHA256SUMS`.
+- rc.5 is the previous accepted npm release; its canonical GitHub tag/release is pending restoration.
 - rc.4 remains a historical published compatibility patch and is immutable.
-- rc.6 is retained only as source for the next candidate. It was withdrawn from npm channels, deprecated, and its GitHub release/tag were removed; a fresh candidate and acceptance are required before another publication.
 - `main` contains the token-publish workflow used by the remaining promotion path. Published rc.4 history is
   never rewritten.
 

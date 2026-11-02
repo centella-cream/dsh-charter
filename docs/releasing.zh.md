@@ -7,12 +7,11 @@ tag、不删除已发布 Release、不在打 tag 后重建字节。
 
 ## 当前状态（2026-10-30）
 
-- **已发布：** `0.1.0-rc.5` — npm `latest`/`next`；规范 GitHub tag/release 缺失，待恢复。
-- **已定版候选：** `0.1.0-rc.5` — 已实现并冻结。Candidate workflow run `40864078201` 全绿；精确产物
-  SHA-256 为 `94e27acf8851ad5423defd06a41253171317f4e805af809fe8e8e7a9ce83a939`，根 `SHA256SUMS`
-  已记录。tag `v0.1.0-rc.5` 指向 checksum-only C+1 commit `0a6ccc5`。
-- **已撤回：** `0.1.0-rc.6` — npm deprecated，GitHub release/tag 已删除，未通过发布渠道。
-- **待完成：** 恢复被误删的 rc.5 规范 GitHub tag/release；受保护 browser evidence 和常规发布后检查仍需人工完成。
+- **已发布：** `0.1.0-rc.6` — npm `latest`/`next`；精确产物 SHA-256
+  `21ddbea0ae3fd88994d4e4731429ef4d8cb75db2b97e83cd7530a0386e425825`。GitHub Release 使用 recovery tag
+  `v0.1.0-rc.6-republished`。
+- **`0.1.0-rc.5`：** 上一个已验收 npm 版本；规范 GitHub tag/release 待恢复。
+- **待完成：** 恢复 rc.5 规范 GitHub tag/release；受保护 browser evidence 和常规发布后检查仍需人工完成。
 - 不要创建第二个 rc.5 tag，也不要发布重建的 tarball。现有 rc.5 `C+1` tag 不是当前 `main` tip，当前 Promotion
   workflow 无法直接推广它；若后续恢复 npm 发布，应从 `main` 重新构建 candidate，不要改写已发布 rc.5 tag。
 

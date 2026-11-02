@@ -11,7 +11,7 @@
 ```text
 0.1.0-rc.4（兼容性补丁，已发布）
   → 0.1.0-rc.5（已定版，npm 发布延迟）
-  → 0.1.0-rc.6（已撤回；npm deprecated）
+  → 0.1.0-rc.6（已验收；使用 recovery tag 发布）
   → 0.1.0 stable
   → 0.1.1（仅在 stable 后确有兼容补丁时）
   → 0.2.0-alpha.1 ... 0.2.0-rc.1 → 0.2.0
@@ -30,16 +30,16 @@ rc.5 修复了与产品承诺冲突的审阅正确性问题：此前历史草案
 
 ### 2.1 已发布版本
 
-- 最新已发布版本是 `0.1.0-rc.5`；npm `latest` 和 `next` 指向 rc.5。其规范 GitHub tag/release 被误删，待恢复；
-  精确产物 digest 记录在根 `SHA256SUMS`。
-- rc.4 是历史发布和不可变的 compatibility-only patch，增加 DSH `0.2.1-rc.3`/`rc.4` 精确兼容声明。
+- 最新已发布版本是 `0.1.0-rc.6`；npm `latest` 和 `next` 指向 rc.6，并已正式验收。GitHub Release 使用
+  recovery tag `v0.1.0-rc.6-republished`；精确产物 digest 记录在根 `SHA256SUMS`。
+- rc.5 是上一个已验收 npm 版本；规范 GitHub tag/release 待恢复。
+- rc.4 是历史发布和不可变的 compatibility-only patch。
 
 ### 2.2 rc.5 候选
 
 - rc.5 已实现、candidate 全绿并发布到 npm；规范 GitHub tag/release 待恢复，受保护 browser evidence 和常规
   发布后检查仍待完成。
-- rc.6 仅作为下一次 candidate 的源码保留。它已从 npm 渠道撤回并 deprecated，GitHub release/tag 已删除；再次发布前
-  必须重新构建 candidate 并完成验收。
+- rc.6 已通过验收并发布；GitHub Release 使用 recovery tag `v0.1.0-rc.6-republished`。
 - `main` 已包含剩余 promotion 路径使用的 token 发布 workflow。已发布的 rc.4 历史永不改写。
 
 ## 3. 为什么是 rc.5
