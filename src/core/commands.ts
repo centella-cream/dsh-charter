@@ -5,11 +5,13 @@ import type {
   CharterOp,
   CharterSnapshot,
   NewItemInput,
+  ObjectiveProposal,
 } from './schemas.js'
 import { buildSnapshotUnchecked } from './render.js'
 import { validateState } from './state.js'
 import { validateDependencyGraph } from './dependencies.js'
 import type { CharterLimits } from './limits.js'
+import { sha256Text } from './digest.js'
 
 export interface ApplyOpsInput {
   readonly snapshot: CharterSnapshot
@@ -18,11 +20,13 @@ export interface ApplyOpsInput {
   readonly nextRevision: number
   readonly limits: CharterLimits
   readonly origin?: 'user' | 'agent'
+  readonly objectiveProposals?: readonly ObjectiveProposal[]
 }
 
 export interface ApplyOpsOutput {
   readonly snapshot: CharterSnapshot
   readonly changes: readonly CharterChange[]
+  readonly objectiveProposals: readonly ObjectiveProposal[]
 }
 
 function copyItem(item: CharterItem): CharterItem {
@@ -86,6 +90,7 @@ export function applyOps(input: ApplyOpsInput): ApplyOpsOutput {
   }
 
   let objective = input.snapshot.objective
+  const objectiveProposals = new Map((input.objectiveProposals ?? []).map(proposal => [proposal.id, { ...proposal }]))
   const items = new Map(input.snapshot.items.map(item => [item.id, copyItem(item)]))
   const changes: CharterChange[] = []
   const purgeIds = new Set(
@@ -100,6 +105,15 @@ export function applyOps(input: ApplyOpsInput): ApplyOpsOutput {
     if (nonPurgeTargets.has(id)) {
       throw charterError('INVALID_ARGUMENT', `item ${id} cannot be purged and otherwise edited in one batch`)
     }
+  }
+
+  const acceptedObjectiveProposals = input.ops.filter(op => op.type === 'objective.accept')
+  if (acceptedObjectiveProposals.length > 1) {
+    throw charterError('INVALID_ARGUMENT', 'one Change Set may accept at most one objective proposal')
+  }
+  if (acceptedObjectiveProposals.length > 0 && input.ops.some(op =>
+    op.type === 'objective.initialize' || op.type === 'objective.redirect')) {
+    throw charterError('INVALID_ARGUMENT', 'an accepted objective proposal cannot be combined with a direct objective edit')
   }
 
   const origin = input.origin ?? 'user'
@@ -132,6 +146,89 @@ export function applyOps(input: ApplyOpsInput): ApplyOpsOutput {
           },
         }
         changes.push({ type: 'objective.redirected' })
+        break
+      }
+      case 'objective.propose': {
+        const id = requireMappedId(input.ids, op.clientRef)
+        if (objectiveProposals.has(id)) throw charterError('INVALID_REFERENCE', `minted proposal id ${id} already exists`)
+        objectiveProposals.set(id, {
+          id,
+          text: op.text,
+          origin,
+          review: 'pending',
+          createdRevision: input.nextRevision,
+        })
+        changes.push({ type: 'objective.proposed', proposalId: id })
+        break
+      }
+      case 'objective.accept': {
+        const proposal = objectiveProposals.get(op.proposalId)
+        if (proposal === undefined) throw charterError('NOT_FOUND', `objective proposal ${op.proposalId} does not exist`)
+        if (proposal.review !== 'pending') {
+          throw charterError('INVALID_TRANSITION', `objective proposal ${proposal.id} is not pending`)
+        }
+        if (objective === undefined) {
+          objective = {
+            original: { text: proposal.text, setAtRevision: input.nextRevision },
+            current: { text: proposal.text, setAtRevision: input.nextRevision },
+          }
+          changes.push({ type: 'objective.initialized' })
+        } else {
+          if (op.reason === undefined) {
+            throw charterError('INVALID_TRANSITION', 'accepting an objective proposal over an existing objective requires a reason')
+          }
+          if (objective.current.text === proposal.text) {
+            throw charterError('INVALID_TRANSITION', 'the accepted objective proposal is unchanged')
+          }
+          objective = {
+            original: objective.original,
+            current: {
+              text: proposal.text,
+              setAtRevision: input.nextRevision,
+              reason: op.reason,
+            },
+          }
+          changes.push({ type: 'objective.redirected' })
+        }
+        objectiveProposals.set(proposal.id, {
+          ...proposal,
+          text: '',
+          review: 'accepted',
+          reviewedAtRevision: input.nextRevision,
+          appliedRevision: input.nextRevision,
+          textDigest: sha256Text(proposal.text),
+        })
+        changes.push({ type: 'objective.accepted', proposalId: proposal.id })
+        break
+      }
+      case 'objective.reject': {
+        const proposal = objectiveProposals.get(op.proposalId)
+        if (proposal === undefined) throw charterError('NOT_FOUND', `objective proposal ${op.proposalId} does not exist`)
+        if (proposal.review !== 'pending') {
+          throw charterError('INVALID_TRANSITION', `objective proposal ${proposal.id} is not pending`)
+        }
+        objectiveProposals.set(proposal.id, {
+          ...proposal,
+          review: 'rejected',
+          reviewedAtRevision: input.nextRevision,
+        })
+        changes.push({ type: 'objective.rejected', proposalId: proposal.id })
+        break
+      }
+      case 'objective.purge': {
+        const proposal = objectiveProposals.get(op.proposalId)
+        if (proposal === undefined) throw charterError('NOT_FOUND', `objective proposal ${op.proposalId} does not exist`)
+        if (proposal.review === 'pending') {
+          throw charterError('INVALID_TRANSITION', 'a pending objective proposal must be rejected before purge')
+        }
+        objectiveProposals.set(proposal.id, {
+          ...proposal,
+          text: '',
+          review: 'purged',
+          reviewedAtRevision: input.nextRevision,
+          textDigest: proposal.textDigest ?? sha256Text(proposal.text),
+        })
+        changes.push({ type: 'objective.purged', proposalId: proposal.id })
         break
       }
       case 'item.add': {
@@ -319,8 +416,11 @@ export function applyOps(input: ApplyOpsInput): ApplyOpsOutput {
   validateDependencyGraph(nextItems)
   validateState(input.nextRevision, objective, nextItems)
   const snapshot = buildSnapshotUnchecked(input.nextRevision, objective, nextItems)
-  if (snapshot.stateDigest === input.snapshot.stateDigest) {
+  const nextProposals = [...objectiveProposals.values()]
+  const proposalsChanged = JSON.stringify(nextProposals)
+    !== JSON.stringify(input.objectiveProposals ?? [])
+  if (snapshot.stateDigest === input.snapshot.stateDigest && !proposalsChanged) {
     throw charterError('INVALID_TRANSITION', 'the edit produces no state change')
   }
-  return { snapshot, changes }
+  return { snapshot, changes, objectiveProposals: nextProposals }
 }

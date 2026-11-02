@@ -711,6 +711,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   const [confirmRestoreKey, setConfirmRestoreKey] = useState<string | null>(null)
   const [exportProblem, setExportProblem] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
+  const [proposalReasons, setProposalReasons] = useState<Record<string, string>>({})
   const archiveGenerationRef = useRef(0)
   const exportEpochRef = useRef(0)
   const exportInFlightRef = useRef(false)
@@ -775,7 +776,8 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   const historyInvariants = invariants.filter(item => item.lifecycle !== 'current' || item.review === 'rejected')
   const activeDeliverables = activeItems(deliverables)
   const pendingDeliverables = pendingItems(deliverables)
-  const totalPending = pendingInvariants.length + pendingDeliverables.length
+  const pendingObjectiveProposals = (projected?.objectiveProposals ?? []).filter(proposal => proposal.review === 'pending')
+  const totalPending = pendingInvariants.length + pendingDeliverables.length + pendingObjectiveProposals.length
   const dependencyPlan = useMemo(() => dependencyProjection(projectedItems as unknown as CharterItem[]), [projectedItems])
   const currentDeliverables = visibleItems(deliverables)
   const historyDeliverables = deliverables.filter(item => item.lifecycle !== 'current' || item.review === 'rejected')
@@ -1914,6 +1916,64 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                     />
                   </div>
                 )}
+              </section>
+            )}
+
+            {area === 'review' && pendingObjectiveProposals.length > 0 && (
+              <section className="charter-card charter-section" aria-labelledby="charter-objective-proposals-title">
+                <div className="charter-cardhead">
+                  <div className="charter-cardtitle">
+                    <span className="charter-kicker">{t('review.kicker')}</span>
+                    <h3 id="charter-objective-proposals-title">{t('review.objectiveProposals')}</h3>
+                  </div>
+                  <span className="charter-count">{pendingObjectiveProposals.length}</span>
+                </div>
+                <ul className="charter-proposal-list">
+                  {pendingObjectiveProposals.map(proposal => {
+                    const reason = proposalReasons[proposal.id] ?? ''
+                    const needsReason = view.objective !== null
+                    return (
+                      <li key={proposal.id} className="charter-proposal">
+                        <p className="charter-proposal__text">{proposal.text}</p>
+                        <span className="charter-proposal__meta">
+                          {t('review.proposalRevision', { revision: proposal.createdRevision })}
+                        </span>
+                        {needsReason && (
+                          <input
+                            className="charter-proposal__reason"
+                            value={reason}
+                            placeholder={t('review.objectiveReason')}
+                            aria-label={t('review.objectiveReason')}
+                            onChange={event => setProposalReasons(previous => ({
+                              ...previous,
+                              [proposal.id]: event.target.value,
+                            }))}
+                          />
+                        )}
+                        <div className="charter-proposal__actions">
+                          <ActionButton
+                            variant="outline"
+                            disabled={saving || unknownBlocked || (needsReason && reason.trim().length === 0)}
+                            onClick={() => draft.stage(view, {
+                              type: 'objective.accept',
+                              proposalId: proposal.id,
+                              ...(needsReason ? { reason } : {}),
+                            })}
+                          >
+                            {t('review.acceptObjective')}
+                          </ActionButton>
+                          <ActionButton
+                            variant="outline"
+                            disabled={saving || unknownBlocked}
+                            onClick={() => draft.stage(view, { type: 'objective.reject', proposalId: proposal.id })}
+                          >
+                            {t('review.rejectObjective')}
+                          </ActionButton>
+                        </div>
+                      </li>
+                    )
+                  })}
+                </ul>
               </section>
             )}
 

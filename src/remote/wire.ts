@@ -5,6 +5,8 @@ import {
   charterEditRequestSchema,
   charterInitializeRequestSchema,
   charterItemSchema,
+  charterChangeSchema,
+  charterActorSchema,
   charterObjectiveSchema,
   charterRecordArchiveSchema,
   charterRestoreRequestSchema,
@@ -118,6 +120,16 @@ export const charterViewSchema = z.object({
   // (legacy-host: maintenance disabled, absence treated as unknown).
   recordState: charterRecordStateSchema.default(LEGACY_HOST_RECORD_STATE),
   capabilities: charterViewCapabilitiesSchema.default(LEGACY_HOST_CAPABILITIES),
+  objectiveProposals: z.array(z.object({
+    id: z.string(),
+    text: z.string(),
+    origin: z.enum(['user', 'agent', 'fork']),
+    review: z.enum(['pending', 'accepted', 'rejected', 'purged']),
+    createdRevision: z.number().int().positive(),
+    reviewedAtRevision: z.number().int().positive().optional(),
+    appliedRevision: z.number().int().positive().optional(),
+    textDigest: z.string().optional(),
+  }).strict()).optional(),
   proposalBatches: z.array(z.object({
     id: z.string(),
     source: z.object({ kind: z.string(), actor: z.string().optional(), at: z.number().optional() }).passthrough(),
@@ -140,6 +152,37 @@ export const charterSummarySchema = z.object({
   recordHealth: z.enum(['healthy', 'invalid', 'absent', 'unknown', 'write-uncertain']),
   capabilities: charterViewCapabilitiesSchema,
 }).strict()
+
+export const charterSummaryFrameSchema = z.union([
+  z.object({ type: z.literal('snapshot'), value: charterSummarySchema }).strict(),
+  z.object({ type: z.literal('changed'), value: charterSummarySchema }).strict(),
+])
+
+export const charterChangeQueryRequestSchema = z.object({
+  sessionId: z.string().min(1),
+  limit: z.number().int().positive().max(100).optional(),
+  cursor: z.string().optional(),
+}).strict()
+
+export const charterChangeQueryResultSchema = z.discriminatedUnion('ok', [
+  z.object({
+    ok: z.literal(true),
+    revision: z.number().int().nonnegative(),
+    changes: z.array(z.object({
+      revision: z.number().int().positive(),
+      baseRevision: z.number().int().nonnegative(),
+      actor: charterActorSchema,
+      at: z.number().int().nonnegative(),
+      changes: z.array(charterChangeSchema),
+    }).strict()),
+    nextCursor: z.string().optional(),
+  }).strict(),
+  z.object({
+    ok: z.literal(false),
+    code: z.enum(['INVALID_CURSOR', 'LIMIT_EXCEEDED', 'NOT_FOUND', 'UNAVAILABLE']),
+    message: z.string(),
+  }).strict(),
+])
 
 export const charterItemQueryRequestSchema = z.object({
   sessionId: z.string().min(1),
@@ -181,7 +224,7 @@ export const charterProposalQueryResultSchema = z.discriminatedUnion('ok', [
         kind: z.enum(['item', 'objective']),
         id: z.string(),
         text: z.string().optional(),
-        review: z.enum(['pending', 'accepted', 'rejected']).optional(),
+        review: z.enum(['pending', 'accepted', 'rejected', 'purged']).optional(),
       }).strict()),
     }).strict()),
   }).strict(),

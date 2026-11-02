@@ -165,6 +165,23 @@ export function assertRecoveryRecordAdmission(record: CharterRecord, limits: Cha
   if (bytes > limits.maxRecoveryBytes) {
     throw charterError('QUOTA_EXCEEDED', `restored record exceeds ${limits.maxRecoveryBytes} UTF-8 bytes`)
   }
+  const objectiveProposalIds = new Set<string>()
+  for (const proposal of record.objectiveProposals ?? []) {
+    if (objectiveProposalIds.has(proposal.id)) {
+      throw charterError('CORRUPT_STATE', `duplicate objective proposal ${proposal.id}`)
+    }
+    objectiveProposalIds.add(proposal.id)
+    if (proposal.createdRevision > record.current.revision) {
+      throw charterError('CORRUPT_STATE', `objective proposal ${proposal.id} has a future creation revision`)
+    }
+    if (proposal.review === 'accepted'
+      && (proposal.textDigest === undefined || proposal.appliedRevision === undefined || proposal.text !== '')) {
+      throw charterError('CORRUPT_STATE', `accepted objective proposal ${proposal.id} is not applied metadata`)
+    }
+    if (proposal.review === 'purged' && (proposal.text !== '' || proposal.textDigest === undefined)) {
+      throw charterError('CORRUPT_STATE', `purged objective proposal ${proposal.id} is not a tombstone`)
+    }
+  }
   const batches = record.proposalBatches ?? []
   const batchIds = new Set<string>()
   const itemIds = new Set(record.current.items.map(item => item.id))
@@ -179,6 +196,10 @@ export function assertRecoveryRecordAdmission(record: CharterRecord, limits: Cha
     for (const candidate of batch.candidates) {
       if (candidate.kind === 'item' && !itemIds.has(candidate.id)) {
         throw charterError('CORRUPT_STATE', `proposal batch ${batch.id} references missing item ${candidate.id}`)
+      }
+      if (candidate.kind === 'objective'
+        && !(record.objectiveProposals ?? []).some(proposal => proposal.id === candidate.id)) {
+        throw charterError('CORRUPT_STATE', `proposal batch ${batch.id} references missing objective proposal ${candidate.id}`)
       }
     }
   }
@@ -441,7 +462,13 @@ export function commitRecord(input: CommitRecordInput): CharterRecord {
     ids: input.ids,
     nextRevision: revision,
     limits: input.limits,
+    ...(input.record.objectiveProposals === undefined ? {} : { objectiveProposals: input.record.objectiveProposals }),
   })
+  const pendingProposalCount = applied.snapshot.items.filter(item => item.review === 'pending').length
+    + applied.objectiveProposals.filter(proposal => proposal.review === 'pending').length
+  if (pendingProposalCount > input.limits.maxPendingItems) {
+    throw charterError('QUOTA_EXCEEDED', `charter exceeds ${input.limits.maxPendingItems} pending proposals`)
+  }
   assertSnapshotAdmission(input.record.current, applied.snapshot, input.limits)
   const historyReceipt: CharterReceipt = {
     revision,
@@ -453,15 +480,23 @@ export function commitRecord(input: CommitRecordInput): CharterRecord {
     at: input.at,
     changes: [...applied.changes],
   }
-  const proposedIds = input.request.ops.flatMap(op =>
-    op.type === 'item.propose' ? [input.ids[op.item.clientRef]].filter((id): id is string => id !== undefined) : [])
-  const proposalBatch: ProposalBatch | undefined = proposedIds.length === 0 ? undefined : {
+  const proposedCandidates: { kind: 'item' | 'objective'; id: string }[] = []
+  for (const op of input.request.ops) {
+    if (op.type === 'item.propose') {
+      const id = input.ids[op.item.clientRef]
+      if (id !== undefined) proposedCandidates.push({ kind: 'item', id })
+    } else if (op.type === 'objective.propose') {
+      const id = input.ids[op.clientRef]
+      if (id !== undefined) proposedCandidates.push({ kind: 'objective', id })
+    }
+  }
+  const proposalBatch: ProposalBatch | undefined = proposedCandidates.length === 0 ? undefined : {
     id: `batch-${revision}-${input.requestDigest.slice(7, 23)}`,
     source: input.proposalSource ?? (input.actor.kind === 'host'
       ? { kind: 'legacy-unknown' }
       : { kind: 'manual', actor: input.actor.kind, at: input.at }),
     capturedAtRevision: revision,
-    candidates: proposedIds.map(id => ({ kind: 'item', id })),
+    candidates: proposedCandidates as ProposalBatch['candidates'],
   }
   const mutationReceipt: MutationReceipt = {
     mutationId: input.request.mutationId,
@@ -473,6 +508,7 @@ export function commitRecord(input: CommitRecordInput): CharterRecord {
   const next: CharterRecord = {
     ...input.record,
     current: applied.snapshot,
+    ...(applied.objectiveProposals.length === 0 ? {} : { objectiveProposals: [...applied.objectiveProposals] }),
     history: trimHistory([...input.record.history, historyReceipt], input.limits),
     recentMutations: [...input.record.recentMutations, mutationReceipt]
       .slice(-input.limits.mutationLimit),

@@ -9,9 +9,12 @@ import {
   charterRecordExportSchema,
   charterRecordOperationResultSchema,
   charterSummarySchema,
+  charterSummaryFrameSchema,
   charterItemQueryRequestSchema,
   charterItemQueryResultSchema,
   charterProposalQueryResultSchema,
+  charterChangeQueryRequestSchema,
+  charterChangeQueryResultSchema,
 } from './wire.js'
 
 /** Small outer restore contract: the archive is opaque until the Host gates it. */
@@ -56,6 +59,28 @@ export const charterRemoteContribution: TypertRemoteContribution = {
       mode: 'strict',
       typeSymbol: 'dsh-charter/CharterFrame',
       create: () => charterFrameSchema,
+    },
+  }, {
+    id: 'dsh-charter#charter/watchSummary',
+    service: 'charterRemote',
+    namespace: 'charter',
+    method: 'watchSummary',
+    mode: 'stream',
+    invocation: { kind: 'direct' },
+    parameters: [{
+      name: 'sessionId',
+      wire: 'sessionId',
+      source: 'json',
+      codec: {
+        mode: 'strict',
+        typeSymbol: 'dsh-charter/SessionId',
+        create: () => sessionIdSchema,
+      },
+    }],
+    result: {
+      mode: 'strict',
+      typeSymbol: 'dsh-charter/CharterSummaryFrame',
+      create: () => charterSummaryFrameSchema,
     },
   }, {
     id: 'dsh-charter#charter/bootstrap',
@@ -224,6 +249,27 @@ export const charterRemoteContribution: TypertRemoteContribution = {
       mode: 'strict',
       typeSymbol: 'dsh-charter/CharterProposalQueryResult',
       create: () => charterProposalQueryResultSchema,
+    },
+  }, {
+    id: 'dsh-charter#charter/queryChanges',
+    service: 'charterRemote',
+    namespace: 'charter',
+    method: 'queryChanges',
+    invocation: { kind: 'direct' },
+    parameters: [{
+      name: 'request',
+      wire: 'request',
+      source: 'json',
+      codec: {
+        mode: 'strict',
+        typeSymbol: 'dsh-charter/CharterChangeQueryRequest',
+        create: () => charterChangeQueryRequestSchema,
+      },
+    }],
+    result: {
+      mode: 'strict',
+      typeSymbol: 'dsh-charter/CharterChangeQueryResult',
+      create: () => charterChangeQueryResultSchema,
     },
   }],
 }

@@ -68,6 +68,19 @@ export const charterObjectiveSchema = z.object({
   }).strict(),
 }).strict()
 
+export const objectiveProposalSchema = z.object({
+  id: identifierSchema,
+  text: z.string(),
+  origin: z.enum(['user', 'agent', 'fork']),
+  review: z.enum(['pending', 'accepted', 'rejected', 'purged']),
+  createdRevision: z.number().int().positive(),
+  reviewedAtRevision: z.number().int().positive().optional(),
+  appliedRevision: z.number().int().positive().optional(),
+  textDigest: digestSchema.optional(),
+}).strict()
+
+export type ObjectiveProposal = z.infer<typeof objectiveProposalSchema>
+
 export const charterSnapshotSchema = z.object({
   revision: z.number().int().nonnegative(),
   objective: charterObjectiveSchema.optional(),
@@ -106,6 +119,24 @@ export const charterOpSchema = z.discriminatedUnion('type', [
     // Optional: a redirect without a recorded reason is valid; clients render a
     // localized fallback instead of persisting UI copy in the record.
     reason: z.string().optional(),
+  }).strict(),
+  z.object({
+    type: z.literal('objective.propose'),
+    clientRef: clientRefSchema,
+    text: z.string(),
+  }).strict(),
+  z.object({
+    type: z.literal('objective.accept'),
+    proposalId: identifierSchema,
+    reason: z.string().optional(),
+  }).strict(),
+  z.object({
+    type: z.literal('objective.reject'),
+    proposalId: identifierSchema,
+  }).strict(),
+  z.object({
+    type: z.literal('objective.purge'),
+    proposalId: identifierSchema,
   }).strict(),
   z.object({ type: z.literal('item.add'), item: newItemInputSchema }).strict(),
   z.object({ type: z.literal('item.propose'), item: newItemInputSchema }).strict(),
@@ -167,6 +198,10 @@ export const charterChangeSchema = z.discriminatedUnion('type', [
     itemId: identifierSchema,
     fields: z.array(z.enum(['text', 'order'])),
   }).strict(),
+  z.object({ type: z.literal('objective.proposed'), proposalId: identifierSchema }).strict(),
+  z.object({ type: z.literal('objective.accepted'), proposalId: identifierSchema }).strict(),
+  z.object({ type: z.literal('objective.rejected'), proposalId: identifierSchema }).strict(),
+  z.object({ type: z.literal('objective.purged'), proposalId: identifierSchema }).strict(),
   z.object({ type: z.literal('item.accepted'), itemId: identifierSchema }).strict(),
   z.object({ type: z.literal('item.rejected'), itemId: identifierSchema }).strict(),
   z.object({ type: z.literal('item.archived'), itemId: identifierSchema }).strict(),
@@ -267,6 +302,11 @@ export const proposalSourceSchema = z.discriminatedUnion('kind', [
     kind: z.literal('legacy-unknown'),
     originHint: z.enum(['user', 'agent', 'fork']).optional(),
   }).strict(),
+  z.object({
+    kind: z.literal('fork'),
+    parentBatchId: z.string(),
+    at: z.number().int().nonnegative(),
+  }).strict(),
 ])
 
 export const proposalCandidateRefSchema = z.discriminatedUnion('kind', [
@@ -309,7 +349,7 @@ export const charterRecordSchema = z.object({
   ...recordCommon,
   /** Provenance batches and objective proposals are part of the v2 record. */
   proposalBatches: z.array(proposalBatchSchema).optional(),
-  objectiveProposals: z.array(z.json()).optional(),
+  objectiveProposals: z.array(objectiveProposalSchema).optional(),
 }).strict()
 
 export const charterRecordArchiveSourceSchema = z.object({

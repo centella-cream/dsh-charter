@@ -92,6 +92,18 @@ export function forkRecord(input: ForkRecordInput): CharterRecord {
     ids: {},
   }
   assertSnapshotAdmission(input.parent.current, current, input.limits)
+  const inheritedBatches = (input.parent.proposalBatches ?? []).flatMap(batch => {
+    const candidates = batch.candidates.flatMap(candidate =>
+      candidate.kind === 'item' && input.ids[candidate.id] !== undefined
+        ? [{ kind: 'item' as const, id: remap(candidate.id) }]
+        : [])
+    return candidates.length === 0 ? [] : [{
+      id: `fork-${batch.id}`.slice(0, 128),
+      source: { kind: 'fork' as const, parentBatchId: batch.id, at: input.at },
+      capturedAtRevision: 1,
+      candidates,
+    }]
+  })
   const child: CharterRecord = {
     ...empty,
     forkedFrom: {
@@ -101,6 +113,7 @@ export function forkRecord(input: ForkRecordInput): CharterRecord {
     current,
     history: [history],
     recentMutations: [mutation],
+    ...(inheritedBatches.length === 0 ? {} : { proposalBatches: inheritedBatches }),
   }
   assertRecordAdmission(input.parent, child, input.limits)
   assertRecordConsistency(child, input.limits)

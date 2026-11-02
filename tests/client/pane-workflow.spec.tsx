@@ -175,6 +175,31 @@ describe('0.2 workspace and dependency plan', () => {
     expect(selects[0]?.props.multiple).toBe(true)
   })
 
+  it('stages objective proposal acceptance from Review Center', () => {
+    const ready = view({
+      revision: 0,
+      objectiveProposals: [{
+        id: 'objective-proposal-1',
+        text: 'Ship the workspace',
+        origin: 'user',
+        review: 'pending',
+        createdRevision: 1,
+      }],
+    })
+    const src = source(ready)
+    const draft = new CharterDraft(sessionId, () => src)
+    draft.bindLifecycle(lifecycle)
+    const tree = mount(src, draft)
+    act(() => tree.root.findAll(node => node.type === 'button' && textOf(node).includes('nav.review'))[0]!.props.onClick())
+    const accept = tree.root.findAll(node => node.type === 'button' && textOf(node) === 'review.acceptObjective')[0]
+    expect(accept).toBeDefined()
+    act(() => accept!.props.onClick())
+    expect(draft.getSnapshot().ops).toContainEqual({
+      type: 'objective.accept',
+      proposalId: 'objective-proposal-1',
+    })
+  })
+
   it('shows proposal batch provenance in Review Center', () => {
     const pending = {
       id: 'item-p', kind: 'invariant', text: 'Pending', review: 'pending', lifecycle: 'current',

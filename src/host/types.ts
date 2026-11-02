@@ -71,6 +71,27 @@ export interface CharterViewCapabilities {
   readonly recordMaintenanceReason?: 'runtime' | 'record-limit' | 'legacy-host' | undefined
 }
 
+export interface CharterChangeRow {
+  readonly revision: number
+  readonly baseRevision: number
+  readonly actor: import('../core/schemas.js').CharterActor
+  readonly at: number
+  readonly changes: import('../core/schemas.js').CharterChange[]
+}
+
+export type CharterChangeQueryResult =
+  | {
+      readonly ok: true
+      readonly revision: number
+      readonly changes: readonly CharterChangeRow[]
+      readonly nextCursor?: string
+    }
+  | {
+      readonly ok: false
+      readonly code: 'INVALID_CURSOR' | 'LIMIT_EXCEEDED' | 'NOT_FOUND' | 'UNAVAILABLE'
+      readonly message: string
+    }
+
 export interface CharterSummary {
   readonly sessionId: string
   readonly revision: number
@@ -96,7 +117,7 @@ export interface CharterProposalBatchView {
     readonly kind: 'item' | 'objective'
     readonly id: string
     readonly text?: string
-    readonly review?: 'pending' | 'accepted' | 'rejected'
+    readonly review?: 'pending' | 'accepted' | 'rejected' | 'purged'
   }[]
 }
 
@@ -130,6 +151,7 @@ export interface CharterView {
   readonly recordState?: CharterRecordState | undefined
   readonly capabilities?: CharterViewCapabilities | undefined
   readonly proposalBatches?: ProposalBatch[] | undefined
+  readonly objectiveProposals?: import('../core/schemas.js').ObjectiveProposal[] | undefined
 }
 
 /** Export/initialize/restore are maintenance operations, never model tools. */

@@ -11,8 +11,8 @@ import type { CharterActor, CharterOp } from './schemas.js'
 export function assertEditAuthorized(actor: CharterActor, ops: readonly CharterOp[]): void {
   if (actor.kind === 'owner') return
   if (actor.kind === 'user') {
-    if (ops.some(op => op.type === 'item.purge')) {
-      throw charterError('FORBIDDEN', 'item.purge requires an owner actor')
+    if (ops.some(op => op.type === 'item.purge' || op.type === 'objective.purge')) {
+      throw charterError('FORBIDDEN', 'purge requires an owner actor')
     }
     return
   }

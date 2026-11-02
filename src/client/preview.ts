@@ -3,6 +3,7 @@ import type {
   CharterObjective,
   CharterOp,
   DeliverableProgress,
+  ObjectiveProposal,
 } from '../core/schemas.js'
 import { renderCharterPrompt, type PromptItem } from '../core/prompt.js'
 import type { CharterView } from '../host/types.js'
@@ -31,6 +32,7 @@ export interface ProjectedItem extends PromptItem {
 export interface ProjectedView {
   readonly objective: CharterObjective | null
   readonly items: readonly ProjectedItem[]
+  readonly objectiveProposals: readonly ObjectiveProposal[]
 }
 
 /**
@@ -161,6 +163,7 @@ export function projectView(view: CharterView, ops: readonly CharterOp[]): Proje
   const items = new Map<string, ProjectedItem>(
     view.items.map(item => [item.id, fromItem(item)]),
   )
+  const objectiveProposals = new Map((view.objectiveProposals ?? []).map(proposal => [proposal.id, { ...proposal }]))
 
   const markStaged = (id: string, patch: Partial<ProjectedItem>): void => {
     const existing = items.get(id)
@@ -200,6 +203,61 @@ export function projectView(view: CharterView, ops: readonly CharterOp[]): Proje
           },
         }
         break
+      case 'objective.accept': {
+        const proposal = objectiveProposals.get(op.proposalId)
+        if (proposal === undefined || proposal.review !== 'pending') break
+        objective = {
+          original: objective?.original ?? {
+            text: proposal.text,
+            setAtRevision: view.revision + 1,
+          },
+          current: {
+            text: proposal.text,
+            setAtRevision: view.revision + 1,
+            ...(objective !== null && op.reason !== undefined ? { reason: normalize(op.reason) } : {}),
+          },
+        }
+        objectiveProposals.set(proposal.id, {
+          ...proposal,
+          review: 'accepted',
+          reviewedAtRevision: view.revision + 1,
+          appliedRevision: view.revision + 1,
+        })
+        break
+      }
+      case 'objective.reject': {
+        const proposal = objectiveProposals.get(op.proposalId)
+        if (proposal !== undefined && proposal.review === 'pending') {
+          objectiveProposals.set(proposal.id, {
+            ...proposal,
+            review: 'rejected',
+            reviewedAtRevision: view.revision + 1,
+          })
+        }
+        break
+      }
+      case 'objective.purge': {
+        const proposal = objectiveProposals.get(op.proposalId)
+        if (proposal !== undefined && proposal.review !== 'pending') {
+          objectiveProposals.set(proposal.id, {
+            ...proposal,
+            text: '',
+            review: 'purged',
+            reviewedAtRevision: view.revision + 1,
+          })
+        }
+        break
+      }
+      case 'objective.propose': {
+        objectiveProposals.set(`draft:${op.clientRef}`, {
+          id: `draft:${op.clientRef}`,
+          text: normalize(op.text),
+          origin: 'user',
+          review: 'pending',
+          createdRevision: view.revision + 1,
+        })
+        break
+      }
       case 'item.add':
         items.set(`draft:${op.item.clientRef}`, draftItem(
           `draft:${op.item.clientRef}`,
@@ -327,6 +385,7 @@ export function projectView(view: CharterView, ops: readonly CharterOp[]): Proje
   return {
     objective,
     items: [...items.values()].sort(compareProjected),
+    objectiveProposals: [...objectiveProposals.values()],
   }
 }
 

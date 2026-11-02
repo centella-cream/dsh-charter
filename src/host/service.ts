@@ -89,6 +89,8 @@ import type {
   CharterSummary,
   CharterItemQueryResult,
   CharterProposalQueryResult,
+  CharterChangeQueryResult,
+  CharterChangeRow,
 } from './types.js'
 import type { SessionStartSource as StartSource } from '@deepseek-ai/dsh-agent'
 
@@ -946,6 +948,8 @@ export class CharterService extends Service {
       lifecycle: lifecycleFingerprint(parsed.data.identity),
       recordState: { kind: 'healthy', recordDigest: digest },
       capabilities,
+      ...(parsed.data.proposalBatches === undefined ? {} : { proposalBatches: [...parsed.data.proposalBatches] }),
+      ...(parsed.data.objectiveProposals === undefined ? {} : { objectiveProposals: [...parsed.data.objectiveProposals] }),
       message: 'This Session is not live in the current Host process; '
         + 'showing the stored charter read-only. Open or start the Session here to edit it.',
     }
@@ -1084,6 +1088,7 @@ export class CharterService extends Service {
       recordState: state,
       capabilities,
       ...(record.proposalBatches === undefined ? {} : { proposalBatches: [...record.proposalBatches] }),
+      ...(record.objectiveProposals === undefined ? {} : { objectiveProposals: [...record.objectiveProposals] }),
     }
   }
 
@@ -1094,7 +1099,8 @@ export class CharterService extends Service {
       revision: view.revision,
       hasObjective: view.objective !== null,
       activeItems: view.items.filter(item => item.review === 'accepted' && item.lifecycle === 'current').length,
-      pendingItems: view.items.filter(item => item.review === 'pending').length,
+      pendingItems: view.items.filter(item => item.review === 'pending').length
+        + (view.objectiveProposals ?? []).filter(proposal => proposal.review === 'pending').length,
       historyItems: view.items.filter(item => item.review !== 'pending' && item.lifecycle !== 'current').length
         + view.items.filter(item => item.review === 'rejected').length,
       pendingBatches: view.proposalBatches?.length ?? 0,
@@ -1114,6 +1120,70 @@ export class CharterService extends Service {
     }
   }
 
+  queryChangesById(
+    sessionId: SessionIdType,
+    request: { readonly limit?: number | undefined; readonly cursor?: string | undefined } = {},
+  ): CharterChangeQueryResult {
+    const limit = request.limit ?? 50
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) {
+      return { ok: false, code: 'LIMIT_EXCEEDED', message: 'limit must be between 1 and 100' }
+    }
+    let record: CharterRecord | undefined
+    const session = this.ctx.sessions.get(sessionId)
+    if (session !== undefined) record = this.recordFor(session)
+    else {
+      const stored = this.sessionsTable?.get(sessionId)
+      if (stored !== undefined) {
+        const parsed = charterRecordSchema.safeParse(stored)
+        if (parsed.success) record = parsed.data
+        else {
+          const legacy = charterRecordV1Schema.safeParse(stored)
+          if (legacy.success) record = migrateRecordV1ToV2(legacy.data)
+        }
+      }
+    }
+    if (record === undefined) {
+      return { ok: false, code: 'UNAVAILABLE', message: 'Charter record is not readable' }
+    }
+    let after = 0
+    if (request.cursor !== undefined) {
+      try {
+        const parsed = JSON.parse(Buffer.from(request.cursor, 'base64url').toString('utf8')) as {
+          readonly v?: unknown
+          readonly kind?: unknown
+          readonly revision?: unknown
+        }
+        if (parsed.v !== 1 || parsed.kind !== 'changes' || !Number.isSafeInteger(parsed.revision)) {
+          throw new Error('invalid cursor')
+        }
+        after = parsed.revision as number
+      } catch {
+        return { ok: false, code: 'INVALID_CURSOR', message: 'invalid change query cursor' }
+      }
+    }
+    const rows: CharterChangeRow[] = record.history
+      .filter(receipt => receipt.revision > after)
+      .slice(0, limit)
+      .map(receipt => ({
+        revision: receipt.revision,
+        baseRevision: receipt.baseRevision,
+        actor: receipt.actor,
+        at: receipt.at,
+        changes: [...receipt.changes],
+      }))
+    const last = rows[rows.length - 1]
+    const hasMore = last !== undefined && record.history.some(receipt => receipt.revision > last.revision)
+    const nextCursor = hasMore
+      ? Buffer.from(JSON.stringify({ v: 1, kind: 'changes', revision: last!.revision }), 'utf8').toString('base64url')
+      : undefined
+    return {
+      ok: true,
+      revision: record.current.revision,
+      changes: rows,
+      ...(nextCursor === undefined ? {} : { nextCursor }),
+    }
+  }
+
   queryProposalsById(sessionId: SessionIdType): CharterProposalQueryResult {
     const view = this.viewById(sessionId)
     if (view.status !== 'ready') {
@@ -1124,11 +1194,19 @@ export class CharterService extends Service {
       source: batch.source,
       capturedAtRevision: batch.capturedAtRevision,
       candidates: batch.candidates.map(candidate => {
-        const item = candidate.kind === 'item' ? view.items.find(candidateItem => candidateItem.id === candidate.id) : undefined
+        if (candidate.kind === 'item') {
+          const item = view.items.find(candidateItem => candidateItem.id === candidate.id)
+          return {
+            kind: candidate.kind,
+            id: candidate.id,
+            ...(item === undefined ? {} : { text: item.text, review: item.review }),
+          }
+        }
+        const proposal = view.objectiveProposals?.find(candidateProposal => candidateProposal.id === candidate.id)
         return {
           kind: candidate.kind,
           id: candidate.id,
-          ...(item === undefined ? {} : { text: item.text, review: item.review }),
+          ...(proposal === undefined ? {} : { text: proposal.text, review: proposal.review }),
         }
       }),
     }))

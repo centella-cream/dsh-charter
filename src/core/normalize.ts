@@ -81,6 +81,16 @@ function normalizeOp(op: CharterOp): CharterOp {
           ? {}
           : { reason: normalizeUserText(op.reason, 'redirect reason') }),
       }
+    case 'objective.propose':
+      return { ...op, text: normalizeUserText(op.text, 'objective proposal') }
+    case 'objective.accept':
+      return {
+        ...op,
+        ...(op.reason === undefined ? {} : { reason: normalizeUserText(op.reason, 'acceptance reason') }),
+      }
+    case 'objective.reject':
+    case 'objective.purge':
+      return op
     case 'item.add':
     case 'item.propose':
       return { type: op.type, item: normalizeNewItem(op.item) }
@@ -136,6 +146,7 @@ export function clientRefsOf(ops: readonly CharterOp[]): readonly string[] {
     // atomic batch fails with INVALID_REFERENCE.
     if (op.type === 'item.propose') refs.push(op.item.clientRef)
     if (op.type === 'item.supersede') refs.push(op.replacement.clientRef)
+    if (op.type === 'objective.propose') refs.push(op.clientRef)
   }
   const unique = new Set(refs)
   if (unique.size !== refs.length) {

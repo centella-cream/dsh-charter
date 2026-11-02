@@ -56,6 +56,41 @@ describe('charter fork', () => {
     expect(JSON.stringify(child)).not.toContain('parent-mutation')
   })
 
+  it('carries proposal batches into the child with fork provenance', () => {
+    const identity = { createdAt: 1 }
+    const actor: CharterActor = { kind: 'owner' }
+    const request = normalizeEditRequest({
+      sessionId: 'parent',
+      mutationId: 'parent-propose',
+      baseRevision: 0,
+      ops: [{ type: 'item.propose', item: { clientRef: 'p', kind: 'invariant', text: 'Pending', order: 1 } }],
+    })
+    const parent = commitRecord({
+      record: createEmptyRecord(identity, limits),
+      request,
+      requestDigest: requestDigestOf(request, identity, actor),
+      ids: { p: 'parent-p' },
+      actor,
+      at: 1,
+      limits,
+    })
+    const child = forkRecord({
+      parentSessionId: 'parent',
+      parent,
+      childIdentity: { createdAt: 2, parentSession: 'parent' },
+      ids: { 'parent-p': 'child-p' },
+      mutationId: 'fork-parent-3',
+      at: 2,
+      limits,
+    })
+    expect(child.proposalBatches).toEqual([
+      expect.objectContaining({
+        source: expect.objectContaining({ kind: 'fork' }),
+        candidates: [{ kind: 'item', id: 'child-p' }],
+      }),
+    ])
+  })
+
   it('remaps replacement links entirely into the child namespace', () => {
     const identity = { createdAt: 1 }
     const actor: CharterActor = { kind: 'owner' }

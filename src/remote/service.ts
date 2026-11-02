@@ -17,6 +17,7 @@ import type {
   CharterSummary,
   CharterItemQueryResult,
   CharterProposalQueryResult,
+  CharterChangeQueryResult,
 } from '../host/types.js'
 import { resolveRemoteActor } from './actor.js'
 import { remoteMethod } from './compat.js'
@@ -147,6 +148,46 @@ export class CharterRemoteService extends TypertRemoteService {
   queryProposals(sessionId: SessionId): Promise<CharterProposalQueryResult> {
     resolveRemoteActor(this.ctx)
     return Promise.resolve(this.ctx.charter.queryProposalsById(sessionId))
+  }
+
+  @remoteMethod({
+    mode: 'stream',
+    resources: {
+      session: (sessionId: SessionId, _signal: AbortSignal): SessionId => sessionId,
+    },
+  })
+  watchSummary(sessionId: SessionId, signal: AbortSignal): AsyncIterable<{ readonly type: 'snapshot' | 'changed'; readonly value: import('../host/types.js').CharterSummary }> {
+    return this.openSummaryWatch(sessionId, signal)
+  }
+
+  private async *openSummaryWatch(
+    sessionId: SessionId,
+    signal: AbortSignal,
+  ): AsyncGenerator<{ readonly type: 'snapshot' | 'changed'; readonly value: import('../host/types.js').CharterSummary }> {
+    const source: CharterWatchSource = {
+      read: () => this.ctx.charter.viewById(sessionId),
+      subscribe: listener => this.ctx.charter.subscribe(sessionId, listener),
+    }
+    for await (const frame of watchCharter(source, signal)) {
+      yield { type: frame.type, value: this.ctx.charter.summaryById(sessionId) }
+    }
+  }
+
+  @remoteMethod({
+    resources: {
+      session: (request: { readonly sessionId: string }): SessionId => request.sessionId as SessionId,
+    },
+  })
+  queryChanges(request: {
+    readonly sessionId: string
+    readonly limit?: number
+    readonly cursor?: string
+  }): Promise<CharterChangeQueryResult> {
+    resolveRemoteActor(this.ctx)
+    return Promise.resolve(this.ctx.charter.queryChangesById(request.sessionId as SessionId, {
+      ...(request.limit === undefined ? {} : { limit: request.limit }),
+      ...(request.cursor === undefined ? {} : { cursor: request.cursor }),
+    }))
   }
 
   private maintenanceActor():

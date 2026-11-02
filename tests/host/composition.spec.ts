@@ -245,6 +245,43 @@ describe('dsh-charter host composition', () => {
     await new Promise(resolve => setTimeout(resolve, 10))
   })
 
+  it('persists objective proposals and records their batch provenance', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-objective-proposal-'))
+    roots.push(root)
+    const ctx = await mount(root)
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('objective-proposal'), {
+      meta: { cwd: root, createdAt: 1_700_000_001_200 },
+    })
+    await waitForReady(service, session)
+    const proposed = await service.edit({
+      sessionId: session.id,
+      mutationId: 'objective-propose',
+      baseRevision: 0,
+      ops: [{ type: 'objective.propose', clientRef: 'next-objective', text: 'Ship the workspace' }],
+    })
+    expect(proposed).toMatchObject({ ok: true })
+    let view = service.view(session)
+    expect(view.objective).toBeNull()
+    expect(view.objectiveProposals).toHaveLength(1)
+    expect(view.objectiveProposals?.[0]).toMatchObject({ review: 'pending', text: 'Ship the workspace' })
+    expect(view.proposalBatches?.[0]?.candidates).toEqual([
+      { kind: 'objective', id: view.objectiveProposals![0]!.id },
+    ])
+
+    const accepted = await service.edit({
+      sessionId: session.id,
+      mutationId: 'objective-accept',
+      baseRevision: 1,
+      ops: [{ type: 'objective.accept', proposalId: view.objectiveProposals![0]!.id }],
+    })
+    expect(accepted).toMatchObject({ ok: true })
+    view = service.view(session)
+    expect(view.objective?.current.text).toBe('Ship the workspace')
+    expect(view.objectiveProposals?.[0]?.review).toBe('accepted')
+    expect(view.promptText).toContain('Ship the workspace')
+  })
+
   it('accepts item.propose from a user actor as a documented client operation', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-charter-user-propose-'))
     roots.push(root)
@@ -321,6 +358,13 @@ describe('dsh-charter host composition', () => {
     const second = service.queryItemsById(session.id, { limit: 2, cursor: first.nextCursor })
     expect(second.ok).toBe(true)
     if (second.ok) expect(second.items).toHaveLength(1)
+    const changes = service.queryChangesById(session.id, { limit: 1 })
+    expect(changes.ok).toBe(true)
+    if (changes.ok) {
+      expect(changes.changes).toHaveLength(1)
+      expect(changes.changes[0]).toMatchObject({ revision: 1, baseRevision: 0 })
+      expect(changes.nextCursor).toBeUndefined()
+    }
   })
 
   it('reopens the same durable record only for the matching Session lifecycle', async () => {

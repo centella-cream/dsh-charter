@@ -1790,3 +1790,11 @@
   color: var(--dsw-alias-label-tertiary, inherit);
   font-size: 11px;
 }
+
+.charter-proposal-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.charter-proposal { display: grid; gap: 6px; padding: 8px 10px; border: 1px solid var(--charter-border-soft); border-radius: 7px; }
+.charter-proposal__text { margin: 0; overflow-wrap: anywhere; }
+.charter-proposal__meta { color: var(--dsw-alias-label-tertiary, inherit); font-size: 11px; }
+.charter-proposal__reason, .charter-proposal__actions { grid-column: 1 / -1; }
+.charter-proposal__reason { min-height: 28px; border: 1px solid var(--charter-border-soft); border-radius: 6px; background: var(--charter-surface-2); color: inherit; font: inherit; font-size: 12px; padding: 4px 6px; }
+.charter-proposal__actions { display: flex; gap: 8px; flex-wrap: wrap; }
