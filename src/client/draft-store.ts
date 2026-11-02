@@ -482,7 +482,7 @@ export class CharterDraft {
 
   unstageObjective(): boolean {
     if (this.localMutationLocked()) return false
-    const ops = this.state.ops.filter(op => !op.type.startsWith('objective.'))
+    const ops = this.state.ops.filter(op => op.type !== 'objective.initialize' && op.type !== 'objective.redirect')
     if (ops.length === this.state.ops.length) return false
     this.update({
       ops,

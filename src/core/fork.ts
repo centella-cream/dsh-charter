@@ -29,8 +29,9 @@ export function forkRecord(input: ForkRecordInput): CharterRecord {
     return mapped
   }
   const items: CharterItem[] = ordered.map((item, order) => {
+    const { proposalBatchId: _parentBatch, reviewedAtRevision: _parentReview, ...inherited } = item
     const base = {
-      ...item,
+      ...inherited,
       id: remap(item.id),
       origin: 'fork' as const,
       order,
