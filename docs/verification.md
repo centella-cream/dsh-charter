@@ -38,6 +38,21 @@ Current release state (2026-10-30):
 | Real browser recovery | Manual protected evidence gate; not automated |
 | Real-model compaction | Separately recorded PASS (2026-10-22); still a manual release gate |
 
+### 1.1 0.2.0 development acceptance
+
+The `feat/0.2.0-workspace` tree has passed source-level acceptance for the implemented workspace core:
+
+- record v2 write path and in-memory v1 migration;
+- dependency `requires` validation, derived readiness, and dependency-aware prompt equivalence;
+- three-area Pane information architecture and dependency editor;
+- proposal-batch provenance, summary/item query projections, and pending-only `charter_propose`;
+- `npm run check`: 33 files / 391 tests;
+- eight-version DSH matrix: 391/391 on every declared version;
+- normal package smoke: `dsh-charter-0.2.0.tgz` installs and its client factory bundle loads.
+
+This is source acceptance, not a release acceptance: real browser/Desktop A/B, real-model compaction, performance,
+and the remaining full-design gates must be recorded separately before declaring `0.2.0` stable.
+
 ## 2. Local baseline
 
 ```bash
@@ -75,7 +90,7 @@ The tracked runner creates isolated pnpm projects with strict peers and runs typ
 | `0.2.1-rc.4` | 391/391 tracked matrix PASS |
 | `0.2.1-rc.5` | 391/391 tracked matrix PASS |
 
-The current 0.2.0 development tree passed `compat-matrix --versions all --allow-new-release` on 2026-10-30: every declared version passed typecheck, build, and 391/391 tests. Installs use pnpm strict peer resolution, exact tool pins, a single zod 4.6.7 graph, full `pnpm list --depth Infinity` graph validation, and recorded lockfile SHA-256 values. The untracked `0.2.2-alpha.2` probe is recorded as unsupported: strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run.
+The current 0.2.0 development tree passed `compat-matrix --versions all --allow-new-release` on 2026-11-03: every declared version passed typecheck, build, and 391/391 tests. Installs use pnpm strict peer resolution, exact tool pins, a single zod 4.6.7 graph, full `pnpm list --depth Infinity` graph validation, and recorded lockfile SHA-256 values. The untracked `0.2.2-alpha.2` probe is recorded as unsupported: strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run.
 
 ## 4. What the tests cover
 

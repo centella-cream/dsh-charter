@@ -87,6 +87,11 @@ execution guards for restrictions that must be machine-enforced.
 - Sticky Preview / Discard / Apply toolbar and an exact preview of the model-visible user-role context.
 - History draft extraction from `compaction/summary`; deterministic, no model call, no automatic write.
 - English/Chinese UI, light/dark themes, keyboard focus states, and container-query responsiveness.
+- Three primary areas (`0.2.0`): Workspace for the current objective/invariants/deliverables, Review Center for
+  proposal batches and history, and Diagnostics & Maintenance for prompt/recovery health.
+- Deliverable dependency plan with canonical `requires` validation, derived readiness states, and dependency-aware
+  prompt projection.
+- Proposal batches with typed provenance, a summary/item query projection, and a pending-only `charter_propose` tool.
 - Self-explaining navigation (`rc.6`): every section has a hover/focus `?` help badge with a one-sentence purpose.
 - Context preview in Formatted JSON or Exact text mode (`rc.6`); formatted JSON is for reading, exact bytes remain visible.
 - Read-only `charter_read` tool with a compact standing projection; one-time fork copy; explicit degraded
