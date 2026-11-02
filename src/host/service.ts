@@ -22,9 +22,12 @@ import {
   DEFAULT_CHARTER_LIMITS,
   type CharterLimits,
 } from '../core/limits.js'
+import { queryItems, type ItemQueryRequest } from '../core/query.js'
+import { dependencyProjection } from '../core/dependencies.js'
 import {
   CHARTER_RECORD_SCHEMA_VERSION,
   charterRecordSchema,
+  charterRecordV1Schema,
   type CharterActor,
   type CharterEditRequest,
   type CharterRecord,
@@ -36,6 +39,7 @@ import {
   assertRecoveryRecordAdmission,
   commitRecord,
   createEmptyRecord,
+  migrateRecordV1ToV2,
   isRecordOverBudget,
   maintenanceRequestDigestOf,
   MutationReplay,
@@ -82,6 +86,8 @@ import type {
   CharterView,
   CharterViewCapabilities,
   CharterViewLimits,
+  CharterSummary,
+  CharterItemQueryResult,
 } from './types.js'
 import type { SessionStartSource as StartSource } from '@deepseek-ai/dsh-agent'
 
@@ -247,7 +253,13 @@ export class CharterService extends Service {
 
   private inspectionOf(session: Session, stored: unknown): Inspection {
     const digest = recordDigestOf(stored)
-    const parsed = charterRecordSchema.safeParse(stored)
+    let parsed = charterRecordSchema.safeParse(stored)
+    if (!parsed.success) {
+      const legacy = charterRecordV1Schema.safeParse(stored)
+      if (legacy.success) {
+        parsed = { success: true, data: migrateRecordV1ToV2(legacy.data) }
+      }
+    }
     if (!parsed.success) {
       const observedVersion = finiteRecordSchemaVersion(stored)
       if (observedVersion !== undefined && observedVersion > CHARTER_RECORD_SCHEMA_VERSION) {
@@ -1069,7 +1081,43 @@ export class CharterService extends Service {
       lifecycle,
       recordState: state,
       capabilities,
+      ...(record.proposalBatches === undefined ? {} : { proposalBatches: [...record.proposalBatches] }),
     }
+  }
+
+  summaryById(sessionId: SessionIdType): CharterSummary {
+    const view = this.viewById(sessionId)
+    return {
+      sessionId,
+      revision: view.revision,
+      hasObjective: view.objective !== null,
+      activeItems: view.items.filter(item => item.review === 'accepted' && item.lifecycle === 'current').length,
+      pendingItems: view.items.filter(item => item.review === 'pending').length,
+      historyItems: view.items.filter(item => item.review !== 'pending' && item.lifecycle !== 'current').length
+        + view.items.filter(item => item.review === 'rejected').length,
+      pendingBatches: view.proposalBatches?.length ?? 0,
+      promptBytes: new TextEncoder().encode(view.promptText).byteLength,
+      overBudget: view.overBudget,
+      status: view.status,
+      recordHealth: view.recordState?.kind === 'healthy'
+        ? 'healthy'
+        : view.recordState?.kind === 'absent-unconfirmed'
+          ? 'absent'
+          : view.recordState?.kind === 'write-uncertain'
+            ? 'write-uncertain'
+            : view.recordState?.kind === 'invalid'
+              ? 'invalid'
+              : 'unknown',
+      capabilities: view.capabilities ?? { recordMaintenance: false },
+    }
+  }
+
+  queryItemsById(sessionId: SessionIdType, request: ItemQueryRequest): CharterItemQueryResult {
+    const view = this.viewById(sessionId)
+    if (view.status !== 'ready' || view.lifecycle === undefined) {
+      return { ok: false, code: 'UNAVAILABLE', message: 'Charter is not ready for query', revision: view.revision }
+    }
+    return queryItems(view.revision, view.lifecycle, view.items, request)
   }
 
   promptText(session: Session): string {
@@ -1096,6 +1144,8 @@ export class CharterService extends Service {
       // `standing` is the model's working set: metadata that does not help the
       // model (ids, review, lifecycle are constant for standing rows) only
       // inflates the tool result.
+      const plan = dependencyProjection(record.current.items)
+      const keyById = new Map(plan.map(row => [row.id, row]))
       return {
         revision: record.current.revision,
         objective,
@@ -1104,6 +1154,12 @@ export class CharterService extends Service {
           text: item.text,
           verification: item.verification.state,
           progress: item.kind === 'deliverable' ? item.progress : null,
+          ...(item.kind === 'deliverable'
+            ? {
+                key: keyById.get(item.id)?.localKey ?? null,
+                requires: keyById.get(item.id)?.requires ?? [],
+              }
+            : {}),
         })),
         truncated: 0,
       }
@@ -1591,7 +1647,11 @@ export class CharterService extends Service {
       if (error instanceof CharterError) return { ok: false, code: error.code, message: error.message }
       throw error
     }
-    const archived = charterRecordSchema.safeParse(archive.record)
+    let archived = charterRecordSchema.safeParse(archive.record)
+    if (!archived.success) {
+      const legacy = charterRecordV1Schema.safeParse(archive.record)
+      if (legacy.success) archived = { success: true, data: migrateRecordV1ToV2(legacy.data) }
+    }
     if (!archived.success) {
       return { ok: false, code: 'INVALID_ARCHIVE', message: 'Archive record does not match the record schema' }
     }

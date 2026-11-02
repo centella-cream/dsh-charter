@@ -118,7 +118,56 @@ export const charterViewSchema = z.object({
   // (legacy-host: maintenance disabled, absence treated as unknown).
   recordState: charterRecordStateSchema.default(LEGACY_HOST_RECORD_STATE),
   capabilities: charterViewCapabilitiesSchema.default(LEGACY_HOST_CAPABILITIES),
+  proposalBatches: z.array(z.object({
+    id: z.string(),
+    source: z.object({ kind: z.string(), actor: z.string().optional(), at: z.number().optional() }).passthrough(),
+    capturedAtRevision: z.number().int().positive(),
+    candidates: z.array(z.object({ kind: z.string(), id: z.string() }).strict()),
+  }).passthrough()).optional(),
 }).strict()
+
+export const charterSummarySchema = z.object({
+  sessionId: z.string().min(1),
+  revision: z.number().int().nonnegative(),
+  hasObjective: z.boolean(),
+  activeItems: z.number().int().nonnegative(),
+  pendingItems: z.number().int().nonnegative(),
+  historyItems: z.number().int().nonnegative(),
+  pendingBatches: z.number().int().nonnegative(),
+  promptBytes: z.number().int().nonnegative(),
+  overBudget: z.boolean(),
+  status: z.enum(['ready', 'initializing', 'unavailable']),
+  recordHealth: z.enum(['healthy', 'invalid', 'absent', 'unknown', 'write-uncertain']),
+  capabilities: charterViewCapabilitiesSchema,
+}).strict()
+
+export const charterItemQueryRequestSchema = z.object({
+  sessionId: z.string().min(1),
+  kind: z.enum(['invariant', 'deliverable']).optional(),
+  review: z.enum(['pending', 'accepted', 'rejected']).optional(),
+  lifecycle: z.enum(['current', 'superseded', 'archived']).optional(),
+  search: z.string().optional(),
+  cursor: z.string().optional(),
+  limit: z.number().int().positive().max(100).optional(),
+}).strict()
+
+const itemQueryFailureSchema = z.object({
+  ok: z.literal(false),
+  code: z.enum(['STALE_REVISION', 'INVALID_CURSOR', 'LIMIT_EXCEEDED', 'NOT_FOUND', 'UNAVAILABLE']),
+  message: z.string(),
+  revision: z.number().int().nonnegative().optional(),
+}).strict()
+
+export const charterItemQueryResultSchema = z.union([
+  z.object({
+    ok: z.literal(true),
+    revision: z.number().int().nonnegative(),
+    items: z.array(charterItemSchema),
+    nextCursor: z.string().optional(),
+    filterDigest: z.string(),
+  }).strict(),
+  itemQueryFailureSchema,
+])
 
 export const charterEditResultSchema = z.discriminatedUnion('ok', [
   z.object({

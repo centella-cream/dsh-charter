@@ -269,6 +269,12 @@ describe('dsh-charter host composition', () => {
     const view = service.view(session)
     expect(view.items).toHaveLength(1)
     expect(view.items[0]).toMatchObject({ review: 'pending', origin: 'agent' })
+    expect(view.proposalBatches).toHaveLength(1)
+    expect(view.proposalBatches?.[0]).toMatchObject({
+      source: { kind: 'manual', actor: 'user' },
+      capturedAtRevision: 1,
+      candidates: [{ kind: 'item', id: view.items[0]!.id }],
+    })
     expect(view.promptText).toBe('')
 
     // The host actor is still rejected on the Remote edit path.
@@ -279,6 +285,42 @@ describe('dsh-charter host composition', () => {
     }, { kind: 'host' })
     expect(hostProposal).toMatchObject({ ok: false, code: 'FORBIDDEN' })
     expect(service.view(session).revision).toBe(1)
+  })
+
+  it('serves bounded summary and item query pages from one revision', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-query-'))
+    roots.push(root)
+    const ctx = await mount(root)
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('query-session'), {
+      meta: { cwd: root, createdAt: 1_700_000_001_100 },
+    })
+    await waitForReady(service, session)
+    await service.edit({
+      sessionId: session.id,
+      mutationId: 'query-edit',
+      baseRevision: 0,
+      ops: [
+        { type: 'item.add', item: { clientRef: 'a', kind: 'invariant', text: 'Alpha', order: 0 } },
+        { type: 'item.add', item: { clientRef: 'b', kind: 'deliverable', text: 'Beta', order: 1, progress: 'not-started' } },
+        { type: 'item.propose', item: { clientRef: 'c', kind: 'invariant', text: 'Gamma', order: 2 } },
+      ],
+    })
+    const summary = service.summaryById(session.id)
+    expect(summary).toMatchObject({
+      revision: 1,
+      activeItems: 2,
+      pendingItems: 1,
+      pendingBatches: 1,
+    })
+    const first = service.queryItemsById(session.id, { limit: 2 })
+    expect(first.ok).toBe(true)
+    if (!first.ok) throw new Error('expected query page')
+    expect(first.items).toHaveLength(2)
+    expect(first.nextCursor).toBeDefined()
+    const second = service.queryItemsById(session.id, { limit: 2, cursor: first.nextCursor })
+    expect(second.ok).toBe(true)
+    if (second.ok) expect(second.items).toHaveLength(1)
   })
 
   it('reopens the same durable record only for the matching Session lifecycle', async () => {
@@ -958,7 +1000,7 @@ describe('dsh-charter host composition', () => {
     }).sessionsTable
     const validStored = structuredClone(table.get(bad.id))
     const stored = structuredClone(validStored) as { recordSchemaVersion: number }
-    stored.recordSchemaVersion = 2
+    stored.recordSchemaVersion = 3
     await table.put(bad.id, stored)
 
     await waitForStatus(service, bad, 'unavailable')

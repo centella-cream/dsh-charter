@@ -14,6 +14,8 @@ import type {
   CharterRecordExport,
   CharterRecordOperationResult,
   CharterView,
+  CharterSummary,
+  CharterItemQueryResult,
 } from '../host/types.js'
 import { resolveRemoteActor } from './actor.js'
 import { remoteMethod } from './compat.js'
@@ -99,6 +101,41 @@ export class CharterRemoteService extends TypertRemoteService {
     const actor = this.maintenanceActor()
     if ('ok' in actor) return Promise.resolve(actor)
     return this.ctx.charter.restoreRecord(request, actor.actor)
+  }
+
+  @remoteMethod({
+    resources: {
+      session: (sessionId: SessionId): SessionId => sessionId,
+    },
+  })
+  summary(sessionId: SessionId): Promise<CharterSummary> {
+    resolveRemoteActor(this.ctx)
+    return Promise.resolve(this.ctx.charter.summaryById(sessionId))
+  }
+
+  @remoteMethod({
+    resources: {
+      session: (request: { readonly sessionId: string }): SessionId => request.sessionId as SessionId,
+    },
+  })
+  queryItems(request: {
+    readonly sessionId: string
+    readonly kind?: 'invariant' | 'deliverable'
+    readonly review?: 'pending' | 'accepted' | 'rejected'
+    readonly lifecycle?: 'current' | 'superseded' | 'archived'
+    readonly search?: string
+    readonly cursor?: string
+    readonly limit?: number
+  }): Promise<CharterItemQueryResult> {
+    resolveRemoteActor(this.ctx)
+    return Promise.resolve(this.ctx.charter.queryItemsById(request.sessionId as SessionId, {
+      ...(request.kind === undefined ? {} : { kind: request.kind }),
+      ...(request.review === undefined ? {} : { review: request.review }),
+      ...(request.lifecycle === undefined ? {} : { lifecycle: request.lifecycle }),
+      ...(request.search === undefined ? {} : { search: request.search }),
+      ...(request.cursor === undefined ? {} : { cursor: request.cursor }),
+      ...(request.limit === undefined ? {} : { limit: request.limit }),
+    }))
   }
 
   private maintenanceActor():

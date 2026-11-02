@@ -13,11 +13,11 @@ import {
 import { RemoteError } from '@deepseek-ai/dsh-typert-protocol'
 
 describe('charter Remote contract', () => {
-  it('uses rc.3 create-based strict codecs and validates six wire methods', () => {
+  it('uses create-based strict codecs and validates the 0.2 wire methods', () => {
     expect(charterRemoteContribution.package).toBe('dsh-charter')
-    expect(charterRemoteContribution.descriptors).toHaveLength(6)
+    expect(charterRemoteContribution.descriptors).toHaveLength(8)
     expect(charterRemoteContribution.descriptors.map(descriptor => descriptor.method))
-      .toEqual(['watch', 'bootstrap', 'edit', 'exportRecord', 'initializeRecord', 'restoreRecord'])
+      .toEqual(['watch', 'bootstrap', 'edit', 'exportRecord', 'initializeRecord', 'restoreRecord', 'summary', 'queryItems'])
     for (const descriptor of charterRemoteContribution.descriptors) {
       expect(descriptor.result.mode).toBe('strict')
       if (descriptor.result.mode === 'strict') expect(typeof descriptor.result.create).toBe('function')

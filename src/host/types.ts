@@ -1,5 +1,6 @@
 import type {
   CharterActor,
+  ProposalBatch,
   CharterEditRequest,
   CharterInitializeRequest,
   CharterItem,
@@ -9,6 +10,7 @@ import type {
   CharterSnapshot,
 } from '../core/schemas.js'
 import type { CharterErrorCode } from '../core/errors.js'
+import type { ItemQueryFailure, ItemQueryPage } from '../core/query.js'
 
 export interface CharterViewLimits {
   readonly maxPromptBytes: number
@@ -69,6 +71,23 @@ export interface CharterViewCapabilities {
   readonly recordMaintenanceReason?: 'runtime' | 'record-limit' | 'legacy-host' | undefined
 }
 
+export interface CharterSummary {
+  readonly sessionId: string
+  readonly revision: number
+  readonly hasObjective: boolean
+  readonly activeItems: number
+  readonly pendingItems: number
+  readonly historyItems: number
+  readonly pendingBatches: number
+  readonly promptBytes: number
+  readonly overBudget: boolean
+  readonly status: 'ready' | 'initializing' | 'unavailable'
+  readonly recordHealth: 'healthy' | 'invalid' | 'absent' | 'unknown' | 'write-uncertain'
+  readonly capabilities: CharterViewCapabilities
+}
+
+export type CharterItemQueryResult = ItemQueryPage | ItemQueryFailure
+
 export interface CharterView {
   readonly status: 'ready' | 'initializing' | 'unavailable'
   readonly sessionId: string
@@ -86,6 +105,7 @@ export interface CharterView {
   /** Structured record health (defaults to unknown/legacy-host on old frames). */
   readonly recordState?: CharterRecordState | undefined
   readonly capabilities?: CharterViewCapabilities | undefined
+  readonly proposalBatches?: ProposalBatch[] | undefined
 }
 
 /** Export/initialize/restore are maintenance operations, never model tools. */
