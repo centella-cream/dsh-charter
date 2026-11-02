@@ -16,12 +16,14 @@ Current release state (2026-10-30):
 - Published: `0.1.0-rc.6` (npm `latest`/`next`; exact SHA-256 `21ddbea0ae3fd88994d4e4731429ef4d8cb75db2b97e83cd7530a0386e425825`). GitHub Release uses recovery tag `v0.1.0-rc.6-republished`.
 - `0.1.0-rc.5`: previous accepted npm release; its canonical GitHub tag/release remains pending restoration.
 - Active release: `0.1.0-rc.6`, formally accepted.
+- Active development: `0.2.0` on `feat/0.2.0-workspace`; package versions from 0.2.0 onward never use an `rc` suffix.
+- 0.2.0 source evidence: 33 files / 391 tests and the eight-version matrix pass 391/391 on the current development tree.
 - Pending: restore the canonical rc.5 GitHub tag/release and complete the protected browser evidence/post-release checks.
 
 | Item | Result |
 | --- | --- |
 | Strict TypeScript check | Pass on the current tree |
-| Vitest | 33 files / 390 tests pass (`npm test`, which builds first) |
+| Vitest | 33 files / 391 tests pass (`npm test`, which builds first) |
 | Host ESM build + browser factory bundle | Pass |
 | Remote contract and client smoke | Pass |
 | Normal package smoke | Pass |
@@ -29,7 +31,7 @@ Current release state (2026-10-30):
 | Packed-artifact recovery smoke | Pass: export, target removal, restore, receipt replay, two restarts, healthy-target refusal, packed fault subset |
 | Real `TypertGatewayService` | Pass on exact artifact with isolated DSH `0.2.1-rc.3` and `rc.4` graphs |
 | Compatibility sentinels | Pass on `0.1.7-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4`, `0.2.1-rc.5` |
-| Eight-version full rerun | Pass via tracked `compat-matrix --versions all --allow-new-release` (379/379 each) |
+| Eight-version full rerun | Pass via tracked `compat-matrix --versions all --allow-new-release` (391/391 each) |
 | Fresh Web profile matrix | PASS: local rc.6 artifact (pre-withdrawal) installed and served on DSH `0.1.7-rc.2`, `0.2.0-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4`, `0.2.1-rc.5` |
 | Untracked `0.2.2-alpha.2` probe | strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run; explicitly unsupported in rc.6 |
 | Local Web + Desktop profiles | rc.6 artifact was installed before withdrawal; this is not release evidence. Desktop app is still `0.2.1-rc.3` |
@@ -64,16 +66,16 @@ The tracked runner creates isolated pnpm projects with strict peers and runs typ
 
 | DSH version | Evidence |
 | --- | --- |
-| `0.1.7-rc.2` | 379/379 tracked matrix PASS |
-| `0.2.0-rc.1` | 379/379 tracked matrix PASS |
-| `0.2.0-rc.2` | 379/379 tracked matrix PASS |
-| `0.2.1-rc.1` | 379/379 tracked matrix PASS |
-| `0.2.1-rc.2` | 379/379 tracked matrix PASS |
-| `0.2.1-rc.3` | 379/379 tracked matrix PASS |
-| `0.2.1-rc.4` | 379/379 tracked matrix PASS |
-| `0.2.1-rc.5` | 379/379 tracked matrix PASS |
+| `0.1.7-rc.2` | 391/391 tracked matrix PASS |
+| `0.2.0-rc.1` | 391/391 tracked matrix PASS |
+| `0.2.0-rc.2` | 391/391 tracked matrix PASS |
+| `0.2.1-rc.1` | 391/391 tracked matrix PASS |
+| `0.2.1-rc.2` | 391/391 tracked matrix PASS |
+| `0.2.1-rc.3` | 391/391 tracked matrix PASS |
+| `0.2.1-rc.4` | 391/391 tracked matrix PASS |
+| `0.2.1-rc.5` | 391/391 tracked matrix PASS |
 
-The current rc.6 source tree passed `compat-matrix --versions all --allow-new-release` on 2026-10-30: every declared version passed typecheck, build, and 379/379 tests. Installs use pnpm strict peer resolution, exact tool pins, a single zod 4.6.7 graph, full `pnpm list --depth Infinity` graph validation, and recorded lockfile SHA-256 values. The untracked `0.2.2-alpha.2` probe is recorded as unsupported: strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run.
+The current 0.2.0 development tree passed `compat-matrix --versions all --allow-new-release` on 2026-10-30: every declared version passed typecheck, build, and 391/391 tests. Installs use pnpm strict peer resolution, exact tool pins, a single zod 4.6.7 graph, full `pnpm list --depth Infinity` graph validation, and recorded lockfile SHA-256 values. The untracked `0.2.2-alpha.2` probe is recorded as unsupported: strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run.
 
 ## 4. What the tests cover
 

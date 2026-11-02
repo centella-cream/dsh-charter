@@ -169,9 +169,10 @@ async function prepareProject(version, workRoot, allowNewRelease) {
     throw new Error(`declared DSH ${version} has no tracked lockfile at scripts/verify/lockfiles/${version}/pnpm-lock.yaml`)
   }
   const pnpm = process.env.COMPAT_PNPM ?? 'pnpm'
+  const storeDir = join(workRoot, 'pnpm-store')
   const install = await run(pnpm, frozen
-    ? ['install', '--ignore-scripts', '--frozen-lockfile']
-    : ['install', '--ignore-scripts', '--no-frozen-lockfile'], dir)
+    ? ['install', '--ignore-scripts', '--frozen-lockfile', '--store-dir', storeDir]
+    : ['install', '--ignore-scripts', '--no-frozen-lockfile', '--store-dir', storeDir], dir)
   return { dir, install, frozen }
 }
 
