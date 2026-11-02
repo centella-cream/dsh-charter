@@ -88,6 +88,7 @@ import type {
   CharterViewLimits,
   CharterSummary,
   CharterItemQueryResult,
+  CharterProposalQueryResult,
 } from './types.js'
 import type { SessionStartSource as StartSource } from '@deepseek-ai/dsh-agent'
 
@@ -1111,6 +1112,27 @@ export class CharterService extends Service {
               : 'unknown',
       capabilities: view.capabilities ?? { recordMaintenance: false },
     }
+  }
+
+  queryProposalsById(sessionId: SessionIdType): CharterProposalQueryResult {
+    const view = this.viewById(sessionId)
+    if (view.status !== 'ready') {
+      return { ok: false, code: 'UNAVAILABLE', message: 'Charter is not ready for proposal queries' }
+    }
+    const batches = (view.proposalBatches ?? []).map(batch => ({
+      id: batch.id,
+      source: batch.source,
+      capturedAtRevision: batch.capturedAtRevision,
+      candidates: batch.candidates.map(candidate => {
+        const item = candidate.kind === 'item' ? view.items.find(candidateItem => candidateItem.id === candidate.id) : undefined
+        return {
+          kind: candidate.kind,
+          id: candidate.id,
+          ...(item === undefined ? {} : { text: item.text, review: item.review }),
+        }
+      }),
+    }))
+    return { ok: true, revision: view.revision, batches }
   }
 
   queryItemsById(sessionId: SessionIdType, request: ItemQueryRequest): CharterItemQueryResult {

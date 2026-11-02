@@ -88,6 +88,30 @@ export interface CharterSummary {
 
 export type CharterItemQueryResult = ItemQueryPage | ItemQueryFailure
 
+export interface CharterProposalBatchView {
+  readonly id: string
+  readonly source: import('../core/schemas.js').ProposalSource
+  readonly capturedAtRevision: number
+  readonly candidates: readonly {
+    readonly kind: 'item' | 'objective'
+    readonly id: string
+    readonly text?: string
+    readonly review?: 'pending' | 'accepted' | 'rejected'
+  }[]
+}
+
+export type CharterProposalQueryResult =
+  | {
+      readonly ok: true
+      readonly revision: number
+      readonly batches: readonly CharterProposalBatchView[]
+    }
+  | {
+      readonly ok: false
+      readonly code: 'NOT_FOUND' | 'UNAVAILABLE'
+      readonly message: string
+    }
+
 export interface CharterView {
   readonly status: 'ready' | 'initializing' | 'unavailable'
   readonly sessionId: string

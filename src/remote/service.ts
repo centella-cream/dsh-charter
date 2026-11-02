@@ -16,6 +16,7 @@ import type {
   CharterView,
   CharterSummary,
   CharterItemQueryResult,
+  CharterProposalQueryResult,
 } from '../host/types.js'
 import { resolveRemoteActor } from './actor.js'
 import { remoteMethod } from './compat.js'
@@ -136,6 +137,16 @@ export class CharterRemoteService extends TypertRemoteService {
       ...(request.cursor === undefined ? {} : { cursor: request.cursor }),
       ...(request.limit === undefined ? {} : { limit: request.limit }),
     }))
+  }
+
+  @remoteMethod({
+    resources: {
+      session: (sessionId: SessionId): SessionId => sessionId,
+    },
+  })
+  queryProposals(sessionId: SessionId): Promise<CharterProposalQueryResult> {
+    resolveRemoteActor(this.ctx)
+    return Promise.resolve(this.ctx.charter.queryProposalsById(sessionId))
   }
 
   private maintenanceActor():

@@ -11,6 +11,7 @@ import {
   charterSummarySchema,
   charterItemQueryRequestSchema,
   charterItemQueryResultSchema,
+  charterProposalQueryResultSchema,
 } from './wire.js'
 
 /** Small outer restore contract: the archive is opaque until the Host gates it. */
@@ -202,6 +203,27 @@ export const charterRemoteContribution: TypertRemoteContribution = {
       mode: 'strict',
       typeSymbol: 'dsh-charter/CharterItemQueryResult',
       create: () => charterItemQueryResultSchema,
+    },
+  }, {
+    id: 'dsh-charter#charter/queryProposals',
+    service: 'charterRemote',
+    namespace: 'charter',
+    method: 'queryProposals',
+    invocation: { kind: 'direct' },
+    parameters: [{
+      name: 'sessionId',
+      wire: 'sessionId',
+      source: 'json',
+      codec: {
+        mode: 'strict',
+        typeSymbol: 'dsh-charter/SessionId',
+        create: () => sessionIdSchema,
+      },
+    }],
+    result: {
+      mode: 'strict',
+      typeSymbol: 'dsh-charter/CharterProposalQueryResult',
+      create: () => charterProposalQueryResultSchema,
     },
   }],
 }

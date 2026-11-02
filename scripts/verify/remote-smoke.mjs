@@ -5,7 +5,7 @@ import { CharterRemoteService } from '../../lib/remote.js'
 const ctx = new Context()
 const service = new CharterRemoteService(ctx)
 const markers = remoteMethods(service)
-if (markers.map(marker => marker.method).join(',') !== 'watch,bootstrap,edit,exportRecord,initializeRecord,restoreRecord,summary,queryItems') {
+if (markers.map(marker => marker.method).join(',') !== 'watch,bootstrap,edit,exportRecord,initializeRecord,restoreRecord,summary,queryItems,queryProposals') {
   throw new Error(`unexpected Remote methods: ${markers.map(marker => marker.method).join(',')}`)
 }
 if (markers[0]?.mode !== 'stream') {

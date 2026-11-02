@@ -169,6 +169,29 @@ export const charterItemQueryResultSchema = z.union([
   itemQueryFailureSchema,
 ])
 
+export const charterProposalQueryResultSchema = z.discriminatedUnion('ok', [
+  z.object({
+    ok: z.literal(true),
+    revision: z.number().int().nonnegative(),
+    batches: z.array(z.object({
+      id: z.string(),
+      source: z.object({ kind: z.string() }).passthrough(),
+      capturedAtRevision: z.number().int().positive(),
+      candidates: z.array(z.object({
+        kind: z.enum(['item', 'objective']),
+        id: z.string(),
+        text: z.string().optional(),
+        review: z.enum(['pending', 'accepted', 'rejected']).optional(),
+      }).strict()),
+    }).strict()),
+  }).strict(),
+  z.object({
+    ok: z.literal(false),
+    code: z.enum(['NOT_FOUND', 'UNAVAILABLE']),
+    message: z.string(),
+  }).strict(),
+])
+
 export const charterEditResultSchema = z.discriminatedUnion('ok', [
   z.object({
     ok: z.literal(true),
