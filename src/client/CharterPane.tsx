@@ -777,6 +777,8 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   const activeDeliverables = activeItems(deliverables)
   const pendingDeliverables = pendingItems(deliverables)
   const pendingObjectiveProposals = (projected?.objectiveProposals ?? []).filter(proposal => proposal.review === 'pending')
+  const inactiveItems = projectedItems.filter(item =>
+    item.lifecycle !== 'current' || item.review === 'rejected')
   const totalPending = pendingInvariants.length + pendingDeliverables.length + pendingObjectiveProposals.length
   const dependencyPlan = useMemo(() => dependencyProjection(projectedItems as unknown as CharterItem[]), [projectedItems])
   const currentDeliverables = visibleItems(deliverables)
@@ -1916,6 +1918,32 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                     />
                   </div>
                 )}
+              </section>
+            )}
+
+            {area === 'review' && inactiveItems.length > 0 && (
+              <section className="charter-card charter-section" aria-labelledby="charter-inactive-title">
+                <div className="charter-cardhead">
+                  <div className="charter-cardtitle">
+                    <span className="charter-kicker">{t('review.kicker')}</span>
+                    <h3 id="charter-inactive-title">{t('review.inactiveItems')}</h3>
+                  </div>
+                  <span className="charter-count">{inactiveItems.length}</span>
+                </div>
+                <ul className="charter-timeline">
+                  {inactiveItems.map(item => (
+                    <li key={item.id} className="charter-timeline__row">
+                      <span className="charter-timeline__kind">{item.kind === 'invariant' ? t('invariants.kicker') : t('deliverables.kicker')}</span>
+                      <span className="charter-timeline__text">{item.text}</span>
+                      <span className="charter-timeline__state">
+                        {item.review === 'rejected' ? t('review.rejected') : t(`review.lifecycle.${item.lifecycle}`)}
+                      </span>
+                      {(item.supersedes !== undefined || item.supersededBy !== undefined) && (
+                        <span className="charter-timeline__lineage">{t('review.lineage')}</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
               </section>
             )}
 

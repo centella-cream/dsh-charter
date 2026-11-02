@@ -36,6 +36,8 @@ const itemBase = {
   createdRevision: z.number().int().positive(),
   supersedes: identifierSchema.optional(),
   supersededBy: identifierSchema.optional(),
+  proposalBatchId: identifierSchema.optional(),
+  reviewedAtRevision: z.number().int().positive().optional(),
 }
 
 export const invariantItemSchema = z.object({
@@ -182,6 +184,7 @@ export const charterEditRequestSchema = z.object({
   mutationId: mutationIdSchema,
   baseRevision: z.number().int().nonnegative(),
   ops: z.array(charterOpSchema).min(1),
+  proposalSource: z.lazy(() => proposalSourceSchema).optional(),
 }).strict()
 
 export const charterActorSchema = z.object({
@@ -312,6 +315,13 @@ export const proposalSourceSchema = z.discriminatedUnion('kind', [
 export const proposalCandidateRefSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('item'), id: identifierSchema }).strict(),
   z.object({ kind: z.literal('objective'), id: identifierSchema }).strict(),
+  z.object({
+    kind: z.literal('tombstone'),
+    candidateKind: z.enum(['item', 'objective']),
+    id: identifierSchema,
+    disposition: z.enum(['accepted', 'rejected', 'purged']),
+    atRevision: z.number().int().positive(),
+  }).strict(),
 ])
 
 export const proposalBatchSchema = z.object({

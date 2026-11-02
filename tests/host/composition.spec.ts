@@ -245,6 +245,82 @@ describe('dsh-charter host composition', () => {
     await new Promise(resolve => setTimeout(resolve, 10))
   })
 
+  it('converts purged proposal candidates into batch tombstones', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-tombstone-'))
+    roots.push(root)
+    const ctx = await mount(root)
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('tombstone'), {
+      meta: { cwd: root, createdAt: 1_700_000_001_300 },
+    })
+    await waitForReady(service, session)
+    const proposed = await service.edit({
+      sessionId: session.id,
+      mutationId: 'tombstone-propose',
+      baseRevision: 0,
+      ops: [{ type: 'item.propose', item: { clientRef: 'p', kind: 'invariant', text: 'Discard me', order: 0 } }],
+    })
+    if (!proposed.ok) throw new Error('proposal failed')
+    const itemId = proposed.ids.p!
+    await service.edit({
+      sessionId: session.id,
+      mutationId: 'tombstone-reject',
+      baseRevision: 1,
+      ops: [{ type: 'item.reject', itemId }],
+    })
+    const purged = await service.edit({
+      sessionId: session.id,
+      mutationId: 'tombstone-purge',
+      baseRevision: 2,
+      ops: [{ type: 'item.purge', itemId, confirmed: true }],
+    })
+    expect(purged).toMatchObject({ ok: true })
+    const view = service.view(session)
+    expect(view.items).toEqual([])
+    expect(view.proposalBatches?.[0]?.candidates[0]).toMatchObject({
+      kind: 'tombstone',
+      candidateKind: 'item',
+      id: itemId,
+      disposition: 'purged',
+    })
+    expect(service.queryProposalsById(session.id)).toMatchObject({
+      ok: true,
+      batches: [{ candidates: [{ kind: 'tombstone', id: itemId }] }],
+    })
+  })
+
+  it('keeps proposal batch metadata after accepting an item proposal', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-accepted-proposal-'))
+    roots.push(root)
+    const ctx = await mount(root)
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('accepted-proposal'), {
+      meta: { cwd: root, createdAt: 1_700_000_001_250 },
+    })
+    await waitForReady(service, session)
+    const proposed = await service.edit({
+      sessionId: session.id,
+      mutationId: 'accepted-propose',
+      baseRevision: 0,
+      ops: [{ type: 'item.propose', item: { clientRef: 'p', kind: 'invariant', text: 'Accept me', order: 0 } }],
+    })
+    if (!proposed.ok) throw new Error('proposal failed')
+    const itemId = proposed.ids.p!
+    const batchId = service.view(session).items[0]?.proposalBatchId
+    const accepted = await service.edit({
+      sessionId: session.id,
+      mutationId: 'accepted-accept',
+      baseRevision: 1,
+      ops: [{ type: 'item.accept', itemId }],
+    })
+    expect(accepted).toMatchObject({ ok: true })
+    expect(service.view(session).items[0]).toMatchObject({
+      review: 'accepted',
+      proposalBatchId: batchId,
+      reviewedAtRevision: 2,
+    })
+  })
+
   it('persists objective proposals and records their batch provenance', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-charter-objective-proposal-'))
     roots.push(root)
@@ -303,10 +379,14 @@ describe('dsh-charter host composition', () => {
     }
     const proposed = await service.edit(request, { kind: 'user' })
     expect(proposed).toMatchObject({ ok: true, committedRevision: 1 })
+    if (!proposed.ok) throw new Error('proposal failed')
+    expect(proposed.changeSet?.summaryDigest).toMatch(/^sha256:/u)
+    expect(proposed.changeSet).toMatchObject({ promptChanged: false })
     const view = service.view(session)
     expect(view.items).toHaveLength(1)
     expect(view.items[0]).toMatchObject({ review: 'pending', origin: 'agent' })
     expect(view.proposalBatches).toHaveLength(1)
+    expect(view.items[0]).toMatchObject({ proposalBatchId: view.proposalBatches?.[0]?.id })
     expect(view.proposalBatches?.[0]).toMatchObject({
       source: { kind: 'manual', actor: 'user' },
       capturedAtRevision: 1,
@@ -709,8 +789,8 @@ describe('dsh-charter host composition', () => {
     expect(all.items).toHaveLength(64)
     expect(all.truncated).toBe(6)
     const standing = service.readForModel(session, 'standing')
-    expect(standing.items).toHaveLength(70)
-    expect(standing.truncated).toBe(0)
+    expect(standing.items).toHaveLength(64)
+    expect(standing.truncated).toBe(6)
     // The standing projection is compact: no debug-only id/review/lifecycle.
     expect(standing.items.every(item => item.id === undefined)).toBe(true)
     expect(standing.items.every(item => item.review === undefined)).toBe(true)
@@ -743,8 +823,11 @@ describe('dsh-charter host composition', () => {
     const all = service.readForModel(session, 'all')
     expect(all).toMatchObject({ objective: null, objectiveTruncated: true })
     expect(Buffer.byteLength(JSON.stringify(all), 'utf8')).toBeLessThanOrEqual(32 * 1_024)
-    // Standing is the complete working set and still carries the objective.
-    expect(service.readForModel(session, 'standing').objective).toHaveLength(39_000)
+    // Standing obeys the same hard envelope cap and marks an omitted objective.
+    const standing = service.readForModel(session, 'standing')
+    expect(standing.objective).toBeNull()
+    expect(standing.objectiveTruncated).toBe(true)
+    expect(Buffer.byteLength(JSON.stringify(standing), 'utf8')).toBeLessThanOrEqual(32 * 1_024)
   })
 
   it('bounds the all view by the final tool envelope, not item JSON alone', async () => {

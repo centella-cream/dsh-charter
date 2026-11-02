@@ -21,6 +21,7 @@ export interface ApplyOpsInput {
   readonly limits: CharterLimits
   readonly origin?: 'user' | 'agent'
   readonly objectiveProposals?: readonly ObjectiveProposal[]
+  readonly proposalBatchId?: string
 }
 
 export interface ApplyOpsOutput {
@@ -38,7 +39,7 @@ function itemFromInput(
   id: string,
   revision: number,
   origin: 'user' | 'agent',
-  links?: { readonly supersedes?: string },
+  links?: { readonly supersedes?: string; readonly proposalBatchId?: string },
 ): CharterItem {
   const common = {
     id,
@@ -50,6 +51,7 @@ function itemFromInput(
     order: input.order,
     createdRevision: revision,
     ...links?.supersedes === undefined ? {} : { supersedes: links.supersedes },
+    ...links?.proposalBatchId === undefined ? {} : { proposalBatchId: links.proposalBatchId },
   }
   return input.kind === 'invariant'
     ? { kind: 'invariant', ...common }
@@ -242,7 +244,9 @@ export function applyOps(input: ApplyOpsInput): ApplyOpsOutput {
         const id = requireMappedId(input.ids, op.item.clientRef)
         if (items.has(id)) throw charterError('INVALID_REFERENCE', `minted item id ${id} already exists`)
         // A proposal is always pending, even when a user imported it from history.
-        items.set(id, itemFromInput(op.item, id, input.nextRevision, 'agent'))
+        items.set(id, itemFromInput(op.item, id, input.nextRevision, 'agent', {
+          ...(input.proposalBatchId === undefined ? {} : { proposalBatchId: input.proposalBatchId }),
+        }))
         changes.push({ type: 'item.added', itemId: id })
         break
       }
@@ -271,7 +275,7 @@ export function applyOps(input: ApplyOpsInput): ApplyOpsOutput {
         if (item.review !== 'pending' || item.lifecycle !== 'current') {
           throw charterError('INVALID_TRANSITION', `item ${item.id} is not a pending proposal`)
         }
-        items.set(item.id, { ...item, review: 'accepted' })
+        items.set(item.id, { ...item, review: 'accepted', reviewedAtRevision: input.nextRevision })
         changes.push({ type: 'item.accepted', itemId: item.id })
         break
       }
@@ -280,7 +284,7 @@ export function applyOps(input: ApplyOpsInput): ApplyOpsOutput {
         if (item.review !== 'pending' || item.lifecycle !== 'current') {
           throw charterError('INVALID_TRANSITION', `item ${item.id} is not a pending proposal`)
         }
-        items.set(item.id, { ...item, review: 'rejected', verification: { state: 'unchecked' } })
+        items.set(item.id, { ...item, review: 'rejected', reviewedAtRevision: input.nextRevision, verification: { state: 'unchecked' } })
         changes.push({ type: 'item.rejected', itemId: item.id })
         break
       }

@@ -1464,12 +1464,20 @@ export class CharterDraft {
       this.update({ bootstrapProblem: { kind: 'save-failed', code: 'UNAVAILABLE' } })
       return
     }
+    const bootstrapSource = this.state.bootstrap?.source
     const request: import('../core/schemas.js').CharterEditRequest = {
       sessionId: this.state.sessionId,
       mutationId: mutationId(),
       // Always send the extraction baseline, never the current view revision.
       baseRevision,
       ops: plan.ops,
+      ...(bootstrapSource === undefined ? {} : {
+        proposalSource: {
+          kind: 'compaction-summary' as const,
+          summarySeq: bootstrapSource.summarySeq,
+          at: bootstrapSource.at,
+        },
+      }),
     }
     this.update({
       bootstrapSaving: true,

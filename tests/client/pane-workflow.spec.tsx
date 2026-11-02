@@ -200,6 +200,27 @@ describe('0.2 workspace and dependency plan', () => {
     })
   })
 
+  it('moves rejected and archived items out of Workspace into Review Center', () => {
+    const rejected = {
+      id: 'item-r', kind: 'invariant', text: 'Rejected', review: 'rejected', lifecycle: 'current',
+      verification: { state: 'unchecked' }, origin: 'user', order: 0, createdRevision: 1,
+    } as unknown as CharterItem
+    const archived = {
+      id: 'item-a', kind: 'invariant', text: 'Archived', review: 'accepted', lifecycle: 'archived',
+      verification: { state: 'unchecked' }, origin: 'user', order: 1, createdRevision: 1,
+    } as unknown as CharterItem
+    const ready = view({ items: [rejected, archived] })
+    const src = source(ready)
+    const draft = new CharterDraft(sessionId, () => src)
+    draft.bindLifecycle(lifecycle)
+    const tree = mount(src, draft)
+    expect(textOf(tree.root)).not.toContain('review.inactiveItems')
+    act(() => tree.root.findAll(node => node.type === 'button' && textOf(node).includes('nav.review'))[0]!.props.onClick())
+    expect(textOf(tree.root)).toContain('review.inactiveItems')
+    expect(textOf(tree.root)).toContain('Rejected')
+    expect(textOf(tree.root)).toContain('Archived')
+  })
+
   it('shows proposal batch provenance in Review Center', () => {
     const pending = {
       id: 'item-p', kind: 'invariant', text: 'Pending', review: 'pending', lifecycle: 'current',

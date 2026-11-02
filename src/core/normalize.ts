@@ -134,6 +134,7 @@ export function normalizeEditRequest(input: unknown): CharterEditRequest {
     mutationId: parsed.data.mutationId,
     baseRevision: parsed.data.baseRevision,
     ops: parsed.data.ops.map(normalizeOp),
+    ...(parsed.data.proposalSource === undefined ? {} : { proposalSource: parsed.data.proposalSource }),
   }
 }
 

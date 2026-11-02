@@ -194,6 +194,12 @@ export function assertRecoveryRecordAdmission(record: CharterRecord, limits: Cha
       throw charterError('CORRUPT_STATE', `proposal batch ${batch.id} points past the current revision`)
     }
     for (const candidate of batch.candidates) {
+      if (candidate.kind === 'tombstone') {
+        if (candidate.atRevision > record.current.revision) {
+          throw charterError('CORRUPT_STATE', `proposal tombstone ${candidate.id} points past the current revision`)
+        }
+        continue
+      }
       if (candidate.kind === 'item' && !itemIds.has(candidate.id)) {
         throw charterError('CORRUPT_STATE', `proposal batch ${batch.id} references missing item ${candidate.id}`)
       }
@@ -456,6 +462,19 @@ export function commitRecord(input: CommitRecordInput): CharterRecord {
   }
 
   const revision = input.record.current.revision + 1
+  const proposedCandidates: { kind: 'item' | 'objective'; id: string }[] = []
+  for (const op of input.request.ops) {
+    if (op.type === 'item.propose') {
+      const id = input.ids[op.item.clientRef]
+      if (id !== undefined) proposedCandidates.push({ kind: 'item', id })
+    } else if (op.type === 'objective.propose') {
+      const id = input.ids[op.clientRef]
+      if (id !== undefined) proposedCandidates.push({ kind: 'objective', id })
+    }
+  }
+  const proposalBatchId = proposedCandidates.length === 0
+    ? undefined
+    : `batch-${revision}-${input.requestDigest.slice(7, 23)}`
   const applied = applyOps({
     snapshot: input.record.current,
     ops: input.request.ops,
@@ -463,6 +482,7 @@ export function commitRecord(input: CommitRecordInput): CharterRecord {
     nextRevision: revision,
     limits: input.limits,
     ...(input.record.objectiveProposals === undefined ? {} : { objectiveProposals: input.record.objectiveProposals }),
+    ...(proposalBatchId === undefined ? {} : { proposalBatchId }),
   })
   const pendingProposalCount = applied.snapshot.items.filter(item => item.review === 'pending').length
     + applied.objectiveProposals.filter(proposal => proposal.review === 'pending').length
@@ -480,19 +500,9 @@ export function commitRecord(input: CommitRecordInput): CharterRecord {
     at: input.at,
     changes: [...applied.changes],
   }
-  const proposedCandidates: { kind: 'item' | 'objective'; id: string }[] = []
-  for (const op of input.request.ops) {
-    if (op.type === 'item.propose') {
-      const id = input.ids[op.item.clientRef]
-      if (id !== undefined) proposedCandidates.push({ kind: 'item', id })
-    } else if (op.type === 'objective.propose') {
-      const id = input.ids[op.clientRef]
-      if (id !== undefined) proposedCandidates.push({ kind: 'objective', id })
-    }
-  }
-  const proposalBatch: ProposalBatch | undefined = proposedCandidates.length === 0 ? undefined : {
-    id: `batch-${revision}-${input.requestDigest.slice(7, 23)}`,
-    source: input.proposalSource ?? (input.actor.kind === 'host'
+  const proposalBatch: ProposalBatch | undefined = proposalBatchId === undefined ? undefined : {
+    id: proposalBatchId,
+    source: input.proposalSource ?? input.request.proposalSource ?? (input.actor.kind === 'host'
       ? { kind: 'legacy-unknown' }
       : { kind: 'manual', actor: input.actor.kind, at: input.at }),
     capturedAtRevision: revision,
@@ -505,6 +515,31 @@ export function commitRecord(input: CommitRecordInput): CharterRecord {
     resultDigest: applied.snapshot.stateDigest,
     ids: input.ids,
   }
+  const purgedItemIds = new Set(input.request.ops
+    .filter((op): op is Extract<typeof op, { type: 'item.purge' }> => op.type === 'item.purge')
+    .map(op => op.itemId))
+  const purgedObjectiveIds = new Set(input.request.ops
+    .filter((op): op is Extract<typeof op, { type: 'objective.purge' }> => op.type === 'objective.purge')
+    .map(op => op.proposalId))
+  const batches = [...(input.record.proposalBatches ?? []), ...(proposalBatch === undefined ? [] : [proposalBatch])]
+    .map(batch => ({
+      ...batch,
+      candidates: batch.candidates.map(candidate => {
+        if (candidate.kind === 'tombstone') return candidate
+        const purged = candidate.kind === 'item'
+          ? purgedItemIds.has(candidate.id)
+          : purgedObjectiveIds.has(candidate.id)
+        return purged
+          ? {
+              kind: 'tombstone' as const,
+              candidateKind: candidate.kind,
+              id: candidate.id,
+              disposition: 'purged' as const,
+              atRevision: revision,
+            }
+          : candidate
+      }),
+    }))
   const next: CharterRecord = {
     ...input.record,
     current: applied.snapshot,
@@ -512,9 +547,7 @@ export function commitRecord(input: CommitRecordInput): CharterRecord {
     history: trimHistory([...input.record.history, historyReceipt], input.limits),
     recentMutations: [...input.record.recentMutations, mutationReceipt]
       .slice(-input.limits.mutationLimit),
-    ...(proposalBatch === undefined
-      ? {}
-      : { proposalBatches: [...(input.record.proposalBatches ?? []), proposalBatch].slice(-64) }),
+    ...(batches.length === 0 ? {} : { proposalBatches: batches.slice(-64) }),
   }
   assertRecordAdmission(input.record, next, input.limits)
   assertRecordConsistency(next, input.limits)

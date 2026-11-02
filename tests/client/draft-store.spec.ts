@@ -271,6 +271,35 @@ describe('per-Session draft ownership', () => {
     expect(draft.isEmpty).toBe(true)
   })
 
+  it('binds a bootstrap apply request to compaction-summary provenance', async () => {
+    const requests: CharterEditRequest[] = []
+    const fake = source({
+      edit: async request => {
+        requests.push(request)
+        return { ok: true, replayed: false, committedRevision: 1, ids: {}, view: view(1) }
+      },
+      bootstrap: async () => ({
+        available: true,
+        proposal: {
+          objective: 'Draft objective',
+          invariants: ['Keep it'],
+          deliverables: [],
+          source: { summarySeq: 7, at: 9 },
+        },
+      }),
+    })
+    const draft = new CharterDraft(sessionId, () => fake)
+    draft.bindLifecycle('life-bootstrap-source')
+    draft.ensureBootstrap(view(0), true)
+    await new Promise(resolve => setTimeout(resolve, 0))
+    await draft.applyBootstrap(view(0))
+    expect(requests[0]?.proposalSource).toEqual({
+      kind: 'compaction-summary',
+      summarySeq: 7,
+      at: 9,
+    })
+  })
+
   it('rejects bootstrap edits while the save request is in flight', async () => {
     let release: ((value: CharterEditResult) => void) | undefined
     const pending = new Promise<CharterEditResult>(resolve => { release = resolve })

@@ -114,7 +114,7 @@ export interface CharterProposalBatchView {
   readonly source: import('../core/schemas.js').ProposalSource
   readonly capturedAtRevision: number
   readonly candidates: readonly {
-    readonly kind: 'item' | 'objective'
+    readonly kind: 'item' | 'objective' | 'tombstone'
     readonly id: string
     readonly text?: string
     readonly review?: 'pending' | 'accepted' | 'rejected' | 'purged'
@@ -161,6 +161,13 @@ export type CharterRecordOperationResult =
       readonly replayed: boolean
       readonly committedRevision: number
       readonly view: CharterView
+      readonly changeSet?: {
+        readonly summaryDigest: string
+        readonly promptChanged: boolean
+        readonly metadataOnly: boolean
+        readonly before: { readonly revision: number; readonly promptBytes: number; readonly items: number; readonly pendingItems: number }
+        readonly after: { readonly revision: number; readonly promptBytes: number; readonly items: number; readonly pendingItems: number }
+      }
     }
   | {
       readonly ok: false
@@ -254,6 +261,13 @@ export type CharterEditResult =
       readonly committedRevision: number
       readonly ids: Readonly<Record<string, string>>
       readonly view: CharterView
+      readonly changeSet?: {
+        readonly summaryDigest: string
+        readonly promptChanged: boolean
+        readonly metadataOnly: boolean
+        readonly before: { readonly revision: number; readonly promptBytes: number; readonly items: number; readonly pendingItems: number }
+        readonly after: { readonly revision: number; readonly promptBytes: number; readonly items: number; readonly pendingItems: number }
+      }
     }
   | {
       readonly ok: false

@@ -23,6 +23,7 @@ import {
   type CharterLimits,
 } from '../core/limits.js'
 import { queryItems, type ItemQueryRequest } from '../core/query.js'
+import { planChangeSet, type PlannedChangeSet } from '../core/change-set.js'
 import { dependencyProjection } from '../core/dependencies.js'
 import {
   CHARTER_RECORD_SCHEMA_VERSION,
@@ -1194,6 +1195,7 @@ export class CharterService extends Service {
       source: batch.source,
       capturedAtRevision: batch.capturedAtRevision,
       candidates: batch.candidates.map(candidate => {
+        if (candidate.kind === 'tombstone') return { kind: candidate.kind, id: candidate.id }
         if (candidate.kind === 'item') {
           const item = view.items.find(candidateItem => candidateItem.id === candidate.id)
           return {
@@ -1244,25 +1246,50 @@ export class CharterService extends Service {
     if (mode === 'standing') {
       // `standing` is the model's working set: metadata that does not help the
       // model (ids, review, lifecycle are constant for standing rows) only
-      // inflates the tool result.
+      // inflates the tool result. The same hard envelope cap applies here.
       const plan = dependencyProjection(record.current.items)
       const keyById = new Map(plan.map(row => [row.id, row]))
+      const simplified = relevant.map(item => ({
+        kind: item.kind,
+        text: item.text,
+        verification: item.verification.state,
+        progress: item.kind === 'deliverable' ? item.progress : null,
+        ...(item.kind === 'deliverable'
+          ? {
+              key: keyById.get(item.id)?.localKey ?? null,
+              requires: keyById.get(item.id)?.requires ?? [],
+            }
+          : {}),
+      }))
+      const maxItems = 64
+      const maxEnvelopeBytes = 32 * 1_024
+      const emptyBytes = Buffer.byteLength(
+        JSON.stringify({ revision: record.current.revision, objective, items: [], truncated: relevant.length }),
+        'utf8',
+      )
+      const objectiveTruncated = emptyBytes > maxEnvelopeBytes
+      const boundedObjective = objectiveTruncated ? null : objective
+      const envelopeBytes = (items: readonly typeof simplified[number][]): number => Buffer.byteLength(
+        JSON.stringify({
+          revision: record.current.revision,
+          objective: boundedObjective,
+          items,
+          truncated: relevant.length - items.length,
+        }),
+        'utf8',
+      )
+      const page: typeof simplified = []
+      for (const item of simplified) {
+        const candidate = [...page, item]
+        if (candidate.length > maxItems || envelopeBytes(candidate) > maxEnvelopeBytes) break
+        page.push(item)
+      }
       return {
         revision: record.current.revision,
-        objective,
-        items: relevant.map(item => ({
-          kind: item.kind,
-          text: item.text,
-          verification: item.verification.state,
-          progress: item.kind === 'deliverable' ? item.progress : null,
-          ...(item.kind === 'deliverable'
-            ? {
-                key: keyById.get(item.id)?.localKey ?? null,
-                requires: keyById.get(item.id)?.requires ?? [],
-              }
-            : {}),
-        })),
-        truncated: 0,
+        objective: boundedObjective,
+        items: page,
+        truncated: relevant.length - page.length,
+        ...(objectiveTruncated ? { objectiveTruncated: true } : {}),
       }
     }
 
@@ -1425,6 +1452,7 @@ export class CharterService extends Service {
         const ids = Object.fromEntries(clientRefsOf(request.ops).map(ref => [ref, itemId()]))
         const requestDigest = requestDigestOf(request, current.identity, actor)
         let produced = false
+        let changeSet: PlannedChangeSet | undefined
         try {
           const next = await table.update(session.id, stored => {
             const inspection = this.inspectionOf(session, stored)
@@ -1434,6 +1462,16 @@ export class CharterService extends Service {
               }
               throw charterError('UNAVAILABLE', 'Stored charter cannot be edited in its current state')
             }
+            changeSet = planChangeSet({
+              snapshot: inspection.record.current,
+              ops: request.ops,
+              ids,
+              nextRevision: inspection.record.current.revision + 1,
+              limits: this.config,
+              ...(inspection.record.objectiveProposals === undefined
+                ? {}
+                : { objectiveProposals: inspection.record.objectiveProposals }),
+            })
             const nextRecord = commitRecord({
               record: inspection.record,
               request,
@@ -1462,6 +1500,15 @@ export class CharterService extends Service {
             committedRevision: next.current.revision,
             ids,
             view: this.view(session),
+            ...(changeSet === undefined ? {} : {
+              changeSet: {
+                summaryDigest: changeSet.summaryDigest,
+                promptChanged: changeSet.promptChanged,
+                metadataOnly: changeSet.metadataOnly,
+                before: changeSet.before,
+                after: changeSet.after,
+              },
+            }),
           }
         } catch (error) {
           if (produced && !isKnownEditFailure(error)) {

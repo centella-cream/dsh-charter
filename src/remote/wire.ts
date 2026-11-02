@@ -221,7 +221,7 @@ export const charterProposalQueryResultSchema = z.discriminatedUnion('ok', [
       source: z.object({ kind: z.string() }).passthrough(),
       capturedAtRevision: z.number().int().positive(),
       candidates: z.array(z.object({
-        kind: z.enum(['item', 'objective']),
+        kind: z.enum(['item', 'objective', 'tombstone']),
         id: z.string(),
         text: z.string().optional(),
         review: z.enum(['pending', 'accepted', 'rejected', 'purged']).optional(),
@@ -242,6 +242,13 @@ export const charterEditResultSchema = z.discriminatedUnion('ok', [
     committedRevision: z.number().int().positive(),
     ids: z.record(z.string(), z.string()),
     view: charterViewSchema,
+    changeSet: z.object({
+      summaryDigest: z.string(),
+      promptChanged: z.boolean(),
+      metadataOnly: z.boolean(),
+      before: z.object({ revision: z.number(), promptBytes: z.number(), items: z.number(), pendingItems: z.number() }).strict(),
+      after: z.object({ revision: z.number(), promptBytes: z.number(), items: z.number(), pendingItems: z.number() }).strict(),
+    }).strict().optional(),
   }).strict(),
   z.object({
     ok: z.literal(false),
