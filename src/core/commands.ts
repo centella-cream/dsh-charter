@@ -8,6 +8,7 @@ import type {
 } from './schemas.js'
 import { buildSnapshotUnchecked } from './render.js'
 import { validateState } from './state.js'
+import { validateDependencyGraph } from './dependencies.js'
 import type { CharterLimits } from './limits.js'
 
 export interface ApplyOpsInput {
@@ -48,7 +49,12 @@ function itemFromInput(
   }
   return input.kind === 'invariant'
     ? { kind: 'invariant', ...common }
-    : { kind: 'deliverable', ...common, progress: input.progress }
+    : {
+        kind: 'deliverable',
+        ...common,
+        progress: input.progress,
+        ...(input.requires === undefined ? {} : { requires: [...input.requires] }),
+      }
 }
 
 function requireItem(items: Map<string, CharterItem>, id: string): CharterItem {
@@ -253,6 +259,19 @@ export function applyOps(input: ApplyOpsInput): ApplyOpsOutput {
         })
         break
       }
+      case 'deliverable.requires': {
+        const item = requireItem(items, op.itemId)
+        if (item.kind !== 'deliverable' || item.review !== 'accepted' || item.lifecycle !== 'current') {
+          throw charterError('INVALID_TRANSITION', `item ${item.id} is not an active deliverable`)
+        }
+        const requires = [...new Set(op.requires)].sort()
+        if (JSON.stringify(item.requires ?? []) === JSON.stringify(requires)) {
+          throw charterError('INVALID_TRANSITION', `deliverable ${item.id} dependencies are unchanged`)
+        }
+        items.set(item.id, { ...item, requires })
+        changes.push({ type: 'deliverable.requires.changed', itemId: item.id, requires })
+        break
+      }
       case 'item.verification.set': {
         const item = requireItem(items, op.itemId)
         if (item.review !== 'accepted' || item.lifecycle !== 'current') {
@@ -297,6 +316,7 @@ export function applyOps(input: ApplyOpsInput): ApplyOpsOutput {
   }
 
   const nextItems = [...items.values()]
+  validateDependencyGraph(nextItems)
   validateState(input.nextRevision, objective, nextItems)
   const snapshot = buildSnapshotUnchecked(input.nextRevision, objective, nextItems)
   if (snapshot.stateDigest === input.snapshot.stateDigest) {

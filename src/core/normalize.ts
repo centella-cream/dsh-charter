@@ -65,6 +65,7 @@ function normalizeNewItem(input: NewItemInput): NewItemInput {
         text: normalizeUserText(input.text, `item ${input.clientRef}`),
         order: input.order,
         progress: input.progress,
+        ...(input.requires === undefined ? {} : { requires: [...new Set(input.requires)].sort() }),
       }
 }
 
@@ -106,6 +107,8 @@ function normalizeOp(op: CharterOp): CharterOp {
     case 'item.restore':
     case 'item.purge':
     case 'deliverable.progress':
+    case 'deliverable.requires':
+      return op
     case 'item.verification.set':
       return op
   }

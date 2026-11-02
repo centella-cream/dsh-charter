@@ -16,6 +16,7 @@ export interface PromptItem {
   readonly lifecycle: 'current' | 'superseded' | 'archived'
   readonly order: number
   readonly progress?: DeliverableProgress
+  readonly requires?: readonly string[] | undefined
 }
 
 function isStanding(item: PromptItem): boolean {
@@ -66,12 +67,54 @@ export function renderCharterPrompt<T extends PromptItem>(
   if (objective === undefined && standing.length === 0) return ''
 
   const invariants = standing.filter(isInvariant).map(item => encodePromptText(item.text))
-  const deliverables = standing.filter(isDeliverable).map(item =>
-    `{"text":${encodePromptText(item.text)},"progress":${JSON.stringify(item.progress)}}`,
-  )
+  const deliverables = standing.filter(isDeliverable) as readonly DependencyPromptItem[]
+  const dependencyAware = deliverables.some(item => (item.requires?.length ?? 0) > 0)
+
+  const rendered = dependencyAware
+    ? renderDependencyDeliverables(deliverables)
+    : deliverables.map(item =>
+      `{"text":${encodePromptText(item.text)},"progress":${JSON.stringify(item.progress)}}`,
+    )
 
   return CHARTER_PROMPT_PREFIX
     + `{"objective":${objective === undefined ? 'null' : encodePromptText(objective.current.text)}`
     + `,"invariants":[${invariants.join(',')}]`
-    + `,"deliverables":[${deliverables.join(',')}]}`
+    + `,"deliverables":[${rendered.join(',')}]}`
+}
+
+interface DependencyPromptItem extends PromptItem {
+  readonly kind: 'deliverable'
+  readonly progress: DeliverableProgress
+  readonly requires?: readonly string[] | undefined
+}
+
+function renderDependencyDeliverables(deliverables: readonly DependencyPromptItem[]): string[] {
+  const byId = new Map(deliverables.map(item => [item.id, item]))
+  const pending = new Map(deliverables.map(item => [item.id, new Set(
+    (item.requires ?? []).filter(id => byId.has(id) && id !== item.id),
+  )]))
+  const ordered: DependencyPromptItem[] = []
+  while (pending.size > 0) {
+    const layer = deliverables
+      .filter(item => pending.has(item.id) && [...pending.get(item.id)!].every(id => !pending.has(id)))
+      .sort(compareOrderedItems)
+    if (layer.length === 0) {
+      throw new Error('deliverable dependency graph contains a cycle')
+    }
+    for (const item of layer) {
+      ordered.push(item)
+      pending.delete(item.id)
+    }
+  }
+  const keyById = new Map(ordered.map((item, index) => [item.id, `D${index + 1}`]))
+  return ordered.map(item => {
+    const requires = [...(item.requires ?? [])]
+      .filter(id => keyById.has(id))
+      .map(id => keyById.get(id)!)
+      .sort()
+    return `{"key":${JSON.stringify(keyById.get(item.id))}`
+      + `,"text":${encodePromptText(item.text)}`
+      + `,"progress":${JSON.stringify(item.progress)}`
+      + `,"requires":[${requires.map(value => JSON.stringify(value)).join(',')}]}`
+  })
 }

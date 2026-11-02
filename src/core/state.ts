@@ -1,6 +1,7 @@
 import { charterError } from './errors.js'
 import { utf8Bytes, type CharterLimits } from './limits.js'
 import { normalizeUserText } from './normalize.js'
+import { validateDependencyGraph } from './dependencies.js'
 import type {
   CharterItem,
   CharterObjective,
@@ -104,6 +105,15 @@ export function validateState(
         throw charterError('CORRUPT_STATE', `item ${item.id} has a one-way successor link`)
       }
     }
+  }
+
+  try {
+    validateDependencyGraph(items)
+  } catch (error) {
+    if (error instanceof Error && 'code' in error && error.code === 'INVALID_CHANGE_SET') {
+      throw charterError('CORRUPT_STATE', error.message)
+    }
+    throw error
   }
 
   for (const item of items) {

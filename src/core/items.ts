@@ -37,7 +37,14 @@ export function normalizeItemShape(item: CharterItem): CharterItem {
     ...(item.supersededBy === undefined ? {} : { supersededBy: item.supersededBy }),
   }
   if (item.kind === 'deliverable') {
-    return { kind: 'deliverable', ...common, progress: item.progress }
+    return {
+      kind: 'deliverable',
+      ...common,
+      progress: item.progress,
+      ...(item.requires === undefined || item.requires.length === 0
+        ? {}
+        : { requires: [...item.requires] }),
+    }
   }
   return { kind: 'invariant', ...common }
 }

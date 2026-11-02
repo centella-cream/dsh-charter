@@ -47,6 +47,8 @@ export const deliverableItemSchema = z.object({
   kind: z.literal('deliverable'),
   ...itemBase,
   progress: deliverableProgressSchema,
+  /** Accepted/current prerequisites; see the 0.2 dependency rules. */
+  requires: z.array(identifierSchema).optional(),
 }).strict()
 
 export const charterItemSchema = z.discriminatedUnion('kind', [
@@ -88,6 +90,7 @@ export const deliverableInputSchema = z.object({
   text: z.string(),
   order: z.number().int().nonnegative(),
   progress: deliverableProgressSchema,
+  requires: z.array(identifierSchema).optional(),
 }).strict()
 
 export const newItemInputSchema = z.discriminatedUnion('kind', [
@@ -132,6 +135,11 @@ export const charterOpSchema = z.discriminatedUnion('type', [
     progress: deliverableProgressSchema,
   }).strict(),
   z.object({
+    type: z.literal('deliverable.requires'),
+    itemId: identifierSchema,
+    requires: z.array(identifierSchema),
+  }).strict(),
+  z.object({
     type: z.literal('item.verification.set'),
     itemId: identifierSchema,
     verification: z.enum(['unchecked', 'verified']),
@@ -174,6 +182,11 @@ export const charterChangeSchema = z.discriminatedUnion('type', [
     itemId: identifierSchema,
     from: deliverableProgressSchema,
     to: deliverableProgressSchema,
+  }).strict(),
+  z.object({
+    type: z.literal('deliverable.requires.changed'),
+    itemId: identifierSchema,
+    requires: z.array(identifierSchema),
   }).strict(),
   z.object({
     type: z.literal('item.verification.changed'),
@@ -224,10 +237,56 @@ export const charterMaintenanceReceiptSchema = z.object({
 }).strict()
 
 /** The only record schema version written by this plugin release. */
-export const CHARTER_RECORD_SCHEMA_VERSION = 1 as const
+export const proposalSourceKindSchema = z.enum([
+  'manual',
+  'message',
+  'compaction-summary',
+  'agent-tool',
+  'fork',
+  'legacy-unknown',
+])
 
-export const charterRecordSchema = z.object({
-  recordSchemaVersion: z.literal(CHARTER_RECORD_SCHEMA_VERSION),
+export const proposalSourceSchema = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('manual'),
+    actor: z.enum(['owner', 'user']),
+    at: z.number().int().nonnegative(),
+  }).strict(),
+  z.object({
+    kind: z.literal('compaction-summary'),
+    summarySeq: z.number().int().nonnegative(),
+    at: z.number().int().nonnegative(),
+    digest: digestSchema.optional(),
+  }).strict(),
+  z.object({
+    kind: z.literal('agent-tool'),
+    toolCallId: identifierSchema,
+    at: z.number().int().nonnegative(),
+  }).strict(),
+  z.object({
+    kind: z.literal('legacy-unknown'),
+    originHint: z.enum(['user', 'agent', 'fork']).optional(),
+  }).strict(),
+])
+
+export const proposalCandidateRefSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('item'), id: identifierSchema }).strict(),
+  z.object({ kind: z.literal('objective'), id: identifierSchema }).strict(),
+])
+
+export const proposalBatchSchema = z.object({
+  id: identifierSchema,
+  source: proposalSourceSchema,
+  capturedAtRevision: z.number().int().positive(),
+  candidates: z.array(proposalCandidateRefSchema),
+})
+
+export type ProposalSource = z.infer<typeof proposalSourceSchema>
+export type ProposalBatch = z.infer<typeof proposalBatchSchema>
+
+export const CHARTER_RECORD_SCHEMA_VERSION = 2 as const
+
+const recordCommon = {
   identity: charterIdentitySchema,
   forkedFrom: z.object({
     sessionId: z.string().min(1),
@@ -237,6 +296,20 @@ export const charterRecordSchema = z.object({
   history: z.array(charterReceiptSchema),
   recentMutations: z.array(mutationReceiptSchema),
   recentMaintenance: z.array(charterMaintenanceReceiptSchema).optional(),
+}
+
+/** Read-only v1 shape used to migrate existing records without rewriting them on open. */
+export const charterRecordV1Schema = z.object({
+  recordSchemaVersion: z.literal(1),
+  ...recordCommon,
+}).strict()
+
+export const charterRecordSchema = z.object({
+  recordSchemaVersion: z.literal(CHARTER_RECORD_SCHEMA_VERSION),
+  ...recordCommon,
+  /** Provenance batches and objective proposals are part of the v2 record. */
+  proposalBatches: z.array(proposalBatchSchema).optional(),
+  objectiveProposals: z.array(z.json()).optional(),
 }).strict()
 
 export const charterRecordArchiveSourceSchema = z.object({
@@ -299,6 +372,7 @@ export type CharterChange = z.infer<typeof charterChangeSchema>
 export type CharterReceipt = z.infer<typeof charterReceiptSchema>
 export type MutationReceipt = z.infer<typeof mutationReceiptSchema>
 export type CharterRecord = z.infer<typeof charterRecordSchema>
+export type CharterRecordV1 = z.infer<typeof charterRecordV1Schema>
 export type MaintenanceKind = z.infer<typeof maintenanceKindSchema>
 export type CharterMaintenanceReceipt = z.infer<typeof charterMaintenanceReceiptSchema>
 export type CharterRecordArchiveSource = z.infer<typeof charterRecordArchiveSourceSchema>

@@ -40,7 +40,12 @@ export function forkRecord(input: ForkRecordInput): CharterRecord {
     }
     return item.kind === 'invariant'
       ? { ...base, kind: 'invariant' }
-      : { ...base, kind: 'deliverable', progress: item.progress }
+      : {
+          ...base,
+          kind: 'deliverable',
+          progress: item.progress,
+          ...(item.requires === undefined ? {} : { requires: item.requires.map(remap) }),
+        }
   })
   const objective = input.parent.current.objective === undefined
     ? undefined

@@ -9,6 +9,7 @@ import { validateState } from './state.js'
 import { maintenanceSemanticCheck } from './archive.js'
 import type {
   CharterActor,
+  CharterRecordV1,
   CharterEditRequest,
   CharterMaintenanceReceipt,
   CharterRecord,
@@ -16,6 +17,8 @@ import type {
   CharterSnapshot,
   MaintenanceKind,
   MutationReceipt,
+  ProposalBatch,
+  ProposalSource,
 } from './schemas.js'
 
 export interface CharterIdentity {
@@ -32,6 +35,7 @@ export interface CommitRecordInput {
   readonly actor: CharterActor
   readonly at: number
   readonly limits: CharterLimits
+  readonly proposalSource?: ProposalSource
 }
 
 export class MutationReplay extends Error {
@@ -54,9 +58,38 @@ export class RevisionConflict extends Error {
   }
 }
 
+function migratedSnapshot(snapshot: CharterRecordV1['current']): CharterRecord['current'] {
+  return {
+    ...snapshot,
+    items: snapshot.items.map(item => item.kind === 'deliverable'
+      ? { ...item }
+      : { ...item }),
+  }
+}
+
+/** Read-only v1 projection to the v2 in-memory shape; no bytes are written here. */
+export function migrateRecordV1ToV2(record: CharterRecordV1): CharterRecord {
+  const current = migratedSnapshot(record.current)
+  const pending = current.items.filter(item => item.review === 'pending')
+  const proposalBatches: ProposalBatch[] = pending.length === 0
+    ? []
+    : [{
+        id: `legacy-${record.identity.createdAt}-${record.current.revision}`,
+        source: { kind: 'legacy-unknown' },
+        capturedAtRevision: Math.max(1, record.current.revision),
+        candidates: pending.map(item => ({ kind: 'item', id: item.id })),
+      }]
+  return {
+    ...record,
+    recordSchemaVersion: 2,
+    current,
+    ...(proposalBatches.length === 0 ? {} : { proposalBatches }),
+  }
+}
+
 export function createEmptyRecord(identity: CharterIdentity, limits: CharterLimits): CharterRecord {
   const record: CharterRecord = {
-    recordSchemaVersion: 1,
+    recordSchemaVersion: 2,
     identity,
     current: emptySnapshot(limits),
     history: [],
@@ -132,6 +165,24 @@ export function assertRecoveryRecordAdmission(record: CharterRecord, limits: Cha
   if (bytes > limits.maxRecoveryBytes) {
     throw charterError('QUOTA_EXCEEDED', `restored record exceeds ${limits.maxRecoveryBytes} UTF-8 bytes`)
   }
+  const batches = record.proposalBatches ?? []
+  const batchIds = new Set<string>()
+  const itemIds = new Set(record.current.items.map(item => item.id))
+  for (const batch of batches) {
+    if (batchIds.has(batch.id)) {
+      throw charterError('CORRUPT_STATE', `duplicate proposal batch ${batch.id}`)
+    }
+    batchIds.add(batch.id)
+    if (batch.capturedAtRevision > record.current.revision) {
+      throw charterError('CORRUPT_STATE', `proposal batch ${batch.id} points past the current revision`)
+    }
+    for (const candidate of batch.candidates) {
+      if (candidate.kind === 'item' && !itemIds.has(candidate.id)) {
+        throw charterError('CORRUPT_STATE', `proposal batch ${batch.id} references missing item ${candidate.id}`)
+      }
+    }
+  }
+
   const maintenance = record.recentMaintenance ?? []
   if (maintenance.length > limits.maintenanceLimit) {
     throw charterError('QUOTA_EXCEEDED', `maintenance receipts exceed ${limits.maintenanceLimit}`)
@@ -402,6 +453,16 @@ export function commitRecord(input: CommitRecordInput): CharterRecord {
     at: input.at,
     changes: [...applied.changes],
   }
+  const proposedIds = input.request.ops.flatMap(op =>
+    op.type === 'item.propose' ? [input.ids[op.item.clientRef]].filter((id): id is string => id !== undefined) : [])
+  const proposalBatch: ProposalBatch | undefined = proposedIds.length === 0 ? undefined : {
+    id: `batch-${revision}-${input.requestDigest.slice(7, 23)}`,
+    source: input.proposalSource ?? (input.actor.kind === 'host'
+      ? { kind: 'legacy-unknown' }
+      : { kind: 'manual', actor: input.actor.kind, at: input.at }),
+    capturedAtRevision: revision,
+    candidates: proposedIds.map(id => ({ kind: 'item', id })),
+  }
   const mutationReceipt: MutationReceipt = {
     mutationId: input.request.mutationId,
     requestDigest: input.requestDigest,
@@ -415,6 +476,9 @@ export function commitRecord(input: CommitRecordInput): CharterRecord {
     history: trimHistory([...input.record.history, historyReceipt], input.limits),
     recentMutations: [...input.record.recentMutations, mutationReceipt]
       .slice(-input.limits.mutationLimit),
+    ...(proposalBatch === undefined
+      ? {}
+      : { proposalBatches: [...(input.record.proposalBatches ?? []), proposalBatch].slice(-64) }),
   }
   assertRecordAdmission(input.record, next, input.limits)
   assertRecordConsistency(next, input.limits)
