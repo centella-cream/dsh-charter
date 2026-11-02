@@ -13,11 +13,10 @@ Environment: macOS, Node `v22.23.1`, npm `12.0.2`, pnpm `12.3.4`. Local DSH deve
 
 Current release state (2026-10-30):
 
-- Published: `0.1.0-rc.5` (npm `latest`/`next`; exact SHA-256 `94e27acf8851ad5423defd06a41253171317f4e805af809fe8e8e7a9ce83a939`). Its canonical GitHub tag/release is missing and pending restoration.
-- `0.1.0-rc.6`: withdrawn; npm version deprecated, GitHub release/tag removed, not accepted for channels.
-- Release commit: `C+1=0a6ccc5`; its canonical tag was deleted during recovery and is pending restoration.
-- Active source: `0.1.0-rc.6` (withdrawn; source retained for the next candidate).
-- Pending for the rc.5 release: restore the canonical GitHub tag/release, protected browser evidence, and the normal post-release checks.
+- Published: `0.1.0-rc.6` (npm `latest`/`next`; exact SHA-256 `21ddbea0ae3fd88994d4e4731429ef4d8cb75db2b97e83cd7530a0386e425825`). GitHub Release uses recovery tag `v0.1.0-rc.6-republished`.
+- `0.1.0-rc.5`: previous accepted npm release; its canonical GitHub tag/release remains pending restoration.
+- Active release: `0.1.0-rc.6`, formally accepted.
+- Pending: restore the canonical rc.5 GitHub tag/release and complete the protected browser evidence/post-release checks.
 
 | Item | Result |
 | --- | --- |
@@ -26,7 +25,7 @@ Current release state (2026-10-30):
 | Host ESM build + browser factory bundle | Pass |
 | Remote contract and client smoke | Pass |
 | Normal package smoke | Pass |
-| Exact-artifact package smoke | Pass on the published rc.5 `.tgz` bytes (`94e27acf…`) without rebuild |
+| Exact-artifact package smoke | Pass on the published rc.6 `.tgz` bytes (`21ddbea0…`) without rebuild |
 | Packed-artifact recovery smoke | Pass: export, target removal, restore, receipt replay, two restarts, healthy-target refusal, packed fault subset |
 | Real `TypertGatewayService` | Pass on exact artifact with isolated DSH `0.2.1-rc.3` and `rc.4` graphs |
 | Compatibility sentinels | Pass on `0.1.7-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4`, `0.2.1-rc.5` |
@@ -180,7 +179,7 @@ The detailed real-model compaction run from `v0.1.0-rc.4` remains auditable at t
 | `0.1.0-rc.3` | 2026-10-26 | Authority-preserving recovery: structured record state, archive export/initialize/restore, write-uncertain fence |
 | `0.1.0-rc.4` | 2026-10-27 | Compatibility-only DSH `0.2.1-rc.3`/`rc.4` support |
 | `0.1.0-rc.5` | 2026-10-29 | Candidate green and tagged: visible-only review, future-schema fence, safe discard, UTF-8/error/a11y hardening; npm/Release pending |
-| `0.1.0-rc.6` | 2026-11-01 | DSH 0.2.1-rc.5 compatibility, navigation help, formatted preview, traffic observability; withdrawn, npm deprecated, GitHub release/tag removed |
+| `0.1.0-rc.6` | 2026-11-01 | DSH 0.2.1-rc.5 compatibility, navigation help, formatted preview, traffic observability; formally accepted and published with recovery tag |
 
 Detailed release-by-release changes are in `CHANGELOG.md`; published tags and GitHub Releases are immutable.
 

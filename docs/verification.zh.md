@@ -12,11 +12,10 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 
 当前发布状态（2026-10-30）：
 
-- 已发布：`0.1.0-rc.5`（npm `latest`/`next`；精确 SHA-256 `94e27acf8851ad5423defd06a41253171317f4e805af809fe8e8e7a9ce83a939`）。规范 GitHub tag/release 缺失，待恢复。
-- `0.1.0-rc.6`：已撤回；npm deprecated、GitHub release/tag 已删除，未通过发布渠道。
-- 发布提交：`C=d138d65dc4f1b2628dc043f2dd437ea213112a4d`，`C+1=tag v0.1.0-rc.5=0a6ccc5`。
-- 当前源码：`0.1.0-rc.6`（已撤回；源码保留给下一次 candidate）。
-- rc.5 待完成：恢复规范 GitHub tag/release、受保护 browser evidence 和常规发布后检查。
+- 已发布：`0.1.0-rc.6`（npm `latest`/`next`；精确 SHA-256 `21ddbea0ae3fd88994d4e4731429ef4d8cb75db2b97e83cd7530a0386e425825`）。GitHub Release 使用 recovery tag `v0.1.0-rc.6-republished`。
+- `0.1.0-rc.5`：上一个已验收 npm 版本；规范 GitHub tag/release 仍待恢复。
+- 当前版本：`0.1.0-rc.6`，已正式验收。
+- 待完成：恢复 rc.5 规范 GitHub tag/release，并完成受保护 browser evidence/发布后检查。
 
 | 项目 | 结果 |
 | --- | --- |
@@ -25,13 +24,13 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 | Host ESM 构建 + 浏览器 factory bundle | 通过 |
 | Remote 契约与 client smoke | 通过 |
 | 普通 package smoke | 通过 |
-| exact-artifact package smoke | 对已发布 rc.5 `.tgz` 字节（`94e27acf…`）通过，不重建 |
+| exact-artifact package smoke | 对已发布 rc.6 `.tgz` 字节（`21ddbea0…`）通过，不重建 |
 | packed recovery smoke | 通过：export、删除 target、restore、receipt replay、两次 restart、健康目标拒绝、packed fault 子集 |
 | 真实 `TypertGatewayService` | 精确 artifact 在隔离的 DSH `0.2.1-rc.3` / `rc.4` 依赖图上通过 |
 | 兼容 sentinel | `0.1.7-rc.2`、`0.2.1-rc.2`、`0.2.1-rc.4`、`0.2.1-rc.5` 通过 |
 | 八版本全量 rerun | tracked `compat-matrix --versions all --allow-new-release` 通过（每版本 379/379） |
 | 未跟踪 `0.2.2-alpha.2` probe | strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run；rc.6 明确不支持 |
-| 本地 Web + Desktop profile | 撤回前安装过 rc.6 artifact；不作为发布证据。Desktop app 仍为 `0.2.1-rc.3` |
+| 本地 Web + Desktop profile | rc.6 artifact 已安装；Desktop app 仍为 `0.2.1-rc.3`，Desktop 验收需更新 app |
 | 真实浏览器恢复 | 受保护的人工 evidence gate；未自动化 |
 | 真实模型 compaction | 2026-10-22 记录 PASS；仍是人工发布门禁 |
 
@@ -164,7 +163,7 @@ append 模型，而不是 Charter 内容：当其他 section 触发新快照时�
 | `0.1.0-rc.3` | 2026-10-26 | 权威恢复：结构化 record state、archive export/initialize/restore、write-uncertain fence |
 | `0.1.0-rc.4` | 2026-10-27 | 仅兼容性：支持 DSH `0.2.1-rc.3`/`rc.4` |
 | `0.1.0-rc.5` | 2026-10-29 | candidate 全绿并打 tag：visible-only review、future-schema fence、safe discard、UTF-8/error/a11y 硬化；npm/Release 待发布 |
-| `0.1.0-rc.6` | 2026-11-01 | DSH 0.2.1-rc.5 适配、导航帮助、格式化预览、流量观测；已撤回，npm deprecated，GitHub release/tag 已删除 |
+| `0.1.0-rc.6` | 2026-11-01 | DSH 0.2.1-rc.5 适配、导航帮助、格式化预览、流量观测；已正式验收并用 recovery tag 发布 |
 
 逐版本详细变更见 `CHANGELOG.md`；已发布 tag 与 GitHub Release 不可修改。
 

@@ -115,17 +115,17 @@ The browser registers a `conversation.view` entry; the pane and `charter.watch` 
 
 ### Current release state
 
-- **Latest published RC:** `0.1.0-rc.5` (npm `latest` and `next`). Its canonical GitHub tag/release was
-  accidentally deleted during release recovery and is pending restoration; the npm artifact is intact.
-- **`0.1.0-rc.5`:** green candidate, exact artifact digest
-  `94e27acf8851ad5423defd06a41253171317f4e805af809fe8e8e7a9ce83a939`; now published to npm.
-- **Withdrawn version:** `0.1.0-rc.6` is deprecated on npm and its GitHub release/tag were removed. It did not
-  complete formal acceptance and must not be used through channels. The source remains the active development tree
-  for the next candidate.
+- **Latest published RC:** `0.1.0-rc.6` (npm `latest` and `next`), now formally accepted. Its canonical GitHub
+  tag name is unavailable after the earlier immutable-release deletion; the GitHub Release will use the recovery
+  tag `v0.1.0-rc.6-republished`.
+- **`0.1.0-rc.6`:** exact artifact digest
+  `21ddbea0ae3fd88994d4e4731429ef4d8cb75db2b97e83cd7530a0386e425825`; published to npm.
+- **`0.1.0-rc.5`:** still published on npm as the previous accepted RC; its canonical GitHub tag/release was
+  accidentally deleted and is pending restoration.
 - `0.1.0-rc.5` adds review, recovery, accessibility, and release-evidence hardening; it is not a new 0.2
   capability line.
 
-Install the latest published version for normal use: `dsh-charter@0.1.0-rc.5`.
+Install the latest published version for normal use: `dsh-charter@0.1.0-rc.6`.
 Our channel policy is to publish RCs under `next` and to point `latest` at the newest RC until a stable release
 exists (npm keeps a `latest` tag and we choose where it points; this is our policy, not an npm requirement).
 
@@ -145,8 +145,8 @@ until a Host restart.
 - DSH: only the versions listed in the [compatibility matrix](docs/design/compatibility.md) are supported
   (`0.1.7-rc.2`, `0.2.0-rc.1`/`rc.2`, `0.2.1-rc.1`/`rc.2`/`rc.3`/`rc.4`/`rc.5`). Newer stable/RC versions are not claimed until the
   matrix is extended; `0.2.1+` is required for per-Peer Remote resource authorization.
-  DSH `0.2.1-rc.5` is supported only by the deprecated rc.6 source/artifact, not by the published rc.5 artifact.
-  Do not install rc.4 or rc.5 on DSH rc.5.
+  DSH `0.2.1-rc.5` is supported by the published rc.6 artifact. The rc.5 artifact does not declare it; do not
+  install rc.4 or rc.5 on DSH rc.5.
 - Node.js **`^22.19.0 || >=24.0.0`**.
 - A Web or Desktop profile.
 
@@ -156,18 +156,17 @@ until a Host restart.
 
 ```bash
 # Pin the latest published RC; required when it is inside pnpm's release-age window.
-dsh plugin --profile web add dsh-charter@0.1.0-rc.5
+dsh plugin --profile web add dsh-charter@0.1.0-rc.6
 ```
 
 > rc.4 defaults all history candidates but renders only the first 40. Do not apply a draft with more than 40
-> candidates. rc.6 is deprecated and must not be used through channels; wait for the next accepted candidate.
+> candidates. rc.6 is the accepted latest RC; rc.5 remains the previous accepted release.
 
 Pin an exact version for reproducible profiles. `@next` and `@latest` follow dist-tags but are still subject to
 pnpm's release-age policy, so they are not a reliable way to install a freshly published RC. If the registry is
 unreachable, or you need the exact release artifact, use the offline tarball fallback below.
 
-`dsh-charter@0.1.0-rc.5` is the latest installable release from npm. rc.6 is deprecated and must not be used
-through channels.
+`dsh-charter@0.1.0-rc.6` is the latest installable release from npm.
 
 Restart `dsh web` (or let profile HMR recompose), then refresh the page. The profile's `package.json` gains the
 dependency and bundle entry.
@@ -193,13 +192,13 @@ Use this path as a backup for air-gapped machines, exact-artifact verification, 
 importing a local plugin. Published releases ship the same tarball and `SHA256SUMS` used by `npm publish`.
 
 ```bash
-# Published rc.5 artifact (canonical GitHub release pending restoration):
-npm pack dsh-charter@0.1.0-rc.5
-shasum -a 256 dsh-charter-0.1.0-rc.5.tgz
-dsh plugin --profile web add ./dsh-charter-0.1.0-rc.5.tgz
+# Published rc.6 artifact (recovery GitHub release):
+npm pack dsh-charter@0.1.0-rc.6
+shasum -a 256 dsh-charter-0.1.0-rc.6.tgz
+dsh plugin --profile web add ./dsh-charter-0.1.0-rc.6.tgz
 ```
 
-The published rc.5 tarball is the supported offline artifact; use its registry digest. Do not distribute rc.6.
+The published rc.6 tarball is the supported offline artifact; use its registry digest.
 
 `dsh plugin --profile desktop` is intentionally refused by the Electron app that owns that profile; use the
 Desktop Plugins page or that profile's package manager. Source-level development is described in
@@ -208,9 +207,9 @@ Desktop Plugins page or that profile's package manager. Source-level development
 ### Update
 
 - **Web (npm):** install the exact published target version, e.g.
-  `dsh plugin --profile web add dsh-charter@0.1.0-rc.5`, then restart/refresh. Pinned profiles keep their
+  `dsh plugin --profile web add dsh-charter@0.1.0-rc.6`, then restart/refresh. Pinned profiles keep their
   explicit version entry. Do not use a bare `@next`/`@latest` immediately after a release; pnpm's release-age
-  policy can resolve an older version. Pin the exact published rc.5 version outside that window.
+  policy can resolve an older version. Pin the exact published rc.6 version outside that window.
 - **Local tarball:** rebuild/download the new tarball and repeat the local install command; this bypasses
   registry release-age resolution.
 - **Desktop:** use **Plugins → Install/Update**. The UI has no exact npm version selector, so it follows the
@@ -383,11 +382,11 @@ design keeps the compatibility layer deliberately small.
 
 Current release state (2026-10-30):
 
-- **Published:** `0.1.0-rc.5` — npm `latest`/`next`; exact artifact SHA-256
-  `94e27acf8851ad5423defd06a41253171317f4e805af809fe8e8e7a9ce83a939`.
-- **Withdrawn:** `0.1.0-rc.6` — deprecated npm version; GitHub release/tag removed; not accepted for channels.
-- **Pending for rc.5:** restore the accidentally deleted canonical GitHub tag/release; protected browser evidence
-  and the normal post-release checks remain manual.
+- **Published:** `0.1.0-rc.6` — npm `latest`/`next`; exact artifact SHA-256
+  `21ddbea0ae3fd88994d4e4731429ef4d8cb75db2b97e83cd7530a0386e425825`.
+- **Recovery tag:** `v0.1.0-rc.6-republished` for the GitHub Release; the canonical rc.6 tag name is unavailable
+  under the immutable-release rule.
+- **`0.1.0-rc.5`:** previous accepted npm release; canonical GitHub tag/release pending restoration.
 - The real-model compaction acceptance PASS remains recorded on the immutable
   [v0.1.0-rc.4 verification §8.4](https://github.com/centella-cream/dsh-charter/blob/v0.1.0-rc.4/docs/verification.md#84-recorded-real-model-run-2026-10-22).
 

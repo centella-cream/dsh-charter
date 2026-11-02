@@ -8,16 +8,12 @@ tagging.
 
 ## Current state (2026-10-30)
 
-- **Published:** `0.1.0-rc.5` — npm `latest`/`next`; its canonical GitHub tag/release is missing and pending restoration.
-- **Finalized candidate:** `0.1.0-rc.5` — published to npm; exact artifact SHA-256 is
-  `94e27acf8851ad5423defd06a41253171317f4e805af809fe8e8e7a9ce83a939`. The canonical tag was deleted during recovery
-  and cannot be recreated under the repository immutable-release rule; restore it with GitHub Support.
-- **Withdrawn:** `0.1.0-rc.6` — npm deprecated, GitHub release/tag removed; not accepted for channels.
-- **Pending:** restore the accidentally deleted canonical rc.5 GitHub tag/release. Protected browser evidence and
-  the normal post-release checks remain manual.
-- Do not create a second rc.5 tag or publish a rebuilt tarball. The existing rc.5 `C+1` tag is not the current
-  `main` tip, so the current Promotion workflow cannot promote it. If npm publication resumes, build a fresh
-  candidate from `main`; do not rewrite the published rc.5 tag.
+- **Published:** `0.1.0-rc.6` — npm `latest`/`next`; exact artifact SHA-256
+  `21ddbea0ae3fd88994d4e4731429ef4d8cb75db2b97e83cd7530a0386e425825`. GitHub Release uses recovery tag
+  `v0.1.0-rc.6-republished` because the canonical tag name is locked after the immutable-release deletion.
+- **`0.1.0-rc.5`:** previous accepted npm release; its canonical GitHub tag/release is pending restoration.
+- **Pending:** canonical rc.5 GitHub tag/release restoration and protected browser evidence/post-release checks.
+- Do not reuse a deleted immutable-release tag name; create a new recovery tag if needed.
 
 ## 1. Prepare the source
 
