@@ -1531,9 +1531,13 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                 </div>
                 <div className="charter-changeset__body">
                   <span>{t('changeset.ops', { count: localWork.stagedOps })}</span>
-                  <span>{t('changeset.prompt', {
-                    used: formatBytes(t, previewBytes),
-                    limit: formatBytes(t, view.limits.maxPromptBytes),
+                  <span>{t('changeset.promptDelta', {
+                    before: formatBytes(t, utf8Bytes(view.promptText)),
+                    after: formatBytes(t, previewBytes),
+                  })}</span>
+                  <span>{t('changeset.itemsDelta', {
+                    before: view.items.length,
+                    after: projectedItems.length,
                   })}</span>
                   {editor !== null && <span>{t('changeset.editorOpen')}</span>}
                 </div>

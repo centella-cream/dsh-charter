@@ -1356,7 +1356,10 @@ export class CharterService extends Service {
     if (items.length === 0) return { ok: false, message: 'at least one proposal is required' }
     const view = this.view(session)
     if (view.status !== 'ready') return { ok: false, message: 'Charter is not editable in its current state' }
-    const existingIds = new Set(view.items.map(item => item.id))
+    const existingIds = new Set(view.items.filter(item =>
+      item.kind === 'deliverable' && item.review === 'accepted' && item.lifecycle === 'current',
+    ).map(item => item.id))
+    const nextOrder = view.items.length === 0 ? 0 : Math.max(...view.items.map(item => item.order)) + 1
     const ops: import('../core/schemas.js').CharterOp[] = items.map((input, index) => ({
       type: 'item.propose',
       item: input.kind === 'invariant'
@@ -1364,13 +1367,13 @@ export class CharterService extends Service {
             clientRef: `proposal-${index}`,
             kind: 'invariant',
             text: input.text,
-            order: view.items.length + index,
+            order: nextOrder + index,
           }
         : {
             clientRef: `proposal-${index}`,
             kind: 'deliverable',
             text: input.text,
-            order: view.items.length + index,
+            order: nextOrder + index,
             progress: 'not-started',
             ...(input.requires === undefined ? {} : {
               requires: [...new Set(input.requires)].filter(id => existingIds.has(id)).sort(),

@@ -112,7 +112,6 @@ export function requestDigestOf(
     actor,
     baseRevision: request.baseRevision,
     ops: request.ops,
-    proposalSource: request.proposalSource ?? null,
   })
 }
 

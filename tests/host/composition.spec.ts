@@ -735,6 +735,50 @@ describe('dsh-charter host composition', () => {
     expect(all.items.map(item => item.text)).toContain('Hidden after archive')
   })
 
+  it('stores compaction-summary provenance from the apply request', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-compaction-source-'))
+    roots.push(root)
+    const ctx = await mount(root)
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('compaction-source'), {
+      meta: { cwd: root, createdAt: 1_700_000_000_063 },
+    })
+    await waitForReady(service, session)
+    const result = await service.edit({
+      sessionId: session.id,
+      mutationId: 'compaction-source-propose',
+      baseRevision: 0,
+      ops: [{ type: 'item.propose', item: { clientRef: 'p', kind: 'invariant', text: 'From summary', order: 0 } }],
+      proposalSource: { kind: 'compaction-summary', summarySeq: 7, at: 1 },
+    })
+    expect(result).toMatchObject({ ok: true })
+    expect(service.view(session).proposalBatches?.[0]?.source).toEqual({
+      kind: 'compaction-summary',
+      summarySeq: 7,
+      at: 1,
+    })
+  })
+
+  it('allocates agent proposal order above every live row', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-propose-order-'))
+    roots.push(root)
+    const ctx = await mount(root)
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('propose-order'), {
+      meta: { cwd: root, createdAt: 1_700_000_000_062 },
+    })
+    await waitForReady(service, session)
+    await service.edit({
+      sessionId: session.id,
+      mutationId: 'propose-order-seed',
+      baseRevision: 0,
+      ops: [{ type: 'item.add', item: { clientRef: 'seed', kind: 'invariant', text: 'Seed', order: 40 } }],
+    })
+    const result = await service.proposeFromAgent(session, [{ kind: 'invariant', text: 'Later' }])
+    expect(result.ok).toBe(true)
+    expect(service.view(session).items.find(item => item.text === 'Later')?.order).toBe(41)
+  })
+
   it('creates pending-only agent proposals through charter_propose', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-charter-propose-tool-'))
     roots.push(root)
