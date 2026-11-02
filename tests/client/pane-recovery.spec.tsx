@@ -162,7 +162,7 @@ function mount(_view: CharterView, h: Harness): ReactTestRenderer {
   if (tree === undefined) throw new Error('pane did not render')
   const rendered = tree
   trees.push(rendered)
-  act(() => click(rendered, 'nav.recovery'))
+  act(() => click(rendered, 'nav.diagnostics'))
   return rendered
 }
 

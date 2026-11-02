@@ -151,6 +151,54 @@ describe('rc.5 pane workflow acceptance', () => {
   })
 })
 
+describe('0.2 workspace and dependency plan', () => {
+  it('renders the dependency plan and editable prerequisite selector', () => {
+    const a = {
+      id: 'item-a', kind: 'deliverable', text: 'Build', review: 'accepted', lifecycle: 'current',
+      verification: { state: 'unchecked' }, origin: 'user', order: 0, createdRevision: 1, progress: 'done',
+    } as unknown as CharterItem
+    const b = {
+      id: 'item-b', kind: 'deliverable', text: 'Release', review: 'accepted', lifecycle: 'current',
+      verification: { state: 'unchecked' }, origin: 'user', order: 1, createdRevision: 1,
+      progress: 'not-started', requires: ['item-a'],
+    } as unknown as CharterItem
+    const ready = view({ items: [a, b] })
+    const src = source(ready)
+    const draft = new CharterDraft(sessionId, () => src)
+    draft.bindLifecycle(lifecycle)
+    const tree = mount(src, draft)
+    expect(textOf(tree.root)).toContain('deps.title')
+    expect(textOf(tree.root)).toContain('D2')
+    const selects = tree.root.findAll(node => node.type === 'select' && String(node.props['aria-label']).includes('deps.editAria'))
+    expect(selects).toHaveLength(2)
+    expect(selects[1]?.props.value).toEqual(['item-a'])
+    expect(selects[0]?.props.multiple).toBe(true)
+  })
+
+  it('shows proposal batch provenance in Review Center', () => {
+    const pending = {
+      id: 'item-p', kind: 'invariant', text: 'Pending', review: 'pending', lifecycle: 'current',
+      verification: { state: 'unchecked' }, origin: 'agent', order: 0, createdRevision: 1,
+    } as unknown as CharterItem
+    const ready = view({
+      items: [pending],
+      proposalBatches: [{
+        id: 'batch-1',
+        source: { kind: 'manual', actor: 'user', at: 1 },
+        capturedAtRevision: 1,
+        candidates: [{ kind: 'item', id: 'item-p' }],
+      }],
+    })
+    const src = source(ready)
+    const draft = new CharterDraft(sessionId, () => src)
+    draft.bindLifecycle(lifecycle)
+    const tree = mount(src, draft)
+    act(() => tree.root.findAll(node => node.type === 'button' && textOf(node).includes('nav.review'))[0]!.props.onClick())
+    expect(textOf(tree.root)).toContain('review.title')
+    expect(textOf(tree.root)).toContain('review.source.manual')
+  })
+})
+
 describe('rc.5 pane workflow Apply/objective acceptance', () => {
   it('shows and clears the objective staged tag', () => {
     const ready = view({ revision: 0 })
@@ -189,15 +237,11 @@ describe('rc.6 pane help and formatted preview', () => {
     draft.bindLifecycle(lifecycle)
     const tree = mount(src, draft)
     const helps = tree.root.findAll(node => node.props.className === 'charter-nav__help')
-    expect(helps).toHaveLength(7)
+    expect(helps).toHaveLength(3)
     expect(helps.map(node => node.props['data-tooltip'])).toEqual([
-      'nav.overviewHelp',
-      'nav.objectiveHelp',
-      'nav.invariantsHelp',
-      'nav.deliverablesHelp',
-      'nav.historyHelp',
-      'nav.contextHelp',
-      'nav.recoveryHelp',
+      'nav.workspaceHelp',
+      'nav.reviewHelp',
+      'nav.diagnosticsHelp',
     ])
   })
 
@@ -207,11 +251,11 @@ describe('rc.6 pane help and formatted preview', () => {
     const draft = new CharterDraft(sessionId, () => src)
     draft.bindLifecycle(lifecycle)
     const tree = mount(src, draft)
-    const overview = tree.root.findAll(node => node.type === 'button' && textOf(node) === 'nav.overview')[0]
-    expect(overview?.props['aria-describedby']).toBe('charter-nav-help-overview')
-    const help = tree.root.findAll(node => node.props.id === 'charter-nav-help-overview')[0]
-    expect(textOf(help!)).toBe('nav.overviewHelp')
-    const context = tree.root.findAll(node => node.type === 'button' && textOf(node).includes('nav.context'))[0]
+    const overview = tree.root.findAll(node => node.type === 'button' && textOf(node) === 'nav.workspace')[0]
+    expect(overview?.props['aria-describedby']).toBe('charter-nav-help-workspace')
+    const help = tree.root.findAll(node => node.props.id === 'charter-nav-help-workspace')[0]
+    expect(textOf(help!)).toBe('nav.workspaceHelp')
+    const context = tree.root.findAll(node => node.type === 'button' && textOf(node).includes('nav.diagnostics'))[0]
     expect(context).toBeDefined()
     act(() => context!.props.onClick())
     expect(textOf(tree.root)).toContain('preview.emptyHint')
@@ -241,7 +285,7 @@ describe('rc.6 pane help and formatted preview', () => {
     const draft = new CharterDraft(sessionId, () => src)
     draft.bindLifecycle(lifecycle)
     const tree = mount(src, draft)
-    const context = tree.root.findAll(node => node.type === 'button' && textOf(node).includes('nav.context'))[0]
+    const context = tree.root.findAll(node => node.type === 'button' && textOf(node).includes('nav.diagnostics'))[0]
     if (context === undefined) throw new Error('no context navigation item')
     act(() => context.props.onClick())
     const pre = tree.root.findAll(node => node.type === 'pre')[0]

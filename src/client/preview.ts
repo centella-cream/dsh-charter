@@ -23,6 +23,7 @@ export interface ProjectedItem extends PromptItem {
   /** Created by the current draft; has no persisted id yet. */
   readonly synthetic: boolean
   readonly progress?: DeliverableProgress
+  readonly requires?: readonly string[]
   readonly origin?: CharterItem['origin']
   readonly createdRevision?: number
 }
@@ -119,7 +120,7 @@ function fromItem(item: CharterItem): ProjectedItem {
     createdRevision: item.createdRevision,
     ...(item.supersedes === undefined ? {} : { supersedes: item.supersedes }),
     ...(item.supersededBy === undefined ? {} : { supersededBy: item.supersededBy }),
-    ...(item.kind === 'deliverable' ? { progress: item.progress } : {}),
+    ...(item.kind === 'deliverable' ? { progress: item.progress, ...(item.requires === undefined ? {} : { requires: item.requires }) } : {}),
     staged: false,
     synthetic: false,
   }
@@ -132,6 +133,7 @@ function draftItem(
   order: number,
   progress?: DeliverableProgress,
   review: 'accepted' | 'pending' = 'accepted',
+  requires?: readonly string[],
 ): ProjectedItem {
   return {
     id,
@@ -141,7 +143,7 @@ function draftItem(
     lifecycle: 'current',
     verification: { state: 'unchecked' },
     order,
-    ...(kind === 'deliverable' ? { progress: progress ?? 'not-started' } : {}),
+    ...(kind === 'deliverable' ? { progress: progress ?? 'not-started', ...(requires === undefined ? {} : { requires }) } : {}),
     staged: true,
     synthetic: true,
   } as ProjectedItem
@@ -205,6 +207,8 @@ export function projectView(view: CharterView, ops: readonly CharterOp[]): Proje
           op.item.text,
           op.item.order,
           op.item.kind === 'deliverable' ? op.item.progress : undefined,
+          undefined,
+          op.item.kind === 'deliverable' ? op.item.requires : undefined,
         ))
         break
       case 'item.propose':
@@ -215,6 +219,7 @@ export function projectView(view: CharterView, ops: readonly CharterOp[]): Proje
           op.item.order,
           op.item.kind === 'deliverable' ? op.item.progress : undefined,
           'pending',
+          op.item.kind === 'deliverable' ? op.item.requires : undefined,
         ))
         break
       case 'item.edit': {
@@ -274,6 +279,13 @@ export function projectView(view: CharterView, ops: readonly CharterOp[]): Proje
             const { supersedes: _detached, ...detached } = candidate
             items.set(id, { ...detached, staged: true })
           }
+        }
+        break
+      }
+      case 'deliverable.requires': {
+        const item = items.get(op.itemId)
+        if (item !== undefined) {
+          items.set(item.id, { ...item, requires: [...new Set(op.requires)].sort(), staged: true })
         }
         break
       }

@@ -878,6 +878,19 @@ export class CharterDraft {
     clear()
   }
 
+  /** Stage a canonical dependency edit for one active deliverable. */
+  setDeliverableRequires(view: CharterView, itemId: string, requires: readonly string[]): void {
+    if (this.state.saving || this.state.bootstrapSaving || replayLocked(this.state)) return
+    const canonical = [...new Set(requires)].sort()
+    const ops = this.state.ops.filter(op => !(op.type === 'deliverable.requires' && op.itemId === itemId))
+    this.update({
+      ops: [...ops, { type: 'deliverable.requires', itemId, requires: canonical }],
+      baseRevision: this.state.baseRevision ?? view.revision,
+      feedback: null,
+      attempt: null,
+    })
+  }
+
   /** A request may be retried only when the previous attempt failed with an unknown outcome. */
   private retryableEdit(): EditAttempt | undefined {
     const attempt = unknownAttempt(this.state)

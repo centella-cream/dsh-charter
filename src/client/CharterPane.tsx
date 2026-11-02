@@ -23,6 +23,7 @@ import type {
 } from './draft-store.js'
 import { CHARTER_LOCALE_NS, type CharterLocaleKey } from './locales.js'
 import { inspectUserText } from '../core/normalize.js'
+import { dependencyProjection } from '../core/dependencies.js'
 import { draftAdmission } from './admission.js'
 import {
   bootstrapReplayPending,
@@ -774,6 +775,8 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   const historyInvariants = invariants.filter(item => item.lifecycle !== 'current' || item.review === 'rejected')
   const activeDeliverables = activeItems(deliverables)
   const pendingDeliverables = pendingItems(deliverables)
+  const totalPending = pendingInvariants.length + pendingDeliverables.length
+  const dependencyPlan = useMemo(() => dependencyProjection(projectedItems as unknown as CharterItem[]), [projectedItems])
   const currentDeliverables = visibleItems(deliverables)
   const historyDeliverables = deliverables.filter(item => item.lifecycle !== 'current' || item.review === 'rejected')
   const successorOf = (item: ProjectedItem): ProjectedItem | undefined =>
@@ -1058,6 +1061,11 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                     }
                   : null
 
+  const area = section === 'history'
+    ? 'review'
+    : section === 'context' || section === 'recovery'
+      ? 'diagnostics'
+      : 'workspace'
   const goSection = (next: CharterSection): void => draft.setSection(next)
   const queue = (op: CharterOp): void => {
     if (!online || view.status !== 'ready' || saving) return
@@ -1480,26 +1488,21 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
           <nav className="charter-nav" aria-label={t('nav.label')}>
             <span className="charter-nav__label">{t('nav.label')}</span>
             {([
-              { id: 'overview' as const, label: t('nav.overview'), help: t('nav.overviewHelp') },
-              { id: 'objective' as const, label: t('nav.objective'), help: t('nav.objectiveHelp'), dot: projectedObjective !== null },
-              { id: 'invariants' as const, label: t('nav.invariants'), help: t('nav.invariantsHelp'), badge: invariants.length },
-              { id: 'deliverables' as const, label: t('nav.deliverables'), help: t('nav.deliverablesHelp'), badge: deliverables.length },
-              { id: 'history' as const, label: t('nav.history'), help: t('nav.historyHelp'), dot: bootstrapPhase !== 'idle' },
-              { id: 'context' as const, label: t('nav.context'), help: t('nav.contextHelp') },
-              { id: 'recovery' as const, label: t('nav.recovery'), help: t('nav.recoveryHelp') },
+              { id: 'workspace' as const, target: 'overview' as const, label: t('nav.workspace'), help: t('nav.workspaceHelp') },
+              { id: 'review' as const, target: 'history' as const, label: t('nav.review'), help: t('nav.reviewHelp'), badge: totalPending },
+              { id: 'diagnostics' as const, target: 'context' as const, label: t('nav.diagnostics'), help: t('nav.diagnosticsHelp') },
             ] as const).map(item => (
               <Fragment key={item.id}>
                 <button
                   type="button"
-                  className={`charter-nav__item${section === item.id ? ' is-active' : ''}`}
-                  aria-current={section === item.id ? 'page' : undefined}
+                  className={`charter-nav__item${area === item.id ? ' is-active' : ''}`}
+                  aria-current={area === item.id ? 'page' : undefined}
                   aria-describedby={`charter-nav-help-${item.id}`}
                   title={item.help}
-                  onClick={() => goSection(item.id)}
+                  onClick={() => goSection(item.target)}
                 >
                   <span className="charter-nav__text">{item.label}</span>
                   {'badge' in item && item.badge !== undefined && <span className="charter-nav__badge">{item.badge}</span>}
-                  {'dot' in item && item.dot === true && <span className="charter-nav__dot" aria-hidden="true" />}
                   <span
                     className="charter-nav__help"
                     data-tooltip={item.help}
@@ -1512,7 +1515,27 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
           </nav>
 
           <div className="charter-content">
-            {section === 'overview' && (
+            {area === 'workspace' && hasLocalWork && (
+              <section className="charter-card charter-section charter-changeset" aria-labelledby="charter-changeset-title">
+                <div className="charter-cardhead">
+                  <div className="charter-cardtitle">
+                    <span className="charter-kicker">{t('changeset.kicker')}</span>
+                    <h3 id="charter-changeset-title">{t('changeset.title')}</h3>
+                  </div>
+                  <span className="charter-count">{localWork.stagedOps}</span>
+                </div>
+                <div className="charter-changeset__body">
+                  <span>{t('changeset.ops', { count: localWork.stagedOps })}</span>
+                  <span>{t('changeset.prompt', {
+                    used: formatBytes(t, previewBytes),
+                    limit: formatBytes(t, view.limits.maxPromptBytes),
+                  })}</span>
+                  {editor !== null && <span>{t('changeset.editorOpen')}</span>}
+                </div>
+              </section>
+            )}
+
+            {area === 'workspace' && (
               <>
                 {bootstrapPhase === 'draft' && (
                   <button type="button" className="charter-callout" onClick={openHistory}>
@@ -1642,7 +1665,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
               </>
             )}
 
-            {section === 'objective' && (
+            {area === 'workspace' && (
               <>
                 <section className={`charter-card charter-objective${utf8Bytes(projectedObjective?.current.text ?? '') > view.limits.maxObjectiveBytes ? ' is-over' : ''}`}>
                   <div className="charter-cardhead">
@@ -1704,7 +1727,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
               </>
             )}
 
-            {section === 'invariants' && (
+            {area === 'workspace' && (
               <section className="charter-card charter-section">
                 <div className="charter-cardhead">
                   <div className="charter-cardtitle">
@@ -1775,7 +1798,57 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
               </section>
             )}
 
-            {section === 'deliverables' && (
+            {area === 'workspace' && dependencyPlan.length > 0 && (
+              <section className="charter-card charter-section" aria-labelledby="charter-dependency-title">
+                <div className="charter-cardhead">
+                  <div className="charter-cardtitle">
+                    <span className="charter-kicker">{t('deps.kicker')}</span>
+                    <h3 id="charter-dependency-title">{t('deps.title')}</h3>
+                  </div>
+                  <span className="charter-count">{dependencyPlan.length}</span>
+                </div>
+                <ol className="charter-dependency-list">
+                  {dependencyPlan.map(row => {
+                    const item = view.items.find(candidate => candidate.id === row.id)
+                    return (
+                      <li key={row.id} className={`charter-dependency is-${row.executionDisplay}`}>
+                        <span className="charter-dependency__key">{row.localKey}</span>
+                        <span className="charter-dependency__text">{item?.text ?? row.id}</span>
+                        <span className="charter-dependency__status">{t(`deps.status.${row.executionDisplay}`)}</span>
+                        {row.requires.length > 0 && (
+                          <span className="charter-dependency__requires">
+                            {t('deps.requires', { keys: row.requires.join(', ') })}
+                          </span>
+                        )}
+                        <select
+                          className="charter-dependency__select"
+                          multiple
+                          aria-label={t('deps.editAria', { key: row.localKey })}
+                          value={row.requiresIds}
+                          disabled={!editable || saving || unknownBlocked}
+                          onChange={event => draft.setDeliverableRequires(
+                            view,
+                            row.id,
+                            Array.from(event.target.selectedOptions, option => option.value),
+                          )}
+                        >
+                          {view.items.filter(candidate =>
+                            candidate.kind === 'deliverable'
+                            && candidate.review === 'accepted'
+                            && candidate.lifecycle === 'current'
+                            && candidate.id !== row.id,
+                          ).map(candidate => (
+                            <option key={candidate.id} value={candidate.id}>{candidate.text}</option>
+                          ))}
+                        </select>
+                      </li>
+                    )
+                  })}
+                </ol>
+              </section>
+            )}
+
+            {area === 'workspace' && (
               <section className="charter-card charter-section">
                 <div className="charter-cardhead">
                   <div className="charter-cardtitle">
@@ -1844,7 +1917,33 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
               </section>
             )}
 
-            {section === 'history' && (
+            {area === 'review' && (view.proposalBatches?.length ?? 0) > 0 && (
+              <section className="charter-card charter-section" aria-labelledby="charter-batches-title">
+                <div className="charter-cardhead">
+                  <div className="charter-cardtitle">
+                    <span className="charter-kicker">{t('review.kicker')}</span>
+                    <h3 id="charter-batches-title">{t('review.title')}</h3>
+                  </div>
+                  <span className="charter-count">{view.proposalBatches!.length}</span>
+                </div>
+                <ol className="charter-batch-list">
+                  {view.proposalBatches!.slice().reverse().map(batch => {
+                    const pending = batch.candidates.filter(candidate =>
+                      candidate.kind === 'item'
+                      && view.items.some(item => item.id === candidate.id && item.review === 'pending')).length
+                    return (
+                      <li key={batch.id} className="charter-batch">
+                        <span className="charter-batch__source">{t(`review.source.${batch.source.kind}`)}</span>
+                        <span className="charter-batch__revision">{t('review.captured', { revision: batch.capturedAtRevision })}</span>
+                        <span className="charter-batch__count">{t('review.pendingCandidates', { count: pending })}</span>
+                      </li>
+                    )
+                  })}
+                </ol>
+              </section>
+            )}
+
+            {area === 'review' && (
               <>
                 {bootstrapPhase === 'checking' && (
                   <div className="charter-notice">
@@ -2087,7 +2186,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
               </>
             )}
 
-            {section === 'recovery' && (
+            {area === 'diagnostics' && (
               <>
                 <section className="charter-card charter-recovery" aria-labelledby="charter-recovery-title">
                   <div className="charter-cardhead">
@@ -2316,7 +2415,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
               </>
             )}
 
-            {section === 'context' && (
+            {area === 'diagnostics' && (
               <section className="charter-card charter-preview">
                 <div className="charter-preview__meta">
                   <div className="charter-cardtitle">
