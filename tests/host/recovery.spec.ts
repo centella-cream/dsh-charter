@@ -1123,7 +1123,7 @@ describe('rc.5 forward-schema fence', () => {
     if (!healthyExport.ok) throw new Error('expected a healthy archive')
     const path = await findRecord(root, session.id)
     const original = JSON.parse(await readFile(path, 'utf8')) as CharterRecord
-    const future = { ...original, recordSchemaVersion: 2, futureOnlyField: { revision: 99 } }
+    const future = { ...original, recordSchemaVersion: 3, futureOnlyField: { revision: 99 } }
     const table = (service as unknown as {
       sessionsTable: { get: (id: string) => unknown; put: (id: string, value: unknown) => Promise<void> }
     }).sessionsTable
