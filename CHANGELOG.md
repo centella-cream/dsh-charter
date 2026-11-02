@@ -5,6 +5,22 @@ English | [中文](CHANGELOG.zh.md)
 All notable changes to `dsh-charter` are recorded here. The project follows a pre-1.0 version line while the
 DSH plugin ABI is still moving.
 
+## 0.2.0 — unreleased
+
+Workspace and dependency-plan upgrade. Versioning from this release onward uses plain increments
+(`0.2.0`, `0.2.1`, ...) and never an `rc` suffix.
+
+### Added
+
+- Three primary areas: Workspace, Review Center, and Diagnostics & Maintenance. Workspace surfaces the
+  current objective, invariants, dependency plan, and deliverables together.
+- Deliverable `requires` dependencies with canonical graph validation (self-edge, dangling reference,
+  inactive endpoint, and cycle rejection), derived prerequisite/readiness states, dependency-aware prompt
+  rendering with stable `D<n>` local keys, and an editable prerequisite selector.
+- Record schema v2 with in-memory v1 migration, proposal batches with typed source provenance, and a
+  bounded item query/`summary` Remote projection.
+- Review Center proposal-batch provenance and Change Set summary.
+
 ## 0.1.0-rc.6 — 2026-11-01
 
 Compatibility, UI, and observability candidate. No product runtime code path, record schema, Remote method, model tool, or domain change beyond DSH `0.2.1-rc.5` metadata and the shortened model-facing `charter_read` description.

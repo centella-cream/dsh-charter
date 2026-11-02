@@ -2,7 +2,7 @@
 
 English | [中文](verification.zh.md)
 
-Verification date: 2026-10-30. This is the current evidence record; historical per-commit narratives live in Git
+Verification date: 2026-11-03. Current source version: `0.2.0` (unreleased development). This is the current evidence record; historical per-commit narratives live in Git
 history and the Changelog. Temporary directories, profiles, tarballs, and fetched HTML live under `.tmp/` and are
 excluded from the published package.
 
@@ -21,7 +21,7 @@ Current release state (2026-10-30):
 | Item | Result |
 | --- | --- |
 | Strict TypeScript check | Pass on the current tree |
-| Vitest | 30 files / 379 tests pass (`npm test`, which builds first) |
+| Vitest | 33 files / 390 tests pass (`npm test`, which builds first) |
 | Host ESM build + browser factory bundle | Pass |
 | Remote contract and client smoke | Pass |
 | Normal package smoke | Pass |

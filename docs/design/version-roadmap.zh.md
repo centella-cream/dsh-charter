@@ -14,7 +14,7 @@
   → 0.1.0-rc.6（已验收；使用 recovery tag 发布）
   → 0.1.0 stable
   → 0.1.1（仅在 stable 后确有兼容补丁时）
-  → 0.2.0-alpha.1 ... 0.2.0-rc.1 → 0.2.0
+  → 0.2.0 开发线 → 0.2.0
 ```
 
 **`0.1.0-rc.5`** 已发布到 npm，是最新发布版本；其规范 GitHub tag/release 待恢复。**`0.1.0-rc.6`** 在验收前
@@ -200,7 +200,7 @@ rc.5 发布状态确定后进入 feature freeze。满足以下条件后发布 `0
 
 以下内容不进入 `0.1.1`：新 record 字段、新 Remote、新模型工具、新持久状态、新审阅工作流或大规模 UI 重构。这些属于 `0.2.0`。
 
-如果 `0.1.0` stable 后没有补丁需求，可以跳过 `0.1.1`，直接开始 `0.2.0-alpha.1`。
+如果 `0.1.0` stable 后没有补丁需求，可以跳过 `0.1.1`，直接开始 `0.2.0` 开发线。
 
 ## 7. `0.2.0` 产品定义
 
@@ -423,10 +423,10 @@ v1 item/proposal 的来源映射：可证明的 fork 保留 fork 引用；其余
 | 阶段 | 内容 | 退出条件 |
 | --- | --- | --- |
 | M0 合同探针与 ADR | message source、tool context、cursor、record v2、降级、授权矩阵与 UI slot | 冻结 schema、兼容、授权和迁移决策 |
-| `0.2.0-alpha.1` | Core v2、Change Set planner、v1/v2 parser、迁移测试 | v1 prompt 等价；首次 mutation 原子迁移 |
-| `0.2.0-alpha.2` | Review Center、query API、搜索筛选分页、消息 proposal、`charter_propose` | 所有新 proposal 有 provenance；512 条可用 |
+| `0.2.0` W1 | Core v2、Change Set planner、v1/v2 parser、迁移测试 | v1 prompt 等价；首次 mutation 原子迁移 |
+| `0.2.0` W2 | Review Center、query API、搜索筛选分页、消息 proposal、`charter_propose` | 所有新 proposal 有 provenance；512 条可用 |
 | `0.2.0-beta.1` | validator、integrity/validity、三中心 UI、Pane/store 重构 | 功能完整；开始 feature freeze |
-| `0.2.0-rc.1` | 迁移、降级、无障碍、性能、真实 profile、packed artifact | 仅接受发布阻断修复 |
+| `0.2.0` W3 | 迁移、降级、无障碍、性能、真实 profile、packed artifact | 仅接受发布阻断修复 |
 | `0.2.0` | stable artifact | 全部验收和文档完成 |
 
 alpha 阶段允许 schema 调整，但每次都要提供测试 fixture 迁移；beta 起冻结持久化与 Remote 主契约；rc 起冻结功能。

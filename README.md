@@ -14,6 +14,9 @@ English | [中文](README.zh.md)
 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). Goals, hard constraints, and
 deliverables stay visible across context compaction — and remain editable at any time.
 
+**Current development:** `0.2.0` on `feat/0.2.0-workspace`. Starting with `0.2.0`, package versions use plain
+increments and never an `rc` suffix.
+
 ![dsh-charter tab in a real Web profile](docs/assets/charter-pane.en.png)
 
 Dark theme and narrow-layout evidence: [dark](docs/assets/charter-pane.dark.png), [narrow](docs/assets/charter-pane.narrow.png).

@@ -16,7 +16,7 @@ The release path is:
   → 0.1.0-rc.6 (accepted; published with recovery tag)
   → 0.1.0 stable
   → 0.1.1 only if stable needs a compatible patch
-  → 0.2.0-alpha.1 ... 0.2.0-rc.1 → 0.2.0
+  → 0.2.0 development → 0.2.0
 ```
 
 **`0.1.0-rc.6`** is published and formally accepted; its GitHub Release uses recovery tag `v0.1.0-rc.6-republished`. **`0.1.0-rc.5`** is the previous accepted release and its canonical GitHub tag/release is pending restoration. `0.1.1-rc.1` remains a post-stable patch spelling, not another rc.6.
@@ -121,7 +121,7 @@ After rc.5 publication is resolved, enter feature freeze and publish `0.1.0` onl
 
 Any runtime, wire, storage, or recovery change found during stable preparation requires another `0.1.0-rc.N`.
 
-Do not pre-plan a `0.1.1` feature bundle. After stable, `0.1.1` is limited to compatible bug fixes, security updates, exact DSH compatibility, and contract-preserving performance/accessibility/copy or release fixes. Use `0.1.1-rc.1` only when such a patch needs candidate testing. If no patch is needed, skip it and start `0.2.0-alpha.1`.
+Do not pre-plan a `0.1.1` feature bundle. After stable, `0.1.1` is limited to compatible bug fixes, security updates, exact DSH compatibility, and contract-preserving performance/accessibility/copy or release fixes. Use `0.1.1-rc.1` only when such a patch needs candidate testing. If no patch is needed, skip it and start the `0.2.0` development line.
 
 ## 6. `0.2.0` Product Definition
 
@@ -248,10 +248,10 @@ For v1 item provenance, preserve provable fork references; map every other exist
 | Milestone | Scope | Exit condition |
 | --- | --- | --- |
 | M0 probes + ADR | Message/tool sources, cursors, record v2, downgrade, authorization matrix, UI slots | Freeze schema, compatibility, authorization, and migration decisions |
-| `0.2.0-alpha.1` | Core v2, Change Set planner, v1/v2 parser | Prompt equivalence and atomic first-mutation migration |
-| `0.2.0-alpha.2` | Review Center, query API, search/filter/page, message and tool proposals | Every new proposal has provenance; 512-item flow works |
+| `0.2.0` W1 | Core v2, Change Set planner, v1/v2 parser | Prompt equivalence and atomic first-mutation migration |
+| `0.2.0` W2 | Review Center, query API, search/filter/page, message and tool proposals | Every new proposal has provenance; 512-item flow works |
 | `0.2.0-beta.1` | Validators, integrity/validity, three-area UI, Pane/store refactor | Feature complete; feature freeze begins |
-| `0.2.0-rc.1` | Migration, downgrade, accessibility, performance, real profiles, artifact gates | Release blockers only |
+| `0.2.0` W3 | Migration, downgrade, accessibility, performance, real profiles, artifact gates | Release blockers only |
 | `0.2.0` | Stable artifact | All acceptance evidence and documentation complete |
 
 Alpha milestones may change the schema, but every change must ship fixture migrations. Beta freezes the persistent schema and primary Remote contracts; RC freezes features.

@@ -4,6 +4,20 @@
 
 记录 `dsh-charter` 的重要变更。DSH 插件 ABI 仍在演进，项目保持 pre-1.0 版本线。
 
+## 0.2.0 — 未发布
+
+工作区与依赖计划升级。从该版本起使用普通递增版本号（`0.2.0`、`0.2.1`……），不再使用 `rc` 后缀。
+
+### 新增
+
+- 三个一级区域：Workspace、Review Center、Diagnostics & Maintenance。Workspace 同时呈现当前目标、
+  硬约束、依赖计划和交付物。
+- 交付物 `requires` 依赖与 canonical 图校验（自依赖、悬空引用、inactive 端点、环拒绝），派生前置/就绪
+  状态，带稳定 `D<n>` 局部 key 的依赖感知 prompt，以及可编辑前置选择器。
+- record schema v2 与内存 v1 迁移、带类型来源的 proposal batch，以及有界 item query / `summary` Remote
+  投影。
+- Review Center 的 proposal batch 来源和 Change Set 摘要。
+
 ## 0.1.0-rc.6 — 2026-11-01
 
 兼容性、UI 与可观测性候选。除 DSH `0.2.1-rc.5` 元数据和缩短的模型可见 `charter_read` description 外，暂不包含产品运行时路径、record schema、Remote 方法、模型工具或 domain 变更。

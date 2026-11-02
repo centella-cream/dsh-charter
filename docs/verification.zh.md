@@ -20,7 +20,7 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 | 项目 | 结果 |
 | --- | --- |
 | TypeScript 严格检查 | 当前树通过 |
-| Vitest | 30 个测试文件 / 379 个测试通过（`npm test`，先 build） |
+| Vitest | 33 个测试文件 / 390 个测试通过（`npm test`，先 build） |
 | Host ESM 构建 + 浏览器 factory bundle | 通过 |
 | Remote 契约与 client smoke | 通过 |
 | 普通 package smoke | 通过 |
