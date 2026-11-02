@@ -56,6 +56,42 @@ describe('charter fork', () => {
     expect(JSON.stringify(child)).not.toContain('parent-mutation')
   })
 
+  it('remaps deliverable requirements into the child namespace', () => {
+    const identity = { createdAt: 1 }
+    const actor: CharterActor = { kind: 'owner' }
+    const request = normalizeEditRequest({
+      sessionId: 'parent',
+      mutationId: 'parent-requires',
+      baseRevision: 0,
+      ops: [
+        { type: 'item.add', item: { clientRef: 'a', kind: 'deliverable', text: 'Build', order: 0, progress: 'done' } },
+        { type: 'item.add', item: { clientRef: 'b', kind: 'deliverable', text: 'Release', order: 1, progress: 'not-started', requires: ['parent-a'] } },
+      ],
+    })
+    const parent = commitRecord({
+      record: createEmptyRecord(identity, limits),
+      request,
+      requestDigest: requestDigestOf(request, identity, actor),
+      ids: { a: 'parent-a', b: 'parent-b' },
+      actor,
+      at: 1,
+      limits,
+    })
+    const child = forkRecord({
+      parentSessionId: 'parent',
+      parent,
+      childIdentity: { createdAt: 2, parentSession: 'parent' },
+      ids: { 'parent-a': 'child-a', 'parent-b': 'child-b' },
+      mutationId: 'fork-parent-4',
+      at: 2,
+      limits,
+    })
+    expect(child.current.items.find(item => item.id === 'child-b')).toMatchObject({
+      requires: ['child-a'],
+    })
+    expect(child.current.promptText).toBe(parent.current.promptText)
+  })
+
   it('carries proposal batches into the child with fork provenance', () => {
     const identity = { createdAt: 1 }
     const actor: CharterActor = { kind: 'owner' }

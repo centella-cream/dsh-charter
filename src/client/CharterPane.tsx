@@ -777,6 +777,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   const activeDeliverables = activeItems(deliverables)
   const pendingDeliverables = pendingItems(deliverables)
   const pendingObjectiveProposals = (projected?.objectiveProposals ?? []).filter(proposal => proposal.review === 'pending')
+  const closedObjectiveProposals = (projected?.objectiveProposals ?? []).filter(proposal => proposal.review !== 'pending')
   const inactiveItems = projectedItems.filter(item =>
     item.lifecycle !== 'current' || item.review === 'rejected')
   const totalPending = pendingInvariants.length + pendingDeliverables.length + pendingObjectiveProposals.length
@@ -1941,6 +1942,32 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                       {(item.supersedes !== undefined || item.supersededBy !== undefined) && (
                         <span className="charter-timeline__lineage">{t('review.lineage')}</span>
                       )}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            {area === 'review' && closedObjectiveProposals.length > 0 && (
+              <section className="charter-card charter-section" aria-labelledby="charter-objective-history-title">
+                <div className="charter-cardhead">
+                  <div className="charter-cardtitle">
+                    <span className="charter-kicker">{t('review.kicker')}</span>
+                    <h3 id="charter-objective-history-title">{t('review.objectiveHistory')}</h3>
+                  </div>
+                  <span className="charter-count">{closedObjectiveProposals.length}</span>
+                </div>
+                <ul className="charter-timeline">
+                  {closedObjectiveProposals.map(proposal => (
+                    <li key={proposal.id} className="charter-timeline__row">
+                      <span className="charter-timeline__kind">{t('objective.kicker')}</span>
+                      <span className="charter-timeline__text">{proposal.text === '' ? proposal.textDigest ?? '' : proposal.text}</span>
+                      <span className="charter-timeline__state">{t(`review.proposal.${proposal.review}`)}</span>
+                      <span className="charter-timeline__lineage">
+                        {t('review.proposalRevision', {
+                          revision: proposal.appliedRevision ?? proposal.reviewedAtRevision ?? proposal.createdRevision,
+                        })}
+                      </span>
                     </li>
                   ))}
                 </ul>
