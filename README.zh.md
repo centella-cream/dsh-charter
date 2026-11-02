@@ -77,7 +77,8 @@
 - 三个一级区域（`0.2.0`）：Workspace 展示当前目标/硬约束/交付物，Review Center 展示提案批次和历史，
   Diagnostics & Maintenance 展示 prompt/恢复健康状态。
 - 交付物依赖计划：canonical `requires` 校验、派生就绪状态和依赖感知 prompt。
-- 带类型来源的 proposal batch、summary/item 查询投影，以及只创建待审提案的 `charter_propose` 工具。
+- 带类型来源的 proposal batch、objective proposal、带 `summary`/`watchSummary` 的 item/proposal/change 查询，
+  以及只创建待审提案的 `charter_propose` 工具。
 - 自解释导航（`rc.6`）：每个栏目都有悬停/聚焦 `?` 帮助徽标，展示一句话栏目说明。
 - 上下文预览支持“格式化 JSON / 精确文本”（`rc.6`）；格式化视图便于阅读，精确视图保留模型实际字节。
 - 只读 `charter_read` 工具（紧凑 standing 投影）；fork 一次性复制；重启、压缩、卸载、记录损坏和预算收紧时
@@ -309,7 +310,7 @@ npm run verify:compaction # 手工真实模型 compaction 校验（不在 check 
 ```
 
 测试覆盖纯内核、真实 Host 组合、storage domain、Remote framing、历史抽取、客户端状态和 factory bundle
-注册。当前树有 **392 个测试**；八版本矩阵在所有声明版本上通过。当前证据见[验证记录](docs/verification.zh.md)。
+注册。当前树有 **398 个测试**；八版本矩阵在所有声明版本上通过。当前证据见[验证记录](docs/verification.zh.md)。
 
 ## 致谢
 

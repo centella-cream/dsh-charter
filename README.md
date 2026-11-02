@@ -91,7 +91,8 @@ execution guards for restrictions that must be machine-enforced.
   proposal batches and history, and Diagnostics & Maintenance for prompt/recovery health.
 - Deliverable dependency plan with canonical `requires` validation, derived readiness states, and dependency-aware
   prompt projection.
-- Proposal batches with typed provenance, a summary/item query projection, and a pending-only `charter_propose` tool.
+- Proposal batches with typed provenance, objective proposals, item/proposal/change queries with `summary` and
+  `watchSummary`, and a pending-only `charter_propose` tool.
 - Self-explaining navigation (`rc.6`): every section has a hover/focus `?` help badge with a one-sentence purpose.
 - Context preview in Formatted JSON or Exact text mode (`rc.6`); formatted JSON is for reading, exact bytes remain visible.
 - Read-only `charter_read` tool with a compact standing projection; one-time fork copy; explicit degraded
@@ -349,7 +350,7 @@ npm run verify:compaction # manual real-model compaction check (not part of chec
 ```
 
 The test suite covers the pure core, real Host composition, storage-domain behavior, Remote framing,
-history extraction, client state, and factory-bundle registration. The current tree has **392 tests**; the eight-version matrix passes on all declared DSH versions. See the [verification record](docs/verification.md) for the current evidence.
+history extraction, client state, and factory-bundle registration. The current tree has **398 tests**; the eight-version matrix passes on all declared DSH versions. See the [verification record](docs/verification.md) for the current evidence.
 
 ## Acknowledgements
 

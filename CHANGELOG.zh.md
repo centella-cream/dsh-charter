@@ -14,8 +14,8 @@
   硬约束、依赖计划和交付物。
 - 交付物 `requires` 依赖与 canonical 图校验（自依赖、悬空引用、inactive 端点、环拒绝），派生前置/就绪
   状态，带稳定 `D<n>` 局部 key 的依赖感知 prompt，以及可编辑前置选择器。
-- record schema v2 与内存 v1 迁移、带类型来源的 proposal batch，以及有界 item query / `summary` Remote
-  投影。
+- record schema v2 与内存 v1 迁移、带类型来源的 proposal batch、objective proposal 生命周期，以及有界
+  item/proposal/change query 和 `summary`/`watchSummary` Remote 投影。
 - Review Center 的 proposal batch 来源和 Change Set 摘要。
 
 ## 0.1.0-rc.6 — 2026-11-01
