@@ -611,6 +611,31 @@ describe('dsh-charter host composition', () => {
     expect(all.items.map(item => item.text)).toContain('Hidden after archive')
   })
 
+  it('creates pending-only agent proposals through charter_propose', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-propose-tool-'))
+    roots.push(root)
+    const ctx = await mount(root)
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('propose-tool'), {
+      meta: { cwd: root, createdAt: 1_700_000_000_061 },
+    })
+    await waitForReady(service, session)
+    const tool = ctx.tools.get('charter_propose')
+    expect(tool).toBeDefined()
+    if (tool === undefined) throw new Error('unreachable')
+    const agent = { id: session.id, session } as Agent
+    const exec = { agent, signal: new AbortController().signal } as never
+    const result = await tool.execute({ items: [
+      { kind: 'invariant', text: 'Agent proposal' },
+      { kind: 'deliverable', text: 'Agent deliverable' },
+    ] }, exec) as { readonly ok: boolean }
+    expect(result.ok).toBe(true)
+    const view = service.view(session)
+    expect(view.items.every(item => item.review === 'pending')).toBe(true)
+    expect(view.promptText).toBe('')
+    expect(view.proposalBatches?.[0]?.source.kind).toBe('agent-tool')
+  })
+
   it('bounds the charter_read all debugging view', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-charter-read-all-'))
     roots.push(root)

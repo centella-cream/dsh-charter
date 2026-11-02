@@ -73,7 +73,7 @@ import {
   CHARTER_SESSIONS_TABLE,
   charterDomainSpec,
 } from './domain.js'
-import { defineCharterReadTool } from './tool.js'
+import { defineCharterProposeTool, defineCharterReadTool } from './tool.js'
 import type {
   CharterEditResult,
   CharterToolItem,
@@ -499,6 +499,7 @@ export class CharterService extends Service {
     }
     this.ctx.systemPrompt.context(registration)
     this.ctx.tools.register(defineCharterReadTool(this))
+    this.ctx.tools.register(defineCharterProposeTool(this))
 
     await Promise.all(this.ctx.agents.list().map(agent => this.initializeSessionSafely(agent.session, 'reattach')))
   }
@@ -1220,9 +1221,50 @@ export class CharterService extends Service {
     }
   }
 
+  async proposeFromAgent(session: Session, items: readonly {
+    readonly kind: 'invariant' | 'deliverable'
+    readonly text: string
+    readonly requires?: readonly string[]
+  }[]): Promise<{ readonly ok: boolean; readonly message?: string; readonly revision?: number }> {
+    if (items.length === 0) return { ok: false, message: 'at least one proposal is required' }
+    const view = this.view(session)
+    if (view.status !== 'ready') return { ok: false, message: 'Charter is not editable in its current state' }
+    const existingIds = new Set(view.items.map(item => item.id))
+    const ops: import('../core/schemas.js').CharterOp[] = items.map((input, index) => ({
+      type: 'item.propose',
+      item: input.kind === 'invariant'
+        ? {
+            clientRef: `proposal-${index}`,
+            kind: 'invariant',
+            text: input.text,
+            order: view.items.length + index,
+          }
+        : {
+            clientRef: `proposal-${index}`,
+            kind: 'deliverable',
+            text: input.text,
+            order: view.items.length + index,
+            progress: 'not-started',
+            ...(input.requires === undefined ? {} : {
+              requires: [...new Set(input.requires)].filter(id => existingIds.has(id)).sort(),
+            }),
+          },
+    }))
+    const result = await this.edit({
+      sessionId: session.id,
+      mutationId: `propose-${randomUUID()}`,
+      baseRevision: view.revision,
+      ops,
+    }, { kind: 'user' }, { kind: 'agent-tool', toolCallId: `propose-${randomUUID()}`, at: Date.now() })
+    return result.ok
+      ? { ok: true, revision: result.committedRevision }
+      : { ok: false, message: result.message }
+  }
+
   async edit(
     untrustedRequest: unknown,
     actor: CharterActor = { kind: 'owner' },
+    proposalSource?: import('../core/schemas.js').ProposalSource,
   ): Promise<CharterEditResult> {
     let request: CharterEditRequest
     try {
@@ -1300,6 +1342,7 @@ export class CharterService extends Service {
               actor,
               at: Date.now(),
               limits: this.config,
+              ...(proposalSource === undefined ? {} : { proposalSource }),
             })
             produced = true
             return nextRecord

@@ -52,3 +52,47 @@ export function defineCharterReadTool(charter: CharterService): ToolDefinition {
     },
   })
 }
+
+export function defineCharterProposeTool(charter: CharterService): ToolDefinition {
+  return defineTool({
+    name: 'charter_propose',
+    description:
+      'Create pending proposals for the current Session charter. This tool is not a write path: the user must '
+      + 'review and accept proposals in the Review Center. Only invariants and deliverables are allowed; objectives, '
+      + 'acceptance, archival, purge, and progress changes are not.',
+    parameters: {
+      items: {
+        type: 'array',
+        description: 'Pending invariant/deliverable proposals; max 16 items.',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            kind: { type: 'string', enum: ['invariant', 'deliverable'], required: true },
+            text: { type: 'string', required: true },
+            requires: { type: 'array', items: { type: 'string' } },
+          },
+        },
+      },
+    },
+    output: {
+      schema: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          ok: { type: 'boolean', required: true },
+          revision: { type: 'integer' },
+          message: { type: 'string' },
+        },
+      },
+      render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }],
+    },
+    isConcurrencySafe: () => false,
+    async execute(args, exec) {
+      const session = exec.agent?.session
+      if (session === undefined) throw new Error('charter_propose requires a live Agent session')
+      const items = Array.isArray(args.items) ? args.items.slice(0, 16) : []
+      return charter.proposeFromAgent(session, items as never)
+    },
+  })
+}
