@@ -2,8 +2,12 @@
 
 English | [中文](user-guide.zh.md)
 
+> **Status:** Active — current operating record.
+> **Version scope:** current development line.
+> **Baseline:** 2026-11-03
+
 This guide is for installing and using the plugin. For design constraints see the
-[design specification](design/charter-design.md); for version differences see the
+[design specification](design/charter-design-v1.md); for version differences see the
 [compatibility matrix](design/compatibility.md).
 
 ## 1. Before installing

@@ -2,6 +2,10 @@
 
 English | [中文](releasing.zh.md)
 
+> **Status:** Active — current operating record.
+> **Version scope:** current development line.
+> **Baseline:** 2026-11-03
+
 This is the current release checklist. It replaces the older per-rc staging notes. Published tags, GitHub
 Releases, and npm versions are immutable: never move a tag, delete a published release, or rebuild bytes after
 tagging.

@@ -2,6 +2,10 @@
 
 English | [中文](verification.zh.md)
 
+> **Status:** Active — current operating record.
+> **Version scope:** current development line.
+> **Baseline:** 2026-11-03
+
 Verification date: 2026-11-03. Current source version: `0.2.0` (unreleased development). This is the current evidence record; historical per-commit narratives live in Git
 history and the Changelog. Temporary directories, profiles, tarballs, and fetched HTML live under `.tmp/` and are
 excluded from the published package.

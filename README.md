@@ -366,17 +366,20 @@ Their ideas informed the design review; no source code is copied, and these proj
 
 ## Documentation
 
-- [Design specification](docs/design/charter-design.md)
+- [Documentation index and conventions](docs/README.md)
+- [Design specification (v1)](docs/design/charter-design-v1.md)
+- [0.2 workspace topic design](docs/design/charter-workspace-v2.zh.md)
 - [User and operator guide](docs/user-guide.md)
 - [Compatibility matrix](docs/design/compatibility.md)
 - [Verification record](docs/verification.md)
 - [Release notes](docs/release-notes/README.md)
 - [Version roadmap](docs/design/version-roadmap.md)
 - [Release checklist](docs/releasing.md)
-- Historical design/research notes remain under `docs/design/` and `docs/research/` but are not current
-  operating instructions.
+- Historical designs, reviews, and release plans are frozen under `docs/history/`; research notes remain under
+  `docs/research/`. Neither is current operating instruction. Active designs live under `docs/design/`.
 
-Every long-form document has an English and Chinese version, linked at the top of each page.
+Long-form documents are paired English/Chinese unless the header marks a Chinese-only topic design (for example the
+0.2 workspace topic design).
 
 ## Contributing
 

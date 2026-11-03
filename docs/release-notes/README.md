@@ -1,5 +1,9 @@
 # Release notes
 
+> **Status:** Active — release-note index.
+> **Version scope:** all release notes.
+> **Authority:** [version roadmap](../design/version-roadmap.md).
+
 The latest published release is [0.1.0-rc.6](0.1.0-rc.6.md). [0.2.0](0.2.0.md) is the current development candidate
 (not published); [0.1.0-rc.5](0.1.0-rc.5.md) is the previous accepted release.
 

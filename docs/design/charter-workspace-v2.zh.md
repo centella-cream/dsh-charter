@@ -1,16 +1,14 @@
 # `dsh-charter` 0.2 会话契约工作区设计
 
-> 状态：设计草案，尚未形成实现承诺。
->
-> 基准日期：2026-11-02。
->
-> 适用版本：`0.2.0-alpha.1` 至 `0.2.0`。
->
-> 权威边界：[版本路线](version-roadmap.zh.md)决定版本范围，[现行设计](charter-design.zh.md)决定 0.1
-> 不变量。本文细化 0.2 的产品、数据和交互方案；发生冲突时，先修订权威文档，再进入实现。
->
-> 专题范围：本文只设计 Workspace、Proposal 时间线和 deliverable 依赖，不重新定义完整的 0.2 发布范围。
-> Evidence Integrity、Fact Validity、validator 和路线图中的其他支柱仍是 0.2 的独立必交项。
+> **状态：** Implemented — pending release acceptance。0.2.0 工作区核心已实现并通过源码验收；发布/人工门禁
+> 尚未完成。
+> **版本范围：** `0.2.0`（从该版本起不再使用 `rc` 后缀）。
+> **基准：** 2026-11-02；最后复核 2026-11-03。
+> **权威边界：** [版本路线](version-roadmap.zh.md)决定版本范围，[v1 核心设计](charter-design-v1.zh.md)
+> 决定不变量。本文只细化 Workspace、Proposal 时间线和 deliverable 依赖；发生冲突时先修订权威文档。
+> **专题范围：** 本文不重新定义完整 0.2 发布范围。Evidence Integrity、Fact Validity、validator 和路线图中
+> 的其他支柱仍是 0.2 的独立必交项。
+> **替代/被替代：** 取代 v1 工作区交互；被替代时保留为历史文档。
 
 ## 1. 决策摘要
 

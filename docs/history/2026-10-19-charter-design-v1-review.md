@@ -1,16 +1,22 @@
 # `dsh-charter` v1 Design Review
 
-English | [中文](charter-design-review.zh.md)
+English | [中文](2026-10-19-charter-design-v1-review.zh.md)
+
+> **Status:** Historical — frozen v1 design review; not current guidance.
+> **Version scope:** 0.1 baseline.
+> **Baseline:** 2026-10-19
+> **Authority:** current core invariants are in [charter-design-v1.md](../design/charter-design-v1.md).
+> **Supersedes / Superseded by:** original untracked v1 draft / current v1 design specification.
 
 Research baseline: 2026-10-19.
 
 Reviewed: the original v1 design draft (Chinese, archived locally and intentionally not tracked by git). The
-revised implementation specification is [charter-design.md](charter-design.md); factual research is in
+revised implementation specification is [charter-design-v1.md](../design/charter-design-v1.md); factual research is in
 [charter-research.md](../research/charter-research.md).
 
 > Post-implementation update (2026-10-20): the minimum supported version is DSH `0.1.7-rc.2`; product
 > priority is `0.2.0-rc.1+`. `0.1.7` / `0.2.0` Gateways have no `@Remote.resources` / `Principal`; per-Peer
-> resource authorization starts at `0.2.1`. See [compatibility.md](compatibility.md). `0.1.5-rc.1` and earlier
+> resource authorization starts at `0.2.1`. See [compatibility.md](../design/compatibility.md). `0.1.5-rc.1` and earlier
 > are incompatible because of breaking Remote codec, event-payload, and sidebar-API changes.
 
 ## 1. Conclusion

@@ -2,6 +2,12 @@
 
 English | [中文](compatibility.zh.md)
 
+> **Status:** Active — compatibility claims for the declared DSH versions.
+> **Version scope:** all declared DSH versions.
+> **Baseline:** 2026-11-03
+> **Authority:** [version roadmap](version-roadmap.md) for release scope; the matrix below for compatibility.
+> **Supersedes / Superseded by:** none / none
+
 Research/verification baseline: 2026-10-30.
 
 This document answers three questions:

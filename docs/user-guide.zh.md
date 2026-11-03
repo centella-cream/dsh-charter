@@ -2,7 +2,11 @@
 
 [English](user-guide.md) | 中文
 
-本文面向安装和使用插件的用户。设计约束见[设计规格](design/charter-design.zh.md)，版本差异见
+> **状态：** Active — 当前操作记录。
+> **版本范围：** 当前开发线。
+> **基准：** 2026-11-03
+
+本文面向安装和使用插件的用户。设计约束见[设计规格](design/charter-design-v1.zh.md)，版本差异见
 [兼容矩阵](design/compatibility.zh.md)。
 
 ## 1. 安装前检查

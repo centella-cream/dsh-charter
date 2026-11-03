@@ -7,7 +7,7 @@
 
 ## 开始之前
 
-先阅读[设计规格](docs/design/charter-design.zh.md)，重点确认：
+先阅读[设计规格](docs/design/charter-design-v1.zh.md)，重点确认：
 
 - 用户正文必须保持 **user role**；
 - 模型不能获得写能力；
@@ -84,3 +84,5 @@ docs: clarify budget overflow
 ## 许可证
 
 提交贡献即表示你同意以 MIT License 授权该贡献。
+
+文档变更必须遵循 [docs/README.md](docs/README.md)（命名、状态块和链接同步）。

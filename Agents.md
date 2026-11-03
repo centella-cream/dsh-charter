@@ -9,7 +9,7 @@ instead.
 
 `dsh-charter` is a DSH plugin: a Host service plus `@Remote` methods, a React Pane, a pure core, and verification
 scripts. Records live in the `dsh_charter_v1` storage domain and must survive compaction. Product invariants that
-every change must preserve (see `docs/design/charter-design.md`, `CONTRIBUTING.md`): user-authored text stays
+every change must preserve (see `docs/design/charter-design-v1.md`, `CONTRIBUTING.md`): user-authored text stays
 user-role; the model has no write capability; one Apply is one atomic record update; overflow is visible, never
 silently truncated; the browser bundle stays a single self-contained factory; the compatibility layer stays small.
 
@@ -21,8 +21,8 @@ silently truncated; the browser bundle stays a single self-contained factory; th
 - **Versioning from `0.2.0` onward:** never use an `rc` suffix. Use plain increments such as `0.2.0`, `0.2.1`,
   `0.2.2`; no `0.2.0-rc.1`, no `0.2.1-rc.1`. Internal design-stage labels may use alpha/beta only if they are
   explicitly not package versions.
-- `docs/design/rc5-stabilization-plan.md` owns rc.5 implementation and acceptance. rc.5 is product-correctness
-  and release hardening; it adds no 0.2 capability.
+- `docs/history/2026-10-27-release-0.1.0-rc.5-plan.md` records the completed rc.5 plan. rc.5 was product-correctness
+  and release hardening; it added no 0.2 capability.
 - The published rc.4 Git tag, GitHub Release assets, and npm version are immutable. Fix forward with a new
   version; never move, retag, or republish a published version.
 - Version numbers, dates, test counts, digests, and "current release" statements are dynamic. Re-read them from
@@ -32,13 +32,34 @@ silently truncated; the browser bundle stays a single self-contained factory; th
 
 | Task involves | Read first |
 | --- | --- |
-| Version choice, scope, what belongs in a release | `docs/design/version-roadmap.md` + `rc5-stabilization-plan.md` |
+| Version choice, scope, what belongs in a release | `docs/design/version-roadmap.md` + `docs/history/2026-10-27-release-0.1.0-rc.5-plan.md` |
 | Tagging, CI-green ordering, npm publish, channels | `docs/releasing.md` |
 | Claims about tests, hashes, coverage, compatibility evidence | `docs/verification.md` |
 | Adding or removing a supported DSH version | `docs/design/compatibility.md` + `package.json` |
 | User install/update instructions (Web, Desktop, tarball) | `README.md` §Install/§Update and `README.zh.md` |
-| Design constraints on schema, prompt, storage, client | `docs/design/charter-design.md` |
+| Design constraints on schema, prompt, storage, client | `docs/design/charter-design-v1.md` |
 | Dev commands, PR expectations, commit style | `CONTRIBUTING.md` |
+
+## Documentation conventions
+
+Read [docs/README.md](docs/README.md) before adding, renaming, or retiring a design, plan, review, or release note.
+
+- **Status is mandatory.** Every design/plan/review starts with the standard status block: `Status`, `Version
+  scope`, `Baseline`, `Authority`, and `Supersedes / Superseded by`. Use only `Active`,
+  `Implemented — pending release acceptance`, `Historical`, `Superseded`, or `Archived (local)`.
+- **Naming is stable and descriptive.** Active product design is `docs/design/<product>-v<major>.md`; a
+  Chinese-only topic design is `docs/design/<topic>-v<major>.zh.md`; release notes are
+  `docs/release-notes/<semver>.md`. Do not create ambiguous `*-plan.md`/`*-review.md` files under
+  `docs/design/`.
+- **History is tracked separately.** Completed or superseded material moves to `docs/history/` with a
+  `YYYY-MM-DD-` prefix. Never delete a historical decision merely because it is inactive. `docs/archive/` is
+  local git-ignored scratch, never authoritative.
+- **One move, all links.** A rename/status change updates the document header, [docs/README.md](docs/README.md),
+  every inbound link, and README/CONTRIBUTING pointers in the same commit.
+- **Language pairing.** English uses the default filename; Chinese appends `.zh.md`. If one side is normative,
+  say so in the header and keep both sides link-consistent.
+- **No unrequested history rewriting.** Archive historical files by move/add with a status note; do not rewrite
+  their conclusions. Do not push, tag, or publish without explicit approval.
 
 ## Lessons from this project's recent releases
 
@@ -120,8 +141,8 @@ rollback/old-record behavior (rc.2 isolation, rc.3 re-read, forward-schema fence
 
 ### 7. Branch and commit discipline
 
-The worktree may hold uncommitted user-authored plan/docs/source changes (currently the rc.5 plan, version
-roadmap, README updates, and source edits). Those are user property, not scratch work.
+The worktree may hold uncommitted user-authored plan/docs/source changes (for example historical plans under
+`docs/history/`, the 0.2 design, README updates, and source edits). Those are user property, not scratch work.
 
 **Rule:** never revert, stash, clean, or rewrite uncommitted user work without explicit consent (no
 `git checkout -- .`, `git reset --hard`, `git clean`). Do release work on the release branch, keep commits
@@ -174,7 +195,7 @@ version that is not yet tracked**. This is a release requirement, not optional e
 
 ## Pre-ship checklist
 
-- [ ] Scope matches the version boundary in the roadmap; rc.5 contains no 0.2 capability.
+- [ ] Scope matches the version boundary in `docs/design/version-roadmap.md`; active docs carry current status headers.
 - [ ] `npm ci && npm run check` passes on the final tree (typecheck, build, remote/client smoke, Vitest).
 - [ ] Compatibility regression covers every declared DSH version **and** the current untracked npm `latest`/`next`
       versions; evidence records Node/npm and every resolved DSH package; a failing minimum/current version blocks push.

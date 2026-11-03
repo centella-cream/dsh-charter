@@ -1,6 +1,13 @@
 # `dsh-charter` Design Specification
 
-English | [中文](charter-design.zh.md)
+English | [中文](charter-design-v1.zh.md)
+
+> **Status:** Active — core invariants for the 0.1 line; the 0.2 delta is tracked in the
+> [workspace topic design](charter-workspace-v2.zh.md).
+> **Version scope:** 0.1 baseline; the invariants remain authoritative for 0.2.
+> **Baseline:** 2026-10-20
+> **Authority:** [version roadmap](version-roadmap.md); Chinese specification is normative.
+> **Supersedes / Superseded by:** none / none
 
 > Position: keep the goals, hard constraints, and deliverables the user explicitly confirmed for the current
 > session, and deterministically rebuild them from an independent authoritative record before every model
@@ -11,12 +18,12 @@ Research baseline: 2026-10-20. Target contract baseline: DSH `0.2.1-rc.5`; minim
 
 Related documents:
 
-- [v1 review](charter-design-review.md)
+- [v1 review](../history/2026-10-19-charter-design-v1-review.md)
 - [Research notes](../research/charter-research.md)
 - [Compatibility matrix](compatibility.md)
 - [Verification record](../verification.md)
 
-The English and Chinese specifications ([charter-design.zh.md](charter-design.zh.md)) are maintained together.
+The English and Chinese specifications ([charter-design-v1.zh.md](charter-design-v1.zh.md)) are maintained together.
 The Chinese document contains additional implementation detail; this English document mirrors every normative
 decision.
 

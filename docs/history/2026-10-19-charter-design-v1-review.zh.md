@@ -1,15 +1,21 @@
 # `dsh-charter` v1 设计评审
 
-[English](charter-design-review.md) | 中文
+[English](2026-10-19-charter-design-v1-review.md) | 中文
+
+> **状态：** Historical — 冻结的 v1 设计评审；不作为当前指导。
+> **版本范围：** 0.1 基线。
+> **基准：** 2026-10-19
+> **权威：** 当前核心不变量见 [charter-design-v1.zh.md](../design/charter-design-v1.zh.md)。
+> **替代/被替代：** 原始未跟踪 v1 草稿 / 当前 v1 设计规格。
 
 调研基准日：2026-10-19。
 
 评审对象：v1 设计稿（中文，本地归档，不纳入 git 跟踪）。修订后的实现规格见
-[charter-design.zh.md](charter-design.zh.md)，事实调研见 [charter-research.zh.md](../research/charter-research.zh.md)。
+[charter-design-v1.zh.md](../design/charter-design-v1.zh.md)，事实调研见 [charter-research.zh.md](../research/charter-research.zh.md)。
 
 > 实现后更新（2026-10-20）：最低支持版本定为 DSH `0.1.7-rc.2`，产品上优先适配 `0.2.0-rc.1+`。`0.1.7` /
 > `0.2.0` 的 Gateway 没有 `@Remote.resources` / `Principal`，per-Peer 资源授权从 `0.2.1` 起提供；降级和
-> 版本矩阵见 [compatibility.zh.md](compatibility.zh.md)。`0.1.5-rc.1` 及更早版本因 Remote 编解码、事件负载
+> 版本矩阵见 [compatibility.zh.md](../design/compatibility.zh.md)。`0.1.5-rc.1` 及更早版本因 Remote 编解码、事件负载
 > 和侧栏 API 的破坏性变化不兼容。
 
 ## 1. 结论

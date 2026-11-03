@@ -7,7 +7,7 @@ contributions are focused bug reports, compatibility data, and changes that pres
 
 ## Before you start
 
-Read the [design specification](docs/design/charter-design.md), especially:
+Read the [design specification](docs/design/charter-design-v1.md), especially:
 
 - user-authored text must remain **user role**;
 - the model must not gain write capability;
@@ -82,3 +82,5 @@ Do not open a public issue for a suspected vulnerability. Follow [SECURITY.md](S
 ## License
 
 By contributing, you agree that your contribution is licensed under the MIT License.
+
+Documentation changes must follow [docs/README.md](docs/README.md) (naming, status blocks, and link updates).

@@ -325,16 +325,19 @@ npm run verify:compaction # 手工真实模型 compaction 校验（不在 check 
 
 ## 文档
 
-- [设计规格](docs/design/charter-design.zh.md)
+- [文档索引与规范](docs/README.zh.md)
+- [设计规格（v1）](docs/design/charter-design-v1.zh.md)
+- [0.2 工作区专题设计](docs/design/charter-workspace-v2.zh.md)
 - [使用与运维指南](docs/user-guide.zh.md)
 - [兼容矩阵](docs/design/compatibility.zh.md)
 - [验证记录](docs/verification.zh.md)
 - [发布说明](docs/release-notes/README.md)
 - [版本路线](docs/design/version-roadmap.zh.md)
 - [发布清单](docs/releasing.zh.md)
-- 历史设计/调研文档仍保留在 `docs/design/` 和 `docs/research/`，但不再是当前操作说明。
+- 历史设计、评审和发布方案冻结在 `docs/history/`；调研记录仍在 `docs/research/`，两者都不是当前操作说明。
+  当前设计保留在 `docs/design/`。
 
-所有长文档都有中英文版本，页首可切换。
+长文档默认中英文成对；页首标注为纯中文专题设计的文档除外（例如 0.2 工作区专题设计）。
 
 ## 贡献
 

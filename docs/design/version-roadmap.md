@@ -3,6 +3,12 @@
 English | [中文](version-roadmap.zh.md)
 
 > This English file is a non-normative summary. The Chinese roadmap is normative when details differ.
+>
+> **Status:** Active — version and scope authority.
+> **Version scope:** 0.1 history and current 0.2 development line.
+> **Baseline:** 2026-10-30; current development line `0.2.0` (no `rc` suffixes from 0.2.0 onward).
+> **Authority:** Chinese [version-roadmap.zh.md](version-roadmap.zh.md) is normative for scope.
+> **Supersedes / Superseded by:** none / none
 
 Baseline date: 2026-10-30.
 
@@ -35,6 +41,8 @@ rc.5 fixed the correctness defect inside the promised 0.1 workflow: previously e
 - rc.4 remains a historical published compatibility patch and is immutable.
 - `main` contains the token-publish workflow used by the remaining promotion path. Published rc.4 history is
   never rewritten.
+- Active development: `0.2.0` on `feat/0.2.0-workspace`; no tag/Release/npm publication exists. From `0.2.0`
+  onward package versions use plain increments and never an `rc` suffix.
 
 ## 3. Why rc.5
 
@@ -48,7 +56,7 @@ The confirmed review defect is in the `0.1.0` candidate scope, so it belongs in 
 
 ## 4. `0.1.0-rc.5` Scope
 
-rc.5 is limited to review correctness, forward-schema safety, interaction safety, and stable-release evidence. It adds no domain capability. **Status: complete and frozen; the implementation plan is historical.** See [rc5-stabilization-plan.md](rc5-stabilization-plan.md) and the [verification record](../verification.md).
+rc.5 is limited to review correctness, forward-schema safety, interaction safety, and stable-release evidence. It adds no domain capability. **Status: complete and frozen; the implementation plan is historical.** See the [historical release plan](../history/2026-10-27-release-0.1.0-rc.5-plan.md) and the [verification record](../verification.md).
 
 ### 4.1 Mandatory review of history candidates
 

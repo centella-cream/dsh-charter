@@ -2,8 +2,14 @@
 
 English | [中文](charter-research.zh.md)
 
+> **Status:** Historical — research snapshot; not current decisions.
+> **Version scope:** v1 research baseline.
+> **Baseline:** 2026-10-19
+> **Authority:** current product decisions are in [charter-design-v1.md](../design/charter-design-v1.md).
+> **Supersedes / Superseded by:** none / none
+
 Research baseline: 2026-10-19. DSH and external products continue to change; this document records only facts
-verified in this round. Product decisions are in [charter-design.md](../design/charter-design.md).
+verified in this round. Product decisions are in [charter-design-v1.md](../design/charter-design-v1.md).
 
 ## 1. Question and source levels
 

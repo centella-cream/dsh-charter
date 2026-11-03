@@ -2,8 +2,14 @@
 
 [English](charter-research.md) | 中文
 
+> **状态：** Historical — 调研快照；不作为当前决策。
+> **版本范围：** v1 调研基线。
+> **基准：** 2026-10-19
+> **权威：** 当前产品决策见 [charter-design-v1.zh.md](../design/charter-design-v1.zh.md)。
+> **替代/被替代：** 无 / 无
+
 调研基准日：2026-10-19。DSH 和外部产品都在持续迭代，本文只记录本次可核对的事实；我方取舍见
-[charter-design.zh.md](../design/charter-design.zh.md)。
+[charter-design-v1.zh.md](../design/charter-design-v1.zh.md)。
 
 ## 1. 调研问题与来源等级
 

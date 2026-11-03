@@ -1,6 +1,12 @@
 # `dsh-charter` 设计规格
 
-[English](charter-design.md) | 中文
+[English](charter-design-v1.md) | 中文
+
+> **状态：** Active — 0.1 核心不变量；0.2 增量见[工作区专题设计](charter-workspace-v2.zh.md)。
+> **版本范围：** 0.1 基线；核心不变量继续适用于 0.2。
+> **基准：** 2026-10-20
+> **权威：** [版本路线](version-roadmap.zh.md)；中文规格为 normative。
+> **替代/被替代：** 无 / 无
 
 > 定位：保存当前会话中用户明确确认的目标、硬约束和交付物，并在每次模型请求前从独立正本确定性重建。
 > 压缩可以改写历史摘要，不能成为会话契约的写入者或恢复来源。
@@ -9,7 +15,7 @@
 
 相关文档：
 
-- [v1 评审](charter-design-review.zh.md)
+- [v1 评审](../history/2026-10-19-charter-design-v1-review.zh.md)
 - [调研记录](../research/charter-research.zh.md)
 
 实现状态：MVP Host、纯内核、JSON storage 组合、Remote contract 和主对话页标签页 Client 已完成实现并通过版本矩阵
