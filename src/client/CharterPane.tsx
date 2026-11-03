@@ -1817,6 +1817,13 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                     >
                       {t('composer.addInvariant')}
                     </ActionButton>
+                    <ActionButton
+                      variant="outline"
+                      disabled={!editable || !normalizedNonEmpty(newInvariant) || normalizedBytes(newInvariant) > view.limits.maxItemBytes}
+                      onClick={() => draft.addProposal(view, 'invariant', newInvariant, () => draft.setNewInvariant(''))}
+                    >
+                      {t('composer.proposeInvariant')}
+                    </ActionButton>
                   </div>
                 </div>
                 {editor !== null && editor.kind !== 'objective' && invariants.some(item => item.id === editor.item.id) && (
@@ -1944,6 +1951,13 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                       onClick={() => draft.addItem(view, 'deliverable', newDeliverable, () => draft.setNewDeliverable(''))}
                     >
                       {t('composer.addDeliverable')}
+                    </ActionButton>
+                    <ActionButton
+                      variant="outline"
+                      disabled={!editable || !normalizedNonEmpty(newDeliverable) || normalizedBytes(newDeliverable) > view.limits.maxItemBytes}
+                      onClick={() => draft.addProposal(view, 'deliverable', newDeliverable, () => draft.setNewDeliverable(''))}
+                    >
+                      {t('composer.proposeDeliverable')}
                     </ActionButton>
                   </div>
                 </div>

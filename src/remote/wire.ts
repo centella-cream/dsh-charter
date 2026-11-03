@@ -3,6 +3,7 @@ import type { RemoteResult, RemoteStreamHandle } from '@deepseek-ai/dsh-typert-p
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import {
   charterEditRequestSchema,
+  charterBootstrapApplyRequestSchema,
   charterInitializeRequestSchema,
   charterItemSchema,
   charterChangeSchema,
@@ -13,6 +14,7 @@ import {
 } from '../core/schemas.js'
 import type {
   CharterEditRequest,
+  CharterBootstrapApplyRequest,
   CharterInitializeRequest,
   CharterRestoreRequest,
 } from '../core/schemas.js'
@@ -297,6 +299,7 @@ export const charterInitializeRequestWireSchema = charterInitializeRequestSchema
 export const charterRestoreRequestWireSchema = charterRestoreRequestSchema
 
 export const charterBootstrapProposalSchema = z.object({
+  draftHandle: z.string().optional(),
   objective: z.string().nullable(),
   invariants: z.array(z.string()),
   deliverables: z.array(z.string()),
@@ -343,7 +346,7 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
       request: CharterEditRequest,
     ) => Promise<RemoteResult<CharterEditResult>>
     'charter/applyBootstrap': (
-      request: CharterEditRequest,
+      request: CharterBootstrapApplyRequest,
     ) => Promise<RemoteResult<CharterEditResult>>
     'charter/bootstrap': (
       sessionId: SessionId,
@@ -369,7 +372,7 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
         request: CharterEditRequest,
       ) => Promise<RemoteResult<CharterEditResult>>
       applyBootstrap: (
-        request: CharterEditRequest,
+        request: CharterBootstrapApplyRequest,
       ) => Promise<RemoteResult<CharterEditResult>>
       bootstrap: (
         sessionId: SessionId,
@@ -398,5 +401,5 @@ export type {
   CharterView,
 }
 export type { CharterRecordState, CharterViewCapabilities }
-export { charterEditRequestSchema }
+export { charterBootstrapApplyRequestSchema, charterEditRequestSchema }
 export type { CharterInitializeRequest as CharterInitializeRequestWire, CharterRestoreRequest as CharterRestoreRequestWire }

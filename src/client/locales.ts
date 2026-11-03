@@ -227,7 +227,9 @@ const en = {
   'composer.placeholderInvariant': 'Add a constraint that must remain visible...',
   'composer.placeholderDeliverable': 'Add a concrete outcome to deliver...',
   'composer.addInvariant': 'Add invariant',
+  'composer.proposeInvariant': 'Save as proposal',
   'composer.addDeliverable': 'Add deliverable',
+  'composer.proposeDeliverable': 'Save as proposal',
   'composer.stageItem': 'Stage item',
 
   'preview.title': 'Model context after Apply',
@@ -663,7 +665,9 @@ const zh: Record<CharterLocaleKey, string> = {
   'composer.placeholderInvariant': '添加一条必须持续可见的硬约束...',
   'composer.placeholderDeliverable': '添加一项具体交付物...',
   'composer.addInvariant': '添加硬约束',
+  'composer.proposeInvariant': '保存为提案',
   'composer.addDeliverable': '添加交付物',
+  'composer.proposeDeliverable': '保存为提案',
   'composer.stageItem': '暂存条目',
 
   'preview.title': '应用后模型收到的上下文',

@@ -1349,11 +1349,13 @@ describe('charter bootstrap', () => {
     expect(result.proposal.invariants).toEqual([])
     expect(result.proposal.deliverables).toEqual(['Verify the tab.'])
     expect(result.proposal.source.shadowedTokens).toBe(42)
+    const draftHandle = result.proposal.draftHandle!
 
     const applied = await service.applyBootstrap({
       sessionId: session.id,
       mutationId: 'bootstrap-apply-source',
       baseRevision: 0,
+      draftHandle,
       ops: [{ type: 'item.propose', item: { clientRef: 'bootstrap-del-0', kind: 'deliverable', text: 'Verify the tab.', order: 0, progress: 'not-started' } }],
     })
     expect(applied).toMatchObject({ ok: true })
@@ -1367,6 +1369,7 @@ describe('charter bootstrap', () => {
       sessionId: session.id,
       mutationId: 'bootstrap-forged',
       baseRevision: 1,
+      draftHandle,
       ops: [{ type: 'item.propose', item: { clientRef: 'f', kind: 'invariant', text: 'Forged text', order: 1 } }],
     })
     expect(forged).toMatchObject({ ok: false, code: 'INVALID_ARGUMENT' })
@@ -1376,6 +1379,7 @@ describe('charter bootstrap', () => {
       sessionId: session.id,
       mutationId: 'bootstrap-edited',
       baseRevision: 1,
+      draftHandle,
       ops: [{
         type: 'item.propose',
         item: { clientRef: 'bootstrap-del-0', kind: 'deliverable', text: 'Edited tab check', order: 1, progress: 'not-started' },
@@ -1388,8 +1392,18 @@ describe('charter bootstrap', () => {
       sessionId: session.id,
       mutationId: 'bootstrap-objective-propose',
       baseRevision: 2,
+      draftHandle,
       ops: [{ type: 'objective.propose', clientRef: 'o', text: 'Forged objective' }],
     })
     expect(objective).toMatchObject({ ok: false, code: 'INVALID_ARGUMENT' })
+
+    const staleHandle = await service.applyBootstrap({
+      sessionId: session.id,
+      mutationId: 'bootstrap-stale-handle',
+      baseRevision: 2,
+      draftHandle: 'sha256:stale',
+      ops: [{ type: 'item.propose', item: { clientRef: 'bootstrap-del-0', kind: 'deliverable', text: 'Stale', order: 2, progress: 'not-started' } }],
+    })
+    expect(staleHandle).toMatchObject({ ok: false, code: 'INVALID_ARGUMENT' })
   })
 })

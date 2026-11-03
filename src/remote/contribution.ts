@@ -3,6 +3,7 @@ import { z } from 'zod'
 import {
   charterBootstrapResultSchema,
   charterEditRequestSchema,
+  charterBootstrapApplyRequestSchema,
   charterEditResultSchema,
   charterFrameSchema,
   charterInitializeRequestWireSchema,
@@ -137,8 +138,8 @@ export const charterRemoteContribution: TypertRemoteContribution = {
       source: 'json',
       codec: {
         mode: 'strict',
-        typeSymbol: 'dsh-charter/CharterEditRequest',
-        create: () => charterEditRequestSchema,
+        typeSymbol: 'dsh-charter/CharterBootstrapApplyRequest',
+        create: () => charterBootstrapApplyRequestSchema,
       },
     }],
     result: {

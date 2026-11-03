@@ -209,6 +209,8 @@ export interface CharterBootstrapSource {
 }
 
 export interface CharterBootstrapProposal {
+  /** Host-issued handle binding the reviewed extraction to apply. */
+  readonly draftHandle?: string
   readonly objective: string | null
   readonly invariants: string[]
   readonly deliverables: string[]

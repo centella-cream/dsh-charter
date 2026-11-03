@@ -24,12 +24,13 @@ import {
 } from '../core/limits.js'
 import { queryItems, type ItemQueryRequest } from '../core/query.js'
 import { planChangeSet, type PlannedChangeSet } from '../core/change-set.js'
-import { sha256Text } from '../core/digest.js'
+import { sha256Json, sha256Text } from '../core/digest.js'
 import { dependencyProjection } from '../core/dependencies.js'
 import {
   CHARTER_RECORD_SCHEMA_VERSION,
   charterRecordSchema,
   charterRecordV1Schema,
+  charterBootstrapApplyRequestSchema,
   type CharterActor,
   type CharterEditRequest,
   type CharterRecord,
@@ -818,13 +819,29 @@ export class CharterService extends Service {
     if (extraction === undefined) {
       return { available: false, reason: 'no-summary' }
     }
+    const proposal = {
+      ...extraction.draft,
+      source: extraction.source,
+    }
     return {
       available: true,
       proposal: {
-        ...extraction.draft,
-        source: extraction.source,
+        ...proposal,
+        draftHandle: this.bootstrapDraftHandle(proposal),
       },
     }
+  }
+
+  private bootstrapDraftHandle(proposal: import('./types.js').CharterBootstrapProposal): string {
+    return sha256Json({
+      version: 1,
+      source: proposal.source,
+      draft: {
+        objective: proposal.objective,
+        invariants: proposal.invariants,
+        deliverables: proposal.deliverables,
+      },
+    })
   }
 
   private viewLimits(): CharterViewLimits {
@@ -1434,9 +1451,18 @@ export class CharterService extends Service {
     request: unknown,
     actor: CharterActor = { kind: 'owner' },
   ): Promise<CharterEditResult> {
+    const parsedRequest = charterBootstrapApplyRequestSchema.safeParse(request)
+    if (!parsedRequest.success) {
+      return unavailableResult('INVALID_ARGUMENT', 'invalid bootstrap apply request')
+    }
     let normalized: CharterEditRequest
     try {
-      normalized = normalizeEditRequest(request)
+      normalized = normalizeEditRequest({
+        sessionId: parsedRequest.data.sessionId,
+        mutationId: parsedRequest.data.mutationId,
+        baseRevision: parsedRequest.data.baseRevision,
+        ops: parsedRequest.data.ops,
+      })
     } catch (error) {
       return unavailableResult(error instanceof CharterError ? error.code : 'INVALID_ARGUMENT',
         error instanceof Error ? error.message : String(error))
@@ -1444,6 +1470,9 @@ export class CharterService extends Service {
     const extraction = this.bootstrap(normalized.sessionId as SessionIdType)
     if (!extraction.available) {
       return unavailableResult('INVALID_ARGUMENT', 'No reviewable compaction draft is available for this Session')
+    }
+    if (parsedRequest.data.draftHandle !== this.bootstrapDraftHandle(extraction.proposal)) {
+      return unavailableResult('INVALID_ARGUMENT', 'bootstrap draft handle does not match the current extraction')
     }
     const allowedKinds = new Map<string, Set<'invariant' | 'deliverable'>>()
     const addAllowed = (text: string, kind: 'invariant' | 'deliverable'): void => {

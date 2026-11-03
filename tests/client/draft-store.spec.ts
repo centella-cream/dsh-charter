@@ -70,7 +70,7 @@ function committedInvariant(
 function source(handlers: {
   edit: (request: CharterEditRequest) => Promise<CharterEditResult>
   bootstrap?: () => Promise<CharterBootstrapResult>
-  applyBootstrap?: (request: CharterEditRequest) => Promise<CharterEditResult>
+  applyBootstrap?: (request: import('../../src/core/schemas.js').CharterBootstrapApplyRequest) => Promise<CharterEditResult>
   snapshot?: () => ReturnType<CharterSessionSource['getSnapshot']>
 }): CharterSessionSource {
   return {

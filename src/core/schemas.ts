@@ -189,6 +189,12 @@ export const charterEditRequestSchema = z.object({
   ops: z.array(charterOpSchema).min(1),
 }).strict()
 
+export const charterBootstrapApplyRequestSchema = charterEditRequestSchema.extend({
+  draftHandle: z.string().min(1).max(256),
+}).strict()
+
+export type CharterBootstrapApplyRequest = z.infer<typeof charterBootstrapApplyRequestSchema>
+
 export const charterActorSchema = z.object({
   kind: z.enum(['owner', 'user', 'host', 'agent-tool']),
   id: z.string().min(1).max(256).optional(),

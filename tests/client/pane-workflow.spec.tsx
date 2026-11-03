@@ -200,6 +200,23 @@ describe('0.2 workspace and dependency plan', () => {
     })
   })
 
+  it('stages a manual item proposal instead of an accepted item', () => {
+    const ready = view({ revision: 0 })
+    const src = source(ready)
+    const draft = new CharterDraft(sessionId, () => src)
+    draft.bindLifecycle(lifecycle)
+    const tree = mount(src, draft)
+    const composer = tree.root.findAll(node => node.type === 'textarea' && node.props['aria-label'] === 'composer.invariantAria')[0]
+    act(() => composer?.props.onChange({ target: { value: 'Review this constraint' } }))
+    const propose = tree.root.findAll(node => node.type === 'button' && textOf(node) === 'composer.proposeInvariant')[0]
+    expect(propose).toBeDefined()
+    act(() => propose!.props.onClick())
+    expect(draft.getSnapshot().ops).toContainEqual({
+      type: 'item.propose',
+      item: expect.objectContaining({ kind: 'invariant', text: 'Review this constraint' }),
+    })
+  })
+
   it('keeps pending item proposals out of Workspace and reviewable in Review Center', () => {
     const pending = {
       id: 'item-p', kind: 'invariant', text: 'Pending only', review: 'pending', lifecycle: 'current',

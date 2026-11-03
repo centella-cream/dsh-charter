@@ -6,6 +6,7 @@ import {
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { TypertRemoteNamespaceMap } from '@deepseek-ai/dsh-typert-protocol'
 import type {
+  CharterBootstrapApplyRequest,
   CharterEditRequest,
   CharterInitializeRequest,
   CharterRestoreRequest,
@@ -38,7 +39,7 @@ export interface CharterSource {
   readonly subscribe: (listener: () => void) => () => void
   readonly edit: (request: CharterEditRequest) => Promise<CharterEditResult>
   /** Apply a reviewed compaction draft through the Host-only provenance entry. */
-  readonly applyBootstrap?: (request: CharterEditRequest) => Promise<CharterEditResult>
+  readonly applyBootstrap?: (request: CharterBootstrapApplyRequest) => Promise<CharterEditResult>
   /** Extract a review-only draft from the latest compaction summary. */
   readonly bootstrap: () => Promise<CharterBootstrapResult>
   /** Apply a committed view returned by edit immediately, without waiting for the stream. */
@@ -128,7 +129,7 @@ export class CharterSessionSource implements CharterSource {
     return result.value
   }
 
-  readonly applyBootstrap = async (request: CharterEditRequest): Promise<CharterEditResult> => {
+  readonly applyBootstrap = async (request: CharterBootstrapApplyRequest): Promise<CharterEditResult> => {
     const remote = this.remote
     if (remote === undefined) {
       return { ok: false, code: 'UNAVAILABLE', message: 'Charter connection is unavailable.' }

@@ -99,7 +99,7 @@ export interface EditAttempt {
 
 export interface BootstrapAttempt {
   readonly kind: 'bootstrap'
-  readonly request: import('../core/schemas.js').CharterEditRequest
+  readonly request: import('../core/schemas.js').CharterBootstrapApplyRequest
   readonly sourceGeneration: number
   readonly lifecycle: string | null
   readonly status: 'in-flight' | 'unknown'
@@ -891,6 +891,25 @@ export class CharterDraft {
     })
   }
 
+  addProposal(view: CharterView, kind: 'invariant' | 'deliverable', text: string, clear: () => void): void {
+    if (this.state.saving || this.state.bootstrapSaving || replayLocked(this.state)) return
+    const inspection = inspectUserText(text)
+    if (inspection.issue !== undefined) {
+      this.update({ feedback: { kind: 'editorInvalid', issue: inspection.issue } })
+      return
+    }
+    const normalized = inspection.value
+    if (utf8Bytes(normalized) > view.limits.maxItemBytes) {
+      this.update({ feedback: { kind: 'itemBudget', limit: view.limits.maxItemBytes } })
+      return
+    }
+    this.stage(view, {
+      type: 'item.propose',
+      item: newItem(kind, normalized, nextItemOrder(view, this.state.ops)),
+    })
+    clear()
+  }
+
   /** A request may be retried only when the previous attempt failed with an unknown outcome. */
   private retryableEdit(): EditAttempt | undefined {
     const attempt = unknownAttempt(this.state)
@@ -1356,7 +1375,7 @@ export class CharterDraft {
       && this.resolveSource() === source
       && source.connectionGeneration === sourceGeneration
     try {
-      const result = await (source.applyBootstrap ?? source.edit)(request)
+      const result = await (source.applyBootstrap ?? (async (value: import('../core/schemas.js').CharterBootstrapApplyRequest) => source.edit(value)))(request)
       if (!current()) {
         // Preserve the exact attempt across source/generation/lifecycle changes.
         const attempt = this.state.attempt
@@ -1464,12 +1483,13 @@ export class CharterDraft {
       this.update({ bootstrapProblem: { kind: 'save-failed', code: 'UNAVAILABLE' } })
       return
     }
-    const request: import('../core/schemas.js').CharterEditRequest = {
+    const request: import('../core/schemas.js').CharterBootstrapApplyRequest = {
       sessionId: this.state.sessionId,
       mutationId: mutationId(),
       // Always send the extraction baseline, never the current view revision.
       baseRevision,
       ops: plan.ops,
+      draftHandle: this.state.bootstrap?.draftHandle ?? '',
     }
     this.update({
       bootstrapSaving: true,
@@ -1490,7 +1510,7 @@ export class CharterDraft {
       && this.resolveSource() === source
       && source.connectionGeneration === sourceGeneration
     try {
-      const result = await (source.applyBootstrap ?? source.edit)(request)
+      const result = await (source.applyBootstrap ?? (async (value: import('../core/schemas.js').CharterBootstrapApplyRequest) => source.edit(value)))(request)
       if (!current()) {
         // Preserve the exact attempt across source/generation/lifecycle changes.
         const attempt = this.state.attempt
