@@ -144,6 +144,7 @@ export class CharterRemoteService extends TypertRemoteService {
     readonly review?: 'pending' | 'accepted' | 'rejected'
     readonly lifecycle?: 'current' | 'superseded' | 'archived'
     readonly search?: string
+    readonly sourceKind?: 'manual' | 'message' | 'compaction-summary' | 'agent-tool' | 'fork' | 'legacy-unknown'
     readonly cursor?: string
     readonly limit?: number
   }): Promise<CharterItemQueryResult> {
@@ -153,6 +154,7 @@ export class CharterRemoteService extends TypertRemoteService {
       ...(request.review === undefined ? {} : { review: request.review }),
       ...(request.lifecycle === undefined ? {} : { lifecycle: request.lifecycle }),
       ...(request.search === undefined ? {} : { search: request.search }),
+      ...(request.sourceKind === undefined ? {} : { sourceKind: request.sourceKind }),
       ...(request.cursor === undefined ? {} : { cursor: request.cursor }),
       ...(request.limit === undefined ? {} : { limit: request.limit }),
     }))
@@ -163,9 +165,15 @@ export class CharterRemoteService extends TypertRemoteService {
       session: (sessionId: SessionId): SessionId => sessionId,
     },
   })
-  queryProposals(sessionId: SessionId): Promise<CharterProposalQueryResult> {
+  queryProposals(
+    sessionId: SessionId,
+    options: { readonly limit?: number; readonly cursor?: string } = {},
+  ): Promise<CharterProposalQueryResult> {
     resolveRemoteActor(this.ctx)
-    return Promise.resolve(this.ctx.charter.queryProposalsById(sessionId))
+    return Promise.resolve(this.ctx.charter.queryProposalsById(sessionId, {
+      ...(options.limit === undefined ? {} : { limit: options.limit }),
+      ...(options.cursor === undefined ? {} : { cursor: options.cursor }),
+    }))
   }
 
   @remoteMethod({

@@ -10,6 +10,7 @@ export interface ItemQueryFilter {
   readonly review?: CharterReview
   readonly lifecycle?: CharterLifecycle
   readonly search?: string
+  readonly sourceKind?: 'manual' | 'message' | 'compaction-summary' | 'agent-tool' | 'fork' | 'legacy-unknown'
 }
 
 export interface ItemQueryRequest extends ItemQueryFilter {
@@ -57,6 +58,7 @@ function filterDigestOf(filter: ItemQueryFilter): string {
     review: filter.review ?? null,
     lifecycle: filter.lifecycle ?? null,
     search: filter.search === undefined ? null : normalizeSearch(filter.search),
+    sourceKind: filter.sourceKind ?? null,
   })
 }
 
@@ -86,6 +88,7 @@ export function queryItems(
   lifecycle: string,
   items: readonly CharterItem[],
   filter: ItemQueryRequest,
+  sourceKindById: ReadonlyMap<string, string> = new Map(),
 ): ItemQueryPage | ItemQueryFailure {
   const limit = filter.limit ?? 50
   if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) {
@@ -118,6 +121,7 @@ export function queryItems(
     .filter(item => filter.review === undefined || item.review === filter.review)
     .filter(item => filter.lifecycle === undefined || item.lifecycle === filter.lifecycle)
     .filter(item => search === undefined || normalizeSearch(item.text).includes(search))
+    .filter(item => filter.sourceKind === undefined || sourceKindById.get(item.id) === filter.sourceKind)
     .sort(compareOrderedItems)
     .filter(item => after === undefined || sortKey(item) > after)
   const page = selected.slice(0, limit)

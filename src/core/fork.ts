@@ -141,15 +141,37 @@ export function forkRecord(input: ForkRecordInput): CharterRecord {
       candidates,
     })
   }
+  const forkBatchIdByParent = new Map<string, string>()
+  for (const batch of inheritedBatches) {
+    if (batch.source.kind === 'fork') forkBatchIdByParent.set(batch.source.parentBatchId, batch.id)
+  }
+  const finalItems = items.map((item, index) => {
+    const parent = ordered[index]!
+    const childBatchId = parent.proposalBatchId === undefined
+      ? undefined
+      : forkBatchIdByParent.get(parent.proposalBatchId)
+    return {
+      ...item,
+      ...(childBatchId === undefined ? {} : { proposalBatchId: childBatchId }),
+      ...(parent.reviewedAtRevision === undefined ? {} : { reviewedAtRevision: 1 }),
+    } as CharterItem
+  })
+  const finalCurrent = buildSnapshotUnchecked(1, objective, finalItems)
+  if (finalCurrent.promptText !== input.parent.current.promptText
+    || finalCurrent.promptDigest !== input.parent.current.promptDigest) {
+    throw charterError('CORRUPT_STATE', 'fork changed the model-visible charter')
+  }
+  const finalHistory = { ...history, resultDigest: finalCurrent.stateDigest }
+  const finalMutation = { ...mutation, resultDigest: finalCurrent.stateDigest }
   const child: CharterRecord = {
     ...empty,
     forkedFrom: {
       sessionId: input.parentSessionId,
       revision: input.parent.current.revision,
     },
-    current,
-    history: [history],
-    recentMutations: [mutation],
+    current: finalCurrent,
+    history: [finalHistory],
+    recentMutations: [finalMutation],
     ...(inheritedBatches.length === 0 ? {} : { proposalBatches: inheritedBatches }),
     ...(objectiveProposals.length === 0 ? {} : { objectiveProposals: [...objectiveProposals] }),
   }

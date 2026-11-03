@@ -160,6 +160,9 @@ describe('charter fork', () => {
         candidates: [{ kind: 'item', id: 'child-p' }],
       }),
     ])
+    expect(child.current.items.find(item => item.id === 'child-p')).toMatchObject({
+      proposalBatchId: child.proposalBatches![0]!.id,
+    })
   })
 
   it('remaps replacement links entirely into the child namespace', () => {

@@ -190,6 +190,7 @@ export const charterItemQueryRequestSchema = z.object({
   review: z.enum(['pending', 'accepted', 'rejected']).optional(),
   lifecycle: z.enum(['current', 'superseded', 'archived']).optional(),
   search: z.string().optional(),
+  sourceKind: z.enum(['manual', 'message', 'compaction-summary', 'agent-tool', 'fork', 'legacy-unknown']).optional(),
   cursor: z.string().optional(),
   limit: z.number().int().positive().max(100).optional(),
 }).strict()
@@ -211,6 +212,11 @@ export const charterItemQueryResultSchema = z.union([
   }).strict(),
   itemQueryFailureSchema,
 ])
+
+export const charterProposalQueryRequestSchema = z.object({
+  limit: z.number().int().positive().max(64).optional(),
+  cursor: z.string().optional(),
+}).strict()
 
 export const charterProposalQueryResultSchema = z.discriminatedUnion('ok', [
   z.object({

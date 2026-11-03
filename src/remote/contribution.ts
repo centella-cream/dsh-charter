@@ -12,6 +12,7 @@ import {
   charterSummaryFrameSchema,
   charterItemQueryRequestSchema,
   charterItemQueryResultSchema,
+  charterProposalQueryRequestSchema,
   charterProposalQueryResultSchema,
   charterChangeQueryRequestSchema,
   charterChangeQueryResultSchema,
@@ -264,6 +265,15 @@ export const charterRemoteContribution: TypertRemoteContribution = {
         mode: 'strict',
         typeSymbol: 'dsh-charter/SessionId',
         create: () => sessionIdSchema,
+      },
+    }, {
+      name: 'options',
+      wire: 'options',
+      source: 'json',
+      codec: {
+        mode: 'strict',
+        typeSymbol: 'dsh-charter/CharterProposalQueryRequest',
+        create: () => charterProposalQueryRequestSchema,
       },
     }],
     result: {

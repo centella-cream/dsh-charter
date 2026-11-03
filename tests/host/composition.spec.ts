@@ -438,6 +438,9 @@ describe('dsh-charter host composition', () => {
     const second = service.queryItemsById(session.id, { limit: 2, cursor: first.nextCursor })
     expect(second.ok).toBe(true)
     if (second.ok) expect(second.items).toHaveLength(1)
+    const manualProposals = service.queryItemsById(session.id, { sourceKind: 'manual' })
+    expect(manualProposals.ok).toBe(true)
+    if (manualProposals.ok) expect(manualProposals.items.map(item => item.text)).toEqual(['Gamma'])
     const changes = service.queryChangesById(session.id, { limit: 1 })
     expect(changes.ok).toBe(true)
     if (changes.ok) {

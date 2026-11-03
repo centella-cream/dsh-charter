@@ -121,15 +121,21 @@ export interface CharterProposalBatchView {
   }[]
 }
 
+export interface CharterProposalQueryRequest {
+  readonly limit?: number | undefined
+  readonly cursor?: string | undefined
+}
+
 export type CharterProposalQueryResult =
   | {
       readonly ok: true
       readonly revision: number
       readonly batches: readonly CharterProposalBatchView[]
+      readonly nextCursor?: string
     }
   | {
       readonly ok: false
-      readonly code: 'NOT_FOUND' | 'UNAVAILABLE'
+      readonly code: 'NOT_FOUND' | 'UNAVAILABLE' | 'STALE_REVISION' | 'INVALID_CURSOR' | 'LIMIT_EXCEEDED'
       readonly message: string
     }
 
