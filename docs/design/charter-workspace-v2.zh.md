@@ -17,10 +17,10 @@
 
 - 客户端 store 仍消费完整 `watch` 帧，`watchSummary`/`queryItems`/`queryProposals`/`queryChanges` 已存在但
   Pane 尚未切换到 summary + 分页/filter 查询；R06 的 512 条规模合同未完成。
-- message proposal 和 manual “保存为提案”入口未实现；`item.propose` 的 origin 仍固定为 agent。
+- message proposal 入口未实现；manual item “保存为提案”入口已加入 composer；`item.propose` 的 origin 仍固定为 agent。
 - proposal source registry / source integrity、完整 compaction/message/tool source 字段和 registry 复算未实现；
-  `applyBootstrap` 通过 `bootstrap-<kind>-<index>` 候选引用绑定来源，编辑正文会记录 `contentModified`，
-  `objective.propose` 被拒绝，但还没有 Host 签发的 draft handle。
+  `applyBootstrap` 使用 Host 签发的 draft handle 绑定 extraction，编辑正文会记录 `contentModified`，
+  `objective.propose` 被拒绝。
 - Change Set 的客户端 canonical diff 与 `PREVIEW_MISMATCH` 未接入；Host change-set summary 已存在。
 - fork 的 typed source refs 仍是简化形式；objective proposal 和 item `proposalBatchId` 已随 fork 复制并重置 child
   revision 元数据，typed parent source refs 仍未实现。
