@@ -215,6 +215,26 @@ function forkMutationId(): string {
   return `fork-${randomUUID()}`
 }
 
+function stripClientContentModified(request: CharterEditRequest): CharterEditRequest {
+  const stripItem = (item: import('../core/schemas.js').NewItemInput): import('../core/schemas.js').NewItemInput => {
+    if (item.contentModified !== true) return item
+    const { contentModified: _modified, ...rest } = item
+    return rest as import('../core/schemas.js').NewItemInput
+  }
+  return {
+    ...request,
+    ops: request.ops.map(op => {
+      if (op.type === 'item.add' || op.type === 'item.propose') {
+        return { ...op, item: stripItem(op.item) }
+      }
+      if (op.type === 'item.supersede') {
+        return { ...op, replacement: stripItem(op.replacement) }
+      }
+      return op
+    }),
+  }
+}
+
 function unavailableResult(
   code: CharterErrorCode,
   message: string,
@@ -1246,7 +1266,15 @@ export class CharterService extends Service {
       source: batch.source,
       capturedAtRevision: batch.capturedAtRevision,
       candidates: batch.candidates.map(candidate => {
-        if (candidate.kind === 'tombstone') return { kind: candidate.kind, id: candidate.id }
+        if (candidate.kind === 'tombstone') {
+          return {
+            kind: candidate.kind,
+            id: candidate.id,
+            candidateKind: candidate.candidateKind,
+            disposition: candidate.disposition,
+            atRevision: candidate.atRevision,
+          }
+        }
         if (candidate.kind === 'item') {
           const item = view.items.find(candidateItem => candidateItem.id === candidate.id)
           return {
@@ -1444,6 +1472,7 @@ export class CharterService extends Service {
       kind: 'compaction-summary',
       summarySeq: result.proposal.source.summarySeq,
       at: result.proposal.source.at,
+      digest: this.bootstrapDraftHandle(result.proposal),
     }
   }
 
@@ -1516,12 +1545,33 @@ export class CharterService extends Service {
       }
       ops.push(op)
     }
-    const applyRequest = { ...normalized, ops }
+    const sourceDigest = this.bootstrapDraftHandle(extraction.proposal)
+    const view = this.viewById(normalized.sessionId as SessionIdType)
+    const existingBatchIds = new Set((view.proposalBatches ?? [])
+      .filter(batch => batch.source.kind === 'compaction-summary' && batch.source.digest === sourceDigest)
+      .flatMap(batch => batch.candidates.flatMap(candidate =>
+        candidate.kind === 'item' ? [candidate.id] : [])))
+    const existingKeys = new Set(view.items
+      .filter(item => existingBatchIds.has(item.id))
+      .map(item => `${item.kind}:${item.text}`))
+    const dedupedOps = ops.filter(op => op.type !== 'item.propose'
+      || !existingKeys.has(`${op.item.kind}:${op.item.text}`))
+    if (dedupedOps.length === 0) {
+      return {
+        ok: true,
+        replayed: true,
+        committedRevision: view.revision,
+        ids: {},
+        view,
+      }
+    }
+    const applyRequest = { ...normalized, ops: dedupedOps }
     return this.edit(applyRequest, actor, {
       kind: 'compaction-summary',
       summarySeq: extraction.proposal.source.summarySeq,
       at: extraction.proposal.source.at,
-    })
+      digest: sourceDigest,
+    }, { allowContentModified: true })
   }
 
   async proposeFromAgent(
@@ -1579,6 +1629,7 @@ export class CharterService extends Service {
     untrustedRequest: unknown,
     actor: CharterActor = { kind: 'owner' },
     proposalSource?: import('../core/schemas.js').ProposalSource,
+    options: { readonly allowContentModified?: boolean } = {},
   ): Promise<CharterEditResult> {
     let request: CharterEditRequest
     try {
@@ -1587,6 +1638,7 @@ export class CharterService extends Service {
       if (error instanceof CharterError) return unavailableResult(error.code, error.message)
       return unavailableResult('INVALID_ARGUMENT', describeError(error))
     }
+    if (options.allowContentModified !== true) request = stripClientContentModified(request)
     if (!this.admissionOpen) return unavailableResult('UNAVAILABLE', this.globalFailure ?? 'Charter is closing')
     try {
       assertEditAuthorized(actor, request.ops)

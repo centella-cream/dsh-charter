@@ -289,6 +289,27 @@ describe('dsh-charter host composition', () => {
     })
   })
 
+  it('ignores client-supplied contentModified on ordinary edits', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-content-modified-'))
+    roots.push(root)
+    const ctx = await mount(root)
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('content-modified'), {
+      meta: { cwd: root, createdAt: 1_700_000_001_260 },
+    })
+    await waitForReady(service, session)
+    await service.edit({
+      sessionId: session.id,
+      mutationId: 'content-modified-forged',
+      baseRevision: 0,
+      ops: [{
+        type: 'item.propose',
+        item: { clientRef: 'p', kind: 'invariant', text: 'Plain', order: 0, contentModified: true },
+      }],
+    })
+    expect(service.view(session).items[0]?.contentModified).toBeUndefined()
+  })
+
   it('keeps proposal batch metadata after accepting an item proposal', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-charter-accepted-proposal-'))
     roots.push(root)
@@ -1363,6 +1384,7 @@ describe('charter bootstrap', () => {
       kind: 'compaction-summary',
       summarySeq: 0,
       at: expect.any(Number),
+      digest: expect.stringMatching(/^sha256:/u),
     })
 
     const forged = await service.applyBootstrap({
@@ -1396,6 +1418,19 @@ describe('charter bootstrap', () => {
       ops: [{ type: 'objective.propose', clientRef: 'o', text: 'Forged objective' }],
     })
     expect(objective).toMatchObject({ ok: false, code: 'INVALID_ARGUMENT' })
+
+    const duplicate = await service.applyBootstrap({
+      sessionId: session.id,
+      mutationId: 'bootstrap-edited-duplicate',
+      baseRevision: 2,
+      draftHandle,
+      ops: [{
+        type: 'item.propose',
+        item: { clientRef: 'bootstrap-del-0', kind: 'deliverable', text: 'Edited tab check', order: 2, progress: 'not-started' },
+      }],
+    })
+    expect(duplicate).toMatchObject({ ok: true, replayed: true })
+    expect(service.view(session).items.filter(item => item.text === 'Edited tab check')).toHaveLength(1)
 
     const staleHandle = await service.applyBootstrap({
       sessionId: session.id,

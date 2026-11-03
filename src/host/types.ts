@@ -118,6 +118,9 @@ export interface CharterProposalBatchView {
     readonly id: string
     readonly text?: string
     readonly review?: 'pending' | 'accepted' | 'rejected' | 'purged'
+    readonly candidateKind?: 'item' | 'objective'
+    readonly disposition?: 'accepted' | 'rejected' | 'purged'
+    readonly atRevision?: number
   }[]
 }
 
