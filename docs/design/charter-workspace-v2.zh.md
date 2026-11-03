@@ -18,9 +18,11 @@
 - 客户端 store 仍消费完整 `watch` 帧，`watchSummary`/`queryItems`/`queryProposals`/`queryChanges` 已存在但
   Pane 尚未切换到 summary + 分页/filter 查询；R06 的 512 条规模合同未完成。
 - message proposal 和 manual “保存为提案”入口未实现；`item.propose` 的 origin 仍固定为 agent。
-- proposal source registry / source integrity、完整 compaction/message/tool source 字段和 regisry 复算未实现。
+- proposal source registry / source integrity、完整 compaction/message/tool source 字段和 registry 复算未实现；
+  `applyBootstrap` 目前只把 `item.propose` 正文与当前 extraction 比对，没有 Host 签发的 draft handle。
 - Change Set 的客户端 canonical diff 与 `PREVIEW_MISMATCH` 未接入；Host change-set summary 已存在。
-- fork 的 typed source refs 仍是简化形式；objective proposal 已随 fork 复制。
+- fork 的 typed source refs 仍是简化形式；objective proposal 已随 fork 复制并重置 child revision 元数据，item 的
+  `proposalBatchId` 仍在 fork 时剥离。
 - `queryProposals` 的 limit/cursor/响应字节上限、`charter_propose` 的 proposedRequires 未实现；当前工具参数已
   移除 `requires`，显式拒绝而不是接受一个必然失败的参数。`charter_read all` 已有 cursor/limit，standing 超限
   显式 `LIMIT_EXCEEDED`。
