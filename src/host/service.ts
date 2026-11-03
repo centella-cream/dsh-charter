@@ -1416,11 +1416,15 @@ export class CharterService extends Service {
     }
     for (const text of extraction.proposal.invariants) addAllowed(text, 'invariant')
     for (const text of extraction.proposal.deliverables) addAllowed(text, 'deliverable')
+    const ops: import('../core/schemas.js').CharterOp[] = []
     for (const op of normalized.ops) {
       if (op.type === 'objective.propose') {
         return unavailableResult('INVALID_ARGUMENT', 'bootstrap apply cannot create objective proposals')
       }
-      if (op.type !== 'item.propose') continue
+      if (op.type !== 'item.propose') {
+        ops.push(op)
+        continue
+      }
       const candidateRef = /^bootstrap-(inv|del)-(\d+)$/u.exec(op.item.clientRef)
       if (candidateRef !== null) {
         const expectedKind = candidateRef[1] === 'inv' ? 'invariant' : 'deliverable'
@@ -1432,6 +1436,9 @@ export class CharterService extends Service {
           return unavailableResult('INVALID_ARGUMENT', 'bootstrap proposal candidate reference is invalid')
         }
         // The reviewed candidate may be edited; provenance remains the extraction.
+        ops.push(op.item.text === candidates[index]
+          ? op
+          : { ...op, item: { ...op.item, contentModified: true } })
         continue
       }
       const kinds = allowedKinds.get(op.item.text)
@@ -1441,8 +1448,10 @@ export class CharterService extends Service {
           'bootstrap proposal does not match the reviewed extraction',
         )
       }
+      ops.push(op)
     }
-    return this.edit(normalized, actor, {
+    const applyRequest = { ...normalized, ops }
+    return this.edit(applyRequest, actor, {
       kind: 'compaction-summary',
       summarySeq: extraction.proposal.source.summarySeq,
       at: extraction.proposal.source.at,

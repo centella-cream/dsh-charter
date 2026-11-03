@@ -2034,6 +2034,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                         <span className="charter-proposal__meta">
                           {item.kind === 'invariant' ? t('invariants.kicker') : t('deliverables.kicker')}
                           {batch === undefined ? '' : ` · ${t(`review.source.${batch.sourceKind}` as never)}`}
+                          {item.contentModified === true ? ` · ${t('review.contentModified')}` : ''}
                         </span>
                         <div className="charter-proposal__actions">
                           <ActionButton

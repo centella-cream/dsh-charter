@@ -52,6 +52,7 @@ function itemFromInput(
     createdRevision: revision,
     ...links?.supersedes === undefined ? {} : { supersedes: links.supersedes },
     ...links?.proposalBatchId === undefined ? {} : { proposalBatchId: links.proposalBatchId },
+    ...(input.contentModified === true ? { contentModified: true } : {}),
   }
   return input.kind === 'invariant'
     ? { kind: 'invariant', ...common }

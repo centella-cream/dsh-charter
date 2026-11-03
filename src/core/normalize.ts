@@ -58,6 +58,7 @@ function normalizeNewItem(input: NewItemInput): NewItemInput {
         kind: 'invariant',
         text: normalizeUserText(input.text, `item ${input.clientRef}`),
         order: input.order,
+        ...(input.contentModified === true ? { contentModified: true } : {}),
       }
     : {
         clientRef: input.clientRef,
@@ -66,6 +67,7 @@ function normalizeNewItem(input: NewItemInput): NewItemInput {
         order: input.order,
         progress: input.progress,
         ...(input.requires === undefined ? {} : { requires: normalizeRequires(input.requires) }),
+        ...(input.contentModified === true ? { contentModified: true } : {}),
       }
 }
 

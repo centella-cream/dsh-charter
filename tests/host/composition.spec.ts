@@ -1379,7 +1379,7 @@ describe('charter bootstrap', () => {
       }],
     })
     expect(edited).toMatchObject({ ok: true })
-    expect(service.view(session).items.some(item => item.text === 'Edited tab check')).toBe(true)
+    expect(service.view(session).items.find(item => item.text === 'Edited tab check')).toMatchObject({ contentModified: true })
 
     const objective = await service.applyBootstrap({
       sessionId: session.id,

@@ -38,6 +38,7 @@ const itemBase = {
   supersededBy: identifierSchema.optional(),
   proposalBatchId: identifierSchema.optional(),
   reviewedAtRevision: z.number().int().positive().optional(),
+  contentModified: z.boolean().optional(),
 }
 
 export const invariantItemSchema = z.object({
@@ -97,6 +98,7 @@ export const invariantInputSchema = z.object({
   kind: z.literal('invariant'),
   text: z.string(),
   order: z.number().int().nonnegative(),
+  contentModified: z.boolean().optional(),
 }).strict()
 
 export const deliverableInputSchema = z.object({
@@ -106,6 +108,7 @@ export const deliverableInputSchema = z.object({
   order: z.number().int().nonnegative(),
   progress: deliverableProgressSchema,
   requires: z.array(identifierSchema).optional(),
+  contentModified: z.boolean().optional(),
 }).strict()
 
 export const newItemInputSchema = z.discriminatedUnion('kind', [

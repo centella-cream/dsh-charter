@@ -25,6 +25,7 @@ export interface ProjectedItem extends PromptItem {
   readonly synthetic: boolean
   readonly progress?: DeliverableProgress
   readonly requires?: readonly string[]
+  readonly contentModified?: boolean
   readonly origin?: CharterItem['origin']
   readonly createdRevision?: number
 }
@@ -123,6 +124,7 @@ function fromItem(item: CharterItem): ProjectedItem {
     ...(item.supersedes === undefined ? {} : { supersedes: item.supersedes }),
     ...(item.supersededBy === undefined ? {} : { supersededBy: item.supersededBy }),
     ...(item.kind === 'deliverable' ? { progress: item.progress, ...(item.requires === undefined ? {} : { requires: item.requires }) } : {}),
+    ...(item.contentModified === true ? { contentModified: true } : {}),
     staged: false,
     synthetic: false,
   }
