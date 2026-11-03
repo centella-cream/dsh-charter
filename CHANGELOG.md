@@ -19,7 +19,7 @@ Workspace and dependency-plan upgrade. Versioning from this release onward uses 
   rendering with stable `D<n>` local keys, and an editable prerequisite selector.
 - Record schema v2 with in-memory v1 migration, proposal batches with typed source provenance,
   objective-proposal lifecycle, and bounded item/proposal/change query plus `summary`/`watchSummary` Remote
-  projections.
+  projections. Query facet filters and final response caps remain tracked gaps.
 - Review Center proposal-batch provenance and Change Set summary.
 
 ## 0.1.0-rc.6 — 2026-11-01

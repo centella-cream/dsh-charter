@@ -18,15 +18,19 @@
 - 客户端 store 仍消费完整 `watch` 帧，`watchSummary`/`queryItems`/`queryProposals`/`queryChanges` 已存在但
   Pane 尚未切换到 summary + 分页/filter 查询；R06 的 512 条规模合同未完成。
 - message proposal 入口未实现；manual item “保存为提案”入口已加入 composer；`item.propose` 的 origin 仍固定为 agent。
+- `MAX_PROPOSAL_BATCHES` 仍是硬编码 64，不在 limits/config；`applyBootstrap` 的 objective.initialize/redirect 文本
+  未绑定 extraction handle。
 - proposal source registry / source integrity、完整 compaction/message/tool source 字段和 registry 复算未实现；
   `applyBootstrap` 使用 Host 签发的 draft handle 绑定 extraction，编辑正文会记录 `contentModified`，
   `objective.propose` 被拒绝。
 - Change Set 的客户端 canonical diff 与 `PREVIEW_MISMATCH` 未接入；Host change-set summary 已存在。
 - fork 的 typed source refs 仍是简化形式；objective proposal 和 item `proposalBatchId` 已随 fork 复制并重置 child
   revision 元数据，typed parent source refs 仍未实现。
+- query facets 仍不完整：`queryItems` 缺 batch ID、verification/validity、prerequisite/execution display filter；
+  `queryProposals` 缺 source/review/batch/candidate facet、filter digest 和响应字节上限；`queryChanges` 缺 Change
+  Set ID、typed references 和 operation-kind filter。tombstone candidate 已返回 candidateKind/disposition/atRevision。
 - `charter_propose` 的 proposedRequires 未实现；当前工具参数已移除 `requires`，显式拒绝而不是接受一个必然失败的
-  参数。`charter_read all` 已有 revision-bound cursor/limit/无进展保护，standing 超限显式 `LIMIT_EXCEEDED`；
-  `queryProposals` 已有 limit/cursor，但响应字节上限仍未完成。
+  参数。`charter_read all` 已有 revision-bound cursor/limit/无进展保护，standing 超限显式 `LIMIT_EXCEEDED`。
 - Evidence Integrity、Fact Validity、validator 是 0.2 的独立必交项，不属于本 workspace core。
 
 在实现这些合同前，不应把本文件或 `0.2.0` 包版本读成完整 v2 已实现。
