@@ -24,3 +24,37 @@ describe('record v2 migration', () => {
   })
 })
 
+
+describe('record v2 proposal consistency', () => {
+  it('rejects malformed applied objective proposals in a structurally valid v2 record', async () => {
+    const { assertRecordConsistency, commitRecord, createEmptyRecord, requestDigestOf } = await import('../../src/core/record.js')
+    const { normalizeEditRequest } = await import('../../src/core/normalize.js')
+    const actor = { kind: 'owner' as const }
+    const identity = { createdAt: 1 }
+    const request = normalizeEditRequest({
+      sessionId: 'session-1',
+      mutationId: 'm1',
+      baseRevision: 0,
+      ops: [{ type: 'item.add', item: { clientRef: 'a', kind: 'invariant', text: 'A', order: 0 } }],
+    })
+    const record = commitRecord({
+      record: createEmptyRecord(identity, DEFAULT_CHARTER_LIMITS),
+      request,
+      requestDigest: requestDigestOf(request, identity, actor),
+      ids: { a: 'item-a' },
+      actor,
+      at: 1,
+      limits: DEFAULT_CHARTER_LIMITS,
+    })
+    expect(() => assertRecordConsistency({
+      ...record,
+      objectiveProposals: [{
+        id: 'objective-proposal-1',
+        text: 'Body retained',
+        origin: 'user',
+        review: 'accepted',
+        createdRevision: 1,
+      }],
+    }, DEFAULT_CHARTER_LIMITS)).toThrow(/applied metadata|digest/)
+  })
+})

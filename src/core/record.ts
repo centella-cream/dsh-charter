@@ -161,12 +161,7 @@ export function appendMaintenanceReceipt(
   }
 }
 
-/** Final serialized record must fit the recovery envelope budget. */
-export function assertRecoveryRecordAdmission(record: CharterRecord, limits: CharterLimits): void {
-  const bytes = jsonBytes(record)
-  if (bytes > limits.maxRecoveryBytes) {
-    throw charterError('QUOTA_EXCEEDED', `restored record exceeds ${limits.maxRecoveryBytes} UTF-8 bytes`)
-  }
+function assertProposalConsistency(record: CharterRecord): void {
   const objectiveProposalIds = new Set<string>()
   for (const proposal of record.objectiveProposals ?? []) {
     if (objectiveProposalIds.has(proposal.id)) {
@@ -220,6 +215,15 @@ export function assertRecoveryRecordAdmission(record: CharterRecord, limits: Cha
     }
   }
 
+}
+
+/** Final serialized record must fit the recovery envelope budget. */
+export function assertRecoveryRecordAdmission(record: CharterRecord, limits: CharterLimits): void {
+  const bytes = jsonBytes(record)
+  if (bytes > limits.maxRecoveryBytes) {
+    throw charterError('QUOTA_EXCEEDED', `restored record exceeds ${limits.maxRecoveryBytes} UTF-8 bytes`)
+  }
+  assertProposalConsistency(record)
   const maintenance = record.recentMaintenance ?? []
   if (maintenance.length > limits.maintenanceLimit) {
     throw charterError('QUOTA_EXCEEDED', `maintenance receipts exceed ${limits.maintenanceLimit}`)
@@ -337,6 +341,7 @@ export function assertRecordConsistency(record: CharterRecord, limits: CharterLi
       throw charterError('CORRUPT_STATE', `maintenance ${receipt.operationId} digest disagrees with history`)
     }
   }
+  assertProposalConsistency(record)
   validatedRecords.add(record)
 }
 
