@@ -19,7 +19,8 @@
   Pane 尚未切换到 summary + 分页/filter 查询；R06 的 512 条规模合同未完成。
 - message proposal 和 manual “保存为提案”入口未实现；`item.propose` 的 origin 仍固定为 agent。
 - proposal source registry / source integrity、完整 compaction/message/tool source 字段和 registry 复算未实现；
-  `applyBootstrap` 目前只把 `item.propose` 正文与当前 extraction 比对，没有 Host 签发的 draft handle。
+  `applyBootstrap` 通过 `bootstrap-<kind>-<index>` 候选引用绑定来源并允许编辑正文，`objective.propose` 被拒绝，
+  但还没有 Host 签发的 draft handle。
 - Change Set 的客户端 canonical diff 与 `PREVIEW_MISMATCH` 未接入；Host change-set summary 已存在。
 - fork 的 typed source refs 仍是简化形式；objective proposal 已随 fork 复制并重置 child revision 元数据，item 的
   `proposalBatchId` 仍在 fork 时剥离。

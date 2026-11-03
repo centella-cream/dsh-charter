@@ -773,7 +773,7 @@ describe('dsh-charter host composition', () => {
       baseRevision: 0,
       ops: [{ type: 'item.add', item: { clientRef: 'seed', kind: 'invariant', text: 'Seed', order: 40 } }],
     })
-    const result = await service.proposeFromAgent(session, [{ kind: 'invariant', text: 'Later' }])
+    const result = await service.proposeFromAgent(session, [{ kind: 'invariant', text: 'Later' }], 'tool-call-order')
     expect(result.ok).toBe(true)
     expect(service.view(session).items.find(item => item.text === 'Later')?.order).toBe(41)
   })
@@ -1351,7 +1351,7 @@ describe('charter bootstrap', () => {
       sessionId: session.id,
       mutationId: 'bootstrap-apply-source',
       baseRevision: 0,
-      ops: [{ type: 'item.propose', item: { clientRef: 'p', kind: 'invariant', text: 'Verify the tab.', order: 0 } }],
+      ops: [{ type: 'item.propose', item: { clientRef: 'bootstrap-del-0', kind: 'deliverable', text: 'Verify the tab.', order: 0, progress: 'not-started' } }],
     })
     expect(applied).toMatchObject({ ok: true })
     expect(service.view(session).proposalBatches?.[0]?.source).toEqual({
@@ -1368,5 +1368,25 @@ describe('charter bootstrap', () => {
     })
     expect(forged).toMatchObject({ ok: false, code: 'INVALID_ARGUMENT' })
     expect(service.view(session).items.map(item => item.text)).not.toContain('Forged text')
+
+    const edited = await service.applyBootstrap({
+      sessionId: session.id,
+      mutationId: 'bootstrap-edited',
+      baseRevision: 1,
+      ops: [{
+        type: 'item.propose',
+        item: { clientRef: 'bootstrap-del-0', kind: 'deliverable', text: 'Edited tab check', order: 1, progress: 'not-started' },
+      }],
+    })
+    expect(edited).toMatchObject({ ok: true })
+    expect(service.view(session).items.some(item => item.text === 'Edited tab check')).toBe(true)
+
+    const objective = await service.applyBootstrap({
+      sessionId: session.id,
+      mutationId: 'bootstrap-objective-propose',
+      baseRevision: 2,
+      ops: [{ type: 'objective.propose', clientRef: 'o', text: 'Forged objective' }],
+    })
+    expect(objective).toMatchObject({ ok: false, code: 'INVALID_ARGUMENT' })
   })
 })

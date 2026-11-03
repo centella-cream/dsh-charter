@@ -1346,12 +1346,15 @@ export class CharterService extends Service {
           readonly offset?: unknown
           readonly revision?: unknown
         }
-        if (parsed.v !== 1 || !Number.isSafeInteger(parsed.offset) || (parsed.offset as number) < 0
-          || parsed.revision !== record.current.revision) {
+        if (parsed.v !== 1 || !Number.isSafeInteger(parsed.offset) || (parsed.offset as number) < 0) {
           throw new Error('cursor shape')
         }
+        if (parsed.revision !== record.current.revision) {
+          throw charterError('STALE_REVISION', 'charter_read cursor was created for another revision')
+        }
         start = parsed.offset as number
-      } catch {
+      } catch (error) {
+        if (error instanceof CharterError) throw error
         throw charterError('INVALID_CURSOR', 'invalid charter_read cursor')
       }
     }
@@ -1373,7 +1376,7 @@ export class CharterService extends Service {
       revision: record.current.revision,
       objective: boundedObjective,
       items: page,
-      truncated: relevant.length - page.length,
+      truncated: Math.max(0, relevant.length - (start + page.length)),
       ...(objectiveTruncated ? { objectiveTruncated: true } : {}),
       ...(nextCursor === undefined ? {} : { nextCursor }),
     }
@@ -1405,13 +1408,34 @@ export class CharterService extends Service {
     if (!extraction.available) {
       return unavailableResult('INVALID_ARGUMENT', 'No reviewable compaction draft is available for this Session')
     }
-    const allowedTexts = new Set([
-      ...(extraction.proposal.objective === null ? [] : [extraction.proposal.objective]),
-      ...extraction.proposal.invariants,
-      ...extraction.proposal.deliverables,
-    ])
+    const allowedKinds = new Map<string, Set<'invariant' | 'deliverable'>>()
+    const addAllowed = (text: string, kind: 'invariant' | 'deliverable'): void => {
+      const kinds = allowedKinds.get(text) ?? new Set()
+      kinds.add(kind)
+      allowedKinds.set(text, kinds)
+    }
+    for (const text of extraction.proposal.invariants) addAllowed(text, 'invariant')
+    for (const text of extraction.proposal.deliverables) addAllowed(text, 'deliverable')
     for (const op of normalized.ops) {
-      if (op.type === 'item.propose' && !allowedTexts.has(op.item.text)) {
+      if (op.type === 'objective.propose') {
+        return unavailableResult('INVALID_ARGUMENT', 'bootstrap apply cannot create objective proposals')
+      }
+      if (op.type !== 'item.propose') continue
+      const candidateRef = /^bootstrap-(inv|del)-(\d+)$/u.exec(op.item.clientRef)
+      if (candidateRef !== null) {
+        const expectedKind = candidateRef[1] === 'inv' ? 'invariant' : 'deliverable'
+        const index = Number(candidateRef[2])
+        const candidates = expectedKind === 'invariant'
+          ? extraction.proposal.invariants
+          : extraction.proposal.deliverables
+        if (op.item.kind !== expectedKind || !Number.isSafeInteger(index) || index < 0 || index >= candidates.length) {
+          return unavailableResult('INVALID_ARGUMENT', 'bootstrap proposal candidate reference is invalid')
+        }
+        // The reviewed candidate may be edited; provenance remains the extraction.
+        continue
+      }
+      const kinds = allowedKinds.get(op.item.text)
+      if (kinds === undefined || !kinds.has(op.item.kind)) {
         return unavailableResult(
           'INVALID_ARGUMENT',
           'bootstrap proposal does not match the reviewed extraction',
@@ -1458,7 +1482,10 @@ export class CharterService extends Service {
             progress: 'not-started',
           },
     }))
-    const callId = toolCallId ?? `propose-${randomUUID()}`
+    if (toolCallId === undefined || toolCallId.length === 0) {
+      return { ok: false, message: 'charter_propose requires a real tool call identity' }
+    }
+    const callId = toolCallId
     const mutationId = `propose-${sha256Text(callId).slice(7, 39)}`
     const existing = this.recordFor(session)?.recentMutations.find(receipt => receipt.mutationId === mutationId)
     if (existing !== undefined) return { ok: true, revision: existing.committedRevision }

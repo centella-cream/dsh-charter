@@ -198,7 +198,13 @@ function assertProposalConsistency(record: CharterRecord): void {
     if (batch.capturedAtRevision > record.current.revision) {
       throw charterError('CORRUPT_STATE', `proposal batch ${batch.id} points past the current revision`)
     }
+    const candidateKeys = new Set<string>()
     for (const candidate of batch.candidates) {
+      const candidateKey = `${candidate.kind}:${candidate.id}`
+      if (candidateKeys.has(candidateKey)) {
+        throw charterError('CORRUPT_STATE', `proposal batch ${batch.id} has duplicate candidate ${candidate.id}`)
+      }
+      candidateKeys.add(candidateKey)
       if (candidate.kind === 'tombstone') {
         if (candidate.atRevision > record.current.revision) {
           throw charterError('CORRUPT_STATE', `proposal tombstone ${candidate.id} points past the current revision`)
@@ -215,6 +221,9 @@ function assertProposalConsistency(record: CharterRecord): void {
     }
   }
   for (const item of record.current.items) {
+    if (item.reviewedAtRevision !== undefined && item.reviewedAtRevision > record.current.revision) {
+      throw charterError('CORRUPT_STATE', `item ${item.id} reviewed revision points past the current revision`)
+    }
     if (item.proposalBatchId === undefined) continue
     const batch = batches.find(candidate => candidate.id === item.proposalBatchId)
     if (batch === undefined) {
