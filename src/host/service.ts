@@ -1344,8 +1344,10 @@ export class CharterService extends Service {
         const parsed = JSON.parse(Buffer.from(options.cursor, 'base64url').toString('utf8')) as {
           readonly v?: unknown
           readonly offset?: unknown
+          readonly revision?: unknown
         }
-        if (parsed.v !== 1 || !Number.isSafeInteger(parsed.offset) || (parsed.offset as number) < 0) {
+        if (parsed.v !== 1 || !Number.isSafeInteger(parsed.offset) || (parsed.offset as number) < 0
+          || parsed.revision !== record.current.revision) {
           throw new Error('cursor shape')
         }
         start = parsed.offset as number
@@ -1361,8 +1363,11 @@ export class CharterService extends Service {
       page.push(candidate.at(-1)!)
       cursorAfter += 1
     }
+    if (page.length === 0 && start < relevant.length) {
+      throw charterError('LIMIT_EXCEEDED', 'one charter item does not fit the charter_read envelope')
+    }
     const nextCursor = cursorAfter < relevant.length
-      ? Buffer.from(JSON.stringify({ v: 1, offset: cursorAfter }), 'utf8').toString('base64url')
+      ? Buffer.from(JSON.stringify({ v: 1, revision: record.current.revision, offset: cursorAfter }), 'utf8').toString('base64url')
       : undefined
     return {
       revision: record.current.revision,
@@ -1396,7 +1401,28 @@ export class CharterService extends Service {
       return unavailableResult(error instanceof CharterError ? error.code : 'INVALID_ARGUMENT',
         error instanceof Error ? error.message : String(error))
     }
-    return this.edit(normalized, actor, this.bootstrapProposalSource(normalized.sessionId as SessionIdType))
+    const extraction = this.bootstrap(normalized.sessionId as SessionIdType)
+    if (!extraction.available) {
+      return unavailableResult('INVALID_ARGUMENT', 'No reviewable compaction draft is available for this Session')
+    }
+    const allowedTexts = new Set([
+      ...(extraction.proposal.objective === null ? [] : [extraction.proposal.objective]),
+      ...extraction.proposal.invariants,
+      ...extraction.proposal.deliverables,
+    ])
+    for (const op of normalized.ops) {
+      if (op.type === 'item.propose' && !allowedTexts.has(op.item.text)) {
+        return unavailableResult(
+          'INVALID_ARGUMENT',
+          'bootstrap proposal does not match the reviewed extraction',
+        )
+      }
+    }
+    return this.edit(normalized, actor, {
+      kind: 'compaction-summary',
+      summarySeq: extraction.proposal.source.summarySeq,
+      at: extraction.proposal.source.at,
+    })
   }
 
   async proposeFromAgent(
@@ -1408,6 +1434,7 @@ export class CharterService extends Service {
     toolCallId?: string,
   ): Promise<{ readonly ok: boolean; readonly message?: string; readonly revision?: number }> {
     if (items.length === 0) return { ok: false, message: 'at least one proposal is required' }
+    if (items.length > 16) return { ok: false, message: 'charter_propose accepts at most 16 items' }
     if (items.some(input => Object.prototype.hasOwnProperty.call(input, 'requires'))) {
       return { ok: false, message: 'proposed dependencies are not supported yet; remove requires from the proposal' }
     }

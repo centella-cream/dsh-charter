@@ -171,6 +171,11 @@ function assertProposalConsistency(record: CharterRecord): void {
     if (proposal.createdRevision > record.current.revision) {
       throw charterError('CORRUPT_STATE', `objective proposal ${proposal.id} has a future creation revision`)
     }
+    for (const revision of [proposal.reviewedAtRevision, proposal.appliedRevision]) {
+      if (revision !== undefined && (revision < 1 || revision > record.current.revision)) {
+        throw charterError('CORRUPT_STATE', `objective proposal ${proposal.id} points outside the current revision`)
+      }
+    }
     if (proposal.review === 'accepted'
       && (proposal.textDigest === undefined || proposal.appliedRevision === undefined || proposal.text !== '')) {
       throw charterError('CORRUPT_STATE', `accepted objective proposal ${proposal.id} is not applied metadata`)
@@ -183,7 +188,7 @@ function assertProposalConsistency(record: CharterRecord): void {
   const batchIds = new Set<string>()
   const itemIds = new Set(record.current.items.map(item => item.id))
   if (batches.length > MAX_PROPOSAL_BATCHES) {
-    throw charterError('CORRUPT_STATE', `charter exceeds ${MAX_PROPOSAL_BATCHES} proposal batches`)
+    throw charterError('LIMIT_EXCEEDED', `charter exceeds ${MAX_PROPOSAL_BATCHES} proposal batches`)
   }
   for (const batch of batches) {
     if (batchIds.has(batch.id)) {
@@ -210,8 +215,14 @@ function assertProposalConsistency(record: CharterRecord): void {
     }
   }
   for (const item of record.current.items) {
-    if (item.proposalBatchId !== undefined && !batchIds.has(item.proposalBatchId)) {
+    if (item.proposalBatchId === undefined) continue
+    const batch = batches.find(candidate => candidate.id === item.proposalBatchId)
+    if (batch === undefined) {
       throw charterError('CORRUPT_STATE', `item ${item.id} references missing proposal batch ${item.proposalBatchId}`)
+    }
+    if (!batch.candidates.some(candidate => candidate.kind !== 'tombstone'
+      && candidate.kind === 'item' && candidate.id === item.id)) {
+      throw charterError('CORRUPT_STATE', `item ${item.id} is not a candidate of proposal batch ${item.proposalBatchId}`)
     }
   }
 

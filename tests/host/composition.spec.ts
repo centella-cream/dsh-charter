@@ -811,6 +811,11 @@ describe('dsh-charter host composition', () => {
     ] }, exec) as { readonly ok: boolean }
     expect(replayed.ok).toBe(true)
     expect(service.view(session).items).toHaveLength(2)
+    const overflow = await tool.execute({
+      items: Array.from({ length: 17 }, (_, index) => ({ kind: 'invariant', text: `Overflow ${index}` })),
+    }, exec) as { readonly ok: boolean }
+    expect(overflow.ok).toBe(false)
+    expect(service.view(session).items).toHaveLength(2)
   })
 
   it('bounds the charter_read all debugging view', async () => {
@@ -850,6 +855,16 @@ describe('dsh-charter host composition', () => {
     })
     expect(secondPage.items).toHaveLength(10)
     expect(new Set([...firstPage.items, ...secondPage.items].map(item => item.id)).size).toBe(20)
+    await service.edit({
+      sessionId: session.id,
+      mutationId: 'read-all-next-revision',
+      baseRevision: 1,
+      ops: [{ type: 'item.add', item: { clientRef: 'new', kind: 'invariant', text: 'New', order: 70 } }],
+    })
+    expect(() => service.readForModel(session, 'all', {
+      limit: 10,
+      ...(firstPage.nextCursor === undefined ? {} : { cursor: firstPage.nextCursor }),
+    })).toThrow(/cursor|STALE_REVISION/u)
     expect(() => service.readForModel(session, 'standing')).toThrow(/no partial standing view|LIMIT_EXCEEDED/u)
     // The standing projection is compact: no debug-only id/review/lifecycle.
     expect(all.items[0]).toMatchObject({
@@ -1344,5 +1359,14 @@ describe('charter bootstrap', () => {
       summarySeq: 0,
       at: expect.any(Number),
     })
+
+    const forged = await service.applyBootstrap({
+      sessionId: session.id,
+      mutationId: 'bootstrap-forged',
+      baseRevision: 1,
+      ops: [{ type: 'item.propose', item: { clientRef: 'f', kind: 'invariant', text: 'Forged text', order: 1 } }],
+    })
+    expect(forged).toMatchObject({ ok: false, code: 'INVALID_ARGUMENT' })
+    expect(service.view(session).items.map(item => item.text)).not.toContain('Forged text')
   })
 })

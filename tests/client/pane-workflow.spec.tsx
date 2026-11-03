@@ -245,6 +245,7 @@ describe('0.2 workspace and dependency plan', () => {
     draft.stage(ready, { type: 'deliverable.requires', itemId: 'item-b', requires: ['item-a'] })
     const tree = mount(src, draft)
     expect(textOf(tree.root)).toContain('deps.conflict')
+    expect(textOf(tree.root)).toContain('apply.block.dependency-conflict')
     const apply = tree.root.findAll(node => node.type === 'button' && textOf(node) === 'footer.apply')[0]
     expect(apply?.props.disabled).toBe(true)
   })

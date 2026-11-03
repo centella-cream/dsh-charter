@@ -1036,7 +1036,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
               : ops.length === 0
                 ? 'no-changes'
                 : applyBlocked
-                  ? 'quota'
+                  ? admission.reason === 'invalid-dependencies' ? 'dependency-conflict' : 'quota'
                   : planInvalid
                     ? 'dependency-conflict'
                     : null

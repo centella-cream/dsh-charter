@@ -104,14 +104,23 @@ export function forkRecord(input: ForkRecordInput): CharterRecord {
           text: '',
           origin: 'fork' as const,
           createdRevision: 1,
+          reviewedAtRevision: 1,
           appliedRevision: 1,
         }
-      : {
-          ...proposal,
-          id,
-          origin: 'fork' as const,
-          createdRevision: 1,
-        }
+      : proposal.review === 'pending'
+        ? {
+            ...proposal,
+            id,
+            origin: 'fork' as const,
+            createdRevision: 1,
+          }
+        : {
+            ...proposal,
+            id,
+            origin: 'fork' as const,
+            createdRevision: 1,
+            reviewedAtRevision: 1,
+          }
   })
   const inheritedBatches: import('./schemas.js').ProposalBatch[] = []
   for (const batch of input.parent.proposalBatches ?? []) {
