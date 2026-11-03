@@ -10,6 +10,24 @@
 > 的其他支柱仍是 0.2 的独立必交项。
 > **替代/被替代：** 取代 v1 工作区交互；被替代时保留为历史文档。
 
+## 0.1 实现状态与已知差距
+
+本文件的状态是 **Implemented — pending release acceptance**，含义仅是：下列已实现的工作区核心通过源码验收，
+不是完整的 v2/0.2.0 实现。当前明确未完成：
+
+- 客户端 store 仍消费完整 `watch` 帧，`watchSummary`/`queryItems`/`queryProposals`/`queryChanges` 已存在但
+  Pane 尚未切换到 summary + 分页/filter 查询；R06 的 512 条规模合同未完成。
+- message proposal 和 manual “保存为提案”入口未实现；`item.propose` 的 origin 仍固定为 agent。
+- proposal source registry / source integrity、完整 compaction/message/tool source 字段和 regisry 复算未实现。
+- Change Set 的客户端 canonical diff 与 `PREVIEW_MISMATCH` 未接入；Host change-set summary 已存在。
+- fork 的 typed source refs 仍是简化形式；objective proposal 已随 fork 复制。
+- `queryProposals` 的 limit/cursor/响应字节上限、`charter_propose` 的 proposedRequires 未实现；当前工具参数已
+  移除 `requires`，显式拒绝而不是接受一个必然失败的参数。`charter_read all` 已有 cursor/limit，standing 超限
+  显式 `LIMIT_EXCEEDED`。
+- Evidence Integrity、Fact Validity、validator 是 0.2 的独立必交项，不属于本 workspace core。
+
+在实现这些合同前，不应把本文件或 `0.2.0` 包版本读成完整 v2 已实现。
+
 ## 1. 决策摘要
 
 0.2 将当前平铺的 Charter 编辑器升级为会话契约工作区。工作区包含三个一级区域：
