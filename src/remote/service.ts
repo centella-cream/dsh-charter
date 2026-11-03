@@ -73,6 +73,24 @@ export class CharterRemoteService extends TypertRemoteService {
 
   @remoteMethod({
     resources: {
+      session: (request: CharterEditRequest): SessionId => request.sessionId as SessionId,
+    },
+  })
+  applyBootstrap(request: CharterEditRequest): Promise<CharterEditResult> {
+    let actor: CharterActor
+    try {
+      actor = resolveRemoteActor(this.ctx)
+    } catch (error) {
+      if (error instanceof CharterError) {
+        return Promise.resolve({ ok: false, code: error.code, message: error.message })
+      }
+      throw error
+    }
+    return this.ctx.charter.applyBootstrap(request, actor)
+  }
+
+  @remoteMethod({
+    resources: {
       session: (sessionId: SessionId): SessionId => sessionId,
     },
   })

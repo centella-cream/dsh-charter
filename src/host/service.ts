@@ -24,6 +24,7 @@ import {
 } from '../core/limits.js'
 import { queryItems, type ItemQueryRequest } from '../core/query.js'
 import { planChangeSet, type PlannedChangeSet } from '../core/change-set.js'
+import { sha256Text } from '../core/digest.js'
 import { dependencyProjection } from '../core/dependencies.js'
 import {
   CHARTER_RECORD_SCHEMA_VERSION,
@@ -1104,7 +1105,13 @@ export class CharterService extends Service {
         + (view.objectiveProposals ?? []).filter(proposal => proposal.review === 'pending').length,
       historyItems: view.items.filter(item => item.review !== 'pending' && item.lifecycle !== 'current').length
         + view.items.filter(item => item.review === 'rejected').length,
-      pendingBatches: view.proposalBatches?.length ?? 0,
+      pendingBatches: (view.proposalBatches ?? []).filter(batch => {
+        const pendingIds = new Set([
+          ...view.items.filter(item => item.review === 'pending').map(item => item.id),
+          ...(view.objectiveProposals ?? []).filter(proposal => proposal.review === 'pending').map(proposal => proposal.id),
+        ])
+        return batch.candidates.some(candidate => candidate.kind !== 'tombstone' && pendingIds.has(candidate.id))
+      }).length,
       promptBytes: new TextEncoder().encode(view.promptText).byteLength,
       overBudget: view.overBudget,
       status: view.status,
@@ -1231,7 +1238,11 @@ export class CharterService extends Service {
     return view.status === 'ready' && !view.overBudget ? view.promptText : ''
   }
 
-  readForModel(session: Session, mode: 'standing' | 'all'): CharterToolView {
+  readForModel(
+    session: Session,
+    mode: 'standing' | 'all',
+    options: { readonly cursor?: string; readonly limit?: number } = {},
+  ): CharterToolView {
     if (this.writeUncertain.has(session.id)) {
       throw charterError('UNAVAILABLE', 'The last storage write outcome is uncertain; restart the Host before reading this Charter')
     }
@@ -1263,34 +1274,16 @@ export class CharterService extends Service {
       }))
       const maxItems = 64
       const maxEnvelopeBytes = 32 * 1_024
-      const emptyBytes = Buffer.byteLength(
-        JSON.stringify({ revision: record.current.revision, objective, items: [], truncated: relevant.length }),
-        'utf8',
-      )
-      const objectiveTruncated = emptyBytes > maxEnvelopeBytes
-      const boundedObjective = objectiveTruncated ? null : objective
-      const envelopeBytes = (items: readonly typeof simplified[number][]): number => Buffer.byteLength(
-        JSON.stringify({
-          revision: record.current.revision,
-          objective: boundedObjective,
-          items,
-          truncated: relevant.length - items.length,
-        }),
-        'utf8',
-      )
-      const page: typeof simplified = []
-      for (const item of simplified) {
-        const candidate = [...page, item]
-        if (candidate.length > maxItems || envelopeBytes(candidate) > maxEnvelopeBytes) break
-        page.push(item)
+      const envelope = { revision: record.current.revision, objective, items: simplified, truncated: 0 }
+      if (simplified.length > maxItems
+        || Buffer.byteLength(JSON.stringify(envelope), 'utf8') > maxEnvelopeBytes) {
+        throw charterError(
+          'LIMIT_EXCEEDED',
+          `standing charter exceeds the ${maxItems}-item/${maxEnvelopeBytes}-byte tool envelope; `
+          + 'no partial standing view is returned',
+        )
       }
-      return {
-        revision: record.current.revision,
-        objective: boundedObjective,
-        items: page,
-        truncated: relevant.length - page.length,
-        ...(objectiveTruncated ? { objectiveTruncated: true } : {}),
-      }
+      return envelope
     }
 
     // `all` is the bounded debugging projection. The cap applies to the final
@@ -1306,6 +1299,8 @@ export class CharterService extends Service {
     // truncation explicitly.
     const objectiveTruncated = emptyEnvelopeBytes > maxEnvelopeBytes
     const boundedObjective = objectiveTruncated ? null : objective
+    const dependencyRows = dependencyProjection(record.current.items)
+    const dependencyById = new Map(dependencyRows.map(row => [row.id, row]))
     const toToolItem = (item: typeof relevant[number]): CharterToolItem => ({
       id: item.id,
       kind: item.kind,
@@ -1323,6 +1318,12 @@ export class CharterService extends Service {
       createdRevision: item.createdRevision,
       ...(item.supersedes === undefined ? {} : { supersedes: item.supersedes }),
       ...(item.supersededBy === undefined ? {} : { supersededBy: item.supersededBy }),
+      ...(item.kind === 'deliverable'
+        ? {
+            key: dependencyById.get(item.id)?.localKey ?? null,
+            requires: dependencyById.get(item.id)?.requires ?? [],
+          }
+        : {}),
     })
     const envelopeBytes = (items: readonly CharterToolItem[]): number => Buffer.byteLength(
       JSON.stringify({
@@ -1333,32 +1334,85 @@ export class CharterService extends Service {
       }),
       'utf8',
     )
-    const page: CharterToolItem[] = []
-    for (const item of relevant) {
-      const candidate = [...page, toToolItem(item)]
-      if (candidate.length > maxItems || envelopeBytes(candidate) > maxEnvelopeBytes) break
-      page.push(candidate.at(-1)!)
+    const requestedLimit = options.limit ?? maxItems
+    if (!Number.isSafeInteger(requestedLimit) || requestedLimit < 1 || requestedLimit > maxItems) {
+      throw charterError('LIMIT_EXCEEDED', `charter_read limit must be between 1 and ${maxItems}`)
     }
+    let start = 0
+    if (options.cursor !== undefined) {
+      try {
+        const parsed = JSON.parse(Buffer.from(options.cursor, 'base64url').toString('utf8')) as {
+          readonly v?: unknown
+          readonly offset?: unknown
+        }
+        if (parsed.v !== 1 || !Number.isSafeInteger(parsed.offset) || (parsed.offset as number) < 0) {
+          throw new Error('cursor shape')
+        }
+        start = parsed.offset as number
+      } catch {
+        throw charterError('INVALID_CURSOR', 'invalid charter_read cursor')
+      }
+    }
+    const page: CharterToolItem[] = []
+    let cursorAfter = start
+    for (const item of relevant.slice(start)) {
+      const candidate = [...page, toToolItem(item)]
+      if (candidate.length > requestedLimit || envelopeBytes(candidate) > maxEnvelopeBytes) break
+      page.push(candidate.at(-1)!)
+      cursorAfter += 1
+    }
+    const nextCursor = cursorAfter < relevant.length
+      ? Buffer.from(JSON.stringify({ v: 1, offset: cursorAfter }), 'utf8').toString('base64url')
+      : undefined
     return {
       revision: record.current.revision,
       objective: boundedObjective,
       items: page,
       truncated: relevant.length - page.length,
       ...(objectiveTruncated ? { objectiveTruncated: true } : {}),
+      ...(nextCursor === undefined ? {} : { nextCursor }),
     }
   }
 
-  async proposeFromAgent(session: Session, items: readonly {
-    readonly kind: 'invariant' | 'deliverable'
-    readonly text: string
-    readonly requires?: readonly string[]
-  }[]): Promise<{ readonly ok: boolean; readonly message?: string; readonly revision?: number }> {
+  /** Host-only source for a bootstrap apply; callers cannot provide provenance. */
+  bootstrapProposalSource(sessionId: SessionIdType): import('../core/schemas.js').ProposalSource | undefined {
+    const result = this.bootstrap(sessionId)
+    if (!result.available) return undefined
+    return {
+      kind: 'compaction-summary',
+      summarySeq: result.proposal.source.summarySeq,
+      at: result.proposal.source.at,
+    }
+  }
+
+  async applyBootstrap(
+    request: unknown,
+    actor: CharterActor = { kind: 'owner' },
+  ): Promise<CharterEditResult> {
+    let normalized: CharterEditRequest
+    try {
+      normalized = normalizeEditRequest(request)
+    } catch (error) {
+      return unavailableResult(error instanceof CharterError ? error.code : 'INVALID_ARGUMENT',
+        error instanceof Error ? error.message : String(error))
+    }
+    return this.edit(normalized, actor, this.bootstrapProposalSource(normalized.sessionId as SessionIdType))
+  }
+
+  async proposeFromAgent(
+    session: Session,
+    items: readonly {
+      readonly kind: 'invariant' | 'deliverable'
+      readonly text: string
+    }[],
+    toolCallId?: string,
+  ): Promise<{ readonly ok: boolean; readonly message?: string; readonly revision?: number }> {
     if (items.length === 0) return { ok: false, message: 'at least one proposal is required' }
+    if (items.some(input => Object.prototype.hasOwnProperty.call(input, 'requires'))) {
+      return { ok: false, message: 'proposed dependencies are not supported yet; remove requires from the proposal' }
+    }
     const view = this.view(session)
     if (view.status !== 'ready') return { ok: false, message: 'Charter is not editable in its current state' }
-    const existingIds = new Set(view.items.filter(item =>
-      item.kind === 'deliverable' && item.review === 'accepted' && item.lifecycle === 'current',
-    ).map(item => item.id))
     const nextOrder = view.items.length === 0 ? 0 : Math.max(...view.items.map(item => item.order)) + 1
     const ops: import('../core/schemas.js').CharterOp[] = items.map((input, index) => ({
       type: 'item.propose',
@@ -1375,17 +1429,18 @@ export class CharterService extends Service {
             text: input.text,
             order: nextOrder + index,
             progress: 'not-started',
-            ...(input.requires === undefined ? {} : {
-              requires: [...new Set(input.requires)].filter(id => existingIds.has(id)).sort(),
-            }),
           },
     }))
+    const callId = toolCallId ?? `propose-${randomUUID()}`
+    const mutationId = `propose-${sha256Text(callId).slice(7, 39)}`
+    const existing = this.recordFor(session)?.recentMutations.find(receipt => receipt.mutationId === mutationId)
+    if (existing !== undefined) return { ok: true, revision: existing.committedRevision }
     const result = await this.edit({
       sessionId: session.id,
-      mutationId: `propose-${randomUUID()}`,
+      mutationId,
       baseRevision: view.revision,
       ops,
-    }, { kind: 'user' }, { kind: 'agent-tool', toolCallId: `propose-${randomUUID()}`, at: Date.now() })
+    }, { kind: 'agent-tool' }, { kind: 'agent-tool', toolCallId: callId, at: Date.now() })
     return result.ok
       ? { ok: true, revision: result.committedRevision }
       : { ok: false, message: result.message }
@@ -1840,10 +1895,14 @@ export class CharterService extends Service {
       if (error instanceof CharterError) return { ok: false, code: error.code, message: error.message }
       throw error
     }
+    let legacyV1: import('../core/schemas.js').CharterRecordV1 | undefined
     let archived = charterRecordSchema.safeParse(archive.record)
     if (!archived.success) {
       const legacy = charterRecordV1Schema.safeParse(archive.record)
-      if (legacy.success) archived = { success: true, data: migrateRecordV1ToV2(legacy.data) }
+      if (legacy.success) {
+        legacyV1 = legacy.data
+        archived = { success: true, data: migrateRecordV1ToV2(legacy.data) }
+      }
     }
     if (!archived.success) {
       return { ok: false, code: 'INVALID_ARCHIVE', message: 'Archive record does not match the record schema' }
@@ -1918,7 +1977,9 @@ export class CharterService extends Service {
           result: archived.data,
           sourceRecordDigest: archive.source.recordDigest as `sha256:${string}`,
         })
-        const next = restoredRecord(archived.data, receipt, this.config)
+        const next = legacyV1 === undefined
+          ? restoredRecord(archived.data, receipt, this.config)
+          : appendMaintenanceReceipt(legacyV1 as unknown as CharterRecord, receipt, this.config)
         assertRecordConsistency(next, this.config)
         assertArchiveAdmission(buildRecordArchive({
           sessionId: session.id,

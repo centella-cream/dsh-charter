@@ -349,6 +349,48 @@ describe('rc.3 explicit initialize / export / restore', () => {
       .toMatchObject({ ok: false, code: 'OPERATION_ID_REUSED' })
   })
 
+  it('restores a v1 archive as v1 and migrates only on the next ordinary edit', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-recovery-v1-restore-'))
+    roots.push(root)
+    const ctx = await mount(root)
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('v1-restore'), identityMeta(1_700_000_001_550))
+    announceStartup(ctx, session)
+    await waitFor(service, session, () => service.view(session).status === 'ready')
+    await service.edit(addItem(session.id, 0, 'v1-item', 'V1 invariant'))
+    const lifecycle = service.view(session).lifecycle!
+    const exported = service.exportRecord(session.id)
+    if (!exported.ok) throw new Error('export failed')
+    const v2 = exported.archive.record as CharterRecord
+    const { proposalBatches: _batches, objectiveProposals: _objectives, ...common } = v2
+    const v1 = { ...common, recordSchemaVersion: 1 as const }
+    const v1Archive = buildRecordArchive({
+      sessionId: session.id,
+      lifecycle,
+      health: 'healthy',
+      revision: v1.current.revision,
+      record: v1 as never,
+      exportedAt: Date.now(),
+    })
+    const table = (service as unknown as { sessionsTable: { get: (id: string) => unknown; put: (id: string, value: unknown) => Promise<void> } }).sessionsTable
+    const bad = { recordSchemaVersion: 1, identity: identityMeta(1_700_000_001_550).meta, current: { revision: 99 } }
+    await table.put(session.id, bad)
+    await service.ensureSession(session, 'resume')
+    await waitFor(service, session, () => service.view(session).recordState?.kind === 'invalid')
+    const restored = await service.restoreRecord({
+      sessionId: session.id,
+      operationId: 'v1-restore-op',
+      expectedLifecycle: lifecycle,
+      expectedTarget: { kind: 'invalid', reason: 'schema', recordDigest: recordDigestOf(bad) },
+      archive: v1Archive,
+    })
+    expect(restored).toMatchObject({ ok: true })
+    expect(table.get(session.id)).toMatchObject({ recordSchemaVersion: 1 })
+    expect(service.view(session).promptText).toContain('V1 invariant')
+    await service.edit(addItem(session.id, 1, 'after-v1', 'After restore'))
+    expect(table.get(session.id)).toMatchObject({ recordSchemaVersion: 2 })
+  })
+
   it('restore followed by an ordinary edit still confirms the original operation (RC3-07)', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-recovery-restore-edit-'))
     roots.push(root)

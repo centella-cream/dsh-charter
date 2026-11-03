@@ -65,8 +65,15 @@ function normalizeNewItem(input: NewItemInput): NewItemInput {
         text: normalizeUserText(input.text, `item ${input.clientRef}`),
         order: input.order,
         progress: input.progress,
-        ...(input.requires === undefined ? {} : { requires: [...new Set(input.requires)].sort() }),
+        ...(input.requires === undefined ? {} : { requires: normalizeRequires(input.requires) }),
       }
+}
+
+function normalizeRequires(requires: readonly string[]): string[] {
+  if (new Set(requires).size !== requires.length) {
+    throw charterError('INVALID_ARGUMENT', 'duplicate prerequisite IDs are not allowed')
+  }
+  return [...requires].sort()
 }
 
 function normalizeOp(op: CharterOp): CharterOp {
@@ -117,8 +124,9 @@ function normalizeOp(op: CharterOp): CharterOp {
     case 'item.restore':
     case 'item.purge':
     case 'deliverable.progress':
-    case 'deliverable.requires':
       return op
+    case 'deliverable.requires':
+      return { ...op, requires: normalizeRequires(op.requires) }
     case 'item.verification.set':
       return op
   }
@@ -134,7 +142,6 @@ export function normalizeEditRequest(input: unknown): CharterEditRequest {
     mutationId: parsed.data.mutationId,
     baseRevision: parsed.data.baseRevision,
     ops: parsed.data.ops.map(normalizeOp),
-    ...(parsed.data.proposalSource === undefined ? {} : { proposalSource: parsed.data.proposalSource }),
   }
 }
 

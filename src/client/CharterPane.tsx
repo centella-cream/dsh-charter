@@ -43,7 +43,6 @@ import {
   projectView,
   promptBudgetAdmission,
   utf8Bytes,
-  visibleItems,
   type ProjectedItem,
 } from './preview.js'
 import { firstDraftTextIssue, type BootstrapPlan } from './bootstrap-plan.js'
@@ -772,7 +771,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   // The Pane renders the single sorted projected list (filtered to the working
   // rows), never active-then-pending groups: an order-1 pending row must stay
   // above an order-2 active row just as the prompt renders it.
-  const currentInvariants = visibleItems(invariants)
+  const currentInvariants = activeItems(invariants)
   const historyInvariants = invariants.filter(item => item.lifecycle !== 'current' || item.review === 'rejected')
   const activeDeliverables = activeItems(deliverables)
   const pendingDeliverables = pendingItems(deliverables)
@@ -781,8 +780,26 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   const inactiveItems = projectedItems.filter(item =>
     item.lifecycle !== 'current' || item.review === 'rejected')
   const totalPending = pendingInvariants.length + pendingDeliverables.length + pendingObjectiveProposals.length
-  const dependencyPlan = useMemo(() => dependencyProjection(projectedItems as unknown as CharterItem[]), [projectedItems])
-  const currentDeliverables = visibleItems(deliverables)
+  const pendingItemProposals = [...pendingInvariants, ...pendingDeliverables]
+    .filter(item => !item.synthetic && (view?.items ?? []).some(committed => committed.id === item.id))
+  const batchByItem = new Map<string, { readonly batchId: string; readonly sourceKind: string }>()
+  for (const batch of view?.proposalBatches ?? []) {
+    for (const candidate of batch.candidates) {
+      if (candidate.kind === 'item') {
+        batchByItem.set(candidate.id, { batchId: batch.id, sourceKind: batch.source.kind })
+      }
+    }
+  }
+  const dependencyPlanResult = useMemo(() => {
+    try {
+      return { ok: true as const, plan: dependencyProjection(projectedItems as unknown as CharterItem[]) }
+    } catch {
+      return { ok: false as const, plan: [] }
+    }
+  }, [projectedItems])
+  const dependencyPlan = dependencyPlanResult.plan
+  const dependencyConflict = !dependencyPlanResult.ok
+  const currentDeliverables = activeItems(deliverables)
   const historyDeliverables = deliverables.filter(item => item.lifecycle !== 'current' || item.review === 'rejected')
   const successorOf = (item: ProjectedItem): ProjectedItem | undefined =>
     item.supersededBy === undefined ? undefined : projectedItems.find(candidate => candidate.id === item.supersededBy)
@@ -796,15 +813,26 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   const effectiveOps = ops.length > 0
     ? ops
     : bootstrapPhase === 'draft' ? bootstrapPlan.ops : []
-  const preview = useMemo(
-    () => (view === null ? '' : previewPrompt(view, effectiveOps)),
-    [view, effectiveOps],
-  )
+  const previewResult = useMemo(() => {
+    if (view === null) return { ok: true as const, text: '' }
+    try {
+      return { ok: true as const, text: previewPrompt(view, effectiveOps) }
+    } catch {
+      return { ok: false as const, text: '' }
+    }
+  }, [view, effectiveOps])
+  const preview = previewResult.text
+  const previewInvalid = !previewResult.ok
+  const planInvalid = dependencyConflict || previewInvalid
   const formattedPreview = useMemo(() => formatCharterPreview(preview), [preview])
-  const bootstrapPromptBytes = useMemo(
-    () => (view === null || bootstrapPhase !== 'draft' ? 0 : utf8Bytes(previewPrompt(view, bootstrapPlan.ops))),
-    [view, bootstrapPhase, bootstrapPlan.ops],
-  )
+  const bootstrapPromptBytes = useMemo(() => {
+    if (view === null || bootstrapPhase !== 'draft') return 0
+    try {
+      return utf8Bytes(previewPrompt(view, bootstrapPlan.ops))
+    } catch {
+      return view.limits.maxPromptBytes + 1
+    }
+  }, [view, bootstrapPhase, bootstrapPlan.ops])
   const selectedBootstrapItems = bootstrapItems.filter(item => item.selected && normalizedNonEmpty(item.text))
   const bootstrapObjectiveOver = view !== null && normalizedBytes(bootstrapObjective) > view.limits.maxObjectiveBytes
   const bootstrapItemsOver = view !== null
@@ -991,7 +1019,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   const admission = draftAdmission(view, ops)
   const applyBlocked = !admission.ok
   const applyBlockReason: 'retry' | 'lifecycle-abandon' | 'unknown' | 'busy' | 'read-only' | 'no-changes' | 'editor-open'
-    | 'revision-conflict' | 'connection' | 'quota' | 'stale' | null = editReplay
+    | 'revision-conflict' | 'connection' | 'quota' | 'stale' | 'dependency-conflict' | null = editReplay
     ? 'retry'
     : unknownBlocked
       ? oldLifecycleUnknown ? 'lifecycle-abandon' : 'unknown'
@@ -1009,7 +1037,9 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                 ? 'no-changes'
                 : applyBlocked
                   ? 'quota'
-                  : null
+                  : planInvalid
+                    ? 'dependency-conflict'
+                    : null
   const applyHint = applyBlockReason === null
     ? t('footer.applyHint')
     : t(`apply.block.${applyBlockReason}` as never)
@@ -1503,7 +1533,6 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                   className={`charter-nav__item${area === item.id ? ' is-active' : ''}`}
                   aria-current={area === item.id ? 'page' : undefined}
                   aria-describedby={`charter-nav-help-${item.id}`}
-                  title={item.help}
                   onClick={() => goSection(item.target)}
                 >
                   <span className="charter-nav__text">{item.label}</span>
@@ -1807,6 +1836,12 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
               </section>
             )}
 
+            {area === 'workspace' && planInvalid && (
+              <div className="charter-notice charter-notice--danger" role="alert">
+                {t('deps.conflict')}
+              </div>
+            )}
+
             {area === 'workspace' && dependencyPlan.length > 0 && (
               <section className="charter-card charter-section" aria-labelledby="charter-dependency-title">
                 <div className="charter-cardhead">
@@ -1824,6 +1859,9 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                         <span className="charter-dependency__key">{row.localKey}</span>
                         <span className="charter-dependency__text">{item?.text ?? row.id}</span>
                         <span className="charter-dependency__status">{t(`deps.status.${row.executionDisplay}`)}</span>
+                        {row.prerequisiteStatus === 'dependency-conflict' && row.executionDisplay !== 'dependency-conflict' && (
+                          <span className="charter-dependency__status">{t('deps.prerequisiteConflict')}</span>
+                        )}
                         {row.requires.length > 0 && (
                           <span className="charter-dependency__requires">
                             {t('deps.requires', { keys: row.requires.join(', ') })}
@@ -1974,6 +2012,48 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                       </span>
                     </li>
                   ))}
+                </ul>
+              </section>
+            )}
+
+            {area === 'review' && pendingItemProposals.length > 0 && (
+              <section className="charter-card charter-section" aria-labelledby="charter-item-proposals-title">
+                <div className="charter-cardhead">
+                  <div className="charter-cardtitle">
+                    <span className="charter-kicker">{t('review.kicker')}</span>
+                    <h3 id="charter-item-proposals-title">{t('review.itemProposals')}</h3>
+                  </div>
+                  <span className="charter-count">{pendingItemProposals.length}</span>
+                </div>
+                <ul className="charter-proposal-list">
+                  {pendingItemProposals.map(item => {
+                    const batch = batchByItem.get(item.id)
+                    return (
+                      <li key={item.id} className="charter-proposal">
+                        <p className="charter-proposal__text">{item.text}</p>
+                        <span className="charter-proposal__meta">
+                          {item.kind === 'invariant' ? t('invariants.kicker') : t('deliverables.kicker')}
+                          {batch === undefined ? '' : ` · ${t(`review.source.${batch.sourceKind}` as never)}`}
+                        </span>
+                        <div className="charter-proposal__actions">
+                          <ActionButton
+                            variant="outline"
+                            disabled={saving || unknownBlocked}
+                            onClick={() => draft.stage(view, { type: 'item.accept', itemId: item.id })}
+                          >
+                            {t('item.accept')}
+                          </ActionButton>
+                          <ActionButton
+                            variant="outline"
+                            disabled={saving || unknownBlocked}
+                            onClick={() => draft.stage(view, { type: 'item.reject', itemId: item.id })}
+                          >
+                            {t('item.reject')}
+                          </ActionButton>
+                        </div>
+                      </li>
+                    )
+                  })}
                 </ul>
               </section>
             )}

@@ -219,6 +219,7 @@ export function projectView(view: CharterView, ops: readonly CharterOp[]): Proje
         }
         objectiveProposals.set(proposal.id, {
           ...proposal,
+          text: '',
           review: 'accepted',
           reviewedAtRevision: view.revision + 1,
           appliedRevision: view.revision + 1,
@@ -318,6 +319,8 @@ export function projectView(view: CharterView, ops: readonly CharterOp[]): Proje
             op.replacement.text,
             op.replacement.order,
             op.replacement.kind === 'deliverable' ? op.replacement.progress : undefined,
+            undefined,
+            op.replacement.kind === 'deliverable' ? op.replacement.requires : undefined,
           ),
           supersedes: item.id,
         })

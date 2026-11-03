@@ -365,7 +365,10 @@ export function applyOps(input: ApplyOpsInput): ApplyOpsOutput {
         if (item.kind !== 'deliverable' || item.review !== 'accepted' || item.lifecycle !== 'current') {
           throw charterError('INVALID_TRANSITION', `item ${item.id} is not an active deliverable`)
         }
-        const requires = [...new Set(op.requires)].sort()
+        if (new Set(op.requires).size !== op.requires.length) {
+          throw charterError('INVALID_ARGUMENT', `deliverable ${item.id} has duplicate prerequisites`)
+        }
+        const requires = [...op.requires].sort()
         if (JSON.stringify(item.requires ?? []) === JSON.stringify(requires)) {
           throw charterError('INVALID_TRANSITION', `deliverable ${item.id} dependencies are unchanged`)
         }

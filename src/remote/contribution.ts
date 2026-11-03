@@ -125,6 +125,27 @@ export const charterRemoteContribution: TypertRemoteContribution = {
       create: () => charterEditResultSchema,
     },
   }, {
+    id: 'dsh-charter#charter/applyBootstrap',
+    service: 'charterRemote',
+    namespace: 'charter',
+    method: 'applyBootstrap',
+    invocation: { kind: 'direct' },
+    parameters: [{
+      name: 'request',
+      wire: 'request',
+      source: 'json',
+      codec: {
+        mode: 'strict',
+        typeSymbol: 'dsh-charter/CharterEditRequest',
+        create: () => charterEditRequestSchema,
+      },
+    }],
+    result: {
+      mode: 'strict',
+      typeSymbol: 'dsh-charter/CharterEditResult',
+      create: () => charterEditResultSchema,
+    },
+  }, {
     id: 'dsh-charter#charter/exportRecord',
     service: 'charterRemote',
     namespace: 'charter',

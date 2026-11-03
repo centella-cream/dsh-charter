@@ -56,6 +56,41 @@ describe('charter fork', () => {
     expect(JSON.stringify(child)).not.toContain('parent-mutation')
   })
 
+  it('carries objective proposal candidates into the child namespace', () => {
+    const identity = { createdAt: 1 }
+    const actor: CharterActor = { kind: 'owner' }
+    const request = normalizeEditRequest({
+      sessionId: 'parent',
+      mutationId: 'parent-objective-propose',
+      baseRevision: 0,
+      ops: [{ type: 'objective.propose', clientRef: 'next', text: 'Forked objective' }],
+    })
+    const parent = commitRecord({
+      record: createEmptyRecord(identity, limits),
+      request,
+      requestDigest: requestDigestOf(request, identity, actor),
+      ids: { next: 'parent-objective-proposal' },
+      actor,
+      at: 1,
+      limits,
+    })
+    const child = forkRecord({
+      parentSessionId: 'parent',
+      parent,
+      childIdentity: { createdAt: 2, parentSession: 'parent' },
+      ids: {},
+      mutationId: 'fork-objective',
+      at: 2,
+      limits,
+    })
+    expect(child.objectiveProposals).toEqual([
+      expect.objectContaining({ text: 'Forked objective', review: 'pending', origin: 'fork' }),
+    ])
+    expect(child.proposalBatches?.[0]?.candidates).toEqual([
+      { kind: 'objective', id: child.objectiveProposals![0]!.id },
+    ])
+  })
+
   it('remaps deliverable requirements into the child namespace', () => {
     const identity = { createdAt: 1 }
     const actor: CharterActor = { kind: 'owner' }

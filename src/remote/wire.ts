@@ -336,6 +336,9 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     'charter/edit': (
       request: CharterEditRequest,
     ) => Promise<RemoteResult<CharterEditResult>>
+    'charter/applyBootstrap': (
+      request: CharterEditRequest,
+    ) => Promise<RemoteResult<CharterEditResult>>
     'charter/bootstrap': (
       sessionId: SessionId,
     ) => Promise<RemoteResult<CharterBootstrapResult>>
@@ -357,6 +360,9 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
         signal?: AbortSignal,
       ) => RemoteStreamHandle<CharterFrame, never>
       edit: (
+        request: CharterEditRequest,
+      ) => Promise<RemoteResult<CharterEditResult>>
+      applyBootstrap: (
         request: CharterEditRequest,
       ) => Promise<RemoteResult<CharterEditResult>>
       bootstrap: (

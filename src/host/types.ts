@@ -242,6 +242,10 @@ export interface CharterToolItem {
   readonly supersedes?: string
   /** Present only in the bounded `all` debugging view. */
   readonly supersededBy?: string
+  /** Dependency key in the bounded `all` debugging view. */
+  readonly key?: string | null
+  /** Prerequisite dependency keys in the bounded `all` debugging view. */
+  readonly requires?: readonly string[]
 }
 
 export interface CharterToolView {
@@ -252,6 +256,8 @@ export interface CharterToolView {
   readonly truncated: number
   /** `all` only: the objective alone exceeds the tool-response envelope. */
   readonly objectiveTruncated?: boolean
+  /** `all` only: opaque cursor for the next page. */
+  readonly nextCursor?: string
 }
 
 export type CharterEditResult =

@@ -27,6 +27,8 @@ export interface CharterIdentity {
   readonly parentSession?: string | undefined
 }
 
+export const MAX_PROPOSAL_BATCHES = 64
+
 export interface CommitRecordInput {
   readonly record: CharterRecord
   readonly request: CharterEditRequest
@@ -185,6 +187,9 @@ export function assertRecoveryRecordAdmission(record: CharterRecord, limits: Cha
   const batches = record.proposalBatches ?? []
   const batchIds = new Set<string>()
   const itemIds = new Set(record.current.items.map(item => item.id))
+  if (batches.length > MAX_PROPOSAL_BATCHES) {
+    throw charterError('CORRUPT_STATE', `charter exceeds ${MAX_PROPOSAL_BATCHES} proposal batches`)
+  }
   for (const batch of batches) {
     if (batchIds.has(batch.id)) {
       throw charterError('CORRUPT_STATE', `duplicate proposal batch ${batch.id}`)
@@ -207,6 +212,11 @@ export function assertRecoveryRecordAdmission(record: CharterRecord, limits: Cha
         && !(record.objectiveProposals ?? []).some(proposal => proposal.id === candidate.id)) {
         throw charterError('CORRUPT_STATE', `proposal batch ${batch.id} references missing objective proposal ${candidate.id}`)
       }
+    }
+  }
+  for (const item of record.current.items) {
+    if (item.proposalBatchId !== undefined && !batchIds.has(item.proposalBatchId)) {
+      throw charterError('CORRUPT_STATE', `item ${item.id} references missing proposal batch ${item.proposalBatchId}`)
     }
   }
 
@@ -502,9 +512,11 @@ export function commitRecord(input: CommitRecordInput): CharterRecord {
   }
   const proposalBatch: ProposalBatch | undefined = proposalBatchId === undefined ? undefined : {
     id: proposalBatchId,
-    source: input.proposalSource ?? input.request.proposalSource ?? (input.actor.kind === 'host'
+    source: input.proposalSource ?? (input.actor.kind === 'host'
       ? { kind: 'legacy-unknown' }
-      : { kind: 'manual', actor: input.actor.kind, at: input.at }),
+      : input.actor.kind === 'agent-tool'
+        ? { kind: 'agent-tool', toolCallId: input.actor.id ?? 'agent-tool', at: input.at }
+        : { kind: 'manual', actor: input.actor.kind, at: input.at }),
     capturedAtRevision: revision,
     candidates: proposedCandidates as ProposalBatch['candidates'],
   }
@@ -540,6 +552,9 @@ export function commitRecord(input: CommitRecordInput): CharterRecord {
           : candidate
       }),
     }))
+  if (batches.length > MAX_PROPOSAL_BATCHES) {
+    throw charterError('LIMIT_EXCEEDED', `charter exceeds ${MAX_PROPOSAL_BATCHES} proposal batches`)
+  }
   const next: CharterRecord = {
     ...input.record,
     current: applied.snapshot,
@@ -547,7 +562,7 @@ export function commitRecord(input: CommitRecordInput): CharterRecord {
     history: trimHistory([...input.record.history, historyReceipt], input.limits),
     recentMutations: [...input.record.recentMutations, mutationReceipt]
       .slice(-input.limits.mutationLimit),
-    ...(batches.length === 0 ? {} : { proposalBatches: batches.slice(-64) }),
+    ...(batches.length === 0 ? {} : { proposalBatches: batches }),
   }
   assertRecordAdmission(input.record, next, input.limits)
   assertRecordConsistency(next, input.limits)

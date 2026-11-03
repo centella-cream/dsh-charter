@@ -184,11 +184,10 @@ export const charterEditRequestSchema = z.object({
   mutationId: mutationIdSchema,
   baseRevision: z.number().int().nonnegative(),
   ops: z.array(charterOpSchema).min(1),
-  proposalSource: z.lazy(() => proposalSourceSchema).optional(),
 }).strict()
 
 export const charterActorSchema = z.object({
-  kind: z.enum(['owner', 'user', 'host']),
+  kind: z.enum(['owner', 'user', 'host', 'agent-tool']),
   id: z.string().min(1).max(256).optional(),
 }).strict()
 
@@ -285,6 +284,17 @@ export const proposalSourceKindSchema = z.enum([
 ])
 
 export const proposalSourceSchema = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('message'),
+    sessionId: z.string().min(1).max(256),
+    sessionCreatedAt: z.number().int().nonnegative(),
+    projectionVersion: z.number().int().positive(),
+    digest: digestSchema,
+    seqs: z.array(z.number().int().nonnegative()),
+    role: z.enum(['user', 'assistant', 'tool']),
+    selection: z.unknown().optional(),
+    at: z.number().int().nonnegative().optional(),
+  }).strict(),
   z.object({
     kind: z.literal('manual'),
     actor: z.enum(['owner', 'user']),

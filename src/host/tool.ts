@@ -16,6 +16,14 @@ export function defineCharterReadTool(charter: CharterService): ToolDefinition {
         enum: ['standing', 'all'],
         description: 'Which charter view to return. Defaults to standing.',
       },
+      cursor: {
+        type: 'string',
+        description: 'Opaque all-view cursor returned by a previous charter_read call.',
+      },
+      limit: {
+        type: 'integer',
+        description: 'Maximum all-view items to return (1-64).',
+      },
     },
     output: {
       schema: {
@@ -30,6 +38,7 @@ export function defineCharterReadTool(charter: CharterService): ToolDefinition {
           items: { type: 'json', required: true },
           truncated: { type: 'integer', required: true },
           objectiveTruncated: { type: 'boolean' },
+          nextCursor: { type: 'string' },
         },
       },
       render: (_args, value) => [{
@@ -41,13 +50,20 @@ export function defineCharterReadTool(charter: CharterService): ToolDefinition {
     async execute(args, exec) {
       const session = exec.agent?.session
       if (session === undefined) throw new Error('charter_read requires a live Agent session')
-      const value = charter.readForModel(session, args.view ?? 'standing')
+      const value = charter.readForModel(session, args.view ?? 'standing', {
+        ...(args.cursor === undefined ? {} : { cursor: args.cursor }),
+        ...(args.limit === undefined ? {} : { limit: args.limit }),
+      })
       return {
         revision: value.revision,
         objective: value.objective,
-        items: value.items.map(item => ({ ...item })),
+        items: value.items.map(item => {
+          const { requires, ...rest } = item
+          return requires === undefined ? rest : { ...rest, requires: [...requires] }
+        }),
         truncated: value.truncated,
         ...(value.objectiveTruncated === true ? { objectiveTruncated: true } : {}),
+        ...(value.nextCursor === undefined ? {} : { nextCursor: value.nextCursor }),
       }
     },
   })
@@ -70,7 +86,6 @@ export function defineCharterProposeTool(charter: CharterService): ToolDefinitio
           properties: {
             kind: { type: 'string', enum: ['invariant', 'deliverable'], required: true },
             text: { type: 'string', required: true },
-            requires: { type: 'array', items: { type: 'string' } },
           },
         },
       },
@@ -92,7 +107,8 @@ export function defineCharterProposeTool(charter: CharterService): ToolDefinitio
       const session = exec.agent?.session
       if (session === undefined) throw new Error('charter_propose requires a live Agent session')
       const items = Array.isArray(args.items) ? args.items.slice(0, 16) : []
-      return charter.proposeFromAgent(session, items as never)
+      const callId = exec.callId === undefined ? undefined : String(exec.callId)
+      return charter.proposeFromAgent(session, items as never, callId)
     },
   })
 }

@@ -1803,3 +1803,8 @@
 .charter-timeline__row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--charter-border-soft); font-size: 12px; }
 .charter-timeline__kind, .charter-timeline__state, .charter-timeline__lineage { color: var(--dsw-alias-label-tertiary, inherit); font-size: 11px; }
 .charter-timeline__text { min-width: 0; overflow-wrap: anywhere; }
+
+.charter-notice--danger {
+  border-color: var(--charter-danger);
+  color: var(--charter-danger);
+}

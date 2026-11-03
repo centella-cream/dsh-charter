@@ -200,6 +200,55 @@ describe('0.2 workspace and dependency plan', () => {
     })
   })
 
+  it('keeps pending item proposals out of Workspace and reviewable in Review Center', () => {
+    const pending = {
+      id: 'item-p', kind: 'invariant', text: 'Pending only', review: 'pending', lifecycle: 'current',
+      verification: { state: 'unchecked' }, origin: 'agent', order: 0, createdRevision: 1,
+    } as unknown as CharterItem
+    const ready = view({
+      items: [pending],
+      proposalBatches: [{
+        id: 'batch-p',
+        source: { kind: 'manual', actor: 'user', at: 1 },
+        capturedAtRevision: 1,
+        candidates: [{ kind: 'item', id: 'item-p' }],
+      }],
+    })
+    const src = source(ready)
+    const draft = new CharterDraft(sessionId, () => src)
+    draft.bindLifecycle(lifecycle)
+    const tree = mount(src, draft)
+    expect(textOf(tree.root)).not.toContain('Pending only')
+    act(() => tree.root.findAll(node => node.type === 'button' && textOf(node).includes('nav.review'))[0]!.props.onClick())
+    expect(textOf(tree.root)).toContain('review.itemProposals')
+    expect(textOf(tree.root)).toContain('Pending only')
+    const accept = tree.root.findAll(node => node.type === 'button' && textOf(node) === 'item.accept')[0]
+    act(() => accept!.props.onClick())
+    expect(draft.getSnapshot().ops).toContainEqual({ type: 'item.accept', itemId: 'item-p' })
+  })
+
+  it('reports a staged dependency cycle instead of crashing the Pane', () => {
+    const a = {
+      id: 'item-a', kind: 'deliverable', text: 'A', review: 'accepted', lifecycle: 'current',
+      verification: { state: 'unchecked' }, origin: 'user', order: 0, createdRevision: 1,
+      progress: 'not-started', requires: ['item-b'],
+    } as unknown as CharterItem
+    const b = {
+      id: 'item-b', kind: 'deliverable', text: 'B', review: 'accepted', lifecycle: 'current',
+      verification: { state: 'unchecked' }, origin: 'user', order: 1, createdRevision: 1,
+      progress: 'not-started',
+    } as unknown as CharterItem
+    const ready = view({ items: [a, b] })
+    const src = source(ready)
+    const draft = new CharterDraft(sessionId, () => src)
+    draft.bindLifecycle(lifecycle)
+    draft.stage(ready, { type: 'deliverable.requires', itemId: 'item-b', requires: ['item-a'] })
+    const tree = mount(src, draft)
+    expect(textOf(tree.root)).toContain('deps.conflict')
+    const apply = tree.root.findAll(node => node.type === 'button' && textOf(node) === 'footer.apply')[0]
+    expect(apply?.props.disabled).toBe(true)
+  })
+
   it('moves rejected and archived items out of Workspace into Review Center', () => {
     const rejected = {
       id: 'item-r', kind: 'invariant', text: 'Rejected', review: 'rejected', lifecycle: 'current',

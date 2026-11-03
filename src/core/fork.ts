@@ -93,18 +93,45 @@ export function forkRecord(input: ForkRecordInput): CharterRecord {
     ids: {},
   }
   assertSnapshotAdmission(input.parent.current, current, input.limits)
-  const inheritedBatches = (input.parent.proposalBatches ?? []).flatMap(batch => {
-    const candidates = batch.candidates.flatMap(candidate =>
-      candidate.kind === 'item' && input.ids[candidate.id] !== undefined
-        ? [{ kind: 'item' as const, id: remap(candidate.id) }]
-        : [])
-    return candidates.length === 0 ? [] : [{
+  const objectiveIdByParent = new Map<string, string>()
+  const objectiveProposals = (input.parent.objectiveProposals ?? []).map(proposal => {
+    const id = `fork-${proposal.id}`.slice(0, 128)
+    objectiveIdByParent.set(proposal.id, id)
+    return proposal.review === 'accepted'
+      ? {
+          ...proposal,
+          id,
+          text: '',
+          origin: 'fork' as const,
+          createdRevision: 1,
+          appliedRevision: 1,
+        }
+      : {
+          ...proposal,
+          id,
+          origin: 'fork' as const,
+          createdRevision: 1,
+        }
+  })
+  const inheritedBatches: import('./schemas.js').ProposalBatch[] = []
+  for (const batch of input.parent.proposalBatches ?? []) {
+    const candidates: { kind: 'item' | 'objective'; id: string }[] = []
+    for (const candidate of batch.candidates) {
+      if (candidate.kind === 'item' && input.ids[candidate.id] !== undefined) {
+        candidates.push({ kind: 'item', id: remap(candidate.id) })
+      } else if (candidate.kind === 'objective') {
+        const id = objectiveIdByParent.get(candidate.id)
+        if (id !== undefined) candidates.push({ kind: 'objective', id })
+      }
+    }
+    if (candidates.length === 0) continue
+    inheritedBatches.push({
       id: `fork-${batch.id}`.slice(0, 128),
-      source: { kind: 'fork' as const, parentBatchId: batch.id, at: input.at },
+      source: { kind: 'fork', parentBatchId: batch.id, at: input.at },
       capturedAtRevision: 1,
       candidates,
-    }]
-  })
+    })
+  }
   const child: CharterRecord = {
     ...empty,
     forkedFrom: {
@@ -115,6 +142,7 @@ export function forkRecord(input: ForkRecordInput): CharterRecord {
     history: [history],
     recentMutations: [mutation],
     ...(inheritedBatches.length === 0 ? {} : { proposalBatches: inheritedBatches }),
+    ...(objectiveProposals.length === 0 ? {} : { objectiveProposals: [...objectiveProposals] }),
   }
   assertRecordAdmission(input.parent, child, input.limits)
   assertRecordConsistency(child, input.limits)

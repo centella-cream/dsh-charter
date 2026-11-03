@@ -16,5 +16,9 @@ export function assertEditAuthorized(actor: CharterActor, ops: readonly CharterO
     }
     return
   }
+  if (actor.kind === 'agent-tool') {
+    if (ops.every(op => op.type === 'item.propose')) return
+    throw charterError('FORBIDDEN', 'agent-tool may only create pending item proposals')
+  }
   throw charterError('FORBIDDEN', `actor ${actor.kind} cannot edit the session charter`)
 }

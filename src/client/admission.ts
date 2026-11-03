@@ -3,7 +3,7 @@ import type { CharterView } from '../host/types.js'
 import { previewPrompt, projectView, promptBudgetAdmission, type PromptBudgetAdmission } from './preview.js'
 
 /** Why a staged edit batch cannot be applied to the current view. */
-export type DraftAdmissionReason = 'no-ops' | 'max-ops' | 'max-items' | 'max-pending' | 'max-objective' | 'max-item' | 'prompt'
+export type DraftAdmissionReason = 'no-ops' | 'max-ops' | 'max-items' | 'max-pending' | 'max-objective' | 'max-item' | 'prompt' | 'invalid-dependencies'
 
 export interface DraftAdmission {
   readonly ok: boolean
@@ -71,14 +71,33 @@ function itemFieldBlocked(
  * it intentionally remains a Host-only check.
  */
 export function draftAdmission(view: CharterView, ops: readonly CharterOp[]): DraftAdmission {
-  const prompt = promptBudgetAdmission(
-    view.promptText,
-    previewPrompt(view, ops),
-    view.limits.maxPromptBytes,
-  )
   const projected = projectView(view, ops)
   const items = projected.items.length
   const pending = projected.items.filter(item => item.review === 'pending').length
+  let prompt: PromptBudgetAdmission
+  try {
+    prompt = promptBudgetAdmission(
+      view.promptText,
+      previewPrompt(view, ops),
+      view.limits.maxPromptBytes,
+    )
+  } catch {
+    prompt = {
+      currentBytes: bytes(view.promptText),
+      previewBytes: bytes(view.promptText),
+      over: false,
+      shrinking: false,
+      blocksApply: true,
+    }
+    return {
+      ok: false,
+      reason: 'invalid-dependencies',
+      ops: ops.length,
+      items,
+      pending,
+      prompt,
+    }
+  }
   const result = (reason: DraftAdmissionReason | undefined): DraftAdmission => ({
     ok: reason === undefined,
     ...(reason === undefined ? {} : { reason }),

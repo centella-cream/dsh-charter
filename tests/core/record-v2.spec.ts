@@ -23,3 +23,4 @@ describe('record v2 migration', () => {
     expect(charterRecordSchema.safeParse(migrated).success).toBe(true)
   })
 })
+

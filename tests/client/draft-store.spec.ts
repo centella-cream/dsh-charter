@@ -70,12 +70,14 @@ function committedInvariant(
 function source(handlers: {
   edit: (request: CharterEditRequest) => Promise<CharterEditResult>
   bootstrap?: () => Promise<CharterBootstrapResult>
+  applyBootstrap?: (request: CharterEditRequest) => Promise<CharterEditResult>
   snapshot?: () => ReturnType<CharterSessionSource['getSnapshot']>
 }): CharterSessionSource {
   return {
     sessionId,
     edit: handlers.edit,
     bootstrap: handlers.bootstrap ?? (async () => ({ available: false, reason: 'unavailable' })),
+    ...(handlers.applyBootstrap === undefined ? {} : { applyBootstrap: handlers.applyBootstrap }),
     accept: () => undefined,
     getSnapshot: handlers.snapshot ?? (() => ({ status: 'ready', view: view(0), error: null })),
     subscribe: () => () => undefined,
@@ -271,10 +273,11 @@ describe('per-Session draft ownership', () => {
     expect(draft.isEmpty).toBe(true)
   })
 
-  it('binds a bootstrap apply request to compaction-summary provenance', async () => {
+  it('uses the Host-only bootstrap apply entry without client provenance', async () => {
     const requests: CharterEditRequest[] = []
     const fake = source({
-      edit: async request => {
+      edit: async () => ({ ok: false, code: 'UNAVAILABLE', message: 'unused' }),
+      applyBootstrap: async request => {
         requests.push(request)
         return { ok: true, replayed: false, committedRevision: 1, ids: {}, view: view(1) }
       },
@@ -293,11 +296,8 @@ describe('per-Session draft ownership', () => {
     draft.ensureBootstrap(view(0), true)
     await new Promise(resolve => setTimeout(resolve, 0))
     await draft.applyBootstrap(view(0))
-    expect(requests[0]?.proposalSource).toEqual({
-      kind: 'compaction-summary',
-      summarySeq: 7,
-      at: 9,
-    })
+    expect(requests).toHaveLength(1)
+    expect('proposalSource' in requests[0]!).toBe(false)
   })
 
   it('rejects bootstrap edits while the save request is in flight', async () => {

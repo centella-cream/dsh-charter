@@ -37,6 +37,8 @@ export interface CharterSource {
   readonly getSnapshot: () => CharterClientState
   readonly subscribe: (listener: () => void) => () => void
   readonly edit: (request: CharterEditRequest) => Promise<CharterEditResult>
+  /** Apply a reviewed compaction draft through the Host-only provenance entry. */
+  readonly applyBootstrap?: (request: CharterEditRequest) => Promise<CharterEditResult>
   /** Extract a review-only draft from the latest compaction summary. */
   readonly bootstrap: () => Promise<CharterBootstrapResult>
   /** Apply a committed view returned by edit immediately, without waiting for the stream. */
@@ -122,6 +124,16 @@ export class CharterSessionSource implements CharterSource {
       return { ok: false, code: 'UNAVAILABLE', message: 'Charter connection is unavailable.' }
     }
     const result = await remote.edit(request)
+    if (!result.ok) throw result.error
+    return result.value
+  }
+
+  readonly applyBootstrap = async (request: CharterEditRequest): Promise<CharterEditResult> => {
+    const remote = this.remote
+    if (remote === undefined) {
+      return { ok: false, code: 'UNAVAILABLE', message: 'Charter connection is unavailable.' }
+    }
+    const result = await remote.applyBootstrap(request)
     if (!result.ok) throw result.error
     return result.value
   }

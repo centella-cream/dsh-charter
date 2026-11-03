@@ -749,8 +749,7 @@ describe('dsh-charter host composition', () => {
       mutationId: 'compaction-source-propose',
       baseRevision: 0,
       ops: [{ type: 'item.propose', item: { clientRef: 'p', kind: 'invariant', text: 'From summary', order: 0 } }],
-      proposalSource: { kind: 'compaction-summary', summarySeq: 7, at: 1 },
-    })
+    }, { kind: 'user' }, { kind: 'compaction-summary', summarySeq: 7, at: 1 })
     expect(result).toMatchObject({ ok: true })
     expect(service.view(session).proposalBatches?.[0]?.source).toEqual({
       kind: 'compaction-summary',
@@ -792,7 +791,7 @@ describe('dsh-charter host composition', () => {
     expect(tool).toBeDefined()
     if (tool === undefined) throw new Error('unreachable')
     const agent = { id: session.id, session } as Agent
-    const exec = { agent, signal: new AbortController().signal } as never
+    const exec = { agent, callId: 'tool-call-1', signal: new AbortController().signal } as never
     const result = await tool.execute({ items: [
       { kind: 'invariant', text: 'Agent proposal' },
       { kind: 'deliverable', text: 'Agent deliverable' },
@@ -801,7 +800,17 @@ describe('dsh-charter host composition', () => {
     const view = service.view(session)
     expect(view.items.every(item => item.review === 'pending')).toBe(true)
     expect(view.promptText).toBe('')
-    expect(view.proposalBatches?.[0]?.source.kind).toBe('agent-tool')
+    expect(view.proposalBatches?.[0]?.source).toEqual({
+      kind: 'agent-tool',
+      toolCallId: 'tool-call-1',
+      at: expect.any(Number),
+    })
+    const replayed = await tool.execute({ items: [
+      { kind: 'invariant', text: 'Agent proposal' },
+      { kind: 'deliverable', text: 'Agent deliverable' },
+    ] }, exec) as { readonly ok: boolean }
+    expect(replayed.ok).toBe(true)
+    expect(service.view(session).items).toHaveLength(2)
   })
 
   it('bounds the charter_read all debugging view', async () => {
@@ -832,13 +841,17 @@ describe('dsh-charter host composition', () => {
     const all = service.readForModel(session, 'all')
     expect(all.items).toHaveLength(64)
     expect(all.truncated).toBe(6)
-    const standing = service.readForModel(session, 'standing')
-    expect(standing.items).toHaveLength(64)
-    expect(standing.truncated).toBe(6)
+    const firstPage = service.readForModel(session, 'all', { limit: 10 })
+    expect(firstPage.items).toHaveLength(10)
+    expect(firstPage.nextCursor).toBeDefined()
+    const secondPage = service.readForModel(session, 'all', {
+      limit: 10,
+      ...(firstPage.nextCursor === undefined ? {} : { cursor: firstPage.nextCursor }),
+    })
+    expect(secondPage.items).toHaveLength(10)
+    expect(new Set([...firstPage.items, ...secondPage.items].map(item => item.id)).size).toBe(20)
+    expect(() => service.readForModel(session, 'standing')).toThrow(/no partial standing view|LIMIT_EXCEEDED/u)
     // The standing projection is compact: no debug-only id/review/lifecycle.
-    expect(standing.items.every(item => item.id === undefined)).toBe(true)
-    expect(standing.items.every(item => item.review === undefined)).toBe(true)
-    expect(Buffer.byteLength(JSON.stringify(standing), 'utf8')).toBeLessThan(16 * 1_024)
     expect(all.items[0]).toMatchObject({
       origin: 'user',
       order: expect.any(Number),
@@ -867,11 +880,8 @@ describe('dsh-charter host composition', () => {
     const all = service.readForModel(session, 'all')
     expect(all).toMatchObject({ objective: null, objectiveTruncated: true })
     expect(Buffer.byteLength(JSON.stringify(all), 'utf8')).toBeLessThanOrEqual(32 * 1_024)
-    // Standing obeys the same hard envelope cap and marks an omitted objective.
-    const standing = service.readForModel(session, 'standing')
-    expect(standing.objective).toBeNull()
-    expect(standing.objectiveTruncated).toBe(true)
-    expect(Buffer.byteLength(JSON.stringify(standing), 'utf8')).toBeLessThanOrEqual(32 * 1_024)
+    // Standing never returns a partial working set; it fails explicitly instead.
+    expect(() => service.readForModel(session, 'standing')).toThrow(/no partial standing view|LIMIT_EXCEEDED/u)
   })
 
   it('bounds the all view by the final tool envelope, not item JSON alone', async () => {
@@ -1321,5 +1331,18 @@ describe('charter bootstrap', () => {
     expect(result.proposal.invariants).toEqual([])
     expect(result.proposal.deliverables).toEqual(['Verify the tab.'])
     expect(result.proposal.source.shadowedTokens).toBe(42)
+
+    const applied = await service.applyBootstrap({
+      sessionId: session.id,
+      mutationId: 'bootstrap-apply-source',
+      baseRevision: 0,
+      ops: [{ type: 'item.propose', item: { clientRef: 'p', kind: 'invariant', text: 'Verify the tab.', order: 0 } }],
+    })
+    expect(applied).toMatchObject({ ok: true })
+    expect(service.view(session).proposalBatches?.[0]?.source).toEqual({
+      kind: 'compaction-summary',
+      summarySeq: 0,
+      at: expect.any(Number),
+    })
   })
 })
