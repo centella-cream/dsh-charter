@@ -193,6 +193,10 @@ export const charterItemQueryRequestSchema = z.object({
   lifecycle: z.enum(['current', 'superseded', 'archived']).optional(),
   search: z.string().optional(),
   sourceKind: z.enum(['manual', 'message', 'compaction-summary', 'agent-tool', 'fork', 'legacy-unknown']).optional(),
+  batchId: z.string().optional(),
+  verification: z.enum(['unchecked', 'verified', 'failed', 'unavailable']).optional(),
+  execution: z.enum(['ready', 'waiting', 'dependency-conflict', 'in-progress', 'blocked', 'terminal']).optional(),
+  prerequisite: z.enum(['satisfied', 'waiting', 'dependency-conflict']).optional(),
   cursor: z.string().optional(),
   limit: z.number().int().positive().max(100).optional(),
 }).strict()
@@ -218,6 +222,10 @@ export const charterItemQueryResultSchema = z.union([
 export const charterProposalQueryRequestSchema = z.object({
   limit: z.number().int().positive().max(64).optional(),
   cursor: z.string().optional(),
+  sourceKind: z.enum(['manual', 'message', 'compaction-summary', 'agent-tool', 'fork', 'legacy-unknown']).optional(),
+  review: z.enum(['pending', 'accepted', 'rejected']).optional(),
+  batchId: z.string().optional(),
+  candidateKind: z.enum(['item', 'objective']).optional(),
 }).strict()
 
 export const charterProposalQueryResultSchema = z.discriminatedUnion('ok', [

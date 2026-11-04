@@ -462,6 +462,21 @@ describe('dsh-charter host composition', () => {
     const manualProposals = service.queryItemsById(session.id, { sourceKind: 'manual' })
     expect(manualProposals.ok).toBe(true)
     if (manualProposals.ok) expect(manualProposals.items.map(item => item.text)).toEqual(['Gamma'])
+    const batchId = service.view(session).proposalBatches?.[0]?.id
+    const batchItems = service.queryItemsById(session.id, {
+      ...(batchId === undefined ? {} : { batchId }),
+    })
+    expect(batchItems.ok).toBe(true)
+    if (batchItems.ok) expect(batchItems.items.map(item => item.text)).toEqual(['Gamma'])
+    const proposalPage = service.queryProposalsById(session.id, { sourceKind: 'manual', candidateKind: 'item' })
+    expect(proposalPage).toMatchObject({
+      ok: true,
+      filterDigest: expect.stringMatching(/^sha256:/u),
+      batches: [expect.objectContaining({ id: batchId })],
+    })
+    const deliverables = service.queryItemsById(session.id, { kind: 'deliverable', execution: 'ready' })
+    expect(deliverables.ok).toBe(true)
+    if (deliverables.ok) expect(deliverables.items.map(item => item.text)).toEqual(['Beta'])
     const changes = service.queryChangesById(session.id, { limit: 1 })
     expect(changes.ok).toBe(true)
     if (changes.ok) {

@@ -127,6 +127,10 @@ export interface CharterProposalBatchView {
 export interface CharterProposalQueryRequest {
   readonly limit?: number | undefined
   readonly cursor?: string | undefined
+  readonly sourceKind?: 'manual' | 'message' | 'compaction-summary' | 'agent-tool' | 'fork' | 'legacy-unknown'
+  readonly review?: 'pending' | 'accepted' | 'rejected'
+  readonly batchId?: string
+  readonly candidateKind?: 'item' | 'objective'
 }
 
 export type CharterProposalQueryResult =
@@ -134,6 +138,7 @@ export type CharterProposalQueryResult =
       readonly ok: true
       readonly revision: number
       readonly batches: readonly CharterProposalBatchView[]
+      readonly filterDigest: string
       readonly nextCursor?: string
     }
   | {

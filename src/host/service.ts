@@ -1241,6 +1241,30 @@ export class CharterService extends Service {
     if (view.status !== 'ready') {
       return { ok: false, code: 'UNAVAILABLE', message: 'Charter is not ready for proposal queries' }
     }
+    const filterDigest = sha256Json({
+      version: 1,
+      queryKind: 'proposals',
+      sourceKind: request.sourceKind ?? null,
+      review: request.review ?? null,
+      batchId: request.batchId ?? null,
+      candidateKind: request.candidateKind ?? null,
+    })
+    const itemById = new Map(view.items.map(item => [item.id, item]))
+    const objectiveById = new Map((view.objectiveProposals ?? []).map(proposal => [proposal.id, proposal]))
+    const reviewOf = (candidate: import('./types.js').CharterProposalBatchView['candidates'][number]): string | undefined => {
+      if (candidate.kind === 'tombstone') return candidate.disposition
+      if (candidate.kind === 'item') return itemById.get(candidate.id)?.review
+      return objectiveById.get(candidate.id)?.review
+    }
+    const candidateKindOf = (candidate: import('./types.js').CharterProposalBatchView['candidates'][number]): string =>
+      candidate.kind === 'tombstone' ? candidate.candidateKind ?? 'item' : candidate.kind
+    const filtered = (view.proposalBatches ?? []).filter(batch =>
+      (request.sourceKind === undefined || batch.source.kind === request.sourceKind)
+      && (request.batchId === undefined || batch.id === request.batchId)
+      && (request.candidateKind === undefined
+        || batch.candidates.some(candidate => candidateKindOf(candidate) === request.candidateKind))
+      && (request.review === undefined
+        || batch.candidates.some(candidate => reviewOf(candidate) === request.review)))
     let start = 0
     if (request.cursor !== undefined) {
       try {
@@ -1248,6 +1272,7 @@ export class CharterService extends Service {
           readonly v?: unknown
           readonly revision?: unknown
           readonly offset?: unknown
+          readonly filterDigest?: unknown
         }
         if (parsed.v !== 1 || !Number.isSafeInteger(parsed.offset) || (parsed.offset as number) < 0) {
           throw new Error('cursor shape')
@@ -1255,13 +1280,15 @@ export class CharterService extends Service {
         if (parsed.revision !== view.revision) {
           return { ok: false, code: 'STALE_REVISION', message: 'proposal cursor was created for another revision' }
         }
+        if (parsed.filterDigest !== filterDigest) {
+          throw new Error('cursor filter')
+        }
         start = parsed.offset as number
       } catch {
         return { ok: false, code: 'INVALID_CURSOR', message: 'invalid proposal query cursor' }
       }
     }
-    const allBatches = view.proposalBatches ?? []
-    const batches = allBatches.slice(start, start + limit).map(batch => ({
+    const batches = filtered.slice(start, start + limit).map(batch => ({
       id: batch.id,
       source: batch.source,
       capturedAtRevision: batch.capturedAtRevision,
@@ -1276,14 +1303,14 @@ export class CharterService extends Service {
           }
         }
         if (candidate.kind === 'item') {
-          const item = view.items.find(candidateItem => candidateItem.id === candidate.id)
+          const item = itemById.get(candidate.id)
           return {
             kind: candidate.kind,
             id: candidate.id,
             ...(item === undefined ? {} : { text: item.text, review: item.review }),
           }
         }
-        const proposal = view.objectiveProposals?.find(candidateProposal => candidateProposal.id === candidate.id)
+        const proposal = objectiveById.get(candidate.id)
         return {
           kind: candidate.kind,
           id: candidate.id,
@@ -1292,10 +1319,21 @@ export class CharterService extends Service {
       }),
     }))
     const nextOffset = start + batches.length
-    const nextCursor = nextOffset < allBatches.length
-      ? Buffer.from(JSON.stringify({ v: 1, revision: view.revision, offset: nextOffset }), 'utf8').toString('base64url')
+    const nextCursor = nextOffset < filtered.length
+      ? Buffer.from(JSON.stringify({
+          v: 1,
+          revision: view.revision,
+          offset: nextOffset,
+          filterDigest,
+        }), 'utf8').toString('base64url')
       : undefined
-    return { ok: true, revision: view.revision, batches, ...(nextCursor === undefined ? {} : { nextCursor }) }
+    return {
+      ok: true,
+      revision: view.revision,
+      batches,
+      filterDigest,
+      ...(nextCursor === undefined ? {} : { nextCursor }),
+    }
   }
 
   queryItemsById(sessionId: SessionIdType, request: ItemQueryRequest): CharterItemQueryResult {
@@ -1304,12 +1342,28 @@ export class CharterService extends Service {
       return { ok: false, code: 'UNAVAILABLE', message: 'Charter is not ready for query', revision: view.revision }
     }
     const sourceKindById = new Map<string, string>()
+    const batchIdById = new Map<string, string>()
     for (const batch of view.proposalBatches ?? []) {
       for (const candidate of batch.candidates) {
-        if (candidate.kind === 'item') sourceKindById.set(candidate.id, batch.source.kind)
+        if (candidate.kind === 'item') {
+          sourceKindById.set(candidate.id, batch.source.kind)
+          batchIdById.set(candidate.id, batch.id)
+        }
       }
     }
-    return queryItems(view.revision, view.lifecycle, view.items, request, sourceKindById)
+    const dependency = dependencyProjection(view.items)
+    const executionById = new Map(dependency.map(row => [row.id, row.executionDisplay]))
+    const prerequisiteById = new Map(dependency.map(row => [row.id, row.prerequisiteStatus]))
+    return queryItems(
+      view.revision,
+      view.lifecycle,
+      view.items,
+      request,
+      sourceKindById,
+      batchIdById,
+      executionById,
+      prerequisiteById,
+    )
   }
 
   promptText(session: Session): string {

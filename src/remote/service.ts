@@ -145,6 +145,10 @@ export class CharterRemoteService extends TypertRemoteService {
     readonly lifecycle?: 'current' | 'superseded' | 'archived'
     readonly search?: string
     readonly sourceKind?: 'manual' | 'message' | 'compaction-summary' | 'agent-tool' | 'fork' | 'legacy-unknown'
+    readonly batchId?: string
+    readonly verification?: 'unchecked' | 'verified' | 'failed' | 'unavailable'
+    readonly execution?: 'ready' | 'waiting' | 'dependency-conflict' | 'in-progress' | 'blocked' | 'terminal'
+    readonly prerequisite?: 'satisfied' | 'waiting' | 'dependency-conflict'
     readonly cursor?: string
     readonly limit?: number
   }): Promise<CharterItemQueryResult> {
@@ -155,6 +159,10 @@ export class CharterRemoteService extends TypertRemoteService {
       ...(request.lifecycle === undefined ? {} : { lifecycle: request.lifecycle }),
       ...(request.search === undefined ? {} : { search: request.search }),
       ...(request.sourceKind === undefined ? {} : { sourceKind: request.sourceKind }),
+      ...(request.batchId === undefined ? {} : { batchId: request.batchId }),
+      ...(request.verification === undefined ? {} : { verification: request.verification }),
+      ...(request.execution === undefined ? {} : { execution: request.execution }),
+      ...(request.prerequisite === undefined ? {} : { prerequisite: request.prerequisite }),
       ...(request.cursor === undefined ? {} : { cursor: request.cursor }),
       ...(request.limit === undefined ? {} : { limit: request.limit }),
     }))
@@ -167,12 +175,23 @@ export class CharterRemoteService extends TypertRemoteService {
   })
   queryProposals(
     sessionId: SessionId,
-    options: { readonly limit?: number; readonly cursor?: string } = {},
+    options: {
+      readonly limit?: number
+      readonly cursor?: string
+      readonly sourceKind?: 'manual' | 'message' | 'compaction-summary' | 'agent-tool' | 'fork' | 'legacy-unknown'
+      readonly review?: 'pending' | 'accepted' | 'rejected'
+      readonly batchId?: string
+      readonly candidateKind?: 'item' | 'objective'
+    } = {},
   ): Promise<CharterProposalQueryResult> {
     resolveRemoteActor(this.ctx)
     return Promise.resolve(this.ctx.charter.queryProposalsById(sessionId, {
       ...(options.limit === undefined ? {} : { limit: options.limit }),
       ...(options.cursor === undefined ? {} : { cursor: options.cursor }),
+      ...(options.sourceKind === undefined ? {} : { sourceKind: options.sourceKind }),
+      ...(options.review === undefined ? {} : { review: options.review }),
+      ...(options.batchId === undefined ? {} : { batchId: options.batchId }),
+      ...(options.candidateKind === undefined ? {} : { candidateKind: options.candidateKind }),
     }))
   }
 
