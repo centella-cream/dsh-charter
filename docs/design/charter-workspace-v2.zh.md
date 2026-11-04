@@ -15,17 +15,16 @@
 本文件的状态是 **Implemented — pending release acceptance**，含义仅是：下列已实现的工作区核心通过源码验收，
 不是完整的 v2/0.2.0 实现。当前明确未完成：
 
-- 客户端 store 已迁移到 summary + 分页 query（旧 Host 保留 full-watch 兼容 fallback）；Pane 仍会一次取回全部分页，
-  未做分页/窗口化渲染，R06 的完整 512 条 UI 体验仍待优化。
+- Pane 仍未做分页/窗口化渲染；store 已走 summary + 分页 query，不再依赖完整 watch。
 - queryItems 仍缺 validity filter；query 响应字节上限、proposal/change facets 已实现。
-- message proposal 入口未实现；manual item “保存为提案”入口已加入 composer；`item.propose` 的 origin 仍固定为 agent。
-- proposal source registry 的完整复算仍未实现；当前批次已带 source digest/refs 并在 UI 派生
-  `not-applicable/intact/unknown`，compaction/agent-tool/fork 带 digest，`applyBootstrap` 使用 Host 签发的 draft
-  handle 绑定 extraction，编辑正文会记录 `contentModified`。
+- proposal source registry 的完整复算仍未实现；当前批次带 source digest/refs 并在 UI 派生
+  `not-applicable/intact/unknown`，compaction/agent-tool/fork 带 digest。
 - `applyBootstrap` 的 objective.initialize/redirect 文本未单独绑定 extraction handle。
-- Change Set 的客户端 canonical diff 与 `PREVIEW_MISMATCH` 未接入；Host change-set summary 已存在。
-- `charter_propose` 的 proposedRequires 已实现：pending deliverable 保存候选前置条件，接受时解析为正式 requires。
+- `item.propose` 的 origin 仍固定为 agent，尚未按来源区分 manual/message/agent。
 - Evidence Integrity、Fact Validity、validator 是 0.2 的独立必交项，不属于本 workspace core。
+
+本轮已补齐：message proposal（最近一条真实用户消息）、Change Set Host canonical preview digest 与
+`PREVIEW_MISMATCH`、`charter_propose` proposedRequires、fork typed source refs、可配置 proposal batch 上限。
 
 在实现这些合同前，不应把本文件或 `0.2.0` 包版本读成完整 v2 已实现。
 
