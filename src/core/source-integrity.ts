@@ -1,4 +1,5 @@
 import type { ProposalSource } from './schemas.js'
+import { sourceRegistryEntry } from './source-registry.js'
 
 export type SourceIntegrity = 'not-applicable' | 'intact' | 'unknown' | 'unavailable'
 
@@ -7,14 +8,7 @@ export type SourceIntegrity = 'not-applicable' | 'intact' | 'unknown' | 'unavail
  * treats a missing digest as a verified source.
  */
 export function sourceIntegrity(source: ProposalSource): SourceIntegrity {
-  switch (source.kind) {
-    case 'manual':
-    case 'legacy-unknown':
-      return 'not-applicable'
-    case 'compaction-summary':
-    case 'agent-tool':
-    case 'fork':
-    case 'message':
-      return source.digest === undefined ? 'unknown' : 'intact'
-  }
+  const entry = sourceRegistryEntry(source)
+  if (entry.digest === 'not-applicable') return 'not-applicable'
+  return 'digest' in source && source.digest !== undefined ? 'intact' : 'unknown'
 }

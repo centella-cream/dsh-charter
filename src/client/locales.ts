@@ -410,6 +410,7 @@ const en = {
   'counts.summary': '{active} active · {pending} pending',
   'counts.history': '{count} historical',
   'history.show': 'Show {count} historical items',
+  'history.showMore': 'Show {count} more',
   'history.hide': 'Hide historical items',
 
   'bootstrap.ready': 'History draft ready',
@@ -853,6 +854,7 @@ const zh: Record<CharterLocaleKey, string> = {
   'counts.summary': '生效 {active} 条 · 待审 {pending} 条',
   'counts.history': '{count} 条历史',
   'history.show': '显示 {count} 条历史条目',
+  'history.showMore': '再显示 {count} 条',
   'history.hide': '隐藏历史条目',
 
   'bootstrap.ready': '历史草案已生成',

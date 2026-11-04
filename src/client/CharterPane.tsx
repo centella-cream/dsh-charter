@@ -701,6 +701,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
     bootstrapBaseRevision,
   } = draftState
   const [showHistoryItems, setShowHistoryItems] = useState(false)
+  const [visibleCounts, setVisibleCounts] = useState({ invariants: 50, deliverables: 50 })
   const bootstrapId = useId()
   const applyHintId = useId()
   const [confirmAbandon, setConfirmAbandon] = useState(false)
@@ -1277,8 +1278,11 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
     items: readonly ProjectedItem[],
     history: readonly ProjectedItem[],
     emptyKey: 'invariants.empty' | 'deliverables.empty',
+    windowKey: 'invariants' | 'deliverables',
   ): ReactNode => {
-    const visible = showHistoryItems ? [...items, ...history] : items
+    const allVisible = showHistoryItems ? [...items, ...history] : items
+    const limit = visibleCounts[windowKey]
+    const visible = allVisible.slice(0, limit)
     return (
       <>
         {visible.length === 0 && <p className="charter-empty">{t(emptyKey)}</p>}
@@ -1295,6 +1299,18 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
             t={t}
           />
         ))}
+        {allVisible.length > visible.length && (
+          <button
+            type="button"
+            className="charter-historytoggle"
+            onClick={() => setVisibleCounts(current => ({
+              ...current,
+              [windowKey]: current[windowKey] + 50,
+            }))}
+          >
+            {t('history.showMore', { count: allVisible.length - visible.length })}
+          </button>
+        )}
         {history.length > 0 && (
           <button
             type="button"
@@ -1778,7 +1794,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                 <p className="charter-hint">{t('invariants.hint')}</p>
                 {counts.pending > 0 && <p className="charter-hint">{t('pending.hint')}</p>}
                 <div className="charter-list">
-                  {renderItems(currentInvariants, historyInvariants, 'invariants.empty')}
+                  {renderItems(currentInvariants, historyInvariants, 'invariants.empty', 'invariants')}
                 </div>
                 <div className={`charter-add${normalizedBytes(newInvariant) > view.limits.maxItemBytes ? ' is-over' : ''}`}>
                   <textarea
@@ -1913,7 +1929,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                   <span className="charter-count">{deliverables.length}</span>
                 </div>
                 <div className="charter-list">
-                  {renderItems(currentDeliverables, historyDeliverables, 'deliverables.empty')}
+                  {renderItems(currentDeliverables, historyDeliverables, 'deliverables.empty', 'deliverables')}
                 </div>
                 <div className={`charter-add${normalizedBytes(newDeliverable) > view.limits.maxItemBytes ? ' is-over' : ''}`}>
                   <textarea
