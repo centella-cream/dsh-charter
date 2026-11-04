@@ -19,12 +19,11 @@
 - queryItems 仍缺 validity filter；query 响应字节上限、proposal/change facets 已实现。
 - proposal source registry 的完整复算仍未实现；当前批次带 source digest/refs 并在 UI 派生
   `not-applicable/intact/unknown`，compaction/agent-tool/fork 带 digest。
-- `applyBootstrap` 的 objective.initialize/redirect 文本未单独绑定 extraction handle。
 - Evidence Integrity、Fact Validity、validator 是 0.2 的独立必交项，不属于本 workspace core。
 
 本轮已补齐：message proposal（最近一条真实用户消息）、Change Set Host canonical preview digest 与
 `PREVIEW_MISMATCH`、`charter_propose` proposedRequires、fork typed source refs、可配置 proposal batch 上限、
-`item.propose` 按来源派生的 origin。
+`item.propose` 按来源派生的 origin、bootstrap objective.initialize 对 extraction 的绑定。
 
 在实现这些合同前，不应把本文件或 `0.2.0` 包版本读成完整 v2 已实现。
 
