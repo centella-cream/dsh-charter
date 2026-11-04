@@ -33,6 +33,7 @@ import type {
   CharterProposalQueryResult,
   CharterChangeQueryRequest,
   CharterChangeQueryResult,
+  CharterChangeSetPreviewResult,
 } from '../host/types.js'
 
 const charterErrorCodeSchema = z.enum([
@@ -41,6 +42,7 @@ const charterErrorCodeSchema = z.enum([
   'NOT_FOUND',
   'LIFECYCLE_MISMATCH',
   'REVISION_CONFLICT',
+  'PREVIEW_MISMATCH',
   'MUTATION_ID_REUSED',
   'INVALID_REFERENCE',
   'INVALID_TRANSITION',
@@ -286,6 +288,23 @@ export const charterProposalQueryResultSchema = z.discriminatedUnion('ok', [
   }).strict(),
 ])
 
+export const charterChangeSetPreviewResultSchema = z.discriminatedUnion('ok', [
+  z.object({
+    ok: z.literal(true),
+    previewDigest: z.string(),
+    before: z.object({ revision: z.number(), promptBytes: z.number(), items: z.number(), pendingItems: z.number() }).strict(),
+    after: z.object({ revision: z.number(), promptBytes: z.number(), items: z.number(), pendingItems: z.number() }).strict(),
+    changes: z.array(charterChangeSchema),
+    promptChanged: z.boolean(),
+    metadataOnly: z.boolean(),
+  }).strict(),
+  z.object({
+    ok: z.literal(false),
+    code: charterErrorCodeSchema,
+    message: z.string(),
+  }).strict(),
+])
+
 export const charterEditResultSchema = z.discriminatedUnion('ok', [
   z.object({
     ok: z.literal(true),
@@ -403,6 +422,12 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     'charter/queryChanges': (
       request: CharterChangeQueryRequest & { readonly sessionId: SessionId },
     ) => Promise<RemoteResult<CharterChangeQueryResult>>
+    'charter/proposeMessage': (
+      sessionId: SessionId,
+    ) => Promise<RemoteResult<CharterEditResult>>
+    'charter/previewChangeSet': (
+      request: CharterEditRequest,
+    ) => Promise<RemoteResult<CharterChangeSetPreviewResult>>
     'charter/edit': (
       request: CharterEditRequest,
     ) => Promise<RemoteResult<CharterEditResult>>
@@ -443,6 +468,12 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
       queryChanges: (
         request: CharterChangeQueryRequest & { readonly sessionId: SessionId },
       ) => Promise<RemoteResult<CharterChangeQueryResult>>
+      proposeMessage: (
+        sessionId: SessionId,
+      ) => Promise<RemoteResult<CharterEditResult>>
+      previewChangeSet: (
+        request: CharterEditRequest,
+      ) => Promise<RemoteResult<CharterChangeSetPreviewResult>>
       edit: (
         request: CharterEditRequest,
       ) => Promise<RemoteResult<CharterEditResult>>

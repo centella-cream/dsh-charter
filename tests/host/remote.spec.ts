@@ -15,9 +15,9 @@ import { RemoteError } from '@deepseek-ai/dsh-typert-protocol'
 describe('charter Remote contract', () => {
   it('uses create-based strict codecs and validates the 0.2 wire methods', () => {
     expect(charterRemoteContribution.package).toBe('dsh-charter')
-    expect(charterRemoteContribution.descriptors).toHaveLength(12)
+    expect(charterRemoteContribution.descriptors).toHaveLength(14)
     expect(charterRemoteContribution.descriptors.map(descriptor => descriptor.method))
-      .toEqual(['watch', 'watchSummary', 'bootstrap', 'edit', 'applyBootstrap', 'exportRecord', 'initializeRecord', 'restoreRecord', 'summary', 'queryItems', 'queryProposals', 'queryChanges'])
+      .toEqual(['watch', 'watchSummary', 'bootstrap', 'edit', 'proposeMessage', 'previewChangeSet', 'applyBootstrap', 'exportRecord', 'initializeRecord', 'restoreRecord', 'summary', 'queryItems', 'queryProposals', 'queryChanges'])
     for (const descriptor of charterRemoteContribution.descriptors) {
       expect(descriptor.result.mode).toBe('strict')
       if (descriptor.result.mode === 'strict') expect(typeof descriptor.result.create).toBe('function')

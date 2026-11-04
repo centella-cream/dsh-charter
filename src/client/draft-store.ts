@@ -926,6 +926,26 @@ export class CharterDraft {
     return attempt?.lifecycle === this.state.lifecycle ? attempt : undefined
   }
 
+  async proposeLatestMessage(): Promise<void> {
+    const source = this.resolveSource()
+    if (source?.proposeMessage === undefined) {
+      this.update({ feedback: { kind: 'error', code: 'UNAVAILABLE' } })
+      return
+    }
+    try {
+      const result = await source.proposeMessage()
+      if (result.ok) {
+        this.update({ feedback: { kind: 'saved', revision: result.committedRevision } })
+      } else {
+        this.update({
+          feedback: { kind: 'error', code: result.code, ...(result.message === undefined ? {} : { detail: result.message }) },
+        })
+      }
+    } catch {
+      this.update({ feedback: { kind: 'connection' } })
+    }
+  }
+
   async applyDraft(view: CharterView): Promise<void> {
     if (this.state.saving || view.status !== 'ready') return
     const baseRevision = this.state.baseRevision
@@ -962,10 +982,30 @@ export class CharterDraft {
       baseRevision,
       ops: [...this.state.ops],
     }
+    let submittedRequest = request
+    if (previous === undefined && source.previewChangeSet !== undefined) {
+      try {
+        const preview = await source.previewChangeSet(request)
+        if (!preview.ok) {
+          if (preview.code !== 'UNAVAILABLE') {
+            this.update({
+              saving: false,
+              feedback: { kind: 'error', code: preview.code, detail: preview.message },
+            })
+            return
+          }
+        } else {
+          submittedRequest = { ...request, previewDigest: preview.previewDigest }
+        }
+      } catch {
+        this.update({ saving: false, feedback: { kind: 'connection' } })
+        return
+      }
+    }
     this.update({
       saving: true,
       feedback: null,
-      attempt: { kind: 'edit', request, sourceGeneration: source.connectionGeneration, lifecycle: this.state.lifecycle, status: 'in-flight' },
+      attempt: { kind: 'edit', request: submittedRequest, sourceGeneration: source.connectionGeneration, lifecycle: this.state.lifecycle, status: 'in-flight' },
     })
     const generation = this.asyncGeneration
     const sourceGeneration = source.connectionGeneration
@@ -975,13 +1015,13 @@ export class CharterDraft {
       && source.connectionGeneration === sourceGeneration
       && this.state.ops === requestOps
     try {
-      const result = await source.edit(request)
+      const result = await source.edit(submittedRequest)
       if (!current()) {
         // The source/generation/lifecycle moved under the request: the outcome
         // is unknown, so keep the exact attempt (never clear mutation
         // credentials). Only the attempt that matches this request is touched.
         const attempt = this.state.attempt
-        if (attempt?.kind === 'edit' && attempt.request.mutationId === request.mutationId) {
+        if (attempt?.kind === 'edit' && attempt.request.mutationId === submittedRequest.mutationId) {
           this.update({
             saving: false,
             attempt: { ...attempt, status: 'unknown' },

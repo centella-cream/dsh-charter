@@ -18,6 +18,7 @@ import type {
   CharterItemQueryResult,
   CharterProposalQueryResult,
   CharterChangeQueryResult,
+  CharterChangeSetPreviewResult,
 } from '../host/types.js'
 import { resolveRemoteActor } from './actor.js'
 import { remoteMethod } from './compat.js'
@@ -29,6 +30,48 @@ export class CharterRemoteService extends TypertRemoteService {
 
   constructor(ctx: Context) {
     super(ctx, 'charterRemote', { namespace: 'charter' })
+  }
+
+  @remoteMethod({
+    resources: {
+      session: (sessionId: SessionId): SessionId => sessionId,
+    },
+  })
+  proposeMessage(sessionId: SessionId): Promise<CharterEditResult> {
+    let actor: CharterActor
+    try {
+      actor = resolveRemoteActor(this.ctx)
+    } catch (error) {
+      if (error instanceof CharterError) {
+        return Promise.resolve({ ok: false, code: error.code, message: error.message })
+      }
+      throw error
+    }
+    const session = this.ctx.sessions.get(sessionId)
+    if (session === undefined) {
+      return Promise.resolve({ ok: false, code: 'NOT_FOUND', message: 'The Session is not live' })
+    }
+    return this.ctx.charter.proposeFromLatestMessage(session, actor)
+  }
+
+  @remoteMethod({
+    resources: {
+      session: (request: CharterEditRequest): SessionId => request.sessionId as SessionId,
+    },
+  })
+  previewChangeSet(request: CharterEditRequest): Promise<CharterChangeSetPreviewResult> {
+    const actor = (() => {
+      try {
+        return resolveRemoteActor(this.ctx)
+      } catch (error) {
+        if (error instanceof CharterError) {
+          return { ok: false as const, code: error.code, message: error.message }
+        }
+        throw error
+      }
+    })()
+    if ('ok' in actor) return Promise.resolve(actor)
+    return Promise.resolve(this.ctx.charter.previewChangeSet(request, actor))
   }
 
   @remoteMethod({

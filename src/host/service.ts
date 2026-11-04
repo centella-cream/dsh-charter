@@ -23,7 +23,7 @@ import {
   type CharterLimits,
 } from '../core/limits.js'
 import { queryItems, type ItemQueryRequest } from '../core/query.js'
-import { planChangeSet, type PlannedChangeSet } from '../core/change-set.js'
+import { changeSetPreviewDigest, planChangeSet, type PlannedChangeSet } from '../core/change-set.js'
 import { sha256Json, sha256Text } from '../core/digest.js'
 import { dependencyProjection } from '../core/dependencies.js'
 import { sourceIntegrity } from '../core/source-integrity.js'
@@ -1684,6 +1684,53 @@ export class CharterService extends Service {
     }, { allowContentModified: true, dedupeSourceDigest: sourceDigest })
   }
 
+  previewChangeSet(
+    untrustedRequest: unknown,
+    actor: CharterActor = { kind: 'owner' },
+  ): import('./types.js').CharterChangeSetPreviewResult {
+    let request: CharterEditRequest
+    try {
+      request = normalizeEditRequest(untrustedRequest)
+    } catch (error) {
+      return { ok: false, code: error instanceof CharterError ? error.code : 'INVALID_ARGUMENT', message: describeError(error) }
+    }
+    try {
+      assertEditAuthorized(actor, request.ops)
+    } catch (error) {
+      return { ok: false, code: error instanceof CharterError ? error.code : 'FORBIDDEN', message: describeError(error) }
+    }
+    const session = this.ctx.sessions.get(SessionId(request.sessionId))
+    if (session === undefined) return { ok: false, code: 'NOT_FOUND', message: 'The Session is not live' }
+    this.ensureLazy(session)
+    const record = this.recordFor(session)
+    if (record === undefined) return { ok: false, code: 'UNAVAILABLE', message: 'Charter record is not readable' }
+    if (request.baseRevision !== record.current.revision) {
+      return { ok: false, code: 'REVISION_CONFLICT', message: `current revision is ${record.current.revision}` }
+    }
+    try {
+      const ids = Object.fromEntries(clientRefsOf(request.ops).map(ref => [ref, ref]))
+      const planned = planChangeSet({
+        snapshot: record.current,
+        ops: request.ops,
+        ids,
+        nextRevision: record.current.revision + 1,
+        limits: this.config,
+        ...(record.objectiveProposals === undefined ? {} : { objectiveProposals: record.objectiveProposals }),
+      })
+      return {
+        ok: true,
+        previewDigest: changeSetPreviewDigest(request, record.current.stateDigest),
+        before: planned.before,
+        after: planned.after,
+        changes: [...planned.changes],
+        promptChanged: planned.promptChanged,
+        metadataOnly: planned.metadataOnly,
+      }
+    } catch (error) {
+      return { ok: false, code: error instanceof CharterError ? error.code : 'INVALID_CHANGE_SET', message: describeError(error) }
+    }
+  }
+
   private dedupeBootstrapRequest(
     record: CharterRecord,
     request: CharterEditRequest,
@@ -1699,6 +1746,61 @@ export class CharterService extends Service {
     const ops = request.ops.filter(op => op.type !== 'item.propose'
       || !existingKeys.has(`${op.item.kind}:${op.item.text}`))
     return ops.length === request.ops.length ? request : { ...request, ops }
+  }
+
+  async proposeFromLatestMessage(
+    session: Session,
+    actor: CharterActor = { kind: 'owner' },
+  ): Promise<CharterEditResult> {
+    const events = readSessionEvents(session)
+    let selected: { seq: number; text: string } | undefined
+    for (const event of events) {
+      if (event.type !== 'user/message') continue
+      const data = event.data as { source?: { kind?: string }; content?: readonly { type?: string; text?: string }[] }
+      if (data.source?.kind !== 'user') continue
+      const text = (data.content ?? [])
+        .filter(block => block.type === 'text' && typeof block.text === 'string')
+        .map(block => block.text)
+        .join('\n')
+        .trim()
+      if (text.length > 0) selected = { seq: event.seq, text }
+    }
+    if (selected === undefined) {
+      return unavailableResult('NOT_FOUND', 'No user message is available to save as a proposal')
+    }
+    const view = this.view(session)
+    if (view.status !== 'ready') {
+      return unavailableResult('UNAVAILABLE', 'Charter is not editable in its current state')
+    }
+    const source = {
+      kind: 'message' as const,
+      sessionId: session.id as string,
+      sessionCreatedAt: identityOf(session).createdAt,
+      projectionVersion: 1,
+      digest: sha256Text(selected.text),
+      seqs: [selected.seq],
+      role: 'user' as const,
+      at: Date.now(),
+    }
+    const mutationId = `message-proposal-${sha256Text(`${session.id}:${selected.seq}:${source.digest}`).slice(7, 39)}`
+    const existing = this.recordFor(session)?.recentMutations.find(receipt => receipt.mutationId === mutationId)
+    if (existing !== undefined) {
+      return { ok: true, replayed: true, committedRevision: existing.committedRevision, ids: {}, view: this.view(session) }
+    }
+    return this.edit({
+      sessionId: session.id,
+      mutationId,
+      baseRevision: view.revision,
+      ops: [{
+        type: 'item.propose',
+        item: {
+          clientRef: 'message-proposal',
+          kind: 'invariant',
+          text: selected.text,
+          order: view.items.reduce((maximum, item) => Math.max(maximum, item.order), -1) + 1,
+        },
+      }],
+    }, actor, source)
   }
 
   async proposeFromAgent(
@@ -1838,6 +1940,10 @@ export class CharterService extends Service {
                 throw charterError('INITIALIZATION_REQUIRED', 'Charter record is absent-unconfirmed')
               }
               throw charterError('UNAVAILABLE', 'Stored charter cannot be edited in its current state')
+            }
+            if (request.previewDigest !== undefined
+              && request.previewDigest !== changeSetPreviewDigest(request, inspection.record.current.stateDigest)) {
+              throw charterError('PREVIEW_MISMATCH', 'the reviewed Change Set no longer matches the current snapshot')
             }
             const effectiveRequest = options.dedupeSourceDigest === undefined
               ? request

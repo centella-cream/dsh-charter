@@ -320,6 +320,22 @@ export type CharterEditResult =
       readonly view?: CharterView
     }
 
+export type CharterChangeSetPreviewResult =
+  | {
+      readonly ok: true
+      readonly previewDigest: string
+      readonly before: { readonly revision: number; readonly promptBytes: number; readonly items: number; readonly pendingItems: number }
+      readonly after: { readonly revision: number; readonly promptBytes: number; readonly items: number; readonly pendingItems: number }
+      readonly changes: readonly import('../core/schemas.js').CharterChange[]
+      readonly promptChanged: boolean
+      readonly metadataOnly: boolean
+    }
+  | {
+      readonly ok: false
+      readonly code: CharterErrorCode
+      readonly message: string
+    }
+
 export interface CharterEditInput {
   readonly request: CharterEditRequest
   readonly actor: CharterActor

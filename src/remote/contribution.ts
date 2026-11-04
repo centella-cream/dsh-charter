@@ -5,6 +5,7 @@ import {
   charterEditRequestSchema,
   charterBootstrapApplyRequestSchema,
   charterEditResultSchema,
+  charterChangeSetPreviewResultSchema,
   charterFrameSchema,
   charterInitializeRequestWireSchema,
   charterRecordExportSchema,
@@ -125,6 +126,48 @@ export const charterRemoteContribution: TypertRemoteContribution = {
       mode: 'strict',
       typeSymbol: 'dsh-charter/CharterEditResult',
       create: () => charterEditResultSchema,
+    },
+  }, {
+    id: 'dsh-charter#charter/proposeMessage',
+    service: 'charterRemote',
+    namespace: 'charter',
+    method: 'proposeMessage',
+    invocation: { kind: 'direct' },
+    parameters: [{
+      name: 'sessionId',
+      wire: 'sessionId',
+      source: 'json',
+      codec: {
+        mode: 'strict',
+        typeSymbol: 'dsh-charter/SessionId',
+        create: () => sessionIdSchema,
+      },
+    }],
+    result: {
+      mode: 'strict',
+      typeSymbol: 'dsh-charter/CharterEditResult',
+      create: () => charterEditResultSchema,
+    },
+  }, {
+    id: 'dsh-charter#charter/previewChangeSet',
+    service: 'charterRemote',
+    namespace: 'charter',
+    method: 'previewChangeSet',
+    invocation: { kind: 'direct' },
+    parameters: [{
+      name: 'request',
+      wire: 'request',
+      source: 'json',
+      codec: {
+        mode: 'strict',
+        typeSymbol: 'dsh-charter/CharterEditRequest',
+        create: () => charterEditRequestSchema,
+      },
+    }],
+    result: {
+      mode: 'strict',
+      typeSymbol: 'dsh-charter/CharterChangeSetPreviewResult',
+      create: () => charterChangeSetPreviewResultSchema,
     },
   }, {
     id: 'dsh-charter#charter/applyBootstrap',

@@ -1,6 +1,6 @@
 import { sha256Json } from './digest.js'
 import { applyOps, type ApplyOpsInput } from './commands.js'
-import type { CharterOp, CharterSnapshot } from './schemas.js'
+import type { CharterEditRequest, CharterOp, CharterSnapshot } from './schemas.js'
 
 export interface ChangeSetSide {
   readonly revision: number
@@ -73,4 +73,16 @@ export function planChangeSet(input: ApplyOpsInput): PlannedChangeSet {
 
 export function changeSetOps(ops: readonly CharterOp[]): number {
   return ops.length
+}
+
+/** Digest of the reviewed request, bound to the authoritative snapshot. */
+export function changeSetPreviewDigest(request: CharterEditRequest, stateDigest: string): `sha256:${string}` {
+  return sha256Json({
+    version: 1,
+    kind: 'change-set-preview',
+    sessionId: request.sessionId,
+    baseRevision: request.baseRevision,
+    stateDigest,
+    ops: request.ops,
+  })
 }

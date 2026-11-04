@@ -189,6 +189,7 @@ export const charterEditRequestSchema = z.object({
   mutationId: mutationIdSchema,
   baseRevision: z.number().int().nonnegative(),
   ops: z.array(charterOpSchema).min(1),
+  previewDigest: digestSchema.optional(),
 }).strict()
 
 export const charterBootstrapApplyRequestSchema = charterEditRequestSchema.extend({

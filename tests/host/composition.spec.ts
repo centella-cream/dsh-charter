@@ -425,6 +425,35 @@ describe('dsh-charter host composition', () => {
     expect(service.view(session).revision).toBe(1)
   })
 
+  it('returns a canonical Change Set preview digest and rejects a stale preview', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-change-preview-'))
+    roots.push(root)
+    const ctx = await mount(root)
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('change-preview'), {
+      meta: { cwd: root, createdAt: 1_700_000_001_050 },
+    })
+    await waitForReady(service, session)
+    const request = {
+      sessionId: session.id,
+      mutationId: 'change-preview-edit',
+      baseRevision: 0,
+      ops: [{ type: 'item.add' as const, item: { clientRef: 'p', kind: 'invariant' as const, text: 'Previewed', order: 0 } }],
+    }
+    const preview = service.previewChangeSet(request)
+    expect(preview).toMatchObject({ ok: true, previewDigest: expect.stringMatching(/^sha256:/u) })
+    if (!preview.ok) throw new Error('preview failed')
+    expect(await service.edit({ ...request, previewDigest: preview.previewDigest }))
+      .toMatchObject({ ok: true })
+    expect(await service.edit({
+      ...request,
+      mutationId: 'change-preview-stale',
+      baseRevision: 1,
+      previewDigest: preview.previewDigest,
+    })).toMatchObject({ ok: false, code: 'PREVIEW_MISMATCH' })
+    expect(service.view(session).items).toHaveLength(1)
+  })
+
   it('serves bounded summary and item query pages from one revision', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-charter-query-'))
     roots.push(root)
@@ -840,6 +869,36 @@ describe('dsh-charter host composition', () => {
     expect(service.view(session).items.find(item => item.text === 'Release')).toMatchObject({
       review: 'accepted',
       requires: [seed.ids.a],
+    })
+  })
+
+  it('saves the latest real user message as a pending message proposal', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-message-proposal-'))
+    roots.push(root)
+    const ctx = await mount(root)
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('message-proposal'), {
+      meta: { cwd: root, createdAt: 1_700_000_000_065 },
+    })
+    await waitForReady(service, session)
+    const append = session as unknown as { append(type: string, data: unknown, opts?: unknown): unknown }
+    append.append('user/message', {
+      id: 'message-1',
+      role: 'user',
+      content: [{ type: 'text', text: 'Turn this message into a constraint' }],
+      source: { kind: 'user' },
+    }, { surfaceOp: 'append' })
+    const result = await service.proposeFromLatestMessage(session)
+    expect(result).toMatchObject({ ok: true })
+    const view = service.view(session)
+    expect(view.items[0]).toMatchObject({
+      text: 'Turn this message into a constraint',
+      review: 'pending',
+    })
+    expect(view.proposalBatches?.[0]?.source).toMatchObject({
+      kind: 'message',
+      role: 'user',
+      digest: expect.stringMatching(/^sha256:/u),
     })
   })
 

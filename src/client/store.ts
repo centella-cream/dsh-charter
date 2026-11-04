@@ -15,6 +15,7 @@ import type {
   CharterRecordOperationResult,
   CharterView,
   CharterSummary,
+  CharterChangeSetPreviewResult,
 } from '../host/types.js'
 import type { CharterChangedFrame, CharterFrame, CharterSnapshotFrame, CharterSummaryFrame } from '../remote/wire.js'
 import { CharterDraft } from './draft-store.js'
@@ -32,10 +33,14 @@ export interface CharterSource {
   readonly getSnapshot: () => CharterClientState
   readonly subscribe: (listener: () => void) => () => void
   readonly edit: (request: CharterEditRequest) => Promise<CharterEditResult>
+  /** Host-canonical preview digest for the reviewed Change Set. */
+  readonly previewChangeSet?: (request: CharterEditRequest) => Promise<CharterChangeSetPreviewResult>
   /** Apply a reviewed compaction draft through the Host-only provenance entry. */
   readonly applyBootstrap?: (request: CharterBootstrapApplyRequest) => Promise<CharterEditResult>
   /** Extract a review-only draft from the latest compaction summary. */
   readonly bootstrap: () => Promise<CharterBootstrapResult>
+  /** Save the latest real user message as a pending proposal. */
+  readonly proposeMessage?: () => Promise<CharterEditResult>
   /** Apply a committed view returned by edit immediately, without waiting for the stream. */
   readonly accept: (view: CharterView) => void
   readonly retry: () => void
@@ -131,6 +136,28 @@ export class CharterSessionSource implements CharterSource {
       return { ok: false, code: 'UNAVAILABLE', message: 'Charter connection is unavailable.' }
     }
     const result = await remote.applyBootstrap(request)
+    if (!result.ok) throw result.error
+    return result.value
+  }
+
+  readonly previewChangeSet = async (
+    request: CharterEditRequest,
+  ): Promise<CharterChangeSetPreviewResult> => {
+    const remote = this.remote
+    if (remote === undefined || typeof remote.previewChangeSet !== 'function') {
+      return { ok: false, code: 'UNAVAILABLE', message: 'Change Set preview is unavailable.' }
+    }
+    const result = await remote.previewChangeSet(request)
+    if (!result.ok) throw result.error
+    return result.value
+  }
+
+  readonly proposeMessage = async (): Promise<CharterEditResult> => {
+    const remote = this.remote
+    if (remote === undefined) {
+      return { ok: false, code: 'UNAVAILABLE', message: 'Charter connection is unavailable.' }
+    }
+    const result = await remote.proposeMessage(this.sessionId)
     if (!result.ok) throw result.error
     return result.value
   }

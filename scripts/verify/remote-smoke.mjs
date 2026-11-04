@@ -5,10 +5,10 @@ import { CharterRemoteService } from '../../lib/remote.js'
 const ctx = new Context()
 const service = new CharterRemoteService(ctx)
 const markers = remoteMethods(service)
-if (markers.map(marker => marker.method).join(',') !== 'watch,bootstrap,edit,applyBootstrap,exportRecord,initializeRecord,restoreRecord,summary,queryItems,queryProposals,watchSummary,queryChanges') {
+if (markers.map(marker => marker.method).join(',') !== 'proposeMessage,previewChangeSet,watch,bootstrap,edit,applyBootstrap,exportRecord,initializeRecord,restoreRecord,summary,queryItems,queryProposals,watchSummary,queryChanges') {
   throw new Error(`unexpected Remote methods: ${markers.map(marker => marker.method).join(',')}`)
 }
-if (markers[0]?.mode !== 'stream') {
+if (markers.find(marker => marker.method === 'watch')?.mode !== 'stream') {
   throw new Error('charter/watch is not registered as a stream')
 }
 

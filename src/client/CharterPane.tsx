@@ -1979,6 +1979,24 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
               </section>
             )}
 
+            {area === 'review' && source.proposeMessage !== undefined && (
+              <section className="charter-card charter-section" aria-labelledby="charter-message-proposal-title">
+                <div className="charter-cardhead">
+                  <div className="charter-cardtitle">
+                    <span className="charter-kicker">{t('review.kicker')}</span>
+                    <h3 id="charter-message-proposal-title">{t('review.messageProposal')}</h3>
+                  </div>
+                  <ActionButton
+                    variant="outline"
+                    disabled={saving || unknownBlocked}
+                    onClick={() => { void draft.proposeLatestMessage() }}
+                  >
+                    {t('review.saveLatestMessage')}
+                  </ActionButton>
+                </div>
+              </section>
+            )}
+
             {area === 'review' && inactiveItems.length > 0 && (
               <section className="charter-card charter-section" aria-labelledby="charter-inactive-title">
                 <div className="charter-cardhead">

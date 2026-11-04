@@ -71,6 +71,7 @@ function source(handlers: {
   edit: (request: CharterEditRequest) => Promise<CharterEditResult>
   bootstrap?: () => Promise<CharterBootstrapResult>
   applyBootstrap?: (request: import('../../src/core/schemas.js').CharterBootstrapApplyRequest) => Promise<CharterEditResult>
+  previewChangeSet?: (request: CharterEditRequest) => Promise<import('../../src/host/types.js').CharterChangeSetPreviewResult>
   snapshot?: () => ReturnType<CharterSessionSource['getSnapshot']>
 }): CharterSessionSource {
   return {
@@ -78,6 +79,7 @@ function source(handlers: {
     edit: handlers.edit,
     bootstrap: handlers.bootstrap ?? (async () => ({ available: false, reason: 'unavailable' })),
     ...(handlers.applyBootstrap === undefined ? {} : { applyBootstrap: handlers.applyBootstrap }),
+    ...(handlers.previewChangeSet === undefined ? {} : { previewChangeSet: handlers.previewChangeSet }),
     accept: () => undefined,
     getSnapshot: handlers.snapshot ?? (() => ({ status: 'ready', view: view(0), error: null })),
     subscribe: () => () => undefined,
@@ -97,6 +99,33 @@ describe('per-Session draft ownership', () => {
     expect(draft.getSnapshot()).toMatchObject({ section: 'invariants', baseRevision: 2 })
     expect(draft.getSnapshot().ops).toHaveLength(1)
     expect(draft.getSnapshot().newInvariant).toBe('Half-typed text')
+  })
+
+  it('submits the Host preview digest with a fresh Change Set', async () => {
+    const requests: CharterEditRequest[] = []
+    const fake = source({
+      edit: async request => {
+        requests.push(request)
+        return { ok: true, replayed: false, committedRevision: 1, ids: {}, view: view(1) }
+      },
+      previewChangeSet: async () => ({
+        ok: true,
+        previewDigest: 'sha256:preview',
+        before: { revision: 0, promptBytes: 0, items: 0, pendingItems: 0 },
+        after: { revision: 1, promptBytes: 1, items: 1, pendingItems: 0 },
+        changes: [],
+        promptChanged: true,
+        metadataOnly: false,
+      }),
+    })
+    const draft = new CharterDraft(sessionId, () => fake)
+    draft.bindLifecycle('life-preview-digest')
+    draft.stage(view(0), {
+      type: 'item.add',
+      item: { clientRef: 'preview-1', kind: 'invariant', text: 'Previewed', order: 0 },
+    })
+    await draft.applyDraft(view(0))
+    expect(requests[0]?.previewDigest).toBe('sha256:preview')
   })
 
   it('reuses the same mutation id when retrying an unknown-outcome request', async () => {
