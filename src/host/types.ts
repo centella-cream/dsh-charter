@@ -72,6 +72,7 @@ export interface CharterViewCapabilities {
 }
 
 export interface CharterChangeRow {
+  readonly mutationId: string
   readonly revision: number
   readonly baseRevision: number
   readonly actor: import('../core/schemas.js').CharterActor
@@ -79,16 +80,26 @@ export interface CharterChangeRow {
   readonly changes: import('../core/schemas.js').CharterChange[]
 }
 
+export interface CharterChangeQueryRequest {
+  readonly limit?: number | undefined
+  readonly cursor?: string | undefined
+  readonly changeSetId?: string | undefined
+  readonly operationKind?: import('../core/schemas.js').CharterChange['type'] | undefined
+  readonly itemId?: string | undefined
+  readonly proposalId?: string | undefined
+}
+
 export type CharterChangeQueryResult =
   | {
       readonly ok: true
       readonly revision: number
       readonly changes: readonly CharterChangeRow[]
+      readonly filterDigest: string
       readonly nextCursor?: string
     }
   | {
       readonly ok: false
-      readonly code: 'INVALID_CURSOR' | 'LIMIT_EXCEEDED' | 'NOT_FOUND' | 'UNAVAILABLE'
+      readonly code: 'INVALID_CURSOR' | 'LIMIT_EXCEEDED' | 'NOT_FOUND' | 'UNAVAILABLE' | 'STALE_REVISION'
       readonly message: string
     }
 

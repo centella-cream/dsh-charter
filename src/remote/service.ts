@@ -227,11 +227,19 @@ export class CharterRemoteService extends TypertRemoteService {
     readonly sessionId: string
     readonly limit?: number
     readonly cursor?: string
+    readonly changeSetId?: string
+    readonly operationKind?: import('../core/schemas.js').CharterChange['type']
+    readonly itemId?: string
+    readonly proposalId?: string
   }): Promise<CharterChangeQueryResult> {
     resolveRemoteActor(this.ctx)
     return Promise.resolve(this.ctx.charter.queryChangesById(request.sessionId as SessionId, {
       ...(request.limit === undefined ? {} : { limit: request.limit }),
       ...(request.cursor === undefined ? {} : { cursor: request.cursor }),
+      ...(request.changeSetId === undefined ? {} : { changeSetId: request.changeSetId }),
+      ...(request.operationKind === undefined ? {} : { operationKind: request.operationKind }),
+      ...(request.itemId === undefined ? {} : { itemId: request.itemId }),
+      ...(request.proposalId === undefined ? {} : { proposalId: request.proposalId }),
     }))
   }
 

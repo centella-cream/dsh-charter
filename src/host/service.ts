@@ -1167,7 +1167,7 @@ export class CharterService extends Service {
 
   queryChangesById(
     sessionId: SessionIdType,
-    request: { readonly limit?: number | undefined; readonly cursor?: string | undefined } = {},
+    request: import('./types.js').CharterChangeQueryRequest = {},
   ): CharterChangeQueryResult {
     const limit = request.limit ?? 50
     if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) {
@@ -1190,6 +1190,24 @@ export class CharterService extends Service {
     if (record === undefined) {
       return { ok: false, code: 'UNAVAILABLE', message: 'Charter record is not readable' }
     }
+    const filterDigest = sha256Json({
+      version: 1,
+      queryKind: 'changes',
+      changeSetId: request.changeSetId ?? null,
+      operationKind: request.operationKind ?? null,
+      itemId: request.itemId ?? null,
+      proposalId: request.proposalId ?? null,
+    })
+    const matches = (receipt: CharterRecord['history'][number]): boolean => {
+      if (request.changeSetId !== undefined && receipt.mutationId !== request.changeSetId) return false
+      return receipt.changes.some(change => {
+        if (request.operationKind !== undefined && change.type !== request.operationKind) return false
+        if (request.itemId !== undefined && !('itemId' in change && change.itemId === request.itemId)) return false
+        if (request.proposalId !== undefined
+          && !('proposalId' in change && change.proposalId === request.proposalId)) return false
+        return true
+      })
+    }
     let after = 0
     if (request.cursor !== undefined) {
       try {
@@ -1197,19 +1215,25 @@ export class CharterService extends Service {
           readonly v?: unknown
           readonly kind?: unknown
           readonly revision?: unknown
+          readonly filterDigest?: unknown
         }
         if (parsed.v !== 1 || parsed.kind !== 'changes' || !Number.isSafeInteger(parsed.revision)) {
           throw new Error('invalid cursor')
         }
+        if (parsed.revision !== record.current.revision) {
+          return { ok: false, code: 'STALE_REVISION', message: 'change cursor was created for another revision' }
+        }
+        if (parsed.filterDigest !== filterDigest) throw new Error('filter mismatch')
         after = parsed.revision as number
       } catch {
         return { ok: false, code: 'INVALID_CURSOR', message: 'invalid change query cursor' }
       }
     }
     const rows: CharterChangeRow[] = record.history
-      .filter(receipt => receipt.revision > after)
+      .filter(receipt => receipt.revision > after && matches(receipt))
       .slice(0, limit)
       .map(receipt => ({
+        mutationId: receipt.mutationId,
         revision: receipt.revision,
         baseRevision: receipt.baseRevision,
         actor: receipt.actor,
@@ -1217,14 +1241,20 @@ export class CharterService extends Service {
         changes: [...receipt.changes],
       }))
     const last = rows[rows.length - 1]
-    const hasMore = last !== undefined && record.history.some(receipt => receipt.revision > last.revision)
+    const hasMore = last !== undefined && record.history.some(receipt => receipt.revision > last.revision && matches(receipt))
     const nextCursor = hasMore
-      ? Buffer.from(JSON.stringify({ v: 1, kind: 'changes', revision: last!.revision }), 'utf8').toString('base64url')
+      ? Buffer.from(JSON.stringify({
+          v: 1,
+          kind: 'changes',
+          revision: last!.revision,
+          filterDigest,
+        }), 'utf8').toString('base64url')
       : undefined
     return {
       ok: true,
       revision: record.current.revision,
       changes: rows,
+      filterDigest,
       ...(nextCursor === undefined ? {} : { nextCursor }),
     }
   }

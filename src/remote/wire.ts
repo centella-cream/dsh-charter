@@ -164,6 +164,10 @@ export const charterChangeQueryRequestSchema = z.object({
   sessionId: z.string().min(1),
   limit: z.number().int().positive().max(100).optional(),
   cursor: z.string().optional(),
+  changeSetId: z.string().optional(),
+  operationKind: z.string().optional(),
+  itemId: z.string().optional(),
+  proposalId: z.string().optional(),
 }).strict()
 
 export const charterChangeQueryResultSchema = z.discriminatedUnion('ok', [
@@ -171,6 +175,7 @@ export const charterChangeQueryResultSchema = z.discriminatedUnion('ok', [
     ok: z.literal(true),
     revision: z.number().int().nonnegative(),
     changes: z.array(z.object({
+      mutationId: z.string(),
       revision: z.number().int().positive(),
       baseRevision: z.number().int().nonnegative(),
       actor: charterActorSchema,

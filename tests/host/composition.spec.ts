@@ -484,6 +484,15 @@ describe('dsh-charter host composition', () => {
       expect(changes.changes[0]).toMatchObject({ revision: 1, baseRevision: 0 })
       expect(changes.nextCursor).toBeUndefined()
     }
+    const filteredChanges = service.queryChangesById(session.id, {
+      changeSetId: 'query-edit',
+      operationKind: 'item.added',
+    })
+    expect(filteredChanges.ok).toBe(true)
+    if (filteredChanges.ok) {
+      expect(filteredChanges.changes).toHaveLength(1)
+      expect(filteredChanges.changes[0]?.mutationId).toBe('query-edit')
+    }
   })
 
   it('reopens the same durable record only for the matching Session lifecycle', async () => {
