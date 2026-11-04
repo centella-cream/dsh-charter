@@ -20,11 +20,11 @@
 - proposal source registry 的完整复算仍未实现；当前批次带 source digest/refs 并在 UI 派生
   `not-applicable/intact/unknown`，compaction/agent-tool/fork 带 digest。
 - `applyBootstrap` 的 objective.initialize/redirect 文本未单独绑定 extraction handle。
-- `item.propose` 的 origin 仍固定为 agent，尚未按来源区分 manual/message/agent。
 - Evidence Integrity、Fact Validity、validator 是 0.2 的独立必交项，不属于本 workspace core。
 
 本轮已补齐：message proposal（最近一条真实用户消息）、Change Set Host canonical preview digest 与
-`PREVIEW_MISMATCH`、`charter_propose` proposedRequires、fork typed source refs、可配置 proposal batch 上限。
+`PREVIEW_MISMATCH`、`charter_propose` proposedRequires、fork typed source refs、可配置 proposal batch 上限、
+`item.propose` 按来源派生的 origin。
 
 在实现这些合同前，不应把本文件或 `0.2.0` 包版本读成完整 v2 已实现。
 
