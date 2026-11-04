@@ -15,10 +15,10 @@
 本文件的状态是 **Implemented — pending release acceptance**，含义仅是：下列已实现的工作区核心通过源码验收，
 不是完整的 v2/0.2.0 实现。当前明确未完成：
 
-- Pane 仍未做分页/窗口化渲染；store 已走 summary + 分页 query，不再依赖完整 watch。
+- Pane 已对 active/history 列表做窗口化渲染；store 仍一次取回全部分页，网络分页优化仍可继续。
 - queryItems 仍缺 validity filter；query 响应字节上限、proposal/change facets 已实现。
-- proposal source registry 的完整复算仍未实现；当前批次带 source digest/refs 并在 UI 派生
-  `not-applicable/intact/unknown`，compaction/agent-tool/fork 带 digest。
+- proposal source registry 已登记每种 source kind 的字段与 digest 策略；完整 digest 复算仍未实现；当前批次带
+  source digest/refs 并在 UI 派生 `not-applicable/intact/unknown`，compaction/agent-tool/fork 带 digest。
 - Evidence Integrity、Fact Validity、validator 是 0.2 的独立必交项，不属于本 workspace core。
 
 本轮已补齐：message proposal（最近一条真实用户消息）、Change Set Host canonical preview digest 与
