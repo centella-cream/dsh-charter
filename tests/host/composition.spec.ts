@@ -1440,5 +1440,28 @@ describe('charter bootstrap', () => {
       ops: [{ type: 'item.propose', item: { clientRef: 'bootstrap-del-0', kind: 'deliverable', text: 'Stale', order: 2, progress: 'not-started' } }],
     })
     expect(staleHandle).toMatchObject({ ok: false, code: 'INVALID_ARGUMENT' })
+
+    const concurrentOps = [{
+      type: 'item.propose' as const,
+      item: { clientRef: 'bootstrap-del-0', kind: 'deliverable' as const, text: 'Concurrent edit', order: 3, progress: 'not-started' as const },
+    }]
+    const results = await Promise.all([
+      service.applyBootstrap({
+        sessionId: session.id,
+        mutationId: 'bootstrap-concurrent-a',
+        baseRevision: 2,
+        draftHandle,
+        ops: concurrentOps,
+      }),
+      service.applyBootstrap({
+        sessionId: session.id,
+        mutationId: 'bootstrap-concurrent-b',
+        baseRevision: 2,
+        draftHandle,
+        ops: concurrentOps,
+      }),
+    ])
+    expect(results.some(result => result.ok)).toBe(true)
+    expect(service.view(session).items.filter(item => item.text === 'Concurrent edit')).toHaveLength(1)
   })
 })
