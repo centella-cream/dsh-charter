@@ -1587,5 +1587,22 @@ describe('charter bootstrap', () => {
     ])
     expect(results.some(result => result.ok)).toBe(true)
     expect(service.view(session).items.filter(item => item.text === 'Concurrent edit')).toHaveLength(1)
+
+    const modifiedObjective = await service.applyBootstrap({
+      sessionId: session.id,
+      mutationId: 'bootstrap-objective-edited',
+      baseRevision: 3,
+      draftHandle,
+      ops: [{ type: 'objective.initialize', text: 'A different objective' }],
+    })
+    expect(modifiedObjective).toMatchObject({ ok: false, code: 'INVALID_ARGUMENT' })
+    const exactObjective = await service.applyBootstrap({
+      sessionId: session.id,
+      mutationId: 'bootstrap-objective-exact',
+      baseRevision: 3,
+      draftHandle,
+      ops: [{ type: 'objective.initialize', text: 'Keep the tab last.' }],
+    })
+    expect(exactObjective).toMatchObject({ ok: true })
   })
 })

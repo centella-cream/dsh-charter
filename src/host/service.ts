@@ -1645,6 +1645,16 @@ export class CharterService extends Service {
       if (op.type === 'objective.propose') {
         return unavailableResult('INVALID_ARGUMENT', 'bootstrap apply cannot create objective proposals')
       }
+      if (op.type === 'objective.initialize') {
+        if (extraction.proposal.objective === null || op.text !== extraction.proposal.objective) {
+          return unavailableResult('INVALID_ARGUMENT', 'bootstrap objective.initialize must match the reviewed extraction')
+        }
+        ops.push(op)
+        continue
+      }
+      if (op.type === 'objective.redirect') {
+        return unavailableResult('INVALID_ARGUMENT', 'bootstrap apply cannot redirect an objective')
+      }
       if (op.type !== 'item.propose') {
         ops.push(op.type === 'item.add' ? { ...op, item: stripModified(op.item) } : op)
         continue
