@@ -95,6 +95,63 @@ function streamContext(): never {
   return { remote: { $stream: () => ({ dispose: async () => {} }) } } as never
 }
 
+describe('client charter summary source', () => {
+  it('builds a Pane view from watchSummary and paged queries', async () => {
+    const summary = {
+      sessionId: 'summary-session',
+      revision: 4,
+      objective: null,
+      limits: view(0).limits,
+      promptText: 'prompt',
+      promptDigest: 'sha256:prompt',
+      hasObjective: false,
+      activeItems: 1,
+      pendingItems: 0,
+      historyItems: 0,
+      pendingBatches: 0,
+      promptBytes: 6,
+      overBudget: false,
+      status: 'ready' as const,
+      recordHealth: 'healthy' as const,
+      capabilities: { recordMaintenance: false },
+    }
+    const item = {
+      id: 'item-1', kind: 'invariant' as const, text: 'From query', review: 'accepted' as const,
+      lifecycle: 'current' as const, verification: { state: 'unchecked' as const },
+      origin: 'user' as const, order: 0, createdRevision: 1,
+    }
+    const remote = {
+      watchSummary: () => undefined,
+      queryItems: async () => ({ ok: true, value: {
+        ok: true, revision: 4, items: [item], filterDigest: 'sha256:items',
+      } }),
+      queryProposals: async () => ({ ok: true, value: {
+        ok: true, revision: 4, batches: [], objectiveProposals: [], filterDigest: 'sha256:proposals',
+      } }),
+    }
+    const frame = { type: 'snapshot' as const, value: summary }
+    const stream = {
+      dispose: async () => undefined,
+      restart: () => undefined,
+      [Symbol.asyncIterator]: async function* () {
+        yield { generation: 1, value: frame, signal: new AbortController().signal, accept: () => undefined }
+      },
+    }
+    const ctx = { remote: { $stream: () => stream } }
+    const source = new CharterSessionSource(ctx as never, SessionId('summary-session'))
+    source.attach(remote as never)
+    await tick()
+    await tick()
+    expect(source.getSnapshot().view).toMatchObject({
+      status: 'ready',
+      revision: 4,
+      items: [expect.objectContaining({ text: 'From query' })],
+      promptText: 'prompt',
+    })
+    await source.dispose()
+  })
+})
+
 describe('client charter source', () => {
   it('exposes a monotonic connection epoch across attach, retry, and detach', async () => {
     const source = new CharterSessionSource(streamContext(), SessionId('session-connection'))

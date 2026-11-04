@@ -61,6 +61,7 @@ function itemFromInput(
         ...common,
         progress: input.progress,
         ...(input.requires === undefined ? {} : { requires: [...input.requires] }),
+        ...(input.proposedRequires === undefined ? {} : { proposedRequires: [...input.proposedRequires] }),
       }
 }
 
@@ -276,7 +277,27 @@ export function applyOps(input: ApplyOpsInput): ApplyOpsOutput {
         if (item.review !== 'pending' || item.lifecycle !== 'current') {
           throw charterError('INVALID_TRANSITION', `item ${item.id} is not a pending proposal`)
         }
-        items.set(item.id, { ...item, review: 'accepted', reviewedAtRevision: input.nextRevision })
+        const { proposedRequires: proposed, ...accepted } = item
+        if (proposed !== undefined && proposed.length > 0) {
+          if (item.kind !== 'deliverable') {
+            throw charterError('INVALID_TRANSITION', `item ${item.id} cannot carry proposed prerequisites`)
+          }
+          for (const prerequisiteId of proposed) {
+            const prerequisite = items.get(prerequisiteId)
+            if (prerequisite === undefined || prerequisite.kind !== 'deliverable'
+              || prerequisite.review !== 'accepted' || prerequisite.lifecycle !== 'current') {
+              throw charterError('INVALID_CHANGE_SET', `item ${item.id} has an unresolved proposed prerequisite ${prerequisiteId}`)
+            }
+          }
+          items.set(item.id, {
+            ...(accepted as Extract<CharterItem, { kind: 'deliverable' }>),
+            requires: [...proposed].sort(),
+            review: 'accepted',
+            reviewedAtRevision: input.nextRevision,
+          })
+        } else {
+          items.set(item.id, { ...accepted, review: 'accepted', reviewedAtRevision: input.nextRevision })
+        }
         changes.push({ type: 'item.accepted', itemId: item.id })
         break
       }

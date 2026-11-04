@@ -161,7 +161,7 @@ export function appendMaintenanceReceipt(
   }
 }
 
-function assertProposalConsistency(record: CharterRecord): void {
+function assertProposalConsistency(record: CharterRecord, maxBatches = MAX_PROPOSAL_BATCHES): void {
   const objectiveProposalIds = new Set<string>()
   for (const proposal of record.objectiveProposals ?? []) {
     if (objectiveProposalIds.has(proposal.id)) {
@@ -187,8 +187,8 @@ function assertProposalConsistency(record: CharterRecord): void {
   const batches = record.proposalBatches ?? []
   const batchIds = new Set<string>()
   const itemIds = new Set(record.current.items.map(item => item.id))
-  if (batches.length > MAX_PROPOSAL_BATCHES) {
-    throw charterError('LIMIT_EXCEEDED', `charter exceeds ${MAX_PROPOSAL_BATCHES} proposal batches`)
+  if (batches.length > maxBatches) {
+    throw charterError('LIMIT_EXCEEDED', `charter exceeds ${maxBatches} proposal batches`)
   }
   for (const batch of batches) {
     if (batchIds.has(batch.id)) {
@@ -243,7 +243,7 @@ export function assertRecoveryRecordAdmission(record: CharterRecord, limits: Cha
   if (bytes > limits.maxRecoveryBytes) {
     throw charterError('QUOTA_EXCEEDED', `restored record exceeds ${limits.maxRecoveryBytes} UTF-8 bytes`)
   }
-  assertProposalConsistency(record)
+  assertProposalConsistency(record, limits.maxProposalBatches)
   const maintenance = record.recentMaintenance ?? []
   if (maintenance.length > limits.maintenanceLimit) {
     throw charterError('QUOTA_EXCEEDED', `maintenance receipts exceed ${limits.maintenanceLimit}`)
@@ -361,7 +361,7 @@ export function assertRecordConsistency(record: CharterRecord, limits: CharterLi
       throw charterError('CORRUPT_STATE', `maintenance ${receipt.operationId} digest disagrees with history`)
     }
   }
-  assertProposalConsistency(record)
+  assertProposalConsistency(record, limitsForConsistency.maxProposalBatches)
   validatedRecords.add(record)
 }
 
@@ -577,8 +577,9 @@ export function commitRecord(input: CommitRecordInput): CharterRecord {
           : candidate
       }),
     }))
-  if (batches.length > MAX_PROPOSAL_BATCHES) {
-    throw charterError('LIMIT_EXCEEDED', `charter exceeds ${MAX_PROPOSAL_BATCHES} proposal batches`)
+  const maxBatches = input.limits.maxProposalBatches ?? MAX_PROPOSAL_BATCHES
+  if (batches.length > maxBatches) {
+    throw charterError('LIMIT_EXCEEDED', `charter exceeds ${maxBatches} proposal batches`)
   }
   const next: CharterRecord = {
     ...input.record,

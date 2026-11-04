@@ -67,6 +67,7 @@ function normalizeNewItem(input: NewItemInput): NewItemInput {
         order: input.order,
         progress: input.progress,
         ...(input.requires === undefined ? {} : { requires: normalizeRequires(input.requires) }),
+        ...(input.proposedRequires === undefined ? {} : { proposedRequires: normalizeRequires(input.proposedRequires) }),
         ...(input.contentModified === true ? { contentModified: true } : {}),
       }
 }

@@ -156,7 +156,12 @@ describe('charter fork', () => {
     })
     expect(child.proposalBatches).toEqual([
       expect.objectContaining({
-        source: expect.objectContaining({ kind: 'fork' }),
+        source: expect.objectContaining({
+          kind: 'fork',
+          parentSessionId: 'parent',
+          parentRevision: 1,
+          sourceRefs: [{ kind: 'item', id: 'parent-p' }],
+        }),
         candidates: [{ kind: 'item', id: 'child-p' }],
       }),
     ])

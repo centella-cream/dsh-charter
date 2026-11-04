@@ -62,6 +62,16 @@ export function validateDependencyGraph(items: readonly CharterItem[]): void {
       }
       continue
     }
+    const proposed = item.kind === 'deliverable' ? item.proposedRequires ?? [] : []
+    if (new Set(proposed).size !== proposed.length) {
+      throw charterError('CORRUPT_STATE', `deliverable ${item.id} has duplicate proposed prerequisites`)
+    }
+    for (const prerequisiteId of proposed) {
+      const prerequisite = byId.get(prerequisiteId)
+      if (prerequisite === undefined || prerequisite.kind !== 'deliverable' || !isStandingItem(prerequisite)) {
+        throw charterError('INVALID_CHANGE_SET', `deliverable ${item.id} has a dangling proposed prerequisite ${prerequisiteId}`)
+      }
+    }
     const requires = item.requires ?? []
     if (new Set(requires).size !== requires.length) {
       throw charterError('CORRUPT_STATE', `deliverable ${item.id} has duplicate prerequisites`)

@@ -26,6 +26,13 @@ import type {
   CharterRecordState,
   CharterView,
   CharterViewCapabilities,
+  CharterSummary,
+  CharterItemQueryRequest,
+  CharterItemQueryResult,
+  CharterProposalQueryRequest,
+  CharterProposalQueryResult,
+  CharterChangeQueryRequest,
+  CharterChangeQueryResult,
 } from '../host/types.js'
 
 const charterErrorCodeSchema = z.enum([
@@ -143,7 +150,26 @@ export const charterViewSchema = z.object({
 export const charterSummarySchema = z.object({
   sessionId: z.string().min(1),
   revision: z.number().int().nonnegative(),
+  objective: charterObjectiveSchema.nullable(),
+  limits: z.object({
+    maxPromptBytes: z.number().int().positive(),
+    maxObjectiveBytes: z.number().int().positive(),
+    maxItemBytes: z.number().int().positive(),
+    maxItems: z.number().int().positive(),
+    maxPendingItems: z.number().int().nonnegative(),
+    maxOps: z.number().int().positive(),
+    maxRecordBytes: z.number().int().positive(),
+    maintenanceLimit: z.number().int().positive(),
+    maxRecoveryBytes: z.number().int().positive(),
+    maxActiveInvariants: z.number().int().positive(),
+    maxActiveDeliverables: z.number().int().positive(),
+  }).passthrough(),
+  promptText: z.string(),
+  promptDigest: z.string(),
   hasObjective: z.boolean(),
+  lifecycle: z.string().optional(),
+  recordState: charterRecordStateSchema.optional(),
+  message: z.string().optional(),
   activeItems: z.number().int().nonnegative(),
   pendingItems: z.number().int().nonnegative(),
   historyItems: z.number().int().nonnegative(),
@@ -240,6 +266,7 @@ export const charterProposalQueryResultSchema = z.discriminatedUnion('ok', [
     batches: z.array(z.object({
       id: z.string(),
       source: z.object({ kind: z.string() }).passthrough(),
+      sourceIntegrity: z.enum(['not-applicable', 'intact', 'unknown', 'unavailable']),
       capturedAtRevision: z.number().int().positive(),
       candidates: z.array(z.object({
         kind: z.enum(['item', 'objective', 'tombstone']),
@@ -349,6 +376,10 @@ export const charterFrameSchema = z.discriminatedUnion('type', [
 export type CharterFrame =
   | { readonly type: 'snapshot'; readonly value: CharterView }
   | { readonly type: 'changed'; readonly value: CharterView }
+export type CharterSummaryFrame =
+  | { readonly type: 'snapshot'; readonly value: CharterSummary }
+  | { readonly type: 'changed'; readonly value: CharterSummary }
+
 export type CharterSnapshotFrame = Extract<CharterFrame, { type: 'snapshot' }>
 export type CharterChangedFrame = Extract<CharterFrame, { type: 'changed' }>
 
@@ -358,6 +389,20 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
       sessionId: SessionId,
       signal?: AbortSignal,
     ) => RemoteStreamHandle<CharterFrame, never>
+    'charter/watchSummary': (
+      sessionId: SessionId,
+      signal?: AbortSignal,
+    ) => RemoteStreamHandle<CharterSummaryFrame, never>
+    'charter/queryItems': (
+      request: CharterItemQueryRequest & { readonly sessionId: SessionId },
+    ) => Promise<RemoteResult<CharterItemQueryResult>>
+    'charter/queryProposals': (
+      sessionId: SessionId,
+      options?: CharterProposalQueryRequest,
+    ) => Promise<RemoteResult<CharterProposalQueryResult>>
+    'charter/queryChanges': (
+      request: CharterChangeQueryRequest & { readonly sessionId: SessionId },
+    ) => Promise<RemoteResult<CharterChangeQueryResult>>
     'charter/edit': (
       request: CharterEditRequest,
     ) => Promise<RemoteResult<CharterEditResult>>
@@ -384,6 +429,20 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
         sessionId: SessionId,
         signal?: AbortSignal,
       ) => RemoteStreamHandle<CharterFrame, never>
+      watchSummary: (
+        sessionId: SessionId,
+        signal?: AbortSignal,
+      ) => RemoteStreamHandle<CharterSummaryFrame, never>
+      queryItems: (
+        request: CharterItemQueryRequest & { readonly sessionId: SessionId },
+      ) => Promise<RemoteResult<CharterItemQueryResult>>
+      queryProposals: (
+        sessionId: SessionId,
+        options?: CharterProposalQueryRequest,
+      ) => Promise<RemoteResult<CharterProposalQueryResult>>
+      queryChanges: (
+        request: CharterChangeQueryRequest & { readonly sessionId: SessionId },
+      ) => Promise<RemoteResult<CharterChangeQueryResult>>
       edit: (
         request: CharterEditRequest,
       ) => Promise<RemoteResult<CharterEditResult>>

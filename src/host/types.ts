@@ -106,6 +106,10 @@ export type CharterChangeQueryResult =
 export interface CharterSummary {
   readonly sessionId: string
   readonly revision: number
+  readonly objective: import('../core/schemas.js').CharterObjective | null
+  readonly limits: CharterViewLimits
+  readonly promptText: string
+  readonly promptDigest: string
   readonly hasObjective: boolean
   readonly activeItems: number
   readonly pendingItems: number
@@ -113,16 +117,21 @@ export interface CharterSummary {
   readonly pendingBatches: number
   readonly promptBytes: number
   readonly overBudget: boolean
+  readonly lifecycle?: string
+  readonly recordState?: CharterRecordState
+  readonly message?: string
   readonly status: 'ready' | 'initializing' | 'unavailable'
   readonly recordHealth: 'healthy' | 'invalid' | 'absent' | 'unknown' | 'write-uncertain'
   readonly capabilities: CharterViewCapabilities
 }
 
+export type CharterItemQueryRequest = import('../core/query.js').ItemQueryRequest
 export type CharterItemQueryResult = ItemQueryPage | ItemQueryFailure
 
 export interface CharterProposalBatchView {
   readonly id: string
   readonly source: import('../core/schemas.js').ProposalSource
+  readonly sourceIntegrity: import('../core/source-integrity.js').SourceIntegrity
   readonly capturedAtRevision: number
   readonly candidates: readonly {
     readonly kind: 'item' | 'objective' | 'tombstone'
@@ -149,6 +158,7 @@ export type CharterProposalQueryResult =
       readonly ok: true
       readonly revision: number
       readonly batches: readonly CharterProposalBatchView[]
+      readonly objectiveProposals: import('../core/schemas.js').ObjectiveProposal[]
       readonly filterDigest: string
       readonly nextCursor?: string
     }

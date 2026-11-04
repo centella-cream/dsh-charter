@@ -13,6 +13,8 @@ export interface CharterLimits {
   readonly maintenanceLimit: number
   /** Complete archive-envelope budget; independent of the ordinary record budget. */
   readonly maxRecoveryBytes: number
+  /** Bounded persisted proposal batches; defaults to the product constant. */
+  readonly maxProposalBatches?: number
 }
 
 export const DEFAULT_CHARTER_LIMITS: CharterLimits = {
@@ -28,6 +30,7 @@ export const DEFAULT_CHARTER_LIMITS: CharterLimits = {
   mutationLimit: 128,
   maintenanceLimit: 16,
   maxRecoveryBytes: 4 * 1_024 * 1_024,
+  maxProposalBatches: 64,
 }
 
 /** Product hard ceiling for any recovery archive (business admission, not transport). */

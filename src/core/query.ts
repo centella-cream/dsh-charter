@@ -5,6 +5,7 @@ import type { CharterLifecycle, CharterReview, CharterItem } from './schemas.js'
 import type { ExecutionDisplay, PrerequisiteStatus } from './dependencies.js'
 
 const QUERY_VERSION = 1 as const
+const MAX_QUERY_RESPONSE_BYTES = 256 * 1_024
 
 export interface ItemQueryFilter {
   readonly kind?: 'invariant' | 'deliverable'
@@ -140,7 +141,19 @@ export function queryItems(
     .filter(item => filter.prerequisite === undefined || prerequisiteById.get(item.id) === filter.prerequisite)
     .sort(compareOrderedItems)
     .filter(item => after === undefined || sortKey(item) > after)
-  const page = selected.slice(0, limit)
+  const page: CharterItem[] = []
+  for (const item of selected) {
+    if (page.length >= limit) break
+    const candidate = [...page, item]
+    const bytes = new TextEncoder().encode(JSON.stringify({ revision, items: candidate, filterDigest: digest })).byteLength
+    if (bytes > MAX_QUERY_RESPONSE_BYTES) {
+      if (page.length === 0) {
+        return { ok: false, code: 'LIMIT_EXCEEDED', message: 'one item exceeds the query response byte cap', revision }
+      }
+      break
+    }
+    page.push(item)
+  }
   const hasMore = selected.length > page.length
   return {
     ok: true,

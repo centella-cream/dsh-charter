@@ -806,6 +806,43 @@ describe('dsh-charter host composition', () => {
     })
   })
 
+  it('resolves proposed prerequisites when an agent proposal is accepted', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-proposed-requires-'))
+    roots.push(root)
+    const ctx = await mount(root)
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('proposed-requires'), {
+      meta: { cwd: root, createdAt: 1_700_000_000_064 },
+    })
+    await waitForReady(service, session)
+    const seed = await service.edit({
+      sessionId: session.id,
+      mutationId: 'proposed-requires-seed',
+      baseRevision: 0,
+      ops: [{ type: 'item.add', item: { clientRef: 'a', kind: 'deliverable', text: 'Build', order: 0, progress: 'done' } }],
+    })
+    if (!seed.ok) throw new Error('seed failed')
+    const proposal = await service.proposeFromAgent(session, [{
+      kind: 'deliverable',
+      text: 'Release',
+      requires: [seed.ids.a!],
+    }], 'tool-proposed-requires')
+    expect(proposal.ok).toBe(true)
+    const pending = service.view(session).items.find(item => item.text === 'Release')
+    expect(pending).toMatchObject({ review: 'pending', proposedRequires: [seed.ids.a] })
+    expect(pending !== undefined && 'requires' in pending ? pending.requires : undefined).toBeUndefined()
+    await service.edit({
+      sessionId: session.id,
+      mutationId: 'proposed-requires-accept',
+      baseRevision: service.view(session).revision,
+      ops: [{ type: 'item.accept', itemId: pending!.id }],
+    })
+    expect(service.view(session).items.find(item => item.text === 'Release')).toMatchObject({
+      review: 'accepted',
+      requires: [seed.ids.a],
+    })
+  })
+
   it('allocates agent proposal order above every live row', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-charter-propose-order-'))
     roots.push(root)
@@ -852,6 +889,7 @@ describe('dsh-charter host composition', () => {
       kind: 'agent-tool',
       toolCallId: 'tool-call-1',
       at: expect.any(Number),
+      digest: expect.stringMatching(/^sha256:/u),
     })
     const replayed = await tool.execute({ items: [
       { kind: 'invariant', text: 'Agent proposal' },
@@ -1408,6 +1446,8 @@ describe('charter bootstrap', () => {
       kind: 'compaction-summary',
       summarySeq: 0,
       at: expect.any(Number),
+      sessionId: 'bootstrap',
+      projectionVersion: 1,
       digest: expect.stringMatching(/^sha256:/u),
     })
 

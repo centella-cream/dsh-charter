@@ -1,8 +1,5 @@
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
-import {
-  RemoteSnapshotStream,
-  type RemoteStream,
-} from '@deepseek-ai/dsh-api-gateway/client'
+import { RemoteSnapshotStream, type RemoteStream } from '@deepseek-ai/dsh-api-gateway/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { TypertRemoteNamespaceMap } from '@deepseek-ai/dsh-typert-protocol'
 import type {
@@ -17,12 +14,9 @@ import type {
   CharterRecordExport,
   CharterRecordOperationResult,
   CharterView,
+  CharterSummary,
 } from '../host/types.js'
-import type {
-  CharterChangedFrame,
-  CharterFrame,
-  CharterSnapshotFrame,
-} from '../remote/wire.js'
+import type { CharterChangedFrame, CharterFrame, CharterSnapshotFrame, CharterSummaryFrame } from '../remote/wire.js'
 import { CharterDraft } from './draft-store.js'
 import { classifyConnectionError, type CharterConnectionErrorKind } from './remote-error.js'
 
@@ -70,8 +64,10 @@ const ATTACH_TIMEOUT_MS = 15_000
 export class CharterSessionSource implements CharterSource {
   private state = INITIAL_STATE
   private readonly listeners = new Set<() => void>()
+  private summaryStream: RemoteStream<CharterSummaryFrame> | undefined
   private stream: RemoteStream<CharterFrame> | undefined
   private snapshotStream: RemoteSnapshotStream<CharterSnapshotFrame, CharterChangedFrame> | undefined
+  private viewRefresh = 0
   private remote: CharterRemote | undefined
   /** Attach that has been requested but does not own the stream yet (an earlier dispose is pending). */
   private pendingRemote: CharterRemote | undefined
@@ -182,6 +178,13 @@ export class CharterSessionSource implements CharterSource {
     // A stream that ended/failed is terminal: it was disposed and cleared so
     // this path recreates the Remote watch instead of restarting an aborted
     // lifetime. A genuinely live stream may restart in place.
+    if (this.summaryStream !== undefined) {
+      this.bumpConnection()
+      this.publish({ ...this.state, status: 'connecting', error: null })
+      this.armWatchdog(this.attachGeneration)
+      this.summaryStream.restart()
+      return
+    }
     if (this.snapshotStream !== undefined) {
       this.bumpConnection()
       this.publish({ ...this.state, status: 'connecting', error: null })
@@ -197,7 +200,7 @@ export class CharterSessionSource implements CharterSource {
   attach(remote: CharterRemote): void {
     // A duplicate attach while the same stream is live is a no-op; bumping the
     // generation first would make that healthy stream's callbacks look stale.
-    if (this.remote === remote && this.snapshotStream !== undefined) return
+    if (this.remote === remote && (this.summaryStream !== undefined || this.snapshotStream !== undefined)) return
     const generation = ++this.attachGeneration
     // Record the requested remote before the dispose resolves: a detach that
     // arrives while this attach is pending must be able to cancel it.
@@ -208,6 +211,22 @@ export class CharterSessionSource implements CharterSource {
       this.pendingRemote = undefined
       this.remote = remote
       this.publish({ ...this.state, status: 'connecting', error: null })
+      if (typeof remote.watchSummary === 'function') {
+        const stream = this.ctx.remote.$stream<CharterSummaryFrame>({
+          name: `dsh-charter:${this.sessionId}`,
+          open: signal => remote.watchSummary(this.sessionId, signal),
+          ended: accepted => new Error(
+            accepted
+              ? 'Charter summary stream ended after its snapshot.'
+              : 'Charter summary stream ended before its snapshot.',
+          ),
+        })
+        this.summaryStream = stream
+        this.armWatchdog(generation)
+        void this.consumeSummaryStream(stream, remote, generation)
+        return
+      }
+      // Compatibility with an older Host that only exposes the full view stream.
       const stream = this.ctx.remote.$stream<CharterFrame>({
         name: `dsh-charter:${this.sessionId}`,
         open: signal => remote.watch(this.sessionId, signal),
@@ -277,6 +296,79 @@ export class CharterSessionSource implements CharterSource {
     for (const listener of [...this.connectionListeners]) listener()
   }
 
+  private async consumeSummaryStream(
+    stream: RemoteStream<CharterSummaryFrame>,
+    remote: CharterRemote,
+    generation: number,
+  ): Promise<void> {
+    try {
+      for await (const item of stream) {
+        if (generation !== this.attachGeneration) return
+        item.accept()
+        await this.refreshViewFromSummary(remote, item.value.value, generation)
+      }
+    } catch (error) {
+      if (generation !== this.attachGeneration) return
+      this.terminateStream(generation, error)
+    }
+  }
+
+  private async refreshViewFromSummary(
+    remote: CharterRemote,
+    summary: CharterSummary,
+    generation: number,
+  ): Promise<void> {
+    const refresh = ++this.viewRefresh
+    const items: import('../core/schemas.js').CharterItem[] = []
+    let itemCursor: string | undefined
+    do {
+      const page = await remote.queryItems({
+        sessionId: this.sessionId,
+        limit: 100,
+        ...(itemCursor === undefined ? {} : { cursor: itemCursor }),
+      })
+      if (!page.ok) throw page.error
+      const value = page.value
+      if (!value.ok) throw new Error(value.message)
+      items.push(...value.items)
+      itemCursor = value.nextCursor
+    } while (itemCursor !== undefined)
+    const objectiveProposals: import('../core/schemas.js').ObjectiveProposal[] = []
+    const batches: NonNullable<CharterView['proposalBatches']> = []
+    let proposalCursor: string | undefined
+    do {
+      const page = await remote.queryProposals(this.sessionId, {
+        limit: 64,
+        ...(proposalCursor === undefined ? {} : { cursor: proposalCursor }),
+      })
+      if (!page.ok) throw page.error
+      const value = page.value
+      if (!value.ok) throw new Error(value.message)
+      batches.push(...(value.batches as unknown as NonNullable<CharterView['proposalBatches']>))
+      objectiveProposals.push(...value.objectiveProposals)
+      proposalCursor = value.nextCursor
+    } while (proposalCursor !== undefined)
+    if (generation !== this.attachGeneration || refresh !== this.viewRefresh) return
+    const view: CharterView = {
+      status: summary.status,
+      sessionId: this.sessionId,
+      revision: summary.revision,
+      objective: summary.objective,
+      items,
+      promptText: summary.promptText,
+      promptDigest: summary.promptDigest,
+      limits: summary.limits,
+      overBudget: summary.overBudget,
+      ...(summary.lifecycle === undefined ? {} : { lifecycle: summary.lifecycle }),
+      ...(summary.recordState === undefined ? {} : { recordState: summary.recordState }),
+      ...(summary.capabilities === undefined ? {} : { capabilities: summary.capabilities }),
+      ...(summary.message === undefined ? {} : { message: summary.message }),
+      ...(batches.length === 0 ? {} : { proposalBatches: batches }),
+      ...(objectiveProposals.length === 0 ? {} : { objectiveProposals }),
+    }
+    this.publishIfNewer(view)
+  }
+
   private publishIfNewer(view: CharterView): void {
     if (view.sessionId !== this.sessionId) return
     const current = this.state.view
@@ -341,8 +433,10 @@ export class CharterSessionSource implements CharterSource {
   /** A snapshot stream ended or failed: it is terminal and must be recreated. */
   private terminateStream(generation: number, error: unknown): void {
     if (generation !== this.attachGeneration) return
+    const summaryStream = this.summaryStream
     const snapshots = this.snapshotStream
     const stream = this.stream
+    this.summaryStream = undefined
     this.snapshotStream = undefined
     this.stream = undefined
     this.clearWatchdog()
@@ -352,17 +446,21 @@ export class CharterSessionSource implements CharterSource {
     // source-generation guards and can never publish ready/clear the draft.
     this.bumpConnection()
     this.publish({ ...this.state, status: 'error', error: messageOf(error), errorKind: classifyConnectionError(error, 'disconnected') })
-    const disposal = snapshots !== undefined ? snapshots.dispose() : stream?.dispose()
-    void disposal?.catch(() => undefined)
+    if (snapshots !== undefined) void snapshots.dispose().catch(() => undefined)
+    else void (summaryStream ?? stream)?.dispose().catch(() => undefined)
   }
 
   private async stop(): Promise<void> {
     this.clearWatchdog()
+    const summaryStream = this.summaryStream
     const snapshots = this.snapshotStream
     const stream = this.stream
+    this.summaryStream = undefined
     this.snapshotStream = undefined
     this.stream = undefined
+    this.viewRefresh += 1
     if (snapshots !== undefined) await snapshots.dispose()
+    else if (summaryStream !== undefined) await summaryStream.dispose()
     else if (stream !== undefined) await stream.dispose()
   }
 }

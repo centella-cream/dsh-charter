@@ -37,6 +37,7 @@ const itemBase = {
   supersedes: identifierSchema.optional(),
   supersededBy: identifierSchema.optional(),
   proposalBatchId: identifierSchema.optional(),
+  proposedRequires: z.array(identifierSchema).optional(),
   reviewedAtRevision: z.number().int().positive().optional(),
   contentModified: z.boolean().optional(),
 }
@@ -108,6 +109,7 @@ export const deliverableInputSchema = z.object({
   order: z.number().int().nonnegative(),
   progress: deliverableProgressSchema,
   requires: z.array(identifierSchema).optional(),
+  proposedRequires: z.array(identifierSchema).optional(),
   contentModified: z.boolean().optional(),
 }).strict()
 
@@ -313,12 +315,15 @@ export const proposalSourceSchema = z.discriminatedUnion('kind', [
     kind: z.literal('compaction-summary'),
     summarySeq: z.number().int().nonnegative(),
     at: z.number().int().nonnegative(),
+    sessionId: z.string().max(256).optional(),
+    projectionVersion: z.number().int().positive().optional(),
     digest: digestSchema.optional(),
   }).strict(),
   z.object({
     kind: z.literal('agent-tool'),
     toolCallId: identifierSchema,
     at: z.number().int().nonnegative(),
+    digest: digestSchema.optional(),
   }).strict(),
   z.object({
     kind: z.literal('legacy-unknown'),
@@ -327,6 +332,13 @@ export const proposalSourceSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('fork'),
     parentBatchId: z.string(),
+    parentSessionId: z.string().max(256).optional(),
+    parentRevision: z.number().int().nonnegative().optional(),
+    sourceRefs: z.array(z.object({
+      kind: z.enum(['item', 'objective']),
+      id: z.string(),
+    }).strict()).optional(),
+    digest: digestSchema.optional(),
     at: z.number().int().nonnegative(),
   }).strict(),
 ])

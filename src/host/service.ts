@@ -26,6 +26,7 @@ import { queryItems, type ItemQueryRequest } from '../core/query.js'
 import { planChangeSet, type PlannedChangeSet } from '../core/change-set.js'
 import { sha256Json, sha256Text } from '../core/digest.js'
 import { dependencyProjection } from '../core/dependencies.js'
+import { sourceIntegrity } from '../core/source-integrity.js'
 import {
   CHARTER_RECORD_SCHEMA_VERSION,
   charterRecordSchema,
@@ -119,6 +120,7 @@ export const Config: Schema<CharterConfig> = Schema.object({
   mutationLimit: Schema.number().step(1).min(1).default(DEFAULT_CHARTER_CONFIG.mutationLimit),
   maintenanceLimit: Schema.number().step(1).min(1).default(DEFAULT_CHARTER_CONFIG.maintenanceLimit),
   maxRecoveryBytes: Schema.number().step(1).min(1).default(DEFAULT_CHARTER_CONFIG.maxRecoveryBytes),
+  maxProposalBatches: Schema.number().step(1).min(1).default(DEFAULT_CHARTER_CONFIG.maxProposalBatches ?? 64),
   contextOrder: Schema.number().default(DEFAULT_CHARTER_CONFIG.contextOrder),
 })
 
@@ -1136,6 +1138,10 @@ export class CharterService extends Service {
     return {
       sessionId,
       revision: view.revision,
+      objective: view.objective,
+      limits: view.limits,
+      promptText: view.promptText,
+      promptDigest: view.promptDigest,
       hasObjective: view.objective !== null,
       activeItems: view.items.filter(item => item.review === 'accepted' && item.lifecycle === 'current').length,
       pendingItems: view.items.filter(item => item.review === 'pending').length
@@ -1152,6 +1158,9 @@ export class CharterService extends Service {
       promptBytes: new TextEncoder().encode(view.promptText).byteLength,
       overBudget: view.overBudget,
       status: view.status,
+      ...(view.lifecycle === undefined ? {} : { lifecycle: view.lifecycle }),
+      ...(view.recordState === undefined ? {} : { recordState: view.recordState }),
+      ...(view.message === undefined ? {} : { message: view.message }),
       recordHealth: view.recordState?.kind === 'healthy'
         ? 'healthy'
         : view.recordState?.kind === 'absent-unconfirmed'
@@ -1229,19 +1238,29 @@ export class CharterService extends Service {
         return { ok: false, code: 'INVALID_CURSOR', message: 'invalid change query cursor' }
       }
     }
-    const rows: CharterChangeRow[] = record.history
-      .filter(receipt => receipt.revision > after && matches(receipt))
-      .slice(0, limit)
-      .map(receipt => ({
+    const candidates = record.history.filter(receipt => receipt.revision > after && matches(receipt))
+    const maxResponseBytes = 256 * 1_024
+    const rows: CharterChangeRow[] = []
+    for (const receipt of candidates.slice(0, limit)) {
+      const row: CharterChangeRow = {
         mutationId: receipt.mutationId,
         revision: receipt.revision,
         baseRevision: receipt.baseRevision,
         actor: receipt.actor,
         at: receipt.at,
         changes: [...receipt.changes],
-      }))
+      }
+      const candidate = [...rows, row]
+      if (Buffer.byteLength(JSON.stringify({ revision: record.current.revision, changes: candidate }), 'utf8') > maxResponseBytes) {
+        if (rows.length === 0) {
+          return { ok: false, code: 'LIMIT_EXCEEDED', message: 'one change receipt exceeds the query response byte cap' }
+        }
+        break
+      }
+      rows.push(row)
+    }
     const last = rows[rows.length - 1]
-    const hasMore = last !== undefined && record.history.some(receipt => receipt.revision > last.revision && matches(receipt))
+    const hasMore = candidates.some(receipt => last === undefined || receipt.revision > last.revision)
     const nextCursor = hasMore
       ? Buffer.from(JSON.stringify({
           v: 1,
@@ -1318,9 +1337,10 @@ export class CharterService extends Service {
         return { ok: false, code: 'INVALID_CURSOR', message: 'invalid proposal query cursor' }
       }
     }
-    const batches = filtered.slice(start, start + limit).map(batch => ({
+    const mapped = filtered.slice(start, start + limit).map(batch => ({
       id: batch.id,
       source: batch.source,
+      sourceIntegrity: sourceIntegrity(batch.source),
       capturedAtRevision: batch.capturedAtRevision,
       candidates: batch.candidates.map(candidate => {
         if (candidate.kind === 'tombstone') {
@@ -1348,6 +1368,18 @@ export class CharterService extends Service {
         }
       }),
     }))
+    const maxResponseBytes = 256 * 1_024
+    const batches: import('./types.js').CharterProposalBatchView[] = []
+    for (const batch of mapped) {
+      const candidate = [...batches, batch]
+      if (Buffer.byteLength(JSON.stringify({ revision: view.revision, batches: candidate }), 'utf8') > maxResponseBytes) {
+        if (batches.length === 0) {
+          return { ok: false, code: 'LIMIT_EXCEEDED', message: 'one proposal batch exceeds the query response byte cap' }
+        }
+        break
+      }
+      batches.push(batch)
+    }
     const nextOffset = start + batches.length
     const nextCursor = nextOffset < filtered.length
       ? Buffer.from(JSON.stringify({
@@ -1361,6 +1393,7 @@ export class CharterService extends Service {
       ok: true,
       revision: view.revision,
       batches,
+      objectiveProposals: [...(view.objectiveProposals ?? [])],
       filterDigest,
       ...(nextCursor === undefined ? {} : { nextCursor }),
     }
@@ -1556,6 +1589,8 @@ export class CharterService extends Service {
       kind: 'compaction-summary',
       summarySeq: result.proposal.source.summarySeq,
       at: result.proposal.source.at,
+      sessionId: sessionId as string,
+      projectionVersion: 1,
       digest: this.bootstrapDraftHandle(result.proposal),
     }
   }
@@ -1643,6 +1678,8 @@ export class CharterService extends Service {
       kind: 'compaction-summary',
       summarySeq: extraction.proposal.source.summarySeq,
       at: extraction.proposal.source.at,
+      sessionId: normalized.sessionId,
+      projectionVersion: 1,
       digest: sourceDigest,
     }, { allowContentModified: true, dedupeSourceDigest: sourceDigest })
   }
@@ -1669,17 +1706,18 @@ export class CharterService extends Service {
     items: readonly {
       readonly kind: 'invariant' | 'deliverable'
       readonly text: string
+      readonly requires?: readonly string[]
     }[],
     toolCallId?: string,
   ): Promise<{ readonly ok: boolean; readonly message?: string; readonly revision?: number }> {
     if (items.length === 0) return { ok: false, message: 'at least one proposal is required' }
     if (items.length > 16) return { ok: false, message: 'charter_propose accepts at most 16 items' }
-    if (items.some(input => Object.prototype.hasOwnProperty.call(input, 'requires'))) {
-      return { ok: false, message: 'proposed dependencies are not supported yet; remove requires from the proposal' }
-    }
     const view = this.view(session)
     if (view.status !== 'ready') return { ok: false, message: 'Charter is not editable in its current state' }
     const nextOrder = view.items.length === 0 ? 0 : Math.max(...view.items.map(item => item.order)) + 1
+    const activeDeliverableIds = new Set(view.items
+      .filter(item => item.kind === 'deliverable' && item.review === 'accepted' && item.lifecycle === 'current')
+      .map(item => item.id))
     const ops: import('../core/schemas.js').CharterOp[] = items.map((input, index) => ({
       type: 'item.propose',
       item: input.kind === 'invariant'
@@ -1695,6 +1733,11 @@ export class CharterService extends Service {
             text: input.text,
             order: nextOrder + index,
             progress: 'not-started',
+            ...(input.requires === undefined ? {} : {
+              proposedRequires: [...new Set(input.requires)]
+                .filter(id => activeDeliverableIds.has(id))
+                .sort(),
+            }),
           },
     }))
     if (toolCallId === undefined || toolCallId.length === 0) {
@@ -1709,7 +1752,12 @@ export class CharterService extends Service {
       mutationId,
       baseRevision: view.revision,
       ops,
-    }, { kind: 'agent-tool' }, { kind: 'agent-tool', toolCallId: callId, at: Date.now() })
+    }, { kind: 'agent-tool' }, {
+      kind: 'agent-tool',
+      toolCallId: callId,
+      at: Date.now(),
+      digest: sha256Json({ version: 1, items }),
+    })
     return result.ok
       ? { ok: true, revision: result.committedRevision }
       : { ok: false, message: result.message }

@@ -24,6 +24,7 @@ import type {
 import { CHARTER_LOCALE_NS, type CharterLocaleKey } from './locales.js'
 import { inspectUserText } from '../core/normalize.js'
 import { dependencyProjection } from '../core/dependencies.js'
+import { sourceIntegrity } from '../core/source-integrity.js'
 import { draftAdmission } from './admission.js'
 import {
   bootstrapReplayPending,
@@ -2150,6 +2151,9 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                         <span className="charter-batch__source">{t(`review.source.${batch.source.kind}`)}</span>
                         <span className="charter-batch__revision">{t('review.captured', { revision: batch.capturedAtRevision })}</span>
                         <span className="charter-batch__count">{t('review.pendingCandidates', { count: pending })}</span>
+                        <span className="charter-batch__count">
+                          {t('review.sourceIntegrity', { integrity: sourceIntegrity(batch.source) })}
+                        </span>
                       </li>
                     )
                   })}

@@ -136,7 +136,16 @@ export function forkRecord(input: ForkRecordInput): CharterRecord {
     if (candidates.length === 0) continue
     inheritedBatches.push({
       id: `fork-${batch.id}`.slice(0, 128),
-      source: { kind: 'fork', parentBatchId: batch.id, at: input.at },
+      source: {
+        kind: 'fork',
+        parentBatchId: batch.id,
+        parentSessionId: input.parentSessionId,
+        parentRevision: input.parent.current.revision,
+        digest: sha256Json({ version: 1, parentBatchId: batch.id, candidates: batch.candidates }),
+        sourceRefs: batch.candidates.flatMap(candidate =>
+          candidate.kind === 'tombstone' ? [] : [{ kind: candidate.kind, id: candidate.id }]),
+        at: input.at,
+      },
       capturedAtRevision: 1,
       candidates,
     })

@@ -75,7 +75,7 @@ export function defineCharterProposeTool(charter: CharterService): ToolDefinitio
     description:
       'Create pending proposals for the current Session charter. This tool is not a write path: the user must '
       + 'review and accept proposals in the Review Center. Only invariants and deliverables are allowed; objectives, '
-      + 'acceptance, archival, purge, and progress changes are not. At most 16 items; requires is not supported.',
+      + 'acceptance, archival, purge, and progress changes are not. At most 16 items; requires is stored as pending proposed prerequisites and resolved on acceptance.',
     parameters: {
       items: {
         type: 'array',
@@ -86,6 +86,7 @@ export function defineCharterProposeTool(charter: CharterService): ToolDefinitio
           properties: {
             kind: { type: 'string', enum: ['invariant', 'deliverable'], required: true },
             text: { type: 'string', required: true },
+            requires: { type: 'array', items: { type: 'string' } },
           },
         },
       },
