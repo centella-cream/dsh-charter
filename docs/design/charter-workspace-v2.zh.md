@@ -15,23 +15,16 @@
 本文件的状态是 **Implemented — pending release acceptance**，含义仅是：下列已实现的工作区核心通过源码验收，
 不是完整的 v2/0.2.0 实现。当前明确未完成：
 
-- 客户端 store 仍消费完整 `watch` 帧，`watchSummary`/`queryItems`/`queryProposals`/`queryChanges` 已存在但
-  Pane 尚未切换到 summary + 分页/filter 查询；R06 的 512 条规模合同未完成。
+- 客户端 store 已迁移到 summary + 分页 query（旧 Host 保留 full-watch 兼容 fallback）；Pane 仍会一次取回全部分页，
+  未做分页/窗口化渲染，R06 的完整 512 条 UI 体验仍待优化。
+- queryItems 仍缺 validity filter；query 响应字节上限、proposal/change facets 已实现。
 - message proposal 入口未实现；manual item “保存为提案”入口已加入 composer；`item.propose` 的 origin 仍固定为 agent。
-- `MAX_PROPOSAL_BATCHES` 仍是硬编码 64，不在 limits/config；`applyBootstrap` 的 objective.initialize/redirect 文本
-  未绑定 extraction handle。
-- proposal source registry / source integrity、完整 compaction/message/tool source 字段和 registry 复算未实现；
-  `applyBootstrap` 使用 Host 签发的 draft handle 绑定 extraction，编辑正文会记录 `contentModified`，
-  `objective.propose` 被拒绝。
+- proposal source registry 的完整复算仍未实现；当前批次已带 source digest/refs 并在 UI 派生
+  `not-applicable/intact/unknown`，compaction/agent-tool/fork 带 digest，`applyBootstrap` 使用 Host 签发的 draft
+  handle 绑定 extraction，编辑正文会记录 `contentModified`。
+- `applyBootstrap` 的 objective.initialize/redirect 文本未单独绑定 extraction handle。
 - Change Set 的客户端 canonical diff 与 `PREVIEW_MISMATCH` 未接入；Host change-set summary 已存在。
-- fork 的 typed source refs 仍是简化形式；objective proposal 和 item `proposalBatchId` 已随 fork 复制并重置 child
-  revision 元数据，typed parent source refs 仍未实现。
-- query 最终响应字节上限仍未实现；`queryItems` 仍缺 validity filter。`queryItems` 已有 kind/review/lifecycle/search/
-  source/batch/verification/execution/prerequisite；`queryProposals` 已有 source/review/batch/candidate facet、filter
-  digest、revision-bound cursor；`queryChanges` 已有 Change Set ID、item/proposal reference、operation-kind filter。
-  tombstone candidate 已返回 candidateKind/disposition/atRevision。
-- `charter_propose` 的 proposedRequires 未实现；当前工具参数已移除 `requires`，显式拒绝而不是接受一个必然失败的
-  参数。`charter_read all` 已有 revision-bound cursor/limit/无进展保护，standing 超限显式 `LIMIT_EXCEEDED`。
+- `charter_propose` 的 proposedRequires 已实现：pending deliverable 保存候选前置条件，接受时解析为正式 requires。
 - Evidence Integrity、Fact Validity、validator 是 0.2 的独立必交项，不属于本 workspace core。
 
 在实现这些合同前，不应把本文件或 `0.2.0` 包版本读成完整 v2 已实现。

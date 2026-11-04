@@ -21,13 +21,13 @@ Current release state (2026-10-30):
 - `0.1.0-rc.5`: previous accepted npm release; its canonical GitHub tag/release remains pending restoration.
 - Active release: `0.1.0-rc.6`, formally accepted.
 - Active development: `0.2.0` on `feat/0.2.0-workspace`; package versions from 0.2.0 onward never use an `rc` suffix.
-- 0.2.0 source evidence: 35 files / 412 tests and the eight-version matrix pass 412/412 on the current development tree.
+- 0.2.0 source evidence: 35 files / 414 tests and the eight-version matrix pass 414/414 on the current development tree.
 - Pending: restore the canonical rc.5 GitHub tag/release and complete the protected browser evidence/post-release checks.
 
 | Item | Result |
 | --- | --- |
 | Strict TypeScript check | Pass on the current tree |
-| Vitest | 35 files / 412 tests pass (`npm test`, which builds first) |
+| Vitest | 35 files / 414 tests pass (`npm test`, which builds first) |
 | Host ESM build + browser factory bundle | Pass |
 | Remote contract and client smoke | Pass |
 | Normal package smoke | Pass |
@@ -35,7 +35,7 @@ Current release state (2026-10-30):
 | Packed-artifact recovery smoke | Pass: export, target removal, restore, receipt replay, two restarts, healthy-target refusal, packed fault subset |
 | Real `TypertGatewayService` | Pass on exact artifact with isolated DSH `0.2.1-rc.3` and `rc.4` graphs |
 | Compatibility sentinels | Pass on `0.1.7-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4`, `0.2.1-rc.5` |
-| Eight-version full rerun | Pass via tracked `compat-matrix --versions all --allow-new-release` (412/412 each) |
+| Eight-version full rerun | Pass via tracked `compat-matrix --versions all --allow-new-release` (414/414 each) |
 | Fresh Web profile matrix | PASS: local rc.6 artifact (pre-withdrawal) installed and served on DSH `0.1.7-rc.2`, `0.2.0-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4`, `0.2.1-rc.5` |
 | Untracked `0.2.2-alpha.2` probe | strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run; explicitly unsupported in rc.6 |
 | Local Web + Desktop profiles | rc.6 artifact was installed before withdrawal; this is not release evidence. Desktop app is still `0.2.1-rc.3` |
@@ -51,8 +51,8 @@ The `feat/0.2.0-workspace` tree has passed source-level acceptance for the imple
 - three-area Pane information architecture and dependency editor;
 - proposal-batch provenance, objective-proposal lifecycle, summary/item/proposal/change query endpoints, `watchSummary`, and pending-only `charter_propose` (query facets and
   response caps remain known gaps);
-- `npm run check`: 35 files / 412 tests;
-- eight-version DSH matrix: 412/412 on every declared version;
+- `npm run check`: 35 files / 414 tests;
+- eight-version DSH matrix: 414/414 on every declared version;
 - normal package smoke: `dsh-charter-0.2.0.tgz` installs and its client factory bundle loads.
 
 This is source acceptance, not a release acceptance: real browser/Desktop A/B, real-model compaction, performance,
@@ -87,16 +87,16 @@ The tracked runner creates isolated pnpm projects with strict peers and runs typ
 
 | DSH version | Evidence |
 | --- | --- |
-| `0.1.7-rc.2` | 412/412 tracked matrix PASS |
-| `0.2.0-rc.1` | 412/412 tracked matrix PASS |
-| `0.2.0-rc.2` | 412/412 tracked matrix PASS |
-| `0.2.1-rc.1` | 412/412 tracked matrix PASS |
-| `0.2.1-rc.2` | 412/412 tracked matrix PASS |
-| `0.2.1-rc.3` | 412/412 tracked matrix PASS |
-| `0.2.1-rc.4` | 412/412 tracked matrix PASS |
-| `0.2.1-rc.5` | 412/412 tracked matrix PASS |
+| `0.1.7-rc.2` | 414/414 tracked matrix PASS |
+| `0.2.0-rc.1` | 414/414 tracked matrix PASS |
+| `0.2.0-rc.2` | 414/414 tracked matrix PASS |
+| `0.2.1-rc.1` | 414/414 tracked matrix PASS |
+| `0.2.1-rc.2` | 414/414 tracked matrix PASS |
+| `0.2.1-rc.3` | 414/414 tracked matrix PASS |
+| `0.2.1-rc.4` | 414/414 tracked matrix PASS |
+| `0.2.1-rc.5` | 414/414 tracked matrix PASS |
 
-The current 0.2.0 development tree passed `compat-matrix --versions all --allow-new-release` on 2026-11-03: every declared version passed typecheck, build, and 412/412 tests. Installs use pnpm strict peer resolution, exact tool pins, a single zod 4.6.7 graph, full `pnpm list --depth Infinity` graph validation, and recorded lockfile SHA-256 values. The untracked `0.2.2-alpha.2` probe is recorded as unsupported: strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run.
+The current 0.2.0 development tree passed `compat-matrix --versions all --allow-new-release` on 2026-11-03: every declared version passed typecheck, build, and 414/414 tests. Installs use pnpm strict peer resolution, exact tool pins, a single zod 4.6.7 graph, full `pnpm list --depth Infinity` graph validation, and recorded lockfile SHA-256 values. The untracked `0.2.2-alpha.2` probe is recorded as unsupported: strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run.
 
 ## 4. What the tests cover
 
