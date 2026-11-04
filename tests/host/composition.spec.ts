@@ -1404,7 +1404,7 @@ describe('charter bootstrap', () => {
       draftHandle,
       ops: [{
         type: 'item.propose',
-        item: { clientRef: 'bootstrap-del-0', kind: 'deliverable', text: 'Edited tab check', order: 1, progress: 'not-started' },
+        item: { clientRef: 'bootstrap-del-0', kind: 'deliverable', text: 'Edited tab check', order: 1, progress: 'not-started', contentModified: false },
       }],
     })
     expect(edited).toMatchObject({ ok: true })

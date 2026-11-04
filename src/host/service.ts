@@ -1511,13 +1511,23 @@ export class CharterService extends Service {
     }
     for (const text of extraction.proposal.invariants) addAllowed(text, 'invariant')
     for (const text of extraction.proposal.deliverables) addAllowed(text, 'deliverable')
+    const stripModified = (item: import('../core/schemas.js').NewItemInput): import('../core/schemas.js').NewItemInput => {
+      const { contentModified: _modified, ...rest } = item
+      return rest as import('../core/schemas.js').NewItemInput
+    }
+    const withModified = (
+      item: import('../core/schemas.js').NewItemInput,
+      modified: boolean,
+    ): import('../core/schemas.js').NewItemInput => modified
+      ? { ...stripModified(item), contentModified: true }
+      : stripModified(item)
     const ops: import('../core/schemas.js').CharterOp[] = []
     for (const op of normalized.ops) {
       if (op.type === 'objective.propose') {
         return unavailableResult('INVALID_ARGUMENT', 'bootstrap apply cannot create objective proposals')
       }
       if (op.type !== 'item.propose') {
-        ops.push(op)
+        ops.push(op.type === 'item.add' ? { ...op, item: stripModified(op.item) } : op)
         continue
       }
       const candidateRef = /^bootstrap-(inv|del)-(\d+)$/u.exec(op.item.clientRef)
@@ -1531,9 +1541,7 @@ export class CharterService extends Service {
           return unavailableResult('INVALID_ARGUMENT', 'bootstrap proposal candidate reference is invalid')
         }
         // The reviewed candidate may be edited; provenance remains the extraction.
-        ops.push(op.item.text === candidates[index]
-          ? op
-          : { ...op, item: { ...op.item, contentModified: true } })
+        ops.push({ ...op, item: withModified(op.item, op.item.text !== candidates[index]) })
         continue
       }
       const kinds = allowedKinds.get(op.item.text)
@@ -1543,35 +1551,33 @@ export class CharterService extends Service {
           'bootstrap proposal does not match the reviewed extraction',
         )
       }
-      ops.push(op)
+      ops.push({ ...op, item: stripModified(op.item) })
     }
     const sourceDigest = this.bootstrapDraftHandle(extraction.proposal)
-    const view = this.viewById(normalized.sessionId as SessionIdType)
-    const existingBatchIds = new Set((view.proposalBatches ?? [])
-      .filter(batch => batch.source.kind === 'compaction-summary' && batch.source.digest === sourceDigest)
-      .flatMap(batch => batch.candidates.flatMap(candidate =>
-        candidate.kind === 'item' ? [candidate.id] : [])))
-    const existingKeys = new Set(view.items
-      .filter(item => existingBatchIds.has(item.id))
-      .map(item => `${item.kind}:${item.text}`))
-    const dedupedOps = ops.filter(op => op.type !== 'item.propose'
-      || !existingKeys.has(`${op.item.kind}:${op.item.text}`))
-    if (dedupedOps.length === 0) {
-      return {
-        ok: true,
-        replayed: true,
-        committedRevision: view.revision,
-        ids: {},
-        view,
-      }
-    }
-    const applyRequest = { ...normalized, ops: dedupedOps }
+    const applyRequest = { ...normalized, ops }
     return this.edit(applyRequest, actor, {
       kind: 'compaction-summary',
       summarySeq: extraction.proposal.source.summarySeq,
       at: extraction.proposal.source.at,
       digest: sourceDigest,
-    }, { allowContentModified: true })
+    }, { allowContentModified: true, dedupeSourceDigest: sourceDigest })
+  }
+
+  private dedupeBootstrapRequest(
+    record: CharterRecord,
+    request: CharterEditRequest,
+    sourceDigest: string,
+  ): CharterEditRequest {
+    const batchItemIds = new Set((record.proposalBatches ?? [])
+      .filter(batch => batch.source.kind === 'compaction-summary' && batch.source.digest === sourceDigest)
+      .flatMap(batch => batch.candidates.flatMap(candidate =>
+        candidate.kind === 'item' ? [candidate.id] : [])))
+    const existingKeys = new Set(record.current.items
+      .filter(item => batchItemIds.has(item.id))
+      .map(item => `${item.kind}:${item.text}`))
+    const ops = request.ops.filter(op => op.type !== 'item.propose'
+      || !existingKeys.has(`${op.item.kind}:${op.item.text}`))
+    return ops.length === request.ops.length ? request : { ...request, ops }
   }
 
   async proposeFromAgent(
@@ -1629,7 +1635,7 @@ export class CharterService extends Service {
     untrustedRequest: unknown,
     actor: CharterActor = { kind: 'owner' },
     proposalSource?: import('../core/schemas.js').ProposalSource,
-    options: { readonly allowContentModified?: boolean } = {},
+    options: { readonly allowContentModified?: boolean; readonly dedupeSourceDigest?: string } = {},
   ): Promise<CharterEditResult> {
     let request: CharterEditRequest
     try {
@@ -1689,8 +1695,8 @@ export class CharterService extends Service {
           return unavailableResult('LIFECYCLE_MISMATCH', 'Stored charter belongs to another Session lifecycle', this.view(session))
         }
         const ids = Object.fromEntries(clientRefsOf(request.ops).map(ref => [ref, itemId()]))
-        const requestDigest = requestDigestOf(request, current.identity, actor)
         let produced = false
+        let deduped = false
         let changeSet: PlannedChangeSet | undefined
         try {
           const next = await table.update(session.id, stored => {
@@ -1701,9 +1707,16 @@ export class CharterService extends Service {
               }
               throw charterError('UNAVAILABLE', 'Stored charter cannot be edited in its current state')
             }
+            const effectiveRequest = options.dedupeSourceDigest === undefined
+              ? request
+              : this.dedupeBootstrapRequest(inspection.record, request, options.dedupeSourceDigest)
+            if (effectiveRequest.ops.length === 0) {
+              deduped = true
+              return inspection.record
+            }
             changeSet = planChangeSet({
               snapshot: inspection.record.current,
-              ops: request.ops,
+              ops: effectiveRequest.ops,
               ids,
               nextRevision: inspection.record.current.revision + 1,
               limits: this.config,
@@ -1713,8 +1726,8 @@ export class CharterService extends Service {
             })
             const nextRecord = commitRecord({
               record: inspection.record,
-              request,
-              requestDigest,
+              request: effectiveRequest,
+              requestDigest: requestDigestOf(effectiveRequest, current.identity, actor),
               ids,
               actor,
               at: Date.now(),
@@ -1727,6 +1740,16 @@ export class CharterService extends Service {
           if (this.ctx.sessions.get(session.id) !== session) {
             this.fenceWrite(session.id, 'edit')
             return unavailableResult('UNAVAILABLE', 'The Session lifecycle changed while the edit was being written; the Session is fenced', this.view(session))
+          }
+          if (deduped) {
+            this.publish(session.id)
+            return {
+              ok: true,
+              replayed: true,
+              committedRevision: this.recordFor(session)?.current.revision ?? 0,
+              ids: {},
+              view: this.view(session),
+            }
           }
           this.recordStates.set(session.id, {
             kind: 'healthy',
