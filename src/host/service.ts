@@ -1945,9 +1945,20 @@ export class CharterService extends Service {
               && request.previewDigest !== changeSetPreviewDigest(request, inspection.record.current.stateDigest)) {
               throw charterError('PREVIEW_MISMATCH', 'the reviewed Change Set no longer matches the current snapshot')
             }
+            const sourceOrigin = proposalSource?.kind === 'agent-tool'
+              ? 'agent'
+              : proposalSource?.kind === 'fork'
+                ? 'fork'
+                : 'user'
+            const withOrigin: CharterEditRequest = {
+              ...request,
+              ops: request.ops.map(op => op.type === 'item.propose'
+                ? { ...op, item: { ...op.item, origin: sourceOrigin } }
+                : op),
+            }
             const effectiveRequest = options.dedupeSourceDigest === undefined
-              ? request
-              : this.dedupeBootstrapRequest(inspection.record, request, options.dedupeSourceDigest)
+              ? withOrigin
+              : this.dedupeBootstrapRequest(inspection.record, withOrigin, options.dedupeSourceDigest)
             if (effectiveRequest.ops.length === 0) {
               deduped = true
               return inspection.record

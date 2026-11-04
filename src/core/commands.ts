@@ -47,7 +47,7 @@ function itemFromInput(
     review: origin === 'user' ? 'accepted' as const : 'pending' as const,
     lifecycle: 'current' as const,
     verification: { state: 'unchecked' as const },
-    origin,
+    origin: input.origin ?? origin,
     order: input.order,
     createdRevision: revision,
     ...links?.supersedes === undefined ? {} : { supersedes: links.supersedes },

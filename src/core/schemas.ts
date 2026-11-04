@@ -99,6 +99,7 @@ export const invariantInputSchema = z.object({
   kind: z.literal('invariant'),
   text: z.string(),
   order: z.number().int().nonnegative(),
+  origin: z.enum(['user', 'agent', 'fork']).optional(),
   contentModified: z.boolean().optional(),
 }).strict()
 
@@ -110,6 +111,7 @@ export const deliverableInputSchema = z.object({
   progress: deliverableProgressSchema,
   requires: z.array(identifierSchema).optional(),
   proposedRequires: z.array(identifierSchema).optional(),
+  origin: z.enum(['user', 'agent', 'fork']).optional(),
   contentModified: z.boolean().optional(),
 }).strict()
 

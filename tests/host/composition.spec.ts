@@ -236,7 +236,7 @@ describe('dsh-charter host composition', () => {
     expect(view.items.find(item => item.text === 'Deferred proposal')).toMatchObject({
       review: 'pending',
       lifecycle: 'current',
-      origin: 'agent',
+      origin: 'user',
     })
     expect(view.promptText).toContain('Active constraint')
     expect(view.promptText).toContain('Active deliverable')
@@ -405,7 +405,7 @@ describe('dsh-charter host composition', () => {
     expect(proposed.changeSet).toMatchObject({ promptChanged: false })
     const view = service.view(session)
     expect(view.items).toHaveLength(1)
-    expect(view.items[0]).toMatchObject({ review: 'pending', origin: 'agent' })
+    expect(view.items[0]).toMatchObject({ review: 'pending', origin: 'user' })
     expect(view.proposalBatches).toHaveLength(1)
     expect(view.items[0]).toMatchObject({ proposalBatchId: view.proposalBatches?.[0]?.id })
     expect(view.proposalBatches?.[0]).toMatchObject({
@@ -894,6 +894,7 @@ describe('dsh-charter host composition', () => {
     expect(view.items[0]).toMatchObject({
       text: 'Turn this message into a constraint',
       review: 'pending',
+      origin: 'user',
     })
     expect(view.proposalBatches?.[0]?.source).toMatchObject({
       kind: 'message',
