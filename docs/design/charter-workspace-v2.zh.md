@@ -26,10 +26,10 @@
 - Change Set 的客户端 canonical diff 与 `PREVIEW_MISMATCH` 未接入；Host change-set summary 已存在。
 - fork 的 typed source refs 仍是简化形式；objective proposal 和 item `proposalBatchId` 已随 fork 复制并重置 child
   revision 元数据，typed parent source refs 仍未实现。
-- query facets 仍不完整：`queryItems` 已有 kind/review/lifecycle/search/source/batch/verification/execution/prerequisite
-  和 cursor；仍缺 validity filter 和最终响应字节上限。`queryProposals` 已有 source/review/batch/candidate facet、
-  filter digest、revision-bound cursor；仍缺最终响应字节上限。`queryChanges` 仍缺 Change Set ID、typed references 和
-  operation-kind filter。tombstone candidate 已返回 candidateKind/disposition/atRevision。
+- query 最终响应字节上限仍未实现；`queryItems` 仍缺 validity filter。`queryItems` 已有 kind/review/lifecycle/search/
+  source/batch/verification/execution/prerequisite；`queryProposals` 已有 source/review/batch/candidate facet、filter
+  digest、revision-bound cursor；`queryChanges` 已有 Change Set ID、item/proposal reference、operation-kind filter。
+  tombstone candidate 已返回 candidateKind/disposition/atRevision。
 - `charter_propose` 的 proposedRequires 未实现；当前工具参数已移除 `requires`，显式拒绝而不是接受一个必然失败的
   参数。`charter_read all` 已有 revision-bound cursor/limit/无进展保护，standing 超限显式 `LIMIT_EXCEEDED`。
 - Evidence Integrity、Fact Validity、validator 是 0.2 的独立必交项，不属于本 workspace core。
