@@ -35,10 +35,11 @@ Current release state (2026-10-30):
 | Packed-artifact recovery smoke | Pass: export, target removal, restore, receipt replay, two restarts, healthy-target refusal, packed fault subset |
 | Real `TypertGatewayService` | Pass on exact artifact with isolated DSH `0.2.1-rc.3` and `rc.4` graphs |
 | Compatibility sentinels | Pass on `0.1.7-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4`, `0.2.1-rc.5` |
-| Eight-version full rerun | Pass via tracked `compat-matrix --versions all --allow-new-release` (428/428 each) |
-| Fresh Web profile matrix | PASS: local rc.6 artifact (pre-withdrawal) installed and served on DSH `0.1.7-rc.2`, `0.2.0-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4`, `0.2.1-rc.5` |
+| Nine-version full rerun | Pass via tracked `compat-matrix --versions all --allow-new-release` (428/428 each) |
+| Fresh Web profile matrix (historical rc.6) | PASS: local rc.6 artifact (pre-withdrawal) installed and served on DSH `0.1.7-rc.2`, `0.2.0-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4`, `0.2.1-rc.5` |
+| Fresh Web profile 0.2.2 | PASS on 2026-11-05: fresh `DSH_HOME` + `dsh@0.2.2-rc.1 plugin --profile web add` of `dsh-charter-0.2.0.tgz`; Web boot, page HTTP 200, charter bundle HTTP 200 (3,134,931 bytes) |
 | Untracked `0.2.2-alpha.2` probe | strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run; explicitly unsupported in rc.6 |
-| Local Web + Desktop profiles | rc.6 artifact was installed before withdrawal; this is not release evidence. Desktop app is still `0.2.1-rc.3` |
+| Local Web + Desktop profiles | 0.2.0 development artifact installed into local `web` and `desktop` profiles on DSH `0.2.2-rc.1`; profile copies boot and serve the charter bundle. This is local evidence, not release-artifact evidence. |
 | Real browser recovery | Manual protected evidence gate; not automated |
 | Real-model compaction | Separately recorded PASS (2026-10-22); still a manual release gate |
 
@@ -49,15 +50,13 @@ The `feat/0.2.0-workspace` tree has passed source-level acceptance for the imple
 - record v2 write path and in-memory v1 migration;
 - dependency `requires` validation, derived readiness, and dependency-aware prompt equivalence;
 - three-area Pane information architecture and dependency editor;
-- proposal-batch provenance, objective-proposal lifecycle, summary/item/proposal/change query endpoints, `watchSummary`, and pending-only `charter_propose` (query facets and
-  response caps remain known gaps);
+- proposal-batch provenance, objective-proposal lifecycle, summary/item/proposal/change query endpoints, `watchSummary`, and pending-only `charter_propose` ;
 - `npm run check`: 36 files / 428 tests;
 - nine-version DSH matrix: 428/428 on every declared version;
 - normal package smoke: `dsh-charter-0.2.0.tgz` installs and its client factory bundle loads.
 
 This is source acceptance, not a release acceptance: real browser/Desktop A/B, real-model compaction, performance,
-and the remaining full-design gates must be recorded separately before declaring `0.2.0` stable. The Pane still
-uses the full `watch` stream, so the 512-item summary/query scale contract is not yet part of this acceptance.
+and the remaining full-design gates must be recorded separately before declaring `0.2.0` stable. The Pane uses `watchSummary` plus paged queries with a full-watch compatibility fallback; the network layer still fetches all pages, so the 512-item performance gate remains separate.
 
 ## 2. Local baseline
 
@@ -77,7 +76,7 @@ separate jobs or manual gates, not claims made by `npm test` alone.
 ## 3. DSH compatibility evidence
 
 `package.json` `engines.dsh`, every `@deepseek-ai/dsh-*` peer range, and
-`dsh.compatibility.dshReleases` all declare the same eight exact versions:
+`dsh.compatibility.dshReleases` all declare the same nine exact versions:
 
 ```text
 0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2 || 0.2.1-rc.3 || 0.2.1-rc.4 || 0.2.1-rc.5 || 0.2.2-rc.1
@@ -181,7 +180,7 @@ injection semantics; the tool-description shortening is the only model-visible r
 - Real browser export → absent target → restore → reload/restart is a manual protected evidence gate
   (`.github/workflows/browser-evidence.yml`); it is not automated by a tracked browser script. Promotion requires
   a successful evidence run bound to the candidate SHA.
-- Web and Desktop share the same `dsh.client` bundle through the host client-module carrier. The installed Desktop app here is `0.2.1-rc.3`; rc.5 Desktop acceptance requires updating the Electron app and its profile, then repeating the manual Desktop ABI/interaction gate.
+- Web and Desktop share the same `dsh.client` bundle through the host client-module carrier. The installed Desktop app is `0.2.2-rc.1`, and the local Desktop profile carries the 0.2.0 development artifact. Real Electron ABI/interaction acceptance remains a manual gate.
 - Real-model compaction was recorded PASS on 2026-10-22 and remains a manual gate for release.
 - Multi-Host writes/leases are out of scope; the single-writer Host limitation is documented.
 - An unreadable/malformed **outer** JSON document is indistinguishable from absence at the storage boundary; stop

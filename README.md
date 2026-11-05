@@ -320,7 +320,7 @@ truncated, or silently dropped.
 | `0.3.x` | Not declared until verified |
 
 Supported" means typecheck, build, tests, and Remote/client smoke for that version. Fresh Web profile install,
-startup, page, and client-bundle checks passed on `0.1.7-rc.2`, `0.2.0-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4`, and `0.2.1-rc.5`;
+startup, page, and client-bundle checks passed on `0.1.7-rc.2`, `0.2.0-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4`, `0.2.1-rc.5`, and `0.2.2-rc.1`;
 other versions are API/build verified. Real-model compaction end-to-end is a documented manual check (`npm run verify:compaction`, section 8 of the current verification record); a **PASS is recorded in the immutable [v0.1.0-rc.4 verification §8.4](https://github.com/centella-cream/dsh-charter/blob/v0.1.0-rc.4/docs/verification.md#84-recorded-real-model-run-2026-10-22)**.
 The full matrix and degradation notes are in the [compatibility document](docs/design/compatibility.md).
 `0.1.7`/`0.2.0` have no per-Peer Remote resource authorization; use them only in a trusted single-operator

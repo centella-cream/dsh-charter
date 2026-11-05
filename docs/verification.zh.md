@@ -33,10 +33,11 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 | exact-artifact package smoke | 对已发布 rc.6 `.tgz` 字节（`21ddbea0…`）通过，不重建 |
 | packed recovery smoke | 通过：export、删除 target、restore、receipt replay、两次 restart、健康目标拒绝、packed fault 子集 |
 | 真实 `TypertGatewayService` | 精确 artifact 在隔离的 DSH `0.2.1-rc.3` / `rc.4` 依赖图上通过 |
-| 兼容 sentinel | `0.1.7-rc.2`、`0.2.1-rc.2`、`0.2.1-rc.4`、`0.2.1-rc.5` 通过 |
+| 兼容 sentinel | `0.1.7-rc.2`、`0.2.1-rc.2`、`0.2.1-rc.4`、`0.2.1-rc.5`、`0.2.2-rc.1` 通过 |
+| Fresh Web 0.2.2 | 2026-11-05 PASS：全新 `DSH_HOME` + `dsh@0.2.2-rc.1 plugin --profile web add` 安装 `dsh-charter-0.2.0.tgz`；Web 启动、页面 HTTP 200、charter bundle HTTP 200（3,134,931 bytes） |
 | 九版本全量 rerun | tracked `compat-matrix --versions all --allow-new-release` 通过（每版本 428/428） |
 | 未跟踪 `0.2.2-alpha.2` probe | strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run；rc.6 明确不支持 |
-| 本地 Web + Desktop profile | rc.6 artifact 已安装；Desktop app 仍为 `0.2.1-rc.3`，Desktop 验收需更新 app |
+| 本地 Web + Desktop profile | 0.2.0 开发 artifact 已装入本地 web/desktop profile；Desktop app 为 `0.2.2-rc.1`，真实 Electron ABI/交互仍需人工门禁 |
 | 真实浏览器恢复 | 受保护的人工 evidence gate；未自动化 |
 | 真实模型 compaction | 2026-10-22 记录 PASS；仍是人工发布门禁 |
 
@@ -154,7 +155,7 @@ append 模型，而不是 Charter 内容：当其他 section 触发新快照时�
 - 真实浏览器 export → absent → restore → reload/restart 是受保护的人工 evidence gate
   （`.github/workflows/browser-evidence.yml`），尚未由 tracked browser script 自动化；promotion 要求与候选
   SHA 绑定的成功 evidence run。
-- Web/Desktop 通过 host client-module carrier 共用同一个 `dsh.client` bundle。本机 Desktop app 仍为 `0.2.1-rc.3`；完成 rc.5 Desktop 验收需要更新 Electron app 和 profile，并重新执行人工 Desktop ABI/交互门禁。
+- Web/Desktop 通过 host client-module carrier 共用同一个 `dsh.client` bundle。本机 Desktop app 为 `0.2.2-rc.1`，profile 已装入 0.2.0 开发 artifact；真实 Electron ABI/交互仍需人工门禁。
 - 真实模型 compaction 已于 2026-10-22 记录 PASS，仍是发布人工门禁。
 - 多 Host 写入/lease 不在范围内；单写 Host 限制已记录。
 - 无法读取/格式错误的 **outer** JSON 在 storage 边界与 absence 不可区分；初始化前应停止 Host 并从备份恢复。

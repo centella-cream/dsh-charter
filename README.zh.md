@@ -282,7 +282,7 @@ profile 自己的包管理器。源码开发流程见 [CONTRIBUTING.zh.md](CONTR
 | `0.3.x` | 验证前不声明 |
 
 “支持”表示该版本通过 typecheck、build、测试以及 Remote/client smoke。fresh Web profile 安装、启动、页面和
-client bundle 检查已在 `0.1.7-rc.2`、`0.2.0-rc.2`、`0.2.1-rc.2`、`0.2.1-rc.4`、`0.2.1-rc.5` 通过；其他版本是 API/build
+client bundle 检查已在 `0.1.7-rc.2`、`0.2.0-rc.2`、`0.2.1-rc.2`、`0.2.1-rc.4`、`0.2.1-rc.5`、`0.2.2-rc.1` 通过；其他版本是 API/build
 级验证。真实模型 compaction 端到端已于 **2026-10-22 记录 PASS**（一个匿名评估会话；326 条消息 / 约 228k
 tokens 被压缩，revision 1 契约携带匹配 digest 存活；见不可变 [v0.1.0-rc.4 验证记录 8.4](https://github.com/centella-cream/dsh-charter/blob/v0.1.0-rc.4/docs/verification.md#84-recorded-real-model-run-2026-10-22)）。完整矩阵和降级说明见
 [兼容文档](docs/design/compatibility.zh.md)。`0.1.7`/`0.2.0` 没有 per-Peer Remote 资源授权，只能在可信
