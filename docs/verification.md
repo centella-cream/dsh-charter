@@ -11,7 +11,7 @@ history and the Changelog. Temporary directories, profiles, tarballs, and fetche
 excluded from the published package.
 
 Environment: macOS, Node `v22.23.1`, npm `12.0.2`, pnpm `12.3.4`. Local DSH development baseline:
-`0.2.1-rc.5` (the current npm `next`).
+`0.2.2-rc.1` (the current npm `next`).
 
 ## 1. Current conclusion
 
@@ -21,7 +21,7 @@ Current release state (2026-10-30):
 - `0.1.0-rc.5`: previous accepted npm release; its canonical GitHub tag/release remains pending restoration.
 - Active release: `0.1.0-rc.6`, formally accepted.
 - Active development: `0.2.0` on `feat/0.2.0-workspace`; package versions from 0.2.0 onward never use an `rc` suffix.
-- 0.2.0 source evidence: 36 files / 428 tests and the eight-version matrix pass 428/428 on the current development tree.
+- 0.2.0 source evidence: 36 files / 428 tests and the nine-version matrix pass 428/428 on the current development tree.
 - Pending: restore the canonical rc.5 GitHub tag/release and complete the protected browser evidence/post-release checks.
 
 | Item | Result |
@@ -52,7 +52,7 @@ The `feat/0.2.0-workspace` tree has passed source-level acceptance for the imple
 - proposal-batch provenance, objective-proposal lifecycle, summary/item/proposal/change query endpoints, `watchSummary`, and pending-only `charter_propose` (query facets and
   response caps remain known gaps);
 - `npm run check`: 36 files / 428 tests;
-- eight-version DSH matrix: 428/428 on every declared version;
+- nine-version DSH matrix: 428/428 on every declared version;
 - normal package smoke: `dsh-charter-0.2.0.tgz` installs and its client factory bundle loads.
 
 This is source acceptance, not a release acceptance: real browser/Desktop A/B, real-model compaction, performance,
@@ -80,7 +80,7 @@ separate jobs or manual gates, not claims made by `npm test` alone.
 `dsh.compatibility.dshReleases` all declare the same eight exact versions:
 
 ```text
-0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2 || 0.2.1-rc.3 || 0.2.1-rc.4 || 0.2.1-rc.5
+0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2 || 0.2.1-rc.3 || 0.2.1-rc.4 || 0.2.1-rc.5 || 0.2.2-rc.1
 ```
 
 The tracked runner creates isolated pnpm projects with strict peers and runs typecheck/build/tests per version. `--allow-new-release` sets only the isolated workspace `minimumReleaseAge: 0` so a just-published exact DSH version can be tested inside the 24-hour window; it does not relax strict peers, does not affect user installs, and is not a release-policy exemption. Current evidence:
@@ -95,6 +95,7 @@ The tracked runner creates isolated pnpm projects with strict peers and runs typ
 | `0.2.1-rc.3` | 428/428 tracked matrix PASS |
 | `0.2.1-rc.4` | 428/428 tracked matrix PASS |
 | `0.2.1-rc.5` | 428/428 tracked matrix PASS |
+| `0.2.2-rc.1` | 428/428 tracked matrix PASS |
 
 The current 0.2.0 development tree passed `compat-matrix --versions all --allow-new-release` on 2026-11-05: every declared version passed typecheck, build, and 428/428 tests. Installs use pnpm strict peer resolution, exact tool pins, a single zod 4.6.7 graph, full `pnpm list --depth Infinity` graph validation, and recorded lockfile SHA-256 values. The untracked `0.2.2-alpha.2` probe is recorded as unsupported: strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run.
 

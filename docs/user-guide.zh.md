@@ -32,7 +32,7 @@ dsh --profile web --dump-config | grep -n "charter" || true
 ### 2.1 环境要求
 
 - DSH：只支持[兼容矩阵](design/compatibility.zh.md)中列出的版本（`0.1.7-rc.2`、`0.2.0-rc.1`/`rc.2`、
-  `0.2.1-rc.1`/`rc.2`/`rc.3`/`rc.4`/`rc.5`）。在扩展矩阵前不声明支持更新的 stable/RC 版本；完整 per-Peer Remote
+  `0.2.1-rc.1`/`rc.2`/`rc.3`/`rc.4`/`rc.5`、`0.2.2-rc.1`）。在扩展矩阵前不声明支持更新的 stable/RC 版本；完整 per-Peer Remote
   资源授权要求 `0.2.1+`。DSH `0.2.1-rc.5` 由已发布 rc.6 产物支持；已发布 rc.5 产物未声明该版本。
 - Node.js **`^22.19.0 || >=24.0.0`**。
 - Web 或 Desktop profile。

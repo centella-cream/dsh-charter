@@ -132,7 +132,7 @@ Host 在 `session/created` 时初始化记录，并在首次 prompt 前的 `agen
 ### 环境要求
 
 - DSH：只支持[兼容矩阵](docs/design/compatibility.zh.md)中列出的版本（`0.1.7-rc.2`、`0.2.0-rc.1`/`rc.2`、
-  `0.2.1-rc.1`/`rc.2`/`rc.3`/`rc.4`/`rc.5`）。在扩展矩阵前不声明支持更新的 stable/RC 版本；per-Peer Remote 资源授权需要 `0.2.1+`。DSH `0.2.1-rc.5` 由已发布 rc.6 产物支持；rc.5 产物不支持，不要在 DSH rc.5 上安装 rc.4 或 rc.5。
+  `0.2.1-rc.1`/`rc.2`/`rc.3`/`rc.4`/`rc.5`）。在扩展矩阵前不声明支持更新的 stable/RC 版本；per-Peer Remote 资源授权需要 `0.2.1+`。DSH `0.2.1-rc.5` 由已发布 rc.6 产物支持；rc.5 产物不支持，不要在 DSH rc.5 上安装 rc.4 或 rc.5。DSH `0.2.2-rc.1` 由当前 0.2.0 开发分支声明支持。
 - Node.js **`^22.19.0 || >=24.0.0`**。
 - Web 或 Desktop profile。
 
@@ -275,9 +275,11 @@ profile 自己的包管理器。源码开发流程见 [CONTRIBUTING.zh.md](CONTR
 | --- | --- |
 | `0.1.7-rc.2` | 支持（最低版本） |
 | `0.2.0-rc.1` / `0.2.0-rc.2` | 支持 |
-| `0.2.1-rc.1` / `0.2.1-rc.2` / `0.2.1-rc.3` / `0.2.1-rc.4` / `0.2.1-rc.5` | 支持（主基线：`0.2.1-rc.5`） |
+| `0.2.1-rc.1` / `0.2.1-rc.2` / `0.2.1-rc.3` / `0.2.1-rc.4` | 支持 |
+| `0.2.1-rc.5` | 支持 |
+| `0.2.2-rc.1` | 支持（主基线） |
 | `0.1.5-rc.1` 及更早 | 不支持 |
-| `0.2.2-rc.x`、`0.3.x` | 验证前不声明 |
+| `0.3.x` | 验证前不声明 |
 
 “支持”表示该版本通过 typecheck、build、测试以及 Remote/client smoke。fresh Web profile 安装、启动、页面和
 client bundle 检查已在 `0.1.7-rc.2`、`0.2.0-rc.2`、`0.2.1-rc.2`、`0.2.1-rc.4`、`0.2.1-rc.5` 通过；其他版本是 API/build
@@ -310,7 +312,7 @@ npm run verify:compaction # 手工真实模型 compaction 校验（不在 check 
 ```
 
 测试覆盖纯内核、真实 Host 组合、storage domain、Remote framing、历史抽取、客户端状态和 factory bundle
-注册。当前树有 **428 个测试**；八版本矩阵在所有声明版本上通过。当前证据见[验证记录](docs/verification.zh.md)。
+注册。当前树有 **428 个测试**；九版本矩阵在所有声明版本上通过。当前证据见[验证记录](docs/verification.zh.md)。
 
 ## 致谢
 

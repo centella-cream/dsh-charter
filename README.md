@@ -313,9 +313,11 @@ truncated, or silently dropped.
 | --- | --- |
 | `0.1.7-rc.2` | Supported (minimum) |
 | `0.2.0-rc.1` / `0.2.0-rc.2` | Supported |
-| `0.2.1-rc.1` / `0.2.1-rc.2` / `0.2.1-rc.3` / `0.2.1-rc.4` / `0.2.1-rc.5` | Supported (primary baseline: `0.2.1-rc.5`) |
+| `0.2.1-rc.1` / `0.2.1-rc.2` / `0.2.1-rc.3` / `0.2.1-rc.4` | Supported |
+| `0.2.1-rc.5` | Supported |
+| `0.2.2-rc.1` | Supported (primary baseline) |
 | `0.1.5-rc.1` and earlier | Not supported |
-| `0.2.2-rc.x`, `0.3.x` | Not declared until verified |
+| `0.3.x` | Not declared until verified |
 
 Supported" means typecheck, build, tests, and Remote/client smoke for that version. Fresh Web profile install,
 startup, page, and client-bundle checks passed on `0.1.7-rc.2`, `0.2.0-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4`, and `0.2.1-rc.5`;
@@ -350,7 +352,7 @@ npm run verify:compaction # manual real-model compaction check (not part of chec
 ```
 
 The test suite covers the pure core, real Host composition, storage-domain behavior, Remote framing,
-history extraction, client state, and factory-bundle registration. The current tree has **428 tests**; the eight-version matrix passes on all declared DSH versions. See the [verification record](docs/verification.md) for the current evidence.
+history extraction, client state, and factory-bundle registration. The current tree has **428 tests**; the nine-version matrix passes on all declared DSH versions. See the [verification record](docs/verification.md) for the current evidence.
 
 ## Acknowledgements
 
@@ -389,7 +391,7 @@ security reports, follow [SECURITY.md](SECURITY.md).
 
 ## Status
 
-Pre-1.0. The DSH plugin ABI is still moving; compatibility is tested against the eight versions above, and the
+Pre-1.0. The DSH plugin ABI is still moving; compatibility is tested against the nine versions above, and the
 design keeps the compatibility layer deliberately small.
 
 Current release state (2026-10-30):

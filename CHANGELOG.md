@@ -12,6 +12,7 @@ Workspace and dependency-plan upgrade. Versioning from this release onward uses 
 
 ### Added
 
+- DSH `0.2.2-rc.1` compatibility across `engines.dsh`, every DSH peer range, `dsh.compatibility.dshReleases`, the tracked nine-version matrix, and its lockfile.
 - Three primary areas: Workspace, Review Center, and Diagnostics & Maintenance. Workspace surfaces the
   current objective, invariants, dependency plan, and deliverables together.
 - Deliverable `requires` dependencies with canonical graph validation (self-edge, dangling reference,
