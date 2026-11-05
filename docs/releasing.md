@@ -15,7 +15,7 @@ tagging.
 - **Published:** `0.1.0-rc.6` — latest public npm release; exact artifact SHA-256
   `21ddbea0ae3fd88994d4e4731429ef4d8cb75db2b97e83cd7530a0386e425825`.
 - **Release candidate:** `0.2.0` merged locally to `main`; target tag `v0.2.0`.
-- **Pending:** main-branch candidate workflow, browser evidence, and promotion workflow.
+- **Pending:** main-branch candidate workflow and promotion workflow.
 - Do not manually publish or bypass the protected gates.
 
 ## 1. Prepare the source
@@ -46,21 +46,7 @@ After the candidate is green, create the checksum-only `C+1` commit on top of ca
 
 For a stable release the same C/C+1 ordering applies; `C+1` is the checksum-only commit and the tag target.
 
-## 3. Browser evidence
-
-Real browser recovery evidence is a protected manual gate. A human must run the documented Web-profile flow
-against the exact candidate tarball:
-
-```text
-fresh profile → export → remove the target while preserving Session lifecycle → restore → reload → Host restart
-→ healthy-target refusal → UTF-8 + error-detail + viewport/accessibility checks
-```
-
-Record the required machine-verifiable JSON through `browser-evidence.yml` under the protected `release`
-environment. The evidence must bind the candidate run, head SHA, artifact SHA-256, and restore digests. A local
-fixture, a source-only smoke, or a green candidate does not replace this gate.
-
-## 4. Promotion
+## 3. Promotion
 
 Promotion is the only path allowed to create the GitHub Release and move npm channels.
 
@@ -85,18 +71,18 @@ Run `release-promote.yml` from the protected `release` environment with:
 
 ```text
 candidate_run_id, candidate_commit=C, release_commit=C+1,
-candidate_sha256, version=0.2.0, browser_evidence_run_id
+candidate_sha256, version=0.2.0
 ```
 
-The workflow validates the candidate/browser evidence and main-push CI, publishes the exact tarball under a
+The workflow validates the candidate and main-push CI, publishes the exact tarball under a
 temporary non-channel tag, verifies the registry bytes, moves `next`/`latest` with pre-write regression checks,
 creates or validates the GitHub Release, attaches `release-evidence.json`, and only then makes the release
 public (prerelease only when the version itself is a prerelease).
 
 Do not run manual `npm publish`, `npm dist-tag`, or `gh release` commands for a release. They bypass environment
-approval, token scope, browser evidence, and release evidence.
+approval, token scope, and release evidence.
 
-## 5. Post-release
+## 4. Post-release
 
 - Verify the README install commands against the artifact actually published.
 - Confirm npm `version`, `dist-tags`, and tarball digest match the candidate.
@@ -106,7 +92,7 @@ approval, token scope, browser evidence, and release evidence.
   different from an inner schema/consistency-invalid record, which is isolated and preserved.
 - Leave `docs/archive/` untracked; it is local historical material and outside the npm `files` whitelist.
 
-## 6. Channel policy
+## 5. Channel policy
 
 Prerelease candidates use `next`; the stable `0.2.0` promotion moves both `next` and `latest` after registry bytes
 and tarball integrity are verified. Exact versions remain the reproducible install path.

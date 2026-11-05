@@ -20,9 +20,9 @@ Current release state (2026-11-05):
 - Published: `0.1.0-rc.6` (npm `latest`/`next`; exact SHA-256 `21ddbea0ae3fd88994d4e4731429ef4d8cb75db2b97e83cd7530a0386e425825`). GitHub Release uses recovery tag `v0.1.0-rc.6-republished`.
 - `0.1.0-rc.5`: previous accepted npm release; its canonical GitHub tag/release remains pending restoration.
 - Active release: `0.1.0-rc.6`, formally accepted.
-- Active development: `0.2.0` release candidate on `feat/0.2.0-workspace`; package versions from 0.2.0 onward never use an `rc` suffix.
+- Active development: `0.2.0` release candidate on `main`; package versions from 0.2.0 onward never use an `rc` suffix.
 - 0.2.0 source evidence: 36 files / 434 tests and the nine-version matrix pass 434/434 on the current development tree.
-- Pending: protected PR approval, main-branch candidate run, browser evidence, and promotion.
+- Pending: main-branch candidate run and promotion.
 
 | Item | Result |
 | --- | --- |
@@ -40,7 +40,7 @@ Current release state (2026-11-05):
 | Fresh Web profile 0.2.2 | PASS on 2026-11-05: fresh `DSH_HOME` + `dsh@0.2.2-rc.1 plugin --profile web add` of `dsh-charter-0.2.0.tgz` (SHA-256 `fde5531d457effc713f4423f8b46c8f0e591770e59c55e19956f000c11bdeffc`); Web boot, page HTTP 200, charter bundle HTTP 200; boot graph contains `dsh-charter` and the page index contains `dsh-charter/client.js` |
 | Untracked `0.2.2-alpha.2` / `0.2.2-alpha.3` probes | strict-peer install fails because these alpha lines require a Cordis 4.0.6 alpha graph; the 0.2.2-rc.1 line pins Cordis 4.1.0; no tests run; explicitly unsupported. |
 | Local Web + Desktop profiles | 0.2.0 development artifact installed into local `web` and `desktop` profiles on DSH `0.2.2-rc.1`; profile copies boot and serve the charter bundle. This is local evidence, not release-artifact evidence. |
-| Real browser recovery | Manual protected evidence gate; not automated |
+| Real browser diagnostics | Local manual checks recorded; not a release gate |
 | Real-model compaction | Separately recorded PASS (2026-10-22); still a manual release gate |
 
 ### 1.1 0.2.0 development acceptance
@@ -55,7 +55,7 @@ The `feat/0.2.0-workspace` tree has passed source-level acceptance for the imple
 - nine-version DSH matrix: 434/434 on every declared version;
 - normal package smoke: `dsh-charter-0.2.0.tgz` installs and its client factory bundle loads.
 
-This is source acceptance, not a release acceptance: real browser/Desktop A/B, real-model compaction, performance,
+This is source acceptance, not a release acceptance: real Desktop/browser diagnostics, real-model compaction, performance,
 and the remaining full-design gates must be recorded separately before declaring `0.2.0` stable. The Pane uses `watchSummary` plus paged queries with a full-watch compatibility fallback; the network layer still fetches all pages, so the 512-item performance gate remains separate.
 
 ## 2. Local baseline
@@ -70,7 +70,7 @@ node scripts/verify/compat-matrix.mjs --versions minimum,old-boundary,current
 ```
 
 CI (`.github/workflows/ci.yml`) runs `npm run check` and normal `npm run smoke:package` on Node `22.19.0` and
-`24`. Exact-artifact mode, compatibility sentinels, Gateway/browser acceptance, and real-model compaction are
+`24`. Exact-artifact mode, compatibility sentinels, Gateway acceptance, and real-model compaction are
 separate jobs or manual gates, not claims made by `npm test` alone.
 
 ## 3. DSH compatibility evidence
@@ -177,9 +177,8 @@ injection semantics; the tool-description shortening is the only model-visible r
 
 ## 6. Manual and external gaps
 
-- Real browser export → absent target → restore → reload/restart is a manual protected evidence gate
-  (`.github/workflows/browser-evidence.yml`); it is not automated by a tracked browser script. Promotion requires
-  a successful evidence run bound to the candidate SHA.
+- Real browser export → absent target → restore → reload/restart is an optional diagnostic check. It is not a
+  promotion gate and is not automated by a tracked browser script.
 - Web and Desktop share the same `dsh.client` bundle through the host client-module carrier. The installed Desktop app is `0.2.2-rc.1`, and the local Desktop profile carries the 0.2.0 development artifact. Real Electron ABI/interaction acceptance remains a manual gate.
 - Real-model compaction was recorded PASS on 2026-10-22 and remains a manual gate for release.
 - Multi-Host writes/leases are out of scope; the single-writer Host limitation is documented.

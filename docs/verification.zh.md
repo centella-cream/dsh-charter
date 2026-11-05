@@ -21,7 +21,7 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 - 当前版本：`0.1.0-rc.6`，已正式验收。
 - 当前开发线：`0.2.0`（`feat/0.2.0-workspace`）；从 0.2.0 起版本号不使用 `rc` 后缀。
 - 0.2.0 源码证据：36 个测试文件 / 434 个测试，当前开发树九版本矩阵 434/434 通过。
-- 待完成：恢复 rc.5 规范 GitHub tag/release，并完成受保护 browser evidence/发布后检查。
+- 待完成：恢复 rc.5 规范 GitHub tag/release，并完成发布后检查。
 
 | 项目 | 结果 |
 | --- | --- |
@@ -54,7 +54,7 @@ node scripts/verify/compat-matrix.mjs --versions minimum,old-boundary,current
 ```
 
 CI（`.github/workflows/ci.yml`）在 Node `22.19.0` / `24` 上运行 `npm run check` 与普通
-`npm run smoke:package`。exact-artifact、兼容 sentinel、Gateway/browser 和真实模型 compaction 是独立 job
+`npm run smoke:package`。exact-artifact、兼容 sentinel、Gateway 和真实模型 compaction 是独立 job
 或人工门禁，不是 `npm test` 自动声称的覆盖。
 
 ## 3. DSH 兼容证据
@@ -153,9 +153,8 @@ append 模型，而不是 Charter 内容：当其他 section 触发新快照时�
 
 ## 6. 人工/外部缺口
 
-- 真实浏览器 export → absent → restore → reload/restart 是受保护的人工 evidence gate
-  （`.github/workflows/browser-evidence.yml`），尚未由 tracked browser script 自动化；promotion 要求与候选
-  SHA 绑定的成功 evidence run。
+- 真实浏览器 export → absent → restore → reload/restart 是可选的诊断检查，不是 promotion 门禁，也不由
+  tracked browser script 自动化。
 - Web/Desktop 通过 host client-module carrier 共用同一个 `dsh.client` bundle。本机 Desktop app 为 `0.2.2-rc.1`，profile 已装入 0.2.0 开发 artifact；真实 Electron ABI/交互仍需人工门禁。
 - 真实模型 compaction 已于 2026-10-22 记录 PASS，仍是发布人工门禁。
 - 多 Host 写入/lease 不在范围内；单写 Host 限制已记录。

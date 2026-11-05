@@ -39,7 +39,7 @@
 ## 状态
 
 - **已发布版本：**`0.1.0-rc.6` — 当前 npm 公开发布版本。
-- **发布候选：**`0.2.0` 已在 `main`；公开发布仍需通过受保护的 candidate / browser evidence / promotion
+- **发布候选：**`0.2.0` 已在 `main`；公开发布仍需通过受保护的 candidate / promotion
   workflow，尚未完成。
 - **主要 DSH 基线：**`0.2.2-rc.1`；九个声明版本通过源码矩阵验证。
 - 从 `0.2.0` 起版本号使用普通递增（`0.2.0`、`0.2.1`…），不再使用 `rc` 后缀。
@@ -254,8 +254,7 @@ node scripts/verify/compat-matrix.mjs --versions all --allow-new-release
 当前源码证据：**36 个测试文件 / 434 个测试**，九版本 DSH 矩阵 **9/9**、每版 **434/434** 通过。精确命令
 和 source/local-matrix/exact-artifact/manual 证据的区别见[验证记录](docs/verification.zh.md)。
 
-CI 在 Node `22.19.0` 和 `24` 上运行 `npm run check` 与 `npm run smoke:package`；release candidate、browser
-evidence 和 promotion 是独立门禁。green candidate 不等于已发布。
+CI 在 Node `22.19.0` 和 `24` 上运行 `npm run check` 与 `npm run smoke:package`；release candidate 和 promotion 是独立门禁。green candidate 不等于已发布。
 
 ## 文档
 

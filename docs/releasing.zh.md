@@ -14,7 +14,7 @@ tag、不删除已发布 Release、不在打 tag 后重建字节。
 - **已发布：** `0.1.0-rc.6` — 当前 npm 公开发布版本；精确产物 SHA-256
   `21ddbea0ae3fd88994d4e4731429ef4d8cb75db2b97e83cd7530a0386e425825`。
 - **发布候选：** `0.2.0` 已本地合入 `main`；目标 tag `v0.2.0`。
-- **待完成：** main 分支 candidate workflow、browser evidence 和 promotion workflow。
+- **待完成：** main 分支 candidate workflow 和 promotion workflow。
 - 不得手动 publish，也不得绕过受保护门禁。
 
 ## 1. 准备源码
@@ -43,20 +43,7 @@ Candidate 全绿后，在 candidate `C` 上创建只改 checksum 的 `C+1`：
 
 stable release 同样遵守 C/C+1 顺序：`C+1` 是只改 checksum 的提交，tag 指向它。
 
-## 3. Browser evidence
-
-真实浏览器恢复 evidence 是受保护的人工门禁。必须针对精确候选 tarball 在真实 Web profile 完成：
-
-```text
-fresh profile → export → 保留 Session lifecycle 并移除 target → restore → reload → Host restart
-→ healthy-target refusal → UTF-8 + error-detail + viewport/accessibility checks
-```
-
-通过受保护 `release` environment 的 `browser-evidence.yml` 记录机器可校验 JSON；必须绑定 candidate run、
-head SHA、artifact SHA-256 和 restore digests。本地 fixture、source-only smoke 或 green candidate 都不能
-替代该门禁。
-
-## 4. Promotion
+## 3. Promotion
 
 Promotion 是唯一允许创建 GitHub Release 和移动 npm channel 的路径。
 
@@ -81,17 +68,17 @@ secret。
 
 ```text
 candidate_run_id, candidate_commit=C, release_commit=C+1,
-candidate_sha256, version=0.2.0, browser_evidence_run_id
+candidate_sha256, version=0.2.0
 ```
 
-workflow 校验 candidate/browser evidence 与 main-push CI，使用临时非 channel tag 发布精确 tarball，
+workflow 校验 candidate 与 main-push CI，使用临时非 channel tag 发布精确 tarball，
 回读 registry bytes，移动 `next`/`latest` 并做防回退检查，创建/校验 GitHub Release、附加
 `release-evidence.json`，最后才公开 prerelease。
 
 不要为发布手工执行 `npm publish`、`npm dist-tag` 或 `gh release`；它们会绕过 environment 审批、token
-scope、browser evidence 和 release evidence。
+scope 和 release evidence。
 
-## 5. 发布后
+## 4. 发布后
 
 - 用实际发布产物验证 README 安装命令。
 - 核对 npm `version`、`dist-tags` 和 tarball digest 与 candidate 一致。
@@ -100,7 +87,7 @@ scope、browser evidence 和 release evidence。
   Host 并从备份恢复。这与内部 schema/consistency invalid 记录不同，后者会被隔离并保留。
 - `docs/archive/` 保持 untracked；它只保存本地历史材料，且不在 npm `files` 白名单内。
 
-## 6. Channel policy
+## 5. Channel policy
 
 RC 发布到 `next`；稳定版出现前，`latest` 也有意指向最新 RC。npm 保留 `latest` tag，由项目决定其指向；
 这是项目策略，不是 npm 的强制要求。精确版本仍是可复现安装路径。

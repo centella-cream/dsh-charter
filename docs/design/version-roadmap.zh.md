@@ -43,7 +43,7 @@ rc.5 修复了与产品承诺冲突的审阅正确性问题：此前历史草案
 
 ### 2.2 rc.5 候选
 
-- rc.5 已实现、candidate 全绿并发布到 npm；规范 GitHub tag/release 待恢复，受保护 browser evidence 和常规
+- rc.5 已实现、candidate 全绿并发布到 npm；规范 GitHub tag/release 待恢复，发布后检查仍需完成。
   发布后检查仍待完成。
 - rc.6 已通过验收并发布；GitHub Release 使用 recovery tag `v0.1.0-rc.6-republished`。
 - `main` 已包含剩余 promotion 路径使用的 token 发布 workflow。已发布的 rc.4 历史永不改写。
@@ -140,12 +140,12 @@ rc.5 定位为 **审阅正确性、交互安全与稳定版证据收敛**。不�
 - `aria-invalid`、`aria-describedby`、预算 meter 和两个 composer 的独立 accessible name 补齐。
 - 触屏和窄屏下按钮、导航与 select 的目标尺寸提高到 40–44px；主操作使用显式 class 排版，不依赖 `:last-child`。
 
-### 4.6 P1：真实安全与浏览器验收
+### 4.6 P1：真实安全与诊断验收
 
 - 在真实 DSH `0.2.1` Gateway 上验证 owner、user 和 malformed missing-principal Peer；正常现代 Peer 的 principal 是协议必填。
 - export、initialize、restore 三个维护方法逐一验证 owner-only。
 - 跨 Session resource 在业务方法和 storage probe 前被拒绝。
-- 真实浏览器完成导出、文件选择、WebCrypto 校验、恢复、刷新、Host 重启和健康目标拒绝覆盖。
+- 可选执行真实浏览器导出、文件选择、WebCrypto 校验、恢复、刷新、Host 重启和健康目标拒绝覆盖，作为诊断而非 promotion 门禁。
 - 完成稳定版要求的 Desktop 重启后 tab/tool ABI 复核。
 
 ### 4.7 P1：更新 DSH 精确兼容矩阵

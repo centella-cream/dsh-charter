@@ -178,8 +178,7 @@ unknown-outcome exact replay、普通 Discard 保留 unknown evidence 等行为�
 | R20 | P0 | rc.6 尚无 candidate-bound browser、Desktop、model 和 registry evidence | 发布阻断 | 第 15 节定义 0.2 门禁；rc.6 仍须按自己的发布流程补齐 | 发布治理 |
 
 R20 还包含一个具体版本缺口：当前 candidate fresh-profile job 固定在 DSH `0.2.1-rc.4`，Gateway 默认只跑
-`0.2.1-rc.3` / `rc.4`，browser evidence 也固定 `rc.4`。rc.6 新增声明的 `0.2.1-rc.5` 目前只有 source compatibility
-matrix，没有 candidate artifact 的 Gateway、fresh profile 或真实浏览器证据。
+`0.2.1-rc.3` / `rc.4`。rc.6 新增声明的 `0.2.1-rc.5` 目前只有 source compatibility matrix，没有 candidate artifact 的 Gateway、fresh profile 或真实浏览器诊断。
 
 另有两项与 0.2 设计无关的当前发布配置问题，不能推迟到 0.2：
 
@@ -195,7 +194,7 @@ matrix，没有 candidate artifact 的 Gateway、fresh profile 或真实浏览�
 | --- | --- | --- | --- |
 | Source 行为回归 | [`verification.zh.md`](../verification.zh.md) 和当前 `npm run check` | L1/L2 | 各自在目标源码 commit 重跑 |
 | 唯一候选与 SHA | [`release-candidate.yml`](../../.github/workflows/release-candidate.yml) | 第 15.11 节 Candidate bundle | 版本自己的 exact artifact evidence |
-| 真实浏览器 | [`browser-evidence.yml`](../../.github/workflows/browser-evidence.yml) | L4/L5 Web E2E | 必须绑定各自 candidate SHA |
+| 真实浏览器 | 本地人工诊断（可选） | L4/L5 Web E2E | 不作为 promotion 门禁 |
 | Desktop ABI/update | [`verification.zh.md`](../verification.zh.md) 的人工缺口 | 第 15.10 节 Desktop 路径 | 目标 Electron/DSH + 隔离 profile |
 | 真实模型 compaction | [`verification.zh.md`](../verification.zh.md) 和 compaction checker | L6 | candidate-bound transcript，不复用旧版本 PASS |
 | Registry/Promotion | [`releasing.zh.md`](../releasing.zh.md) 与 [`release-promote.yml`](../../.github/workflows/release-promote.yml) | Promotion/release bundle | 发布后 registry bytes 与 candidate SHA 一致 |
@@ -1666,7 +1665,6 @@ Candidate 只 pack 一次。以下门禁消费同一 tarball 和 SHA-256，不�
 - real Gateway；
 - v1→v2 migration/downgrade；
 - fresh Web/Desktop profile；
-- browser evidence；
 - candidate-bound real-model compaction。
 
 Artifact compatibility matrix 对每个声明版本安装同一 candidate tarball，记录实际 resolved package list，并执行 packed

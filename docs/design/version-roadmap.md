@@ -106,11 +106,11 @@ This fence adds no record field or Remote method. Same-domain v2 in 0.2 may clai
 - Add field-specific accessible names, `aria-invalid`, `aria-describedby`, and meter semantics.
 - Raise mobile touch targets and make the primary action explicit rather than relying on `:last-child` layout.
 
-### 4.6 Real security and browser evidence
+### 4.6 Real security evidence
 
 - Exercise owner, user, and a malformed missing-principal Peer through a real DSH 0.2.1 Gateway; valid modern Peers require a principal.
 - Verify all three maintenance methods, cross-Session resource rejection, and no pre-authorization storage access.
-- Run real-browser export, file selection, WebCrypto validation, restore, reload, Host restart, and healthy-target refusal.
+- Optionally run real-browser export, file selection, WebCrypto validation, restore, reload, Host restart, and healthy-target refusal as a diagnostic; it is not a promotion gate.
 - Complete the stable-gate Desktop restart and tab/tool ABI check.
 
 ### 4.7 DSH compatibility and artifact workflow

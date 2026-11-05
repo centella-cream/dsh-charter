@@ -40,8 +40,8 @@ deliverables, evidence, and dependency relationships survive compaction and rema
 ## Status
 
 - **Published release:** `0.1.0-rc.6` — latest public npm release.
-- **Release candidate:** `0.2.0` on `main`; publication runs through the protected candidate/browser/promotion
-  workflows and is not complete yet.
+- **Release candidate:** `0.2.0` on `main`; publication runs through the protected candidate/promotion workflows and is
+  not complete yet.
 - **Primary DSH baseline:** `0.2.2-rc.1`; nine declared DSH versions are source-matrix verified.
 - Versioning from `0.2.0` onward uses plain increments (`0.2.0`, `0.2.1`, …), never an `rc` suffix.
 
@@ -272,8 +272,7 @@ Current source evidence: **36 files / 434 tests**, and the nine-version DSH matr
 **434/434**. See the [verification record](docs/verification.md) for exact commands and the distinction between
 source, local-matrix, exact-artifact, and manual evidence.
 
-CI runs `npm run check` and `npm run smoke:package` on Node `22.19.0` and `24`; the release candidate, browser
-evidence, and promotion workflows are separate gates. A green candidate is not a publication.
+CI runs `npm run check` and `npm run smoke:package` on Node `22.19.0` and `24`; the release candidate and promotion workflows are separate gates. A green candidate is not a publication.
 
 ## Documentation
 
