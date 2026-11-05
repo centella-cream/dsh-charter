@@ -24,6 +24,28 @@ const items = [
 ]
 
 describe('item query', () => {
+  it('pages all 512 active items with a revision-bound cursor', () => {
+    const many = Array.from({ length: 512 }, (_, index) =>
+      item(`scale-${String(index).padStart(3, '0')}`, index, { text: `Scale ${index}` }))
+    const ids: string[] = []
+    let cursor: string | undefined
+    for (let page = 0; page < 16; page += 1) {
+      const result = queryItems(7, 'scale-lifecycle', many, {
+        limit: 100,
+        ...(cursor === undefined ? {} : { cursor }),
+      })
+      expect(result.ok).toBe(true)
+      if (!result.ok) throw new Error('expected scale page')
+      ids.push(...result.items.map(entry => entry.id))
+      cursor = result.nextCursor
+      if (cursor === undefined) break
+    }
+    expect(ids).toHaveLength(512)
+    expect(new Set(ids).size).toBe(512)
+    expect(ids[0]).toBe('scale-000')
+    expect(ids[511]).toBe('scale-511')
+  })
+
   it('sorts canonically, filters, and pages without duplicate or missing rows', () => {
     const first = queryItems(3, 'life', items, { limit: 2 })
     expect(first.ok).toBe(true)
