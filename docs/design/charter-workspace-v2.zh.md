@@ -1,31 +1,34 @@
 # `dsh-charter` 0.2 会话契约工作区设计
 
-> **状态：** Implemented — pending release acceptance。0.2.0 工作区核心已实现并通过源码验收；发布/人工门禁
-> 尚未完成。
+> **状态：** Implemented — pending release acceptance。0.2.0 功能范围（workspace、query、validator）已实现并通过
+> 源码验收；真实 Gateway/Desktop/可访问性/性能等发布人工门禁尚未完成。
 > **版本范围：** `0.2.0`（从该版本起不再使用 `rc` 后缀）。
-> **基准：** 2026-11-02；最后复核 2026-11-03。
+> **基准：** 2026-11-02；最后复核 2026-11-05。
 > **权威边界：** [版本路线](version-roadmap.zh.md)决定版本范围，[v1 核心设计](charter-design-v1.zh.md)
 > 决定不变量。本文只细化 Workspace、Proposal 时间线和 deliverable 依赖；发生冲突时先修订权威文档。
-> **专题范围：** 本文不重新定义完整 0.2 发布范围。Evidence Integrity、Fact Validity、validator 和路线图中
-> 的其他支柱仍是 0.2 的独立必交项。
+> **专题范围：** 本文覆盖 workspace、query/proposal 以及 Evidence Integrity/Fact Validity/validator；发布
+> 验收矩阵与人工门禁仍由版本路线图、验证记录和发布文档约束。
 > **替代/被替代：** 取代 v1 工作区交互；被替代时保留为历史文档。
 
 ## 0.1 实现状态与已知差距
 
-本文件的状态是 **Implemented — pending release acceptance**，含义仅是：下列已实现的工作区核心通过源码验收，
-不是完整的 v2/0.2.0 实现。当前明确未完成：
+本文件的状态是 **Implemented — pending release acceptance**：0.2 功能范围已通过源码验收；仍待完成的是发布人工
+门禁，而不是未实现的功能合同。
 
-- Pane 已对 active/history 列表做窗口化渲染；store 仍一次取回全部分页，网络分页优化仍可继续。
-- queryItems 仍缺 validity filter；query 响应字节上限、proposal/change facets 已实现。
-- proposal source registry 已登记每种 source kind 的字段与 digest 策略；完整 digest 复算仍未实现；当前批次带
-  source digest/refs 并在 UI 派生 `not-applicable/intact/unknown`，compaction/agent-tool/fork 带 digest。
-- Evidence Integrity、Fact Validity、validator 是 0.2 的独立必交项，不属于本 workspace core。
+已实现并已验收的关键合同：
 
-本轮已补齐：message proposal（最近一条真实用户消息）、Change Set Host canonical preview digest 与
-`PREVIEW_MISMATCH`、`charter_propose` proposedRequires、fork typed source refs、可配置 proposal batch 上限、
-`item.propose` 按来源派生的 origin、bootstrap objective.initialize 对 extraction 的绑定。
+- Pane 对 active/history 列表窗口化渲染；store 走 summary + 分页 query，旧 Host 保留 full-watch fallback。
+- queryItems/queryProposals/queryChanges 的 facets、validity filter、filter digest、revision-bound cursor 和响应
+  字节上限。
+- message proposal、Change Set canonical preview digest/`PREVIEW_MISMATCH`、proposedRequires、fork typed source
+  refs、按来源派生的 origin、bootstrap objective extraction 绑定。
+- Evidence Integrity、Fact Validity 和注册式 validator：`workspace.path-exists`、`workspace.file-digest`、
+  `workspace.file-contains`；owner-only、工作区路径约束、超时/权限/不可读→unknown、正文变更→stale、结果不进
+  standing prompt。
+- v1 `verification` 到 v2 `validity` 的内存映射；validator 结果带 evidence、input digest、revision 和结果 digest。
 
-在实现这些合同前，不应把本文件或 `0.2.0` 包版本读成完整 v2 已实现。
+剩余发布工作：真实 Gateway 授权/配额覆盖、Desktop ABI/Plugins UI 人工验证、可访问性/触屏/200% 文本矩阵、
+512 条性能证据，以及最终 artifact 门禁。
 
 ## 1. 决策摘要
 
@@ -1500,7 +1503,7 @@ standing；正文不得在 item、proposal、batch、receipt、tombstone 多处�
 symlink escape、path traversal、timeout、cancel、read 前后变化、input digest stale、未注册 validator 和任意 executable 拒绝。
 Evaluation 与 result commit 分开取证：前者未提交时可安全重跑，后者使用 operation ID、base revision、input digest、receipt 和
 单一线性化点；commit 后 response loss 进入 unknown/exact retry。一批 validator result 只产生一个 revision，metadata 不进入
-prompt。Validator 虽不由本文重新设计，缺少这些证据仍阻断 0.2。
+prompt。Validator 和 evidence integrity 的验收证据同样阻断 0.2 发布。
 
 ### 15.5 Dependency、prompt 与模型工具
 
