@@ -38,11 +38,42 @@ model-visible context deterministically on every request.
 - **Bounded and recoverable.** Prompt/record budgets are explicit; overflow is surfaced or rejected, never
   silently dropped. Export/restore and write-uncertain fencing protect the stored record.
 
-## 0.2 highlights
+## 0.2 headline: constraint relationships
+
+The defining change in 0.2.0 is that deliverables are no longer an independent, ordered checklist. A
+deliverable can declare **prerequisites** on other deliverables, and those relationships become part of the
+stored contract, the validation boundary, the UI plan, and the model-visible prompt.
+
+```text
+Tests (D1) ───────────┐
+Migration (D2) ───────┴──> Release (D3)
+```
+
+- **Typed, validated edges.** Each deliverable may carry `requires: [id…]`. The Host rejects self-edges,
+  duplicate prerequisites, dangling references, inactive endpoints, and cycles. The whole Change Set fails
+  atomically; no partial graph is written.
+- **Deterministic dependency projection.** Standing deliverables receive stable `D<n>` keys in canonical
+  topological order. The prompt renders prerequisites before dependents, so the model knows which commitments
+  are executable and what must happen first.
+- **Derived readiness, not a second status field.** Readiness is computed from acceptance, lifecycle,
+  prerequisite readiness, and progress: `ready`, `waiting`, `blocked`, `dependency-conflict`,
+  `in-progress`, or `terminal`. This avoids storing a stale duplicate of dependency state.
+- **Visible and editable in the Pane.** Workspace shows a dependency plan with prerequisite selectors and
+  status. An invalid graph is surfaced instead of crashing the Pane, and Apply is disabled while the plan is
+  inconsistent.
+- **Lifecycle-safe.** Archive, restore, supersede, fork, and proposal acceptance validate or remap the graph.
+  `proposedRequires` lets a pending deliverable reference candidates that become formal requirements on
+  acceptance.
+- **Bounded and safe.** The relation set lives inside the same record budget and prompt budget as the rest of
+  the charter; there is no separate graph authority.
+
+This is a deliberate boundary: dependencies are a user-authored **execution constraint**, not an enforced
+sandbox or permission system.
+
+## Other 0.2 capabilities
 
 - Three primary areas: **Workspace**, **Review Center**, and **Diagnostics & Maintenance**.
 - Record schema v2 with in-memory v1 migration, proposal batches, typed provenance, and objective proposals.
-- Deliverable `requires` graph validation, deterministic `D<n>` prompt keys, and derived readiness.
 - `summary`/`watchSummary` plus paged item/proposal/change queries; the Pane uses summary + queries and keeps
   the full-watch stream only as a compatibility fallback.
 - Pending-only `charter_propose` tool and user-triggered message proposals with selection and kind.

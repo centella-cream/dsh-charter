@@ -33,11 +33,35 @@
 - **有界与可恢复。**prompt/record 预算显式可见；溢出不会被静默截断。导出/恢复和 write-uncertain fencing
   保护存储记录。
 
-## 0.2 亮点
+## 0.2 核心亮点：约束关系
+
+0.2.0 最核心的变化，是 deliverable 不再是一份互不相关的顺序清单。一个 deliverable 可以声明对其他
+deliverable 的**前置约束**，而这些关系会进入存储契约、校验边界、UI 计划和模型可见 prompt。
+
+```text
+测试 (D1) ────────────┐
+迁移 (D2) ────────────┴──> 发布 (D3)
+```
+
+- **类型化、可校验的关系。**每个 deliverable 可携带 `requires: [id…]`。Host 拒绝自环、重复前置、
+  悬空引用、非 active 端点和环；整个 Change Set 原子失败，不会写入半张图。
+- **确定性的依赖投影。**standing deliverable 按 canonical 拓扑顺序获得稳定 `D<n>` key；prompt 按前置
+  在前、依赖在后的顺序渲染，模型因此知道哪些承诺可以执行、必须先完成什么。
+- **派生 readiness，而不是第二个持久状态。**readiness 由 acceptance、lifecycle、前置 readiness 和
+  progress 派生：`ready`、`waiting`、`blocked`、`dependency-conflict`、`in-progress` 或 `terminal`，
+  不保存一份容易过期的重复状态。
+- **Pane 中可见、可编辑。**Workspace 展示依赖计划和前置选择器；非法图会显示冲突提示而不是拖垮 Pane，
+  图不一致时禁用 Apply。
+- **生命周期安全。**archive、restore、supersede、fork 和 proposal acceptance 都会校验或重映射关系；
+  `proposedRequires` 让 pending deliverable 引用候选前置条件，接受时解析为正式 requires。
+- **有界且安全。**关系集合同样受 record 和 prompt 预算约束，不引入独立的图正本。
+
+这是一条明确边界：依赖是用户编写的**执行约束**，不是强制 sandbox 或权限系统。
+
+## 其他 0.2 能力
 
 - 三个一级区域：**Workspace**、**Review Center**、**Diagnostics & Maintenance**。
 - record schema v2、内存 v1 迁移、proposal batch、类型化 provenance 和 objective proposal。
-- deliverable `requires` 图校验、确定性 `D<n>` prompt key 和派生 readiness。
 - `summary`/`watchSummary` 及分页 item/proposal/change query；Pane 使用 summary + query，完整 watch 仅作为兼容回退。
 - pending-only `charter_propose`；用户触发的 message proposal（选择器、范围、kind）。
 - Evidence Integrity 与 Fact Validity，以及 owner-only 注册式验证器：
