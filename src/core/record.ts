@@ -11,6 +11,7 @@ import type {
   CharterActor,
   CharterRecordV1,
   CharterEditRequest,
+  CharterItem,
   CharterMaintenanceReceipt,
   CharterRecord,
   CharterReceipt,
@@ -61,31 +62,29 @@ export class RevisionConflict extends Error {
 }
 
 function migratedSnapshot(snapshot: CharterRecordV1['current']): CharterRecord['current'] {
-  return {
-    ...snapshot,
-    items: snapshot.items.map(item => {
-      const verification = item.verification
-      const validity = verification.state === 'unchecked'
-        ? { state: 'unassessed' as const }
-        : verification.state === 'verified' && verification.by === 'user'
-          ? { state: 'attested' as const, atRevision: Math.max(1, snapshot.revision) }
-          : verification.state === 'verified'
-            ? {
-                state: 'valid' as const,
-                validator: 'legacy-validator',
-                inputDigest: sha256Json({ version: 1, legacy: true, text: item.text }),
-                checkedAtRevision: Math.max(1, snapshot.revision),
-              }
-            : {
-                state: verification.state === 'failed' ? 'invalid' as const : 'unknown' as const,
-                validator: 'legacy-validator',
-                inputDigest: sha256Json({ version: 1, legacy: true, text: item.text }),
-                checkedAtRevision: Math.max(1, snapshot.revision),
-                ...(verification.reason === undefined ? {} : { reason: verification.reason }),
-              }
-      return { ...item, validity }
-    }),
-  }
+  const items = snapshot.items.map(item => {
+    const verification = item.verification
+    const validity = verification.state === 'unchecked'
+      ? { state: 'unassessed' as const }
+      : verification.state === 'verified' && verification.by === 'user'
+        ? { state: 'attested' as const, atRevision: Math.max(1, snapshot.revision) }
+        : verification.state === 'verified'
+          ? {
+              state: 'valid' as const,
+              validator: 'legacy-validator',
+              inputDigest: sha256Json({ version: 1, legacy: true, text: item.text }),
+              checkedAtRevision: Math.max(1, snapshot.revision),
+            }
+          : {
+              state: verification.state === 'failed' ? 'invalid' as const : 'unknown' as const,
+              validator: 'legacy-validator',
+              inputDigest: sha256Json({ version: 1, legacy: true, text: item.text }),
+              checkedAtRevision: Math.max(1, snapshot.revision),
+              ...(verification.reason === undefined ? {} : { reason: verification.reason }),
+            }
+    return { ...item, validity }
+  })
+  return buildSnapshotUnchecked(snapshot.revision, snapshot.objective, items)
 }
 
 /** Read-only v1 projection to the v2 in-memory shape; no bytes are written here. */
@@ -550,16 +549,6 @@ export function commitRecord(input: CommitRecordInput): CharterRecord {
     throw charterError('QUOTA_EXCEEDED', `charter exceeds ${input.limits.maxPendingItems} pending proposals`)
   }
   assertSnapshotAdmission(input.record.current, applied.snapshot, input.limits)
-  const historyReceipt: CharterReceipt = {
-    revision,
-    baseRevision: input.record.current.revision,
-    mutationId: input.request.mutationId,
-    requestDigest: input.requestDigest,
-    resultDigest: applied.snapshot.stateDigest,
-    actor: input.actor,
-    at: input.at,
-    changes: [...applied.changes],
-  }
   const proposalBatch: ProposalBatch | undefined = proposalBatchId === undefined ? undefined : {
     id: proposalBatchId,
     source: input.proposalSource ?? (input.actor.kind === 'host'
@@ -570,20 +559,13 @@ export function commitRecord(input: CommitRecordInput): CharterRecord {
     capturedAtRevision: revision,
     candidates: proposedCandidates as ProposalBatch['candidates'],
   }
-  const mutationReceipt: MutationReceipt = {
-    mutationId: input.request.mutationId,
-    requestDigest: input.requestDigest,
-    committedRevision: revision,
-    resultDigest: applied.snapshot.stateDigest,
-    ids: input.ids,
-  }
   const purgedItemIds = new Set(input.request.ops
     .filter((op): op is Extract<typeof op, { type: 'item.purge' }> => op.type === 'item.purge')
     .map(op => op.itemId))
   const purgedObjectiveIds = new Set(input.request.ops
     .filter((op): op is Extract<typeof op, { type: 'objective.purge' }> => op.type === 'objective.purge')
     .map(op => op.proposalId))
-  const batches = [...(input.record.proposalBatches ?? []), ...(proposalBatch === undefined ? [] : [proposalBatch])]
+  let batches = [...(input.record.proposalBatches ?? []), ...(proposalBatch === undefined ? [] : [proposalBatch])]
     .map(batch => ({
       ...batch,
       candidates: batch.candidates.map(candidate => {
@@ -603,12 +585,54 @@ export function commitRecord(input: CommitRecordInput): CharterRecord {
       }),
     }))
   const maxBatches = input.limits.maxProposalBatches ?? MAX_PROPOSAL_BATCHES
-  if (batches.length > maxBatches) {
-    throw charterError('LIMIT_EXCEEDED', `charter exceeds ${maxBatches} proposal batches`)
+  const removedBatchIds = new Set<string>()
+  const reviewOfCandidate = (candidate: ProposalBatch['candidates'][number]): boolean => {
+    if (candidate.kind === 'tombstone') return true
+    if (candidate.kind === 'item') {
+      return applied.snapshot.items.find(item => item.id === candidate.id)?.review !== 'pending'
+    }
+    return applied.objectiveProposals.find(proposal => proposal.id === candidate.id)?.review !== 'pending'
+  }
+  while (batches.length > maxBatches) {
+    const index = batches.findIndex(batch => batch.candidates.every(reviewOfCandidate))
+    if (index < 0) {
+      throw charterError('LIMIT_EXCEEDED', `charter exceeds ${maxBatches} proposal batches`)
+    }
+    const removed = batches[index]!
+    removedBatchIds.add(removed.id)
+    batches = batches.filter((_, candidateIndex) => candidateIndex !== index)
+  }
+  const finalSnapshot = removedBatchIds.size === 0
+    ? applied.snapshot
+    : buildSnapshotUnchecked(
+        applied.snapshot.revision,
+        applied.snapshot.objective,
+        applied.snapshot.items.map(item => {
+          if (item.proposalBatchId === undefined || !removedBatchIds.has(item.proposalBatchId)) return item
+          const { proposalBatchId: _removed, ...rest } = item
+          return rest as CharterItem
+        }),
+      )
+  const historyReceipt: CharterReceipt = {
+    revision,
+    baseRevision: input.record.current.revision,
+    mutationId: input.request.mutationId,
+    requestDigest: input.requestDigest,
+    resultDigest: finalSnapshot.stateDigest,
+    actor: input.actor,
+    at: input.at,
+    changes: [...applied.changes],
+  }
+  const mutationReceipt: MutationReceipt = {
+    mutationId: input.request.mutationId,
+    requestDigest: input.requestDigest,
+    committedRevision: revision,
+    resultDigest: finalSnapshot.stateDigest,
+    ids: input.ids,
   }
   const next: CharterRecord = {
     ...input.record,
-    current: applied.snapshot,
+    current: finalSnapshot,
     ...(applied.objectiveProposals.length === 0 ? {} : { objectiveProposals: [...applied.objectiveProposals] }),
     history: trimHistory([...input.record.history, historyReceipt], input.limits),
     recentMutations: [...input.record.recentMutations, mutationReceipt]

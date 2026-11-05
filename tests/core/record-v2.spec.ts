@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createEmptyRecord, migrateRecordV1ToV2 } from '../../src/core/record.js'
+import { assertRecordConsistency, createEmptyRecord, migrateRecordV1ToV2 } from '../../src/core/record.js'
 import { emptySnapshot } from '../../src/core/render.js'
 import { DEFAULT_CHARTER_LIMITS } from '../../src/core/limits.js'
 import { charterRecordSchema, charterRecordV1Schema } from '../../src/core/schemas.js'
@@ -21,6 +21,7 @@ describe('record v2 migration', () => {
     expect(migrated.current.promptText).toBe(v1.current.promptText)
     expect(migrated.current.stateDigest).toBe(v1.current.stateDigest)
     expect(charterRecordSchema.safeParse(migrated).success).toBe(true)
+    expect(() => assertRecordConsistency(migrated, DEFAULT_CHARTER_LIMITS)).not.toThrow()
   })
 
   it('maps every v1 verification state into v2 validity', () => {
@@ -52,9 +53,14 @@ describe('record v2 migration', () => {
       recordSchemaVersion: 1,
       current,
     } as never)
-    expect(migrated.current.items.map(entry => entry.validity?.state)).toEqual([
-      'unassessed', 'attested', 'valid', 'invalid', 'unknown',
-    ])
+    const states = Object.fromEntries(migrated.current.items.map(entry => [entry.text, entry.validity?.state]))
+    expect(states).toEqual({
+      unchecked: 'unassessed',
+      attested: 'attested',
+      valid: 'valid',
+      invalid: 'invalid',
+      unknown: 'unknown',
+    })
   })
 })
 

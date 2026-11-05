@@ -116,6 +116,30 @@ describe('projected draft view', () => {
     expect(visibleItems(accepted.items)[0]?.review).toBe('accepted')
   })
 
+  it('promotes proposed prerequisites when accepting a pending deliverable', () => {
+    const base = view({
+      items: [{
+        id: 'base', kind: 'deliverable', text: 'Base', review: 'accepted', lifecycle: 'current',
+        verification: { state: 'unchecked' }, origin: 'user', order: 0, createdRevision: 1,
+        progress: 'done',
+      } as CharterItem],
+    })
+    const propose = {
+      type: 'item.propose' as const,
+      item: {
+        clientRef: 'dependent',
+        kind: 'deliverable' as const,
+        text: 'Dependent',
+        order: 1,
+        progress: 'not-started' as const,
+        proposedRequires: ['base'],
+      },
+    }
+    const projected = projectView(base, [propose, { type: 'item.accept' as const, itemId: 'draft:dependent' }])
+    const dependent = projected.items.find(item => item.text === 'Dependent')
+    expect(dependent).toMatchObject({ review: 'accepted', requires: ['base'], proposedRequires: [] })
+  })
+
   it('keeps the exact prompt renderer as the projection consumer', () => {
     const ops = [
       { type: 'objective.initialize' as const, text: 'Objective' },

@@ -27,6 +27,7 @@ export interface ProjectedItem extends PromptItem {
   readonly synthetic: boolean
   readonly progress?: DeliverableProgress
   readonly requires?: readonly string[]
+  readonly proposedRequires?: readonly string[]
   readonly contentModified?: boolean
   readonly origin?: CharterItem['origin']
   readonly createdRevision?: number
@@ -127,7 +128,11 @@ function fromItem(item: CharterItem): ProjectedItem {
     createdRevision: item.createdRevision,
     ...(item.supersedes === undefined ? {} : { supersedes: item.supersedes }),
     ...(item.supersededBy === undefined ? {} : { supersededBy: item.supersededBy }),
-    ...(item.kind === 'deliverable' ? { progress: item.progress, ...(item.requires === undefined ? {} : { requires: item.requires }) } : {}),
+    ...(item.kind === 'deliverable' ? {
+      progress: item.progress,
+      ...(item.requires === undefined ? {} : { requires: item.requires }),
+      ...(item.proposedRequires === undefined ? {} : { proposedRequires: item.proposedRequires }),
+    } : {}),
     ...(item.contentModified === true ? { contentModified: true } : {}),
     staged: false,
     synthetic: false,
@@ -142,6 +147,7 @@ function draftItem(
   progress?: DeliverableProgress,
   review: 'accepted' | 'pending' = 'accepted',
   requires?: readonly string[],
+  proposedRequires?: readonly string[],
 ): ProjectedItem {
   return {
     id,
@@ -152,7 +158,11 @@ function draftItem(
     verification: { state: 'unchecked' },
     validity: { state: 'unassessed' },
     order,
-    ...(kind === 'deliverable' ? { progress: progress ?? 'not-started', ...(requires === undefined ? {} : { requires }) } : {}),
+    ...(kind === 'deliverable' ? {
+      progress: progress ?? 'not-started',
+      ...(requires === undefined ? {} : { requires }),
+      ...(proposedRequires === undefined ? {} : { proposedRequires }),
+    } : {}),
     staged: true,
     synthetic: true,
   } as ProjectedItem
@@ -275,6 +285,7 @@ export function projectView(view: CharterView, ops: readonly CharterOp[]): Proje
           op.item.kind === 'deliverable' ? op.item.progress : undefined,
           undefined,
           op.item.kind === 'deliverable' ? op.item.requires : undefined,
+          op.item.kind === 'deliverable' ? op.item.proposedRequires : undefined,
         ))
         break
       case 'item.propose':
@@ -286,6 +297,7 @@ export function projectView(view: CharterView, ops: readonly CharterOp[]): Proje
           op.item.kind === 'deliverable' ? op.item.progress : undefined,
           'pending',
           op.item.kind === 'deliverable' ? op.item.requires : undefined,
+          op.item.kind === 'deliverable' ? op.item.proposedRequires : undefined,
         ))
         break
       case 'item.edit': {
@@ -306,9 +318,17 @@ export function projectView(view: CharterView, ops: readonly CharterOp[]): Proje
         }
         break
       }
-      case 'item.accept':
-        markStaged(op.itemId, { review: 'accepted' })
+      case 'item.accept': {
+        const item = items.get(op.itemId)
+        const proposed = item?.proposedRequires
+        markStaged(op.itemId, {
+          review: 'accepted',
+          ...(item?.kind === 'deliverable' && proposed !== undefined && proposed.length > 0
+            ? { requires: [...proposed].sort(), proposedRequires: [] }
+            : {}),
+        })
         break
+      }
       case 'item.reject':
         markStaged(op.itemId, { review: 'rejected', verification: { state: 'unchecked' } })
         break

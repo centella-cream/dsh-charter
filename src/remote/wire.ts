@@ -11,6 +11,8 @@ import {
   charterObjectiveSchema,
   charterRecordArchiveSchema,
   charterRestoreRequestSchema,
+  proposalCandidateRefSchema,
+  objectiveProposalSchema,
 } from '../core/schemas.js'
 import type {
   CharterEditRequest,
@@ -40,13 +42,18 @@ import type {
   CharterMessageListResult,
 } from '../host/types.js'
 
-const charterErrorCodeSchema = z.enum([
+export const charterErrorCodeSchema = z.enum([
   'INVALID_ARGUMENT',
   'FORBIDDEN',
   'NOT_FOUND',
   'LIFECYCLE_MISMATCH',
   'REVISION_CONFLICT',
   'PREVIEW_MISMATCH',
+  'INVALID_CHANGE_SET',
+  'STALE_REVISION',
+  'LIMIT_EXCEEDED',
+  'INVALID_CURSOR',
+  'OUTCOME_UNKNOWN',
   'MUTATION_ID_REUSED',
   'INVALID_REFERENCE',
   'INVALID_TRANSITION',
@@ -149,7 +156,7 @@ export const charterViewSchema = z.object({
     id: z.string(),
     source: z.object({ kind: z.string(), actor: z.string().optional(), at: z.number().optional() }).passthrough(),
     capturedAtRevision: z.number().int().positive(),
-    candidates: z.array(z.object({ kind: z.string(), id: z.string() }).strict()),
+    candidates: z.array(proposalCandidateRefSchema),
   }).passthrough()).optional(),
 }).strict()
 
@@ -214,11 +221,12 @@ export const charterChangeQueryResultSchema = z.discriminatedUnion('ok', [
       at: z.number().int().nonnegative(),
       changes: z.array(charterChangeSchema),
     }).strict()),
+    filterDigest: z.string(),
     nextCursor: z.string().optional(),
   }).strict(),
   z.object({
     ok: z.literal(false),
-    code: z.enum(['INVALID_CURSOR', 'LIMIT_EXCEEDED', 'NOT_FOUND', 'UNAVAILABLE']),
+    code: z.enum(['INVALID_CURSOR', 'LIMIT_EXCEEDED', 'NOT_FOUND', 'UNAVAILABLE', 'STALE_REVISION']),
     message: z.string(),
   }).strict(),
 ])
@@ -274,7 +282,7 @@ export const charterProposalQueryResultSchema = z.discriminatedUnion('ok', [
     batches: z.array(z.object({
       id: z.string(),
       source: z.object({ kind: z.string() }).passthrough(),
-      sourceIntegrity: z.enum(['not-applicable', 'intact', 'unknown', 'unavailable']),
+      sourceIntegrity: z.enum(['not-applicable', 'intact', 'missing', 'mismatch', 'unsupported']),
       capturedAtRevision: z.number().int().positive(),
       candidates: z.array(z.object({
         kind: z.enum(['item', 'objective', 'tombstone']),
@@ -286,10 +294,14 @@ export const charterProposalQueryResultSchema = z.discriminatedUnion('ok', [
         atRevision: z.number().int().positive().optional(),
       }).strict()),
     }).strict()),
+    objectiveProposals: z.array(objectiveProposalSchema),
+    filterDigest: z.string(),
+    nextCursor: z.string().optional(),
+    nextObjectiveCursor: z.string().optional(),
   }).strict(),
   z.object({
     ok: z.literal(false),
-    code: z.enum(['NOT_FOUND', 'UNAVAILABLE']),
+    code: z.enum(['NOT_FOUND', 'UNAVAILABLE', 'STALE_REVISION', 'INVALID_CURSOR', 'LIMIT_EXCEEDED']),
     message: z.string(),
   }).strict(),
 ])

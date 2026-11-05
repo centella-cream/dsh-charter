@@ -944,7 +944,11 @@ export class CharterService extends Service {
     }
     // A not-live Session can only be shown read-only; identity checks need the
     // live Session object, so classify the document shape only.
-    const parsed = charterRecordSchema.safeParse(stored)
+    let parsed = charterRecordSchema.safeParse(stored)
+    if (!parsed.success) {
+      const legacy = charterRecordV1Schema.safeParse(stored)
+      if (legacy.success) parsed = { success: true, data: migrateRecordV1ToV2(legacy.data) }
+    }
     const digest = recordDigestOf(stored)
     const limitsBody = {
       status: 'unavailable' as const,
@@ -1231,16 +1235,18 @@ export class CharterService extends Service {
           readonly v?: unknown
           readonly kind?: unknown
           readonly revision?: unknown
+          readonly after?: unknown
           readonly filterDigest?: unknown
         }
-        if (parsed.v !== 1 || parsed.kind !== 'changes' || !Number.isSafeInteger(parsed.revision)) {
+        if (parsed.v !== 1 || parsed.kind !== 'changes' || !Number.isSafeInteger(parsed.revision)
+          || !Number.isSafeInteger(parsed.after)) {
           throw new Error('invalid cursor')
         }
         if (parsed.revision !== record.current.revision) {
           return { ok: false, code: 'STALE_REVISION', message: 'change cursor was created for another revision' }
         }
         if (parsed.filterDigest !== filterDigest) throw new Error('filter mismatch')
-        after = parsed.revision as number
+        after = parsed.after as number
       } catch {
         return { ok: false, code: 'INVALID_CURSOR', message: 'invalid change query cursor' }
       }
@@ -1272,7 +1278,8 @@ export class CharterService extends Service {
       ? Buffer.from(JSON.stringify({
           v: 1,
           kind: 'changes',
-          revision: last!.revision,
+          revision: record.current.revision,
+          after: last!.revision,
           filterDigest,
         }), 'utf8').toString('base64url')
       : undefined

@@ -651,6 +651,62 @@ describe('dsh-charter host composition', () => {
     expect(dependent !== undefined && 'requires' in dependent ? dependent.requires : undefined).toEqual([baseId])
   })
 
+  it('pages recent changes without treating the next page as stale', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-change-pages-'))
+    roots.push(root)
+    const ctx = await mount(root)
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('change-pages'), {
+      meta: { cwd: root, createdAt: 1_700_000_001_067 },
+    })
+    await waitForReady(service, session)
+    await service.edit(addInvariant(session.id, 0, 'change-pages-1', 'First change'))
+    await service.edit(addInvariant(session.id, 1, 'change-pages-2', 'Second change'))
+    const first = service.queryChangesById(session.id, { limit: 1 })
+    expect(first.ok).toBe(true)
+    if (!first.ok) return
+    expect(first.changes).toHaveLength(1)
+    expect(first.nextCursor).toBeDefined()
+    const second = service.queryChangesById(session.id, { limit: 1, cursor: first.nextCursor! })
+    expect(second.ok).toBe(true)
+    if (!second.ok) return
+    expect(second.changes).toHaveLength(1)
+    expect(second.changes[0]!.revision).toBeGreaterThan(first.changes[0]!.revision)
+  })
+
+  it('compacts settled proposal batches before enforcing the batch cap', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-batch-cap-'))
+    roots.push(root)
+    const ctx = await mount(root, { maxProposalBatches: 2 })
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('batch-cap'), {
+      meta: { cwd: root, createdAt: 1_700_000_001_068 },
+    })
+    await waitForReady(service, session)
+    const propose = (ref: string, baseRevision: number) => service.edit({
+      sessionId: session.id,
+      mutationId: `batch-cap-${ref}`,
+      baseRevision,
+      ops: [{ type: 'item.propose', item: { clientRef: ref, kind: 'invariant', text: ref, order: baseRevision } }],
+    })
+    const first = await propose('first', 0)
+    const second = await propose('second', 1)
+    expect(first.ok && second.ok).toBe(true)
+    if (!first.ok) return
+    const accepted = await service.edit({
+      sessionId: session.id,
+      mutationId: 'batch-cap-accept',
+      baseRevision: 2,
+      ops: [{ type: 'item.accept', itemId: first.ids.first! }],
+    })
+    expect(accepted).toMatchObject({ ok: true })
+    const third = await propose('third', 3)
+    expect(third).toMatchObject({ ok: true })
+    const view = service.view(session)
+    expect(view.proposalBatches).toHaveLength(2)
+    expect(view.items.find(item => item.text === 'first')?.proposalBatchId).toBeUndefined()
+  })
+
   it('pages objective proposals independently without duplicate rows', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-charter-objective-pages-'))
     roots.push(root)

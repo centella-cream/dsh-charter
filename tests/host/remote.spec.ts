@@ -9,6 +9,9 @@ import {
   charterRecordOperationResultSchema,
   charterRestoreRequestWireSchema,
   charterViewSchema,
+  charterProposalQueryResultSchema,
+  charterChangeQueryResultSchema,
+  charterErrorCodeSchema,
 } from '../../src/remote/wire.js'
 import { RemoteError } from '@deepseek-ai/dsh-typert-protocol'
 
@@ -143,6 +146,51 @@ describe('charter Remote contract', () => {
         maxOps: 1024,
       },
     }).success).toBe(false)
+  })
+
+  it('accepts tombstone candidates, proposal pages, and change pages on the wire', () => {
+    const base = {
+      status: 'ready',
+      sessionId: 's1',
+      revision: 1,
+      objective: null,
+      items: [],
+      promptText: '',
+      promptDigest: 'sha256:' + '0'.repeat(64),
+      limits: {
+        maxPromptBytes: 8192, maxObjectiveBytes: 4096, maxItemBytes: 1024,
+        maxItems: 512, maxPendingItems: 512, maxOps: 1024,
+        maxRecordBytes: 1_048_576, maintenanceLimit: 16, maxRecoveryBytes: 4_194_304,
+      },
+      overBudget: false,
+    }
+    expect(charterViewSchema.safeParse({
+      ...base,
+      proposalBatches: [{
+        id: 'batch-1',
+        source: { kind: 'manual', actor: 'user', at: 1 },
+        capturedAtRevision: 1,
+        candidates: [{
+          kind: 'tombstone', id: 'p1', candidateKind: 'item', disposition: 'purged', atRevision: 1,
+        }],
+      }],
+    }).success).toBe(true)
+    expect(charterProposalQueryResultSchema.safeParse({
+      ok: true,
+      revision: 1,
+      batches: [],
+      objectiveProposals: [],
+      filterDigest: 'sha256:filter',
+    }).success).toBe(true)
+    expect(charterChangeQueryResultSchema.safeParse({
+      ok: true,
+      revision: 1,
+      changes: [],
+      filterDigest: 'sha256:filter',
+    }).success).toBe(true)
+    for (const code of ['INVALID_CHANGE_SET', 'STALE_REVISION', 'LIMIT_EXCEEDED', 'INVALID_CURSOR', 'OUTCOME_UNKNOWN']) {
+      expect(charterErrorCodeSchema.safeParse(code).success).toBe(true)
+    }
   })
 
   it('keeps frame schema strict and discriminated', () => {
