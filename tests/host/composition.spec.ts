@@ -425,6 +425,81 @@ describe('dsh-charter host composition', () => {
     expect(service.view(session).revision).toBe(1)
   })
 
+  it('runs registered validators and stales results on content edits', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-validators-'))
+    roots.push(root)
+    await writeFile(join(root, 'evidence.txt'), 'release-ready evidence\n', 'utf8')
+    const ctx = await mount(root)
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('validators'), {
+      meta: { cwd: root, createdAt: 1_700_000_001_060 },
+    })
+    await waitForReady(service, session)
+    const added = await service.edit(addInvariant(session.id, 0, 'validators-seed', 'Release evidence exists'))
+    if (!added.ok) throw new Error('seed failed')
+    const itemId = added.ids['validators-seed']!
+    const exists = await service.runValidators(session.id, [{
+      itemId,
+      validator: { kind: 'workspace.path-exists', path: 'evidence.txt' },
+    }])
+    expect(exists).toMatchObject({ ok: true })
+    let view = service.view(session)
+    expect(view.items[0]?.validity).toMatchObject({ state: 'valid', validator: 'workspace.path-exists' })
+    expect(view.items[0]?.evidence?.[0]?.path).toBe('evidence.txt')
+    const validItems = service.queryItemsById(session.id, { validity: 'valid' })
+    expect(validItems).toMatchObject({ ok: true, items: [expect.objectContaining({ id: itemId })] })
+    const integrity = await service.sourceIntegrityById(session.id)
+    expect(integrity).toMatchObject({ ok: true, items: [expect.objectContaining({ itemId, integrity: 'intact' })] })
+    await writeFile(join(root, 'evidence.txt'), 'changed\n', 'utf8')
+    // path-exists evidence only binds the path; content changes do not stale it.
+    expect(await service.sourceIntegrityById(session.id)).toMatchObject({
+      ok: true,
+      items: [expect.objectContaining({ itemId, integrity: 'intact' })],
+    })
+    await rm(join(root, 'evidence.txt'))
+    expect(await service.sourceIntegrityById(session.id)).toMatchObject({
+      ok: true,
+      items: [expect.objectContaining({ itemId, integrity: 'unavailable' })],
+    })
+    await writeFile(join(root, 'evidence.txt'), 'release-ready evidence\n', 'utf8')
+
+    const digest = await import('node:crypto').then(crypto =>
+      `sha256:${crypto.createHash('sha256').update('release-ready evidence\n').digest('hex')}`)
+    const fileDigest = await service.runValidators(session.id, [{
+      itemId,
+      validator: { kind: 'workspace.file-digest', path: 'evidence.txt', expectedDigest: digest },
+    }])
+    expect(fileDigest).toMatchObject({ ok: true })
+    expect(service.view(session).items[0]?.validity).toMatchObject({ state: 'valid', validator: 'workspace.file-digest' })
+    await writeFile(join(root, 'evidence.txt'), 'changed again\n', 'utf8')
+    expect(await service.sourceIntegrityById(session.id)).toMatchObject({
+      ok: true,
+      items: [expect.objectContaining({ itemId, integrity: 'changed' })],
+    })
+
+    view = service.view(session)
+    await service.edit({
+      sessionId: session.id,
+      mutationId: 'validators-edit',
+      baseRevision: view.revision,
+      ops: [{ type: 'item.edit', itemId, text: 'Changed evidence assertion' }],
+    })
+    expect(service.view(session).items[0]?.validity).toMatchObject({ state: 'stale', previous: 'valid' })
+
+    const traversal = await service.runValidators(session.id, [{
+      itemId,
+      validator: { kind: 'workspace.path-exists', path: '../outside.txt' },
+    }])
+    expect(traversal).toMatchObject({ ok: true })
+    expect(service.view(session).items[0]?.validity).toMatchObject({ state: 'unknown' })
+
+    const forbidden = await service.runValidators(session.id, [{
+      itemId,
+      validator: { kind: 'workspace.path-exists', path: 'evidence.txt' },
+    }], { kind: 'user' })
+    expect(forbidden).toMatchObject({ ok: false, code: 'FORBIDDEN' })
+  })
+
   it('returns a canonical Change Set preview digest and rejects a stale preview', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-charter-change-preview-'))
     roots.push(root)

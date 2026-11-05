@@ -1,0 +1,256 @@
+import { createHash } from 'node:crypto'
+import { promises as fs } from 'node:fs'
+import { isAbsolute, relative, resolve, sep } from 'node:path'
+import { sha256Json } from '../core/digest.js'
+import type { CharterValidity, CharterEvidence } from '../core/schemas.js'
+
+export type ValidatorKind = 'workspace.path-exists' | 'workspace.file-digest' | 'workspace.file-contains'
+
+export interface ValidatorSpec {
+  readonly kind: ValidatorKind
+  readonly path: string
+  readonly expectedDigest?: string
+  readonly contains?: string
+}
+
+export interface ValidatorRequest {
+  readonly itemId: string
+  readonly validator: ValidatorSpec
+}
+
+export interface ValidatorEvaluation {
+  readonly itemId: string
+  readonly validity: CharterValidity
+  readonly evidence?: CharterEvidence
+}
+
+const TIMEOUT_MS = 2_000
+const VALIDATOR_ID = {
+  'workspace.path-exists': 'workspace.path-exists',
+  'workspace.file-digest': 'workspace.file-digest',
+  'workspace.file-contains': 'workspace.file-contains',
+} as const
+
+function digestBytes(bytes: Uint8Array): `sha256:${string}` {
+  return `sha256:${createHash('sha256').update(bytes).digest('hex')}`
+}
+
+function isInside(root: string, target: string): boolean {
+  const rel = relative(root, target)
+  return rel === '' || (!rel.startsWith(`..${sep}`) && rel !== '..' && !isAbsolute(rel))
+}
+
+function failure(
+  itemId: string,
+  validator: string,
+  state: 'invalid' | 'unknown',
+  inputDigest: `sha256:${string}`,
+  nextRevision: number,
+  reason: string,
+  path: string,
+): ValidatorEvaluation {
+  return {
+    itemId,
+    validity: {
+      state,
+      validator,
+      inputDigest,
+      checkedAtRevision: nextRevision,
+      reason,
+    },
+    evidence: {
+      kind: 'workspace-file',
+      path,
+      projectionVersion: 1,
+      digest: inputDigest,
+      excerpt: reason,
+    },
+  }
+}
+
+async function resolveWorkspaceTarget(root: string, relativePath: string): Promise<string> {
+  if (relativePath.length === 0 || relativePath.length > 1_024 || relativePath.includes('\0')) {
+    throw new Error('EMPTY_PATH')
+  }
+  if (isAbsolute(relativePath)) throw new Error('ABSOLUTE_PATH')
+  const lexical = resolve(root, relativePath)
+  if (!isInside(root, lexical)) throw new Error('OUTSIDE_WORKSPACE')
+  let realRoot: string
+  try {
+    realRoot = await fs.realpath(root)
+  } catch {
+    throw new Error('WORKSPACE_UNREADABLE')
+  }
+  let realTarget: string
+  try {
+    realTarget = await fs.realpath(lexical)
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return lexical
+    throw error
+  }
+  if (!isInside(realRoot, realTarget)) throw new Error('OUTSIDE_WORKSPACE')
+  return realTarget
+}
+
+function withTimeout<T>(promise: Promise<T>): Promise<T> {
+  return new Promise<T>((resolvePromise, rejectPromise) => {
+    const timer = setTimeout(() => rejectPromise(new Error('TIMEOUT')), TIMEOUT_MS)
+    timer.unref?.()
+    promise.then(
+      value => { clearTimeout(timer); resolvePromise(value) },
+      error => { clearTimeout(timer); rejectPromise(error) },
+    )
+  })
+}
+
+export async function evaluateValidators(input: {
+  readonly root: string | undefined
+  readonly revision: number
+  readonly requests: readonly ValidatorRequest[]
+  readonly itemText: (itemId: string) => string | undefined
+}): Promise<readonly ValidatorEvaluation[]> {
+  const nextRevision = input.revision + 1
+  const out: ValidatorEvaluation[] = []
+  for (const request of input.requests) {
+    const text = input.itemText(request.itemId)
+    if (text === undefined) throw new Error(`item ${request.itemId} does not exist`)
+    const inputDigest = sha256Json({
+      version: 1,
+      itemId: request.itemId,
+      text,
+      validator: request.validator,
+    })
+    const validator = VALIDATOR_ID[request.validator.kind]
+    if (validator === undefined) throw new Error('UNKNOWN_VALIDATOR')
+    if (input.root === undefined) {
+      out.push({
+        itemId: request.itemId,
+        validity: {
+          state: 'unknown',
+          validator,
+          inputDigest,
+          checkedAtRevision: nextRevision,
+          reason: 'workspace root is unavailable',
+        },
+      })
+      continue
+    }
+    let target: string
+    try {
+      target = await withTimeout(resolveWorkspaceTarget(input.root, request.validator.path))
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : 'workspace path is unreadable'
+      const state = reason === 'OUTSIDE_WORKSPACE' || reason === 'ABSOLUTE_PATH' || reason === 'EMPTY_PATH'
+        ? 'unknown' as const
+        : 'unknown' as const
+      out.push(failure(request.itemId, validator, state, inputDigest, nextRevision, reason, request.validator.path))
+      continue
+    }
+    const evidencePath = target.startsWith(input.root)
+      ? relative(input.root, target) || '.'
+      : request.validator.path
+    try {
+      if (request.validator.kind === 'workspace.path-exists') {
+        const stat = await withTimeout(fs.stat(target))
+        out.push({
+          itemId: request.itemId,
+          validity: {
+            state: stat.isFile() || stat.isDirectory() ? 'valid' : 'invalid',
+            validator,
+            inputDigest,
+            checkedAtRevision: nextRevision,
+            resultDigest: sha256Json({ version: 1, exists: true, path: evidencePath }),
+          },
+          evidence: {
+            kind: 'workspace-file',
+            path: evidencePath,
+            projectionVersion: 1,
+            digest: sha256Json({ version: 1, exists: true, path: evidencePath }),
+          },
+        })
+        continue
+      }
+      const bytes = await withTimeout(fs.readFile(target))
+      const actualDigest = digestBytes(bytes)
+      if (request.validator.kind === 'workspace.file-digest') {
+        const valid = request.validator.expectedDigest === actualDigest
+        out.push({
+          itemId: request.itemId,
+          validity: {
+            state: valid ? 'valid' : 'invalid',
+            validator,
+            inputDigest,
+            checkedAtRevision: nextRevision,
+            resultDigest: actualDigest,
+            ...(valid ? {} : { reason: 'digest differs' }),
+          },
+          evidence: {
+            kind: 'workspace-file',
+            path: evidencePath,
+            projectionVersion: 1,
+            digest: actualDigest,
+          },
+        })
+        continue
+      }
+      const expected = request.validator.contains ?? ''
+      const textContent = bytes.toString('utf8')
+      const valid = expected.length > 0 && textContent.includes(expected)
+      out.push({
+        itemId: request.itemId,
+        validity: {
+          state: valid ? 'valid' : 'invalid',
+          validator,
+          inputDigest,
+          checkedAtRevision: nextRevision,
+          resultDigest: actualDigest,
+          ...(valid ? {} : { reason: 'expected text not found' }),
+        },
+        evidence: {
+          kind: 'workspace-file',
+          path: evidencePath,
+          projectionVersion: 1,
+          digest: actualDigest,
+        },
+      })
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code
+      const reason = code === 'ENOENT'
+        ? 'file is missing'
+        : error instanceof Error ? error.message : 'file is unreadable'
+      out.push(failure(
+        request.itemId,
+        validator,
+        code === 'ENOENT' ? 'invalid' : 'unknown',
+        inputDigest,
+        nextRevision,
+        reason,
+        evidencePath,
+      ))
+    }
+  }
+  return out
+}
+
+export type EvidenceIntegrity = 'intact' | 'changed' | 'unavailable' | 'not-applicable'
+
+/** Derive the read-time integrity of one persisted evidence binding. */
+export async function evaluateEvidenceIntegrity(input: {
+  readonly root: string | undefined
+  readonly evidence: import('../core/schemas.js').CharterEvidence
+}): Promise<EvidenceIntegrity> {
+  if (input.evidence.kind !== 'workspace-file') return 'unavailable'
+  if (input.root === undefined || input.evidence.path === undefined) return 'unavailable'
+  try {
+    const target = await withTimeout(resolveWorkspaceTarget(input.root, input.evidence.path))
+    const existsDigest = sha256Json({ version: 1, exists: true, path: input.evidence.path })
+    if (input.evidence.digest === existsDigest) {
+      await withTimeout(fs.stat(target))
+      return 'intact'
+    }
+    const bytes = await withTimeout(fs.readFile(target))
+    return digestBytes(bytes) === input.evidence.digest ? 'intact' : 'changed'
+  } catch {
+    return 'unavailable'
+  }
+}

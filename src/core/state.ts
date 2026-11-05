@@ -73,6 +73,18 @@ export function validateState(
       if (item.supersedes !== undefined || item.supersededBy !== undefined) {
         throw charterError('CORRUPT_STATE', `non-accepted item ${item.id} cannot participate in a replacement chain`)
       }
+      if (item.validity !== undefined && item.validity.state !== 'unassessed') {
+        throw charterError('CORRUPT_STATE', `non-accepted item ${item.id} cannot carry a validity conclusion`)
+      }
+    }
+    if (item.validity?.state === 'stale') {
+      if (item.validity.atRevision > revision) {
+        throw charterError('CORRUPT_STATE', `item ${item.id} has an invalid stale validity marker`)
+      }
+    }
+    if (item.validity !== undefined && 'checkedAtRevision' in item.validity
+      && item.validity.checkedAtRevision > revision) {
+      throw charterError('CORRUPT_STATE', `item ${item.id} validity revision is outside the snapshot`)
     }
 
     if (item.lifecycle === 'superseded' && item.supersededBy === undefined) {

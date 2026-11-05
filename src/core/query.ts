@@ -17,6 +17,7 @@ export interface ItemQueryFilter {
   readonly verification?: 'unchecked' | 'verified' | 'failed' | 'unavailable'
   readonly execution?: ExecutionDisplay
   readonly prerequisite?: PrerequisiteStatus
+  readonly validity?: 'unassessed' | 'attested' | 'valid' | 'invalid' | 'unknown' | 'stale'
 }
 
 export interface ItemQueryRequest extends ItemQueryFilter {
@@ -69,6 +70,7 @@ function filterDigestOf(filter: ItemQueryFilter): string {
     verification: filter.verification ?? null,
     execution: filter.execution ?? null,
     prerequisite: filter.prerequisite ?? null,
+    validity: filter.validity ?? null,
   })
 }
 
@@ -139,6 +141,8 @@ export function queryItems(
     .filter(item => filter.verification === undefined || item.verification.state === filter.verification)
     .filter(item => filter.execution === undefined || executionById.get(item.id) === filter.execution)
     .filter(item => filter.prerequisite === undefined || prerequisiteById.get(item.id) === filter.prerequisite)
+    .filter(item => filter.validity === undefined
+      || (item.validity?.state ?? 'unassessed') === filter.validity)
     .sort(compareOrderedItems)
     .filter(item => after === undefined || sortKey(item) > after)
   const page: CharterItem[] = []

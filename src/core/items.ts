@@ -38,6 +38,8 @@ export function normalizeItemShape(item: CharterItem): CharterItem {
     ...(item.proposalBatchId === undefined ? {} : { proposalBatchId: item.proposalBatchId }),
     ...(item.reviewedAtRevision === undefined ? {} : { reviewedAtRevision: item.reviewedAtRevision }),
     ...(item.proposedRequires === undefined ? {} : { proposedRequires: [...item.proposedRequires] }),
+    ...(item.validity === undefined ? {} : { validity: item.validity }),
+    ...(item.evidence === undefined ? {} : { evidence: [...item.evidence] }),
     ...(item.contentModified === true ? { contentModified: true } : {}),
   }
   if (item.kind === 'deliverable') {

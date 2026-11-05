@@ -63,9 +63,28 @@ export class RevisionConflict extends Error {
 function migratedSnapshot(snapshot: CharterRecordV1['current']): CharterRecord['current'] {
   return {
     ...snapshot,
-    items: snapshot.items.map(item => item.kind === 'deliverable'
-      ? { ...item }
-      : { ...item }),
+    items: snapshot.items.map(item => {
+      const verification = item.verification
+      const validity = verification.state === 'unchecked'
+        ? { state: 'unassessed' as const }
+        : verification.state === 'verified' && verification.by === 'user'
+          ? { state: 'attested' as const, atRevision: Math.max(1, snapshot.revision) }
+          : verification.state === 'verified'
+            ? {
+                state: 'valid' as const,
+                validator: 'legacy-validator',
+                inputDigest: sha256Json({ version: 1, legacy: true, text: item.text }),
+                checkedAtRevision: Math.max(1, snapshot.revision),
+              }
+            : {
+                state: verification.state === 'failed' ? 'invalid' as const : 'unknown' as const,
+                validator: 'legacy-validator',
+                inputDigest: sha256Json({ version: 1, legacy: true, text: item.text }),
+                checkedAtRevision: Math.max(1, snapshot.revision),
+                ...(verification.reason === undefined ? {} : { reason: verification.reason }),
+              }
+      return { ...item, validity }
+    }),
   }
 }
 

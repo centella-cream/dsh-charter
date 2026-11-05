@@ -22,6 +22,40 @@ describe('record v2 migration', () => {
     expect(migrated.current.stateDigest).toBe(v1.current.stateDigest)
     expect(charterRecordSchema.safeParse(migrated).success).toBe(true)
   })
+
+  it('maps every v1 verification state into v2 validity', () => {
+    const base = createEmptyRecord({ createdAt: 1 }, DEFAULT_CHARTER_LIMITS)
+    const item = (id: string, verification: unknown) => ({
+      id,
+      kind: 'invariant' as const,
+      text: id,
+      review: 'accepted' as const,
+      lifecycle: 'current' as const,
+      verification,
+      origin: 'user' as const,
+      order: 0,
+      createdRevision: 1,
+    })
+    const current = {
+      ...emptySnapshot(DEFAULT_CHARTER_LIMITS),
+      revision: 1,
+      items: [
+        item('unchecked', { state: 'unchecked' }),
+        item('attested', { state: 'verified', by: 'user' }),
+        item('valid', { state: 'verified', by: 'validator' }),
+        item('invalid', { state: 'failed', reason: 'nope' }),
+        item('unknown', { state: 'unavailable', reason: 'io' }),
+      ],
+    }
+    const migrated = migrateRecordV1ToV2({
+      ...base,
+      recordSchemaVersion: 1,
+      current,
+    } as never)
+    expect(migrated.current.items.map(entry => entry.validity?.state)).toEqual([
+      'unassessed', 'attested', 'valid', 'invalid', 'unknown',
+    ])
+  })
 })
 
 

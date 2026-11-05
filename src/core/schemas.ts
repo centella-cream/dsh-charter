@@ -25,12 +25,59 @@ export const charterVerificationSchema = z.discriminatedUnion('state', [
   z.object({ state: z.literal('unavailable'), reason: z.string() }).strict(),
 ])
 
+
+export const charterValiditySchema = z.discriminatedUnion('state', [
+  z.object({ state: z.literal('unassessed') }).strict(),
+  z.object({ state: z.literal('attested'), atRevision: z.number().int().positive() }).strict(),
+  z.object({
+    state: z.literal('valid'),
+    validator: identifierSchema,
+    inputDigest: digestSchema,
+    resultDigest: digestSchema.optional(),
+    checkedAtRevision: z.number().int().positive(),
+  }).strict(),
+  z.object({
+    state: z.literal('invalid'),
+    validator: identifierSchema,
+    inputDigest: digestSchema,
+    checkedAtRevision: z.number().int().positive(),
+    reason: z.string().optional(),
+  }).strict(),
+  z.object({
+    state: z.literal('unknown'),
+    validator: identifierSchema,
+    inputDigest: digestSchema,
+    checkedAtRevision: z.number().int().positive(),
+    reason: z.string().optional(),
+  }).strict(),
+  z.object({
+    state: z.literal('stale'),
+    previous: z.enum(['attested', 'valid', 'invalid', 'unknown']),
+    atRevision: z.number().int().positive(),
+  }).strict(),
+])
+
+export type CharterValidity = z.infer<typeof charterValiditySchema>
+export type CharterEvidence = z.infer<typeof charterEvidenceSchema>
+
+export const charterEvidenceSchema = z.object({
+  kind: z.enum(['message', 'compaction-summary', 'workspace-file']),
+  sessionId: z.string().max(256).optional(),
+  seq: z.number().int().nonnegative().optional(),
+  path: z.string().max(1024).optional(),
+  projectionVersion: z.number().int().positive(),
+  digest: digestSchema,
+  excerpt: z.string().optional(),
+}).strict()
+
 const itemBase = {
   id: identifierSchema,
   text: z.string(),
   review: charterReviewSchema,
   lifecycle: charterLifecycleSchema,
   verification: charterVerificationSchema,
+  validity: charterValiditySchema.optional(),
+  evidence: z.array(charterEvidenceSchema).optional(),
   origin: z.enum(['user', 'agent', 'fork']),
   order: z.number().int().nonnegative(),
   createdRevision: z.number().int().positive(),
@@ -184,6 +231,16 @@ export const charterOpSchema = z.discriminatedUnion('type', [
     itemId: identifierSchema,
     verification: z.enum(['unchecked', 'verified']),
   }).strict(),
+  z.object({
+    type: z.literal('item.validity.set'),
+    itemId: identifierSchema,
+    validity: charterValiditySchema,
+    evidence: z.array(charterEvidenceSchema).optional(),
+  }).strict(),
+  z.object({
+    type: z.literal('item.attest'),
+    itemId: identifierSchema,
+  }).strict(),
 ])
 
 export const charterEditRequestSchema = z.object({
@@ -241,6 +298,15 @@ export const charterChangeSchema = z.discriminatedUnion('type', [
   }).strict(),
   z.object({
     type: z.literal('item.verification.changed'),
+    itemId: identifierSchema,
+  }).strict(),
+  z.object({
+    type: z.literal('item.validity.changed'),
+    itemId: identifierSchema,
+    state: z.enum(['unassessed', 'attested', 'valid', 'invalid', 'unknown', 'stale']),
+  }).strict(),
+  z.object({
+    type: z.literal('item.attested'),
     itemId: identifierSchema,
   }).strict(),
   z.object({ type: z.literal('forked') }).strict(),

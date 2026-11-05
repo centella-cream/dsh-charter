@@ -134,6 +134,10 @@ function normalizeOp(op: CharterOp): CharterOp {
       return { ...op, requires: normalizeRequires(op.requires) }
     case 'item.verification.set':
       return op
+    case 'item.validity.set':
+      return op
+    case 'item.attest':
+      return op
   }
 }
 

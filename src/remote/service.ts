@@ -19,6 +19,9 @@ import type {
   CharterProposalQueryResult,
   CharterChangeQueryResult,
   CharterChangeSetPreviewResult,
+  CharterValidatorRequest,
+  CharterValidatorRunResult,
+  CharterSourceIntegrityResult,
 } from '../host/types.js'
 import { resolveRemoteActor } from './actor.js'
 import { remoteMethod } from './compat.js'
@@ -30,6 +33,45 @@ export class CharterRemoteService extends TypertRemoteService {
 
   constructor(ctx: Context) {
     super(ctx, 'charterRemote', { namespace: 'charter' })
+  }
+
+  @remoteMethod({
+    resources: {
+      session: (sessionId: SessionId): SessionId => sessionId,
+    },
+  })
+  sourceIntegrity(sessionId: SessionId): Promise<CharterSourceIntegrityResult> {
+    let actor: CharterActor
+    try {
+      actor = resolveRemoteActor(this.ctx)
+    } catch (error) {
+      if (error instanceof CharterError) {
+        return Promise.resolve({ ok: false, code: error.code, message: error.message })
+      }
+      throw error
+    }
+    return this.ctx.charter.sourceIntegrityById(sessionId, actor)
+  }
+
+  @remoteMethod({
+    resources: {
+      session: (request: { readonly sessionId: SessionId }): SessionId => request.sessionId,
+    },
+  })
+  runValidators(request: {
+    readonly sessionId: SessionId
+    readonly requests: readonly CharterValidatorRequest[]
+  }): Promise<CharterValidatorRunResult> {
+    let actor: CharterActor
+    try {
+      actor = resolveRemoteActor(this.ctx)
+    } catch (error) {
+      if (error instanceof CharterError) {
+        return Promise.resolve({ ok: false, code: error.code, message: error.message })
+      }
+      throw error
+    }
+    return this.ctx.charter.runValidators(request.sessionId, request.requests, actor)
   }
 
   @remoteMethod({
@@ -192,6 +234,7 @@ export class CharterRemoteService extends TypertRemoteService {
     readonly verification?: 'unchecked' | 'verified' | 'failed' | 'unavailable'
     readonly execution?: 'ready' | 'waiting' | 'dependency-conflict' | 'in-progress' | 'blocked' | 'terminal'
     readonly prerequisite?: 'satisfied' | 'waiting' | 'dependency-conflict'
+    readonly validity?: 'unassessed' | 'attested' | 'valid' | 'invalid' | 'unknown' | 'stale'
     readonly cursor?: string
     readonly limit?: number
   }): Promise<CharterItemQueryResult> {
@@ -206,6 +249,7 @@ export class CharterRemoteService extends TypertRemoteService {
       ...(request.verification === undefined ? {} : { verification: request.verification }),
       ...(request.execution === undefined ? {} : { execution: request.execution }),
       ...(request.prerequisite === undefined ? {} : { prerequisite: request.prerequisite }),
+      ...(request.validity === undefined ? {} : { validity: request.validity }),
       ...(request.cursor === undefined ? {} : { cursor: request.cursor }),
       ...(request.limit === undefined ? {} : { limit: request.limit }),
     }))

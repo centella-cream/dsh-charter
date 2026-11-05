@@ -27,6 +27,7 @@ import { changeSetPreviewDigest, planChangeSet, type PlannedChangeSet } from '..
 import { sha256Json, sha256Text } from '../core/digest.js'
 import { dependencyProjection } from '../core/dependencies.js'
 import { sourceIntegrity } from '../core/source-integrity.js'
+import { evaluateEvidenceIntegrity, evaluateValidators } from './validators.js'
 import {
   CHARTER_RECORD_SCHEMA_VERSION,
   charterRecordSchema,
@@ -1756,6 +1757,90 @@ export class CharterService extends Service {
     const ops = request.ops.filter(op => op.type !== 'item.propose'
       || !existingKeys.has(`${op.item.kind}:${op.item.text}`))
     return ops.length === request.ops.length ? request : { ...request, ops }
+  }
+
+  async sourceIntegrityById(
+    sessionId: SessionIdType,
+    actor: CharterActor = { kind: 'owner' },
+  ): Promise<import('./types.js').CharterSourceIntegrityResult> {
+    if (actor.kind !== 'owner' && actor.kind !== 'user') {
+      return { ok: false, code: 'FORBIDDEN', message: 'source integrity requires a human actor' }
+    }
+    const session = this.ctx.sessions.get(sessionId)
+    if (session === undefined) return { ok: false, code: 'NOT_FOUND', message: 'The Session is not live' }
+    this.ensureLazy(session)
+    const view = this.view(session)
+    if (view.status !== 'ready') return { ok: false, code: 'UNAVAILABLE', message: 'Charter is not readable' }
+    const items: { itemId: string; integrity: import('./validators.js').EvidenceIntegrity }[] = []
+    for (const item of view.items) {
+      if (item.evidence === undefined || item.evidence.length === 0) continue
+      let integrity: import('./validators.js').EvidenceIntegrity = 'not-applicable'
+      for (const evidence of item.evidence.slice(0, 8)) {
+        const next = await evaluateEvidenceIntegrity({ root: identityOf(session).cwd, evidence })
+        integrity = next !== 'intact' ? next : integrity === 'not-applicable' ? 'intact' : integrity
+      }
+      items.push({ itemId: item.id, integrity })
+    }
+    return { ok: true, revision: view.revision, items }
+  }
+
+  async runValidators(
+    sessionId: SessionIdType,
+    requests: readonly import('./types.js').CharterValidatorRequest[],
+    actor: CharterActor = { kind: 'owner' },
+  ): Promise<import('./types.js').CharterValidatorRunResult> {
+    if (actor.kind !== 'owner') {
+      return { ok: false, code: 'FORBIDDEN', message: 'validators require an owner actor' }
+    }
+    if (requests.length === 0 || requests.length > 32) {
+      return { ok: false, code: 'INVALID_ARGUMENT', message: 'validator run needs between 1 and 32 requests' }
+    }
+    const session = this.ctx.sessions.get(sessionId)
+    if (session === undefined) return { ok: false, code: 'NOT_FOUND', message: 'The Session is not live' }
+    this.ensureLazy(session)
+    const view = this.view(session)
+    if (view.status !== 'ready') {
+      return { ok: false, code: 'UNAVAILABLE', message: 'Charter is not editable in its current state' }
+    }
+    const itemById = new Map(view.items.map(item => [item.id, item]))
+    for (const request of requests) {
+      const item = itemById.get(request.itemId)
+      if (item === undefined || item.review !== 'accepted' || item.lifecycle !== 'current') {
+        return { ok: false, code: 'INVALID_TRANSITION', message: `item ${request.itemId} is not an active accepted item` }
+      }
+      if (request.validator.kind === 'workspace.file-digest'
+        && (request.validator.expectedDigest === undefined || !/^sha256:[a-f0-9]{64}$/u.test(request.validator.expectedDigest))) {
+        return { ok: false, code: 'INVALID_ARGUMENT', message: 'file-digest requires a sha256 digest' }
+      }
+      if (request.validator.kind === 'workspace.file-contains' && (request.validator.contains ?? '').length === 0) {
+        return { ok: false, code: 'INVALID_ARGUMENT', message: 'file-contains requires a non-empty search string' }
+      }
+    }
+    let evaluations: readonly import('./validators.js').ValidatorEvaluation[]
+    try {
+      evaluations = await evaluateValidators({
+        root: identityOf(session).cwd,
+        revision: view.revision,
+        requests,
+        itemText: itemId => itemById.get(itemId)?.text,
+      })
+    } catch (error) {
+      return { ok: false, code: 'INVALID_ARGUMENT', message: describeError(error) }
+    }
+    const mutationId = `validators-${sha256Json({ version: 1, sessionId: sessionId as string, baseRevision: view.revision, requests }).slice(7, 39)}`
+    const edit = await this.edit({
+      sessionId: session.id,
+      mutationId,
+      baseRevision: view.revision,
+      ops: evaluations.map(evaluation => ({
+        type: 'item.validity.set' as const,
+        itemId: evaluation.itemId,
+        validity: evaluation.validity,
+        ...(evaluation.evidence === undefined ? {} : { evidence: [evaluation.evidence] }),
+      })),
+    }, { kind: 'host' })
+    if (!edit.ok) return { ok: false, code: edit.code, message: edit.message ?? 'validator write failed' }
+    return { ok: true, revision: edit.committedRevision, results: evaluations.map(evaluation => evaluation.validity) }
   }
 
   async proposeFromLatestMessage(

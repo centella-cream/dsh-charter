@@ -320,6 +320,31 @@ export type CharterEditResult =
       readonly view?: CharterView
     }
 
+export type CharterSourceIntegrityResult =
+  | {
+      readonly ok: true
+      readonly revision: number
+      readonly items: readonly {
+        readonly itemId: string
+        readonly integrity: import('./validators.js').EvidenceIntegrity
+      }[]
+    }
+  | { readonly ok: false; readonly code: CharterErrorCode; readonly message: string }
+
+export interface CharterValidatorRequest {
+  readonly itemId: string
+  readonly validator: {
+    readonly kind: 'workspace.path-exists' | 'workspace.file-digest' | 'workspace.file-contains'
+    readonly path: string
+    readonly expectedDigest?: string
+    readonly contains?: string
+  }
+}
+
+export type CharterValidatorRunResult =
+  | { readonly ok: true; readonly revision: number; readonly results: readonly import('../core/schemas.js').CharterValidity[] }
+  | { readonly ok: false; readonly code: CharterErrorCode; readonly message: string }
+
 export type CharterChangeSetPreviewResult =
   | {
       readonly ok: true

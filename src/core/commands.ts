@@ -47,6 +47,7 @@ function itemFromInput(
     review: origin === 'user' ? 'accepted' as const : 'pending' as const,
     lifecycle: 'current' as const,
     verification: { state: 'unchecked' as const },
+    validity: { state: 'unassessed' as const },
     origin: input.origin ?? origin,
     order: input.order,
     createdRevision: revision,
@@ -268,6 +269,10 @@ export function applyOps(input: ApplyOpsInput): ApplyOpsOutput {
           text: nextText,
           order: nextOrder,
           verification: nextText === item.text ? item.verification : { state: 'unchecked' },
+          ...(nextText !== item.text && item.validity !== undefined
+            && item.validity.state !== 'unassessed' && item.validity.state !== 'stale'
+            ? { validity: { state: 'stale' as const, previous: item.validity.state, atRevision: input.nextRevision } }
+            : {}),
         })
         changes.push({ type: 'item.edited', itemId: item.id, fields })
         break
@@ -306,7 +311,13 @@ export function applyOps(input: ApplyOpsInput): ApplyOpsOutput {
         if (item.review !== 'pending' || item.lifecycle !== 'current') {
           throw charterError('INVALID_TRANSITION', `item ${item.id} is not a pending proposal`)
         }
-        items.set(item.id, { ...item, review: 'rejected', reviewedAtRevision: input.nextRevision, verification: { state: 'unchecked' } })
+        items.set(item.id, {
+          ...item,
+          review: 'rejected',
+          reviewedAtRevision: input.nextRevision,
+          verification: { state: 'unchecked' },
+          validity: { state: 'unassessed' },
+        })
         changes.push({ type: 'item.rejected', itemId: item.id })
         break
       }
@@ -409,8 +420,39 @@ export function applyOps(input: ApplyOpsInput): ApplyOpsOutput {
         if (JSON.stringify(item.verification) === JSON.stringify(verification)) {
           throw charterError('INVALID_TRANSITION', `item ${item.id} verification is unchanged`)
         }
-        items.set(item.id, { ...item, verification })
+        items.set(item.id, {
+          ...item,
+          verification,
+          validity: op.verification === 'verified'
+            ? { state: 'attested', atRevision: input.nextRevision }
+            : { state: 'unassessed' },
+        })
         changes.push({ type: 'item.verification.changed', itemId: item.id })
+        break
+      }
+      case 'item.validity.set': {
+        const item = requireItem(items, op.itemId)
+        if (item.review !== 'accepted' || item.lifecycle !== 'current') {
+          throw charterError('INVALID_TRANSITION', `item ${item.id} is not an active accepted item`)
+        }
+        items.set(item.id, {
+          ...item,
+          validity: op.validity,
+          ...(op.evidence === undefined ? {} : { evidence: [...op.evidence] }),
+        })
+        changes.push({ type: 'item.validity.changed', itemId: item.id, state: op.validity.state })
+        break
+      }
+      case 'item.attest': {
+        const item = requireItem(items, op.itemId)
+        if (item.review !== 'accepted' || item.lifecycle !== 'current') {
+          throw charterError('INVALID_TRANSITION', `item ${item.id} is not an active accepted item`)
+        }
+        if (item.validity?.state === 'attested') {
+          throw charterError('INVALID_TRANSITION', `item ${item.id} is already attested`)
+        }
+        items.set(item.id, { ...item, validity: { state: 'attested', atRevision: input.nextRevision } })
+        changes.push({ type: 'item.attested', itemId: item.id })
         break
       }
     }

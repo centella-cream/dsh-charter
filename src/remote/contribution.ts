@@ -6,6 +6,9 @@ import {
   charterBootstrapApplyRequestSchema,
   charterEditResultSchema,
   charterChangeSetPreviewResultSchema,
+  charterValidatorRunRequestSchema,
+  charterSourceIntegrityResultSchema,
+  charterValidatorRunResultSchema,
   charterFrameSchema,
   charterInitializeRequestWireSchema,
   charterRecordExportSchema,
@@ -126,6 +129,48 @@ export const charterRemoteContribution: TypertRemoteContribution = {
       mode: 'strict',
       typeSymbol: 'dsh-charter/CharterEditResult',
       create: () => charterEditResultSchema,
+    },
+  }, {
+    id: 'dsh-charter#charter/sourceIntegrity',
+    service: 'charterRemote',
+    namespace: 'charter',
+    method: 'sourceIntegrity',
+    invocation: { kind: 'direct' },
+    parameters: [{
+      name: 'sessionId',
+      wire: 'sessionId',
+      source: 'json',
+      codec: {
+        mode: 'strict',
+        typeSymbol: 'dsh-charter/SessionId',
+        create: () => sessionIdSchema,
+      },
+    }],
+    result: {
+      mode: 'strict',
+      typeSymbol: 'dsh-charter/CharterSourceIntegrityResult',
+      create: () => charterSourceIntegrityResultSchema,
+    },
+  }, {
+    id: 'dsh-charter#charter/runValidators',
+    service: 'charterRemote',
+    namespace: 'charter',
+    method: 'runValidators',
+    invocation: { kind: 'direct' },
+    parameters: [{
+      name: 'request',
+      wire: 'request',
+      source: 'json',
+      codec: {
+        mode: 'strict',
+        typeSymbol: 'dsh-charter/CharterValidatorRunRequest',
+        create: () => charterValidatorRunRequestSchema,
+      },
+    }],
+    result: {
+      mode: 'strict',
+      typeSymbol: 'dsh-charter/CharterValidatorRunResult',
+      create: () => charterValidatorRunResultSchema,
     },
   }, {
     id: 'dsh-charter#charter/proposeMessage',

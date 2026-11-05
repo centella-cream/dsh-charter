@@ -509,6 +509,11 @@ function ItemRow({
                 {item.verification.by === 'validator' ? t('tag.verifiedValidator') : t('tag.verifiedUser')}
               </StatusTag>
             )}
+            {item.validity !== undefined && item.validity.state !== 'unassessed' && (
+              <StatusTag tone={item.validity.state === 'valid' || item.validity.state === 'attested' ? 'success' : item.validity.state === 'invalid' ? 'danger' : 'warning'}>
+                {t(`validity.${item.validity.state}` as never)}
+              </StatusTag>
+            )}
             {item.verification.state === 'failed' && (
               <StatusTag tone="danger">
                 {t('tag.verificationFailedReason', { reason: item.verification.reason })}
@@ -593,6 +598,12 @@ function ItemRow({
                       {t('item.archive')}
                     </button>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => queueFromMenu({ type: 'item.attest', itemId: item.id })}
+                  >
+                    {t('item.attest')}
+                  </button>
                   <button
                     type="button"
                     onClick={() => queueFromMenu({
@@ -702,6 +713,13 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   } = draftState
   const [showHistoryItems, setShowHistoryItems] = useState(false)
   const [visibleCounts, setVisibleCounts] = useState({ invariants: 50, deliverables: 50 })
+  const [validatorItemId, setValidatorItemId] = useState('')
+  const [validatorKind, setValidatorKind] = useState<'workspace.path-exists' | 'workspace.file-digest' | 'workspace.file-contains'>('workspace.path-exists')
+  const [validatorPath, setValidatorPath] = useState('')
+  const [validatorExpectation, setValidatorExpectation] = useState('')
+  const [validatorFeedback, setValidatorFeedback] = useState<string | null>(null)
+  const [validatorRunning, setValidatorRunning] = useState(false)
+  const [integrityFeedback, setIntegrityFeedback] = useState<string | null>(null)
   const bootstrapId = useId()
   const applyHintId = useId()
   const [confirmAbandon, setConfirmAbandon] = useState(false)
@@ -2440,6 +2458,106 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
 
             {area === 'diagnostics' && (
               <>
+                {source.runValidators !== undefined && (
+                  <section className="charter-card charter-section" aria-labelledby="charter-validator-title">
+                    <div className="charter-cardhead">
+                      <div className="charter-cardtitle">
+                        <span className="charter-kicker">{t('diagnostics.kicker')}</span>
+                        <h3 id="charter-validator-title">{t('validators.title')}</h3>
+                      </div>
+                    </div>
+                    <p className="charter-hint">{t('validators.hint')}</p>
+                    <div className="charter-validator-form">
+                      <select
+                        aria-label={t('validators.itemAria')}
+                        value={validatorItemId}
+                        onChange={event => setValidatorItemId(event.target.value)}
+                      >
+                        <option value="">{t('validators.pickItem')}</option>
+                        {view.items.filter(item => item.review === 'accepted' && item.lifecycle === 'current').map(item => (
+                          <option key={item.id} value={item.id}>{item.text}</option>
+                        ))}
+                      </select>
+                      <select
+                        aria-label={t('validators.kindAria')}
+                        value={validatorKind}
+                        onChange={event => setValidatorKind(event.target.value as typeof validatorKind)}
+                      >
+                        <option value="workspace.path-exists">workspace.path-exists</option>
+                        <option value="workspace.file-digest">workspace.file-digest</option>
+                        <option value="workspace.file-contains">workspace.file-contains</option>
+                      </select>
+                      <input
+                        aria-label={t('validators.pathAria')}
+                        placeholder={t('validators.pathPlaceholder')}
+                        value={validatorPath}
+                        onChange={event => setValidatorPath(event.target.value)}
+                      />
+                      {validatorKind !== 'workspace.path-exists' && (
+                        <input
+                          aria-label={t('validators.expectationAria')}
+                          placeholder={validatorKind === 'workspace.file-digest' ? 'sha256:...' : t('validators.containsPlaceholder')}
+                          value={validatorExpectation}
+                          onChange={event => setValidatorExpectation(event.target.value)}
+                        />
+                      )}
+                      <ActionButton
+                        variant="outline"
+                        disabled={validatorRunning || validatorItemId === '' || validatorPath.trim() === ''}
+                        onClick={() => {
+                          void (async () => {
+                            setValidatorRunning(true)
+                            setValidatorFeedback(null)
+                            try {
+                              const result = await source.runValidators!([{
+                                itemId: validatorItemId,
+                                validator: {
+                                  kind: validatorKind,
+                                  path: validatorPath.trim(),
+                                  ...(validatorKind === 'workspace.file-digest' ? { expectedDigest: validatorExpectation.trim() } : {}),
+                                  ...(validatorKind === 'workspace.file-contains' ? { contains: validatorExpectation } : {}),
+                                },
+                              }])
+                              setValidatorFeedback(result.ok ? t('validators.done') : errorLabel(result.code, t))
+                            } catch {
+                              setValidatorFeedback(t('validators.failed'))
+                            } finally {
+                              setValidatorRunning(false)
+                            }
+                          })()
+                        }}
+                      >
+                        {t('validators.run')}
+                      </ActionButton>
+                    </div>
+                    {validatorFeedback !== null && <p className="charter-hint" role="status">{validatorFeedback}</p>}
+                    {source.sourceIntegrity !== undefined && (
+                      <div className="charter-recovery__actions">
+                        <ActionButton
+                          variant="outline"
+                          onClick={() => {
+                            void (async () => {
+                              try {
+                                const result = await source.sourceIntegrity!()
+                                if (result.ok) {
+                                  const changed = result.items.filter(item => item.integrity !== 'intact').length
+                                  setIntegrityFeedback(t('integrity.summary', { count: result.items.length, changed }))
+                                } else {
+                                  setIntegrityFeedback(errorLabel(result.code, t))
+                                }
+                              } catch {
+                                setIntegrityFeedback(t('validators.failed'))
+                              }
+                            })()
+                          }}
+                        >
+                          {t('integrity.check')}
+                        </ActionButton>
+                      </div>
+                    )}
+                    {integrityFeedback !== null && <p className="charter-hint" role="status">{integrityFeedback}</p>}
+                  </section>
+                )}
                 <section className="charter-card charter-recovery" aria-labelledby="charter-recovery-title">
                   <div className="charter-cardhead">
                     <div className="charter-cardtitle">

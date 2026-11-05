@@ -41,6 +41,11 @@ export interface CharterSource {
   readonly bootstrap: () => Promise<CharterBootstrapResult>
   /** Save the latest real user message as a pending proposal. */
   readonly proposeMessage?: () => Promise<CharterEditResult>
+  /** Owner-only registered validator run. */
+  readonly sourceIntegrity?: () => Promise<import('../host/types.js').CharterSourceIntegrityResult>
+  readonly runValidators?: (
+    requests: readonly import('../host/types.js').CharterValidatorRequest[],
+  ) => Promise<import('../host/types.js').CharterValidatorRunResult>
   /** Apply a committed view returned by edit immediately, without waiting for the stream. */
   readonly accept: (view: CharterView) => void
   readonly retry: () => void
@@ -148,6 +153,28 @@ export class CharterSessionSource implements CharterSource {
       return { ok: false, code: 'UNAVAILABLE', message: 'Change Set preview is unavailable.' }
     }
     const result = await remote.previewChangeSet(request)
+    if (!result.ok) throw result.error
+    return result.value
+  }
+
+  readonly sourceIntegrity = async (): Promise<import('../host/types.js').CharterSourceIntegrityResult> => {
+    const remote = this.remote
+    if (remote === undefined) {
+      return { ok: false, code: 'UNAVAILABLE', message: 'Charter connection is unavailable.' }
+    }
+    const result = await remote.sourceIntegrity(this.sessionId)
+    if (!result.ok) throw result.error
+    return result.value
+  }
+
+  readonly runValidators = async (
+    requests: readonly import('../host/types.js').CharterValidatorRequest[],
+  ): Promise<import('../host/types.js').CharterValidatorRunResult> => {
+    const remote = this.remote
+    if (remote === undefined) {
+      return { ok: false, code: 'UNAVAILABLE', message: 'Charter connection is unavailable.' }
+    }
+    const result = await remote.runValidators({ sessionId: this.sessionId, requests })
     if (!result.ok) throw result.error
     return result.value
   }

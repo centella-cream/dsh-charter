@@ -34,6 +34,9 @@ import type {
   CharterChangeQueryRequest,
   CharterChangeQueryResult,
   CharterChangeSetPreviewResult,
+  CharterValidatorRequest,
+  CharterValidatorRunResult,
+  CharterSourceIntegrityResult,
 } from '../host/types.js'
 
 const charterErrorCodeSchema = z.enum([
@@ -230,6 +233,7 @@ export const charterItemQueryRequestSchema = z.object({
   verification: z.enum(['unchecked', 'verified', 'failed', 'unavailable']).optional(),
   execution: z.enum(['ready', 'waiting', 'dependency-conflict', 'in-progress', 'blocked', 'terminal']).optional(),
   prerequisite: z.enum(['satisfied', 'waiting', 'dependency-conflict']).optional(),
+  validity: z.enum(['unassessed', 'attested', 'valid', 'invalid', 'unknown', 'stale']).optional(),
   cursor: z.string().optional(),
   limit: z.number().int().positive().max(100).optional(),
 }).strict()
@@ -286,6 +290,40 @@ export const charterProposalQueryResultSchema = z.discriminatedUnion('ok', [
     code: z.enum(['NOT_FOUND', 'UNAVAILABLE']),
     message: z.string(),
   }).strict(),
+])
+
+export const charterSourceIntegrityResultSchema = z.discriminatedUnion('ok', [
+  z.object({
+    ok: z.literal(true),
+    revision: z.number().int().nonnegative(),
+    items: z.array(z.object({
+      itemId: z.string(),
+      integrity: z.enum(['intact', 'changed', 'unavailable', 'not-applicable']),
+    }).strict()),
+  }).strict(),
+  z.object({ ok: z.literal(false), code: charterErrorCodeSchema, message: z.string() }).strict(),
+])
+
+export const charterValidatorRunRequestSchema = z.object({
+  sessionId: z.string().min(1),
+  requests: z.array(z.object({
+    itemId: z.string().min(1),
+    validator: z.object({
+      kind: z.enum(['workspace.path-exists', 'workspace.file-digest', 'workspace.file-contains']),
+      path: z.string().min(1),
+      expectedDigest: z.string().optional(),
+      contains: z.string().optional(),
+    }).strict(),
+  }).strict()).min(1).max(32),
+}).strict()
+
+export const charterValidatorRunResultSchema = z.discriminatedUnion('ok', [
+  z.object({
+    ok: z.literal(true),
+    revision: z.number().int().nonnegative(),
+    results: z.array(z.unknown()),
+  }).strict(),
+  z.object({ ok: z.literal(false), code: charterErrorCodeSchema, message: z.string() }).strict(),
 ])
 
 export const charterChangeSetPreviewResultSchema = z.discriminatedUnion('ok', [
@@ -422,6 +460,10 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     'charter/queryChanges': (
       request: CharterChangeQueryRequest & { readonly sessionId: SessionId },
     ) => Promise<RemoteResult<CharterChangeQueryResult>>
+    'charter/sourceIntegrity': (sessionId: SessionId) => Promise<RemoteResult<CharterSourceIntegrityResult>>
+    'charter/runValidators': (
+      request: { readonly sessionId: SessionId; readonly requests: readonly CharterValidatorRequest[] },
+    ) => Promise<RemoteResult<CharterValidatorRunResult>>
     'charter/proposeMessage': (
       sessionId: SessionId,
     ) => Promise<RemoteResult<CharterEditResult>>
@@ -468,6 +510,10 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
       queryChanges: (
         request: CharterChangeQueryRequest & { readonly sessionId: SessionId },
       ) => Promise<RemoteResult<CharterChangeQueryResult>>
+      sourceIntegrity: (sessionId: SessionId) => Promise<RemoteResult<CharterSourceIntegrityResult>>
+      runValidators: (
+        request: { readonly sessionId: SessionId; readonly requests: readonly CharterValidatorRequest[] },
+      ) => Promise<RemoteResult<CharterValidatorRunResult>>
       proposeMessage: (
         sessionId: SessionId,
       ) => Promise<RemoteResult<CharterEditResult>>

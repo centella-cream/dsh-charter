@@ -11,6 +11,8 @@ import type { CharterView } from '../host/types.js'
 /** One item as it would look after the staged operations are applied. */
 export interface ProjectedItem extends PromptItem {
   readonly verification: CharterItem['verification']
+  readonly validity?: CharterItem['validity']
+  readonly evidence?: CharterItem['evidence']
   readonly supersedes?: string
   readonly supersededBy?: string
   /** Some staged operation targets this row (including a staged new item). */
@@ -118,6 +120,8 @@ function fromItem(item: CharterItem): ProjectedItem {
     review: item.review,
     lifecycle: item.lifecycle,
     verification: item.verification,
+    ...(item.validity === undefined ? {} : { validity: item.validity }),
+    ...(item.evidence === undefined ? {} : { evidence: item.evidence }),
     order: item.order,
     origin: item.origin,
     createdRevision: item.createdRevision,
@@ -146,6 +150,7 @@ function draftItem(
     review,
     lifecycle: 'current',
     verification: { state: 'unchecked' },
+    validity: { state: 'unassessed' },
     order,
     ...(kind === 'deliverable' ? { progress: progress ?? 'not-started', ...(requires === undefined ? {} : { requires }) } : {}),
     staged: true,
@@ -292,6 +297,10 @@ export function projectView(view: CharterView, ops: readonly CharterOp[]): Proje
             text,
             order: op.order ?? item.order,
             verification: text === item.text ? item.verification : { state: 'unchecked' },
+            ...(text !== item.text && item.validity !== undefined
+              && item.validity.state !== 'unassessed' && item.validity.state !== 'stale'
+              ? { validity: { state: 'stale' as const, previous: item.validity.state, atRevision: (item.createdRevision ?? 1) + 1 } }
+              : {}),
             staged: true,
           })
         }
