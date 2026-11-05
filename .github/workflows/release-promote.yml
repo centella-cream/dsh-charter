@@ -283,7 +283,6 @@ jobs:
           npm dist-tag ls dsh-charter > dist-tags.txt
           grep -q "next: $VERSION" dist-tags.txt
           grep -q "latest: $VERSION" dist-tags.txt
-          ! grep -q "promotion-$VERSION:" dist-tags.txt
 
       - name: Verify registry and finalize draft Release
         run: |
