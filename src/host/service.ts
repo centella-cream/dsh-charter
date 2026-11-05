@@ -1344,10 +1344,11 @@ export class CharterService extends Service {
         return { ok: false, code: 'INVALID_CURSOR', message: 'invalid proposal query cursor' }
       }
     }
+    const session = this.ctx.sessions.get(sessionId)
     const mapped = filtered.slice(start, start + limit).map(batch => ({
       id: batch.id,
       source: batch.source,
-      sourceIntegrity: sourceIntegrity(batch.source),
+      sourceIntegrity: sourceIntegrity(batch.source, this.proposalSourceContext(session, view, batch)),
       capturedAtRevision: batch.capturedAtRevision,
       candidates: batch.candidates.map(candidate => {
         if (candidate.kind === 'tombstone') {
@@ -1841,6 +1842,38 @@ export class CharterService extends Service {
     return ops.length === request.ops.length ? request : { ...request, ops }
   }
 
+  private proposalSourceContext(
+    session: Session | undefined,
+    view: CharterView,
+    batch: NonNullable<CharterView['proposalBatches']>[number],
+  ): SourceProjectionContext {
+    const events = session === undefined ? undefined : readSessionEvents(session).map(event => ({
+      seq: event.seq,
+      type: event.type,
+      data: event.data,
+    }))
+    const candidates = batch.candidates.flatMap(candidate => {
+      if (candidate.kind === 'tombstone') return []
+      const item = view.items.find(entry => entry.id === candidate.id)
+      const proposal = (view.objectiveProposals ?? []).find(entry => entry.id === candidate.id)
+      const text = item?.text ?? proposal?.text
+      if (text === undefined) return []
+      return [{
+        kind: candidate.kind === 'item' ? 'item' as const : 'objective' as const,
+        text,
+      }]
+    })
+    const extraction = session === undefined ? undefined : this.bootstrap(session.id)
+    return {
+      ...(events === undefined ? {} : { events }),
+      candidates,
+      ...(batch.source.kind === 'compaction-summary' && extraction?.available
+        && extraction.proposal.source.summarySeq === batch.source.summarySeq
+        ? { compaction: extraction.proposal }
+        : {}),
+    }
+  }
+
   async sourceIntegrityById(
     sessionId: SessionIdType,
     actor: CharterActor = { kind: 'owner' },
@@ -1868,35 +1901,10 @@ export class CharterService extends Service {
       }
       items.push({ itemId: item.id, integrity })
     }
-    const events = readSessionEvents(session).map(event => ({
-      seq: event.seq,
-      type: event.type,
-      data: event.data,
+    const batches = (view.proposalBatches ?? []).map(batch => ({
+      batchId: batch.id,
+      integrity: sourceIntegrity(batch.source, this.proposalSourceContext(session, view, batch)),
     }))
-    const extraction = this.bootstrap(session.id)
-    const batches = (view.proposalBatches ?? []).map(batch => {
-      const candidates = batch.candidates.flatMap(candidate => {
-        if (candidate.kind === 'tombstone') return []
-        const item = view.items.find(entry => entry.id === candidate.id)
-        const proposal = (view.objectiveProposals ?? []).find(entry => entry.id === candidate.id)
-        const text = item?.text ?? proposal?.text
-        if (text === undefined) return []
-        return [{
-          kind: candidate.kind === 'item' ? 'item' as const : 'objective' as const,
-          text,
-          ...(item?.proposedRequires === undefined ? {} : { proposedRequires: item.proposedRequires }),
-        }]
-      })
-      const context: SourceProjectionContext = {
-        events,
-        candidates,
-        ...(batch.source.kind === 'compaction-summary' && extraction.available
-          && extraction.proposal.source.summarySeq === batch.source.summarySeq
-          ? { compaction: extraction.proposal }
-          : {}),
-      }
-      return { batchId: batch.id, integrity: sourceIntegrity(batch.source, context) }
-    })
     return { ok: true, revision: view.revision, items, batches }
   }
 
@@ -1996,18 +2004,18 @@ export class CharterService extends Service {
     actor: CharterActor = { kind: 'owner' },
   ): Promise<CharterEditResult> {
     const events = readSessionEvents(session)
-    let selected: { seq: number; text: string } | undefined
+    let selected: { seq: number; text: string; leading: number } | undefined
     for (const event of events) {
       if (event.type !== 'user/message') continue
       if (options.seq !== undefined && event.seq !== options.seq) continue
       const data = event.data as { source?: { kind?: string }; content?: readonly { type?: string; text?: string }[] }
       if (data.source?.kind !== 'user') continue
-      const text = (data.content ?? [])
+      const raw = (data.content ?? [])
         .filter(block => block.type === 'text' && typeof block.text === 'string')
         .map(block => block.text)
         .join('\n')
-        .trim()
-      if (text.length > 0) selected = { seq: event.seq, text }
+      const text = raw.trim()
+      if (text.length > 0) selected = { seq: event.seq, text, leading: raw.indexOf(text) }
     }
     if (selected === undefined) {
       return unavailableResult('NOT_FOUND', 'No matching user message is available to save as a proposal')
@@ -2024,7 +2032,9 @@ export class CharterService extends Service {
     if (view.status !== 'ready') {
       return unavailableResult('UNAVAILABLE', 'Charter is not editable in its current state')
     }
-    const selection = start === 0 && end === selected.text.length ? undefined : { start, end }
+    const selection = start === 0 && end === selected.text.length
+      ? undefined
+      : { start: selected.leading + start, end: selected.leading + end }
     const source = {
       kind: 'message' as const,
       sessionId: session.id as string,
@@ -2134,7 +2144,6 @@ export class CharterService extends Service {
       digest: agentProjectionDigest(callId, items.map(item => ({
         kind: 'item' as const,
         text: item.text,
-        proposedRequires: item.requires ?? [],
       }))),
     })
     return result.ok

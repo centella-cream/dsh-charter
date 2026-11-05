@@ -35,6 +35,7 @@ function copyItem(item: CharterItem): CharterItem {
   return item.kind === 'invariant' ? { ...item } : { ...item, progress: item.progress }
 }
 
+/** Core callers may pass an explicit origin; Host edits overwrite it from provenance. */
 function itemFromInput(
   input: NewItemInput,
   id: string,

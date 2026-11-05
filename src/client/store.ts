@@ -402,24 +402,35 @@ export class CharterSessionSource implements CharterSource {
       items.push(...value.items)
       itemCursor = value.nextCursor
     } while (itemCursor !== undefined)
-    const objectiveBysId = new Map<string, import('../core/schemas.js').ObjectiveProposal>()
-    const batches: NonNullable<CharterView['proposalBatches']> = []
+    const batchById = new Map<string, NonNullable<CharterView['proposalBatches']>[number]>()
     let proposalCursor: string | undefined
-    let objectiveCursor: string | undefined
     do {
       const page = await remote.queryProposals(this.sessionId, {
         limit: 64,
         ...(proposalCursor === undefined ? {} : { cursor: proposalCursor }),
+      })
+      if (!page.ok) throw page.error
+      const value = page.value
+      if (!value.ok) throw new Error(value.message)
+      for (const batch of value.batches as unknown as NonNullable<CharterView['proposalBatches']>) {
+        batchById.set(batch.id, batch)
+      }
+      proposalCursor = value.nextCursor
+    } while (proposalCursor !== undefined)
+    const objectiveBysId = new Map<string, import('../core/schemas.js').ObjectiveProposal>()
+    let objectiveCursor: string | undefined
+    do {
+      const page = await remote.queryProposals(this.sessionId, {
+        limit: 64,
         ...(objectiveCursor === undefined ? {} : { objectiveCursor }),
       })
       if (!page.ok) throw page.error
       const value = page.value
       if (!value.ok) throw new Error(value.message)
-      batches.push(...(value.batches as unknown as NonNullable<CharterView['proposalBatches']>))
       for (const proposal of value.objectiveProposals) objectiveBysId.set(proposal.id, proposal)
-      proposalCursor = value.nextCursor
       objectiveCursor = value.nextObjectiveCursor
-    } while (proposalCursor !== undefined || objectiveCursor !== undefined)
+    } while (objectiveCursor !== undefined)
+    const batches = [...batchById.values()]
     const objectiveProposals = [...objectiveBysId.values()]
     if (generation !== this.attachGeneration || refresh !== this.viewRefresh) return
     const view: CharterView = {

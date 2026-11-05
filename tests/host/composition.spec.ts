@@ -514,6 +514,50 @@ describe('dsh-charter host composition', () => {
     })
   })
 
+  it('keeps agent source integrity after proposed prerequisites are accepted', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-agent-source-'))
+    roots.push(root)
+    const ctx = await mount(root)
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('agent-source'), {
+      meta: { cwd: root, createdAt: 1_700_000_001_065 },
+    })
+    await waitForReady(service, session)
+    const seed = await service.edit({
+      sessionId: session.id,
+      mutationId: 'agent-source-seed',
+      baseRevision: 0,
+      ops: [{ type: 'item.add', item: { clientRef: 'agent-source-seed', kind: 'deliverable', text: 'Base constraint', order: 0, progress: 'done' } }],
+    })
+    if (!seed.ok) throw new Error('seed failed')
+    const proposed = await service.proposeFromAgent(session, [{
+      kind: 'deliverable',
+      text: 'Agent dependent',
+      requires: [seed.ids['agent-source-seed']!],
+    }], 'tool-agent-source')
+    expect(proposed).toMatchObject({ ok: true })
+    const pending = service.view(session).items.find(item => item.text === 'Agent dependent')
+    expect(pending?.proposedRequires).toHaveLength(1)
+    expect(await service.sourceIntegrityById(session.id)).toMatchObject({
+      ok: true,
+      batches: expect.arrayContaining([expect.objectContaining({ integrity: 'intact' })]),
+    })
+    expect(service.queryProposalsById(session.id)).toMatchObject({
+      ok: true,
+      batches: expect.arrayContaining([expect.objectContaining({ sourceIntegrity: 'intact' })]),
+    })
+    await service.edit({
+      sessionId: session.id,
+      mutationId: 'agent-source-accept',
+      baseRevision: service.view(session).revision,
+      ops: [{ type: 'item.accept', itemId: pending!.id }],
+    })
+    expect(await service.sourceIntegrityById(session.id)).toMatchObject({
+      ok: true,
+      batches: expect.arrayContaining([expect.objectContaining({ integrity: 'intact' })]),
+    })
+  })
+
   it('resolves batch-candidate proposed prerequisites independent of accept order', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-charter-batch-prereq-'))
     roots.push(root)
@@ -1063,10 +1107,16 @@ describe('dsh-charter host composition', () => {
       content: [{ type: 'text', text: 'Second message body' }],
       source: { kind: 'user' },
     }, { surfaceOp: 'append' })
+    append.append('user/message', {
+      id: 'message-range-3',
+      role: 'user',
+      content: [{ type: 'text', text: '  padded message  ' }],
+      source: { kind: 'user' },
+    }, { surfaceOp: 'append' })
     const candidates = service.messageCandidates(session.id)
     expect(candidates.ok).toBe(true)
     if (!candidates.ok) return
-    const second = candidates.messages.at(-1)!
+    const second = candidates.messages.at(-2)!
     const proposed = await service.proposeFromMessage(session, {
       seq: second.seq,
       kind: 'deliverable',
@@ -1084,6 +1134,21 @@ describe('dsh-charter host composition', () => {
     expect(await service.sourceIntegrityById(session.id)).toMatchObject({
       ok: true,
       batches: [expect.objectContaining({ integrity: 'intact' })],
+    })
+    expect(service.queryProposalsById(session.id)).toMatchObject({
+      ok: true,
+      batches: expect.arrayContaining([expect.objectContaining({ sourceIntegrity: 'intact' })]),
+    })
+    const padded = candidates.messages.at(-1)!
+    const paddedProposal = await service.proposeFromMessage(session, {
+      seq: padded.seq,
+      kind: 'invariant',
+    })
+    expect(paddedProposal).toMatchObject({ ok: true })
+    expect(service.view(session).items.find(item => item.text === 'padded message')).toBeDefined()
+    expect(await service.sourceIntegrityById(session.id)).toMatchObject({
+      ok: true,
+      batches: expect.arrayContaining([expect.objectContaining({ integrity: 'intact' })]),
     })
   })
 
@@ -1718,6 +1783,18 @@ describe('charter bootstrap', () => {
     expect(repeated).toMatchObject({ ok: true, replayed: true })
     expect(service.view(session).items.filter(item => item.text === 'Active task.')).toHaveLength(1)
     expect(service.view(session).items[0]).toMatchObject({ review: 'accepted' })
+    const forged = await service.applyBootstrap({
+      sessionId: session.id,
+      mutationId: 'bootstrap-active-forged',
+      baseRevision: service.view(session).revision,
+      draftHandle: draft.proposal.draftHandle!,
+      ops: [{
+        type: 'item.add',
+        item: { clientRef: 'not-from-extraction', kind: 'invariant', text: 'Forged', order: 2 },
+      }],
+    })
+    expect(forged).toMatchObject({ ok: false, code: 'INVALID_ARGUMENT' })
+    expect(service.view(session).items.map(item => item.text)).not.toContain('Forged')
   })
 
   it('returns a review-only draft from the latest compaction summary', async () => {

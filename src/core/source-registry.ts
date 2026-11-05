@@ -19,7 +19,6 @@ export interface SourceProjectionEvent {
 export interface SourceProjectionCandidate {
   readonly kind: 'item' | 'objective'
   readonly text: string
-  readonly proposedRequires?: readonly string[]
 }
 
 export interface SourceProjectionCompaction {
@@ -37,7 +36,7 @@ export interface SourceProjectionContext {
 export interface SourceRegistryEntry {
   readonly kind: SourceKind
   readonly fields: readonly string[]
-  readonly requirements: 'complete' | 'not-applicable' | 'legacy'
+  readonly requirements: 'complete' | 'not-applicable' | 'legacy' | 'unsupported'
   readonly projectionVersion: number
 }
 
@@ -64,7 +63,7 @@ export const PROPOSAL_SOURCE_REGISTRY: Readonly<Record<SourceKind, SourceRegistr
   fork: {
     kind: 'fork',
     fields: ['parentBatchId', 'parentSessionId', 'parentRevision', 'sourceRefs', 'at', 'digest'],
-    requirements: 'complete',
+    requirements: 'unsupported',
     projectionVersion: 1,
   },
   'legacy-unknown': { kind: 'legacy-unknown', fields: [], requirements: 'legacy', projectionVersion: 0 },
@@ -112,7 +111,6 @@ export function agentProjectionDigest(
     candidates: candidates.map(candidate => ({
       kind: candidate.kind,
       text: candidate.text,
-      requires: [...(candidate.proposedRequires ?? [])].sort(),
     })),
   })
 }
@@ -158,7 +156,7 @@ export function verifySourceProjection(
 ): SourceIntegrity {
   const entry = sourceRegistryEntry(source)
   if (entry.requirements === 'not-applicable') return 'not-applicable'
-  if (entry.requirements === 'legacy') return 'unsupported'
+  if (entry.requirements === 'legacy' || entry.requirements === 'unsupported') return 'unsupported'
   const version = 'projectionVersion' in source
     ? source.projectionVersion
     : source.kind === 'agent-tool' || source.kind === 'fork' ? 1 : undefined
@@ -173,7 +171,7 @@ export function verifySourceProjection(
         const event = context.events!.find(candidate => candidate.seq === seq && candidate.type === 'user/message')
         if (event === undefined) return undefined
         const full = textOfMessage(event)
-        if (selection === undefined) return full
+        if (selection === undefined) return full.trim()
         if (!Number.isSafeInteger(selection.start) || !Number.isSafeInteger(selection.end)) return undefined
         return full.slice(selection.start as number, selection.end as number).trim()
       })

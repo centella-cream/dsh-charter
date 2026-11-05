@@ -720,6 +720,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   const [validatorRunning, setValidatorRunning] = useState(false)
   const [reviewLimit, setReviewLimit] = useState(50)
   const [integrityFeedback, setIntegrityFeedback] = useState<string | null>(null)
+  const [batchIntegrity, setBatchIntegrity] = useState<Record<string, string>>({})
   const [messageCandidates, setMessageCandidates] = useState<readonly import('../host/types.js').CharterMessageCandidate[]>([])
   const [messageSeq, setMessageSeq] = useState<number | undefined>(undefined)
   const [messageKind, setMessageKind] = useState<'invariant' | 'deliverable'>('invariant')
@@ -1009,6 +1010,12 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
         setMessageSeq(current => current ?? result.messages.at(-1)?.seq)
       }
     }).catch(() => undefined)
+    if (source.sourceIntegrity !== undefined) {
+      void source.sourceIntegrity().then(result => {
+        if (!result.ok) return
+        setBatchIntegrity(Object.fromEntries(result.batches.map(batch => [batch.batchId, batch.integrity])))
+      }).catch(() => undefined)
+    }
   }, [section, source])
 
   if (state.status === 'connecting' && view === null) {
@@ -2189,7 +2196,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                   <span className="charter-count">{pendingObjectiveProposals.length}</span>
                 </div>
                 <ul className="charter-proposal-list">
-                  {pendingObjectiveProposals.map(proposal => {
+                  {pendingObjectiveProposals.slice(0, reviewLimit).map(proposal => {
                     const reason = proposalReasons[proposal.id] ?? ''
                     const needsReason = view.objective !== null
                     return (
@@ -2256,6 +2263,11 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                         <span className="charter-batch__source">{t(`review.source.${batch.source.kind}`)}</span>
                         <span className="charter-batch__revision">{t('review.captured', { revision: batch.capturedAtRevision })}</span>
                         <span className="charter-batch__count">{t('review.pendingCandidates', { count: pending })}</span>
+                        {batchIntegrity[batch.id] !== undefined && (
+                          <span className="charter-batch__count">
+                            {t('review.sourceIntegrity', { integrity: batchIntegrity[batch.id]! })}
+                          </span>
+                        )}
                       </li>
                     )
                   })}

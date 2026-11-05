@@ -175,6 +175,7 @@ export async function evaluateValidators(input: {
     try {
       target = await withTimeout(async () => resolveWorkspaceTarget(input.root!, request.validator.path))
     } catch (error) {
+      // Path policy failures fail closed as unknown; they are not fact-invalid conclusions.
       const reason = error instanceof Error ? error.message : 'workspace path is unreadable'
       out.push(failure(request.itemId, validator, 'unknown', inputDigest, nextRevision, reason, request.validator.path))
       continue

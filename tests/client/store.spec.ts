@@ -152,6 +152,86 @@ describe('client charter summary source', () => {
   })
 })
 
+describe('client charter summary source paging', () => {
+  it('does not repeat the first batch page when objective pages remain', async () => {
+    const summary = {
+      sessionId: 'summary-paging',
+      revision: 2,
+      objective: null,
+      limits: view(0).limits,
+      promptText: '',
+      promptDigest: 'sha256:empty',
+      hasObjective: false,
+      activeItems: 0,
+      pendingItems: 0,
+      historyItems: 0,
+      pendingBatches: 0,
+      promptBytes: 0,
+      overBudget: false,
+      status: 'ready' as const,
+      recordHealth: 'healthy' as const,
+      capabilities: { recordMaintenance: false },
+    }
+    const batch = (id: string) => ({
+      id,
+      source: { kind: 'manual' as const, actor: 'user' as const, at: 1 },
+      capturedAtRevision: 1,
+      candidates: [],
+    })
+    const proposal = (id: string) => ({
+      id,
+      text: id,
+      origin: 'user' as const,
+      review: 'pending' as const,
+      createdRevision: 1,
+    })
+    const remote = {
+      watchSummary: () => undefined,
+      queryItems: async () => ({ ok: true, value: { ok: true, revision: 2, items: [], filterDigest: 'sha256:items' } }),
+      queryProposals: async (_sessionId: string, options: { cursor?: string; objectiveCursor?: string } = {}) => {
+        if (options.objectiveCursor === 'objective-next') {
+          return { ok: true, value: { ok: true, revision: 2, batches: [], objectiveProposals: [proposal('objective-2')], filterDigest: 'sha256:proposals' } }
+        }
+        if (options.cursor === 'batch-next') {
+          return { ok: true, value: { ok: true, revision: 2, batches: [batch('batch-2')], objectiveProposals: [], filterDigest: 'sha256:proposals' } }
+        }
+        return { ok: true, value: {
+          ok: true,
+          revision: 2,
+          batches: [batch('batch-1')],
+          objectiveProposals: [proposal('objective-1')],
+          filterDigest: 'sha256:proposals',
+          nextCursor: 'batch-next',
+          nextObjectiveCursor: 'objective-next',
+        } }
+      },
+    }
+    const stream = {
+      dispose: async () => undefined,
+      restart: () => undefined,
+      [Symbol.asyncIterator]: async function* () {
+        yield {
+          generation: 1,
+          value: { type: 'snapshot' as const, value: summary },
+          signal: new AbortController().signal,
+          accept: () => undefined,
+        }
+      },
+    }
+    const source = new CharterSessionSource(
+      { remote: { $stream: () => stream } } as never,
+      SessionId('summary-paging'),
+    )
+    source.attach(remote as never)
+    await tick()
+    await tick()
+    const attached = source.getSnapshot().view
+    expect(attached?.proposalBatches?.map(entry => entry.id)).toEqual(['batch-1', 'batch-2'])
+    expect(attached?.objectiveProposals?.map(entry => entry.id)).toEqual(['objective-1', 'objective-2'])
+    await source.dispose()
+  })
+})
+
 describe('client charter source', () => {
   it('exposes a monotonic connection epoch across attach, retry, and detach', async () => {
     const source = new CharterSessionSource(streamContext(), SessionId('session-connection'))
