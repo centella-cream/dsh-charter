@@ -56,7 +56,7 @@ jobs:
           ]
           if (evidence.schemaVersion !== 1) throw new Error('schemaVersion')
           if (evidence.candidateSha256 !== process.env.SHA) throw new Error('candidateSha256 mismatch')
-          if (evidence.dshVersion !== '0.2.1-rc.4') throw new Error('dshVersion must be 0.2.1-rc.4')
+          if (evidence.dshVersion !== '0.2.2-rc.1') throw new Error('dshVersion must be 0.2.2-rc.1')
           if (typeof evidence.recordedAt !== 'string' || Number.isNaN(Date.parse(evidence.recordedAt))) throw new Error('recordedAt')
           if (typeof evidence.operator !== 'string' || evidence.operator.length < 2) throw new Error('operator')
           if (typeof evidence.candidateRunId !== 'string' || !/^[1-9][0-9]*$/u.test(evidence.candidateRunId)) throw new Error('candidateRunId')

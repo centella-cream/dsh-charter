@@ -10,7 +10,7 @@ on:
       version:
         description: Exact package version to verify
         required: true
-        default: 0.1.0-rc.6
+        default: 0.2.0
 
 permissions:
   contents: read
@@ -178,7 +178,7 @@ jobs:
           node scripts/verify/profile-smoke.mjs \
             --artifact "candidate/$(basename candidate/*.tgz)" \
             --sha256 candidate/SHA256SUMS \
-            --dsh-version 0.2.1-rc.4 \
+            --dsh-version 0.2.2-rc.1 \
             --port 19601 2>&1 | tee -a profile-smoke.log
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: ${{ always() }}

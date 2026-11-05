@@ -15,8 +15,8 @@
 
 ## 状态
 
-- **已发布版本：**`0.1.0-rc.6` 仍是 npm 最新发布；它不属于 0.2 工作区线。
-- **当前开发：**`0.2.0`，位于 `feat/0.2.0-workspace`；当前通过本地 tarball 预览，尚未发布。
+- **已发布版本：**`0.1.0-rc.6` 是当前 npm 公开发布版本。
+- **发布候选：**`0.2.0` 已在 `feat/0.2.0-workspace` 准备，发布通过受保护 workflow 完成。
 - **主要 DSH 基线：**`0.2.2-rc.1`；九个声明版本通过源码矩阵验证。
 - 从 `0.2.0` 起版本号使用普通递增（`0.2.0`、`0.2.1`…），不再使用 `rc` 后缀。
 
@@ -74,11 +74,17 @@ deliverable 的**前置约束**，而这些关系会进入存储契约、校验�
 
 ## 安装
 
-已发布稳定线是 `0.1.0-rc.6`。当前 0.2.0 工作区线是开发预览，通过构建 tarball 安装：
+当前公开版本是 `0.1.0-rc.6`；0.2.0 发布候选在正式发布前通过候选 tarball 安装：
 
 ```bash
 npm pack
 dsh plugin --profile web add ./dsh-charter-0.2.0.tgz
+```
+
+正式发布后，使用精确版本安装：
+
+```bash
+dsh plugin --profile web add dsh-charter@0.2.0
 ```
 
 Desktop 请使用 **Desktop → Plugins → Install/Update**；若 Desktop 构建支持本地插件导入，也可导入同一 tarball。

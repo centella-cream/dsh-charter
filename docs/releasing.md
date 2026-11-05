@@ -10,14 +10,13 @@ This is the current release checklist. It replaces the older per-rc staging note
 Releases, and npm versions are immutable: never move a tag, delete a published release, or rebuild bytes after
 tagging.
 
-## Current state (2026-10-30)
+## Current state (2026-11-05)
 
-- **Published:** `0.1.0-rc.6` — npm `latest`/`next`; exact artifact SHA-256
-  `21ddbea0ae3fd88994d4e4731429ef4d8cb75db2b97e83cd7530a0386e425825`. GitHub Release uses recovery tag
-  `v0.1.0-rc.6-republished` because the canonical tag name is locked after the immutable-release deletion.
-- **`0.1.0-rc.5`:** previous accepted npm release; its canonical GitHub tag/release is pending restoration.
-- **Pending:** canonical rc.5 GitHub tag/release restoration and protected browser evidence/post-release checks.
-- Do not reuse a deleted immutable-release tag name; create a new recovery tag if needed.
+- **Published:** `0.1.0-rc.6` — latest public npm release; exact artifact SHA-256
+  `21ddbea0ae3fd88994d4e4731429ef4d8cb75db2b97e83cd7530a0386e425825`.
+- **Release candidate:** `0.2.0` on `feat/0.2.0-workspace`; target tag `v0.2.0`.
+- **Pending:** protected PR approval, candidate workflow, browser evidence, and promotion workflow.
+- Do not manually publish or bypass the protected gates.
 
 ## 1. Prepare the source
 
@@ -45,7 +44,7 @@ After the candidate is green, create the checksum-only `C+1` commit on top of ca
 - public CI is green on the exact `C+1` commit;
 - the tag targets `C+1`, not `C`.
 
-For rc.5 this is already done: `C=d138d65`, `C+1/tag=0a6ccc5`. Do not re-tag it.
+For a stable release the same C/C+1 ordering applies; `C+1` is the checksum-only commit and the tag target.
 
 ## 3. Browser evidence
 
@@ -86,7 +85,7 @@ Run `release-promote.yml` from the protected `release` environment with:
 
 ```text
 candidate_run_id, candidate_commit=C, release_commit=C+1,
-candidate_sha256, version, browser_evidence_run_id
+candidate_sha256, version=0.2.0, browser_evidence_run_id
 ```
 
 The workflow validates the candidate/browser evidence and main-push CI, publishes the exact tarball under a
@@ -109,9 +108,8 @@ approval, token scope, browser evidence, and release evidence.
 
 ## 6. Channel policy
 
-RCs are published under `next`; until a stable release exists, `latest` deliberately also points at the newest
-RC. npm retains a `latest` tag and the project chooses its target; this is project policy, not an npm
-requirement. Exact versions remain the reproducible install path.
+Prerelease candidates use `next`; the stable `0.2.0` promotion moves both `next` and `latest` after registry bytes
+and tarball integrity are verified. Exact versions remain the reproducible install path.
 
 Pinned installs should use an exact version together with pnpm's release-age awareness. A freshly published RC
 may be invisible to unversioned resolution until the release-age window elapses; do not bypass the compatibility

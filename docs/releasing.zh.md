@@ -9,15 +9,13 @@
 这是当前发布清单，取代早期按 rc 编写的暂存说明。已发布的 tag、GitHub Release 和 npm 版本不可变：不移动
 tag、不删除已发布 Release、不在打 tag 后重建字节。
 
-## 当前状态（2026-10-30）
+## 当前状态（2026-11-05）
 
-- **已发布：** `0.1.0-rc.6` — npm `latest`/`next`；精确产物 SHA-256
-  `21ddbea0ae3fd88994d4e4731429ef4d8cb75db2b97e83cd7530a0386e425825`。GitHub Release 使用 recovery tag
-  `v0.1.0-rc.6-republished`。
-- **`0.1.0-rc.5`：** 上一个已验收 npm 版本；规范 GitHub tag/release 待恢复。
-- **待完成：** 恢复 rc.5 规范 GitHub tag/release；受保护 browser evidence 和常规发布后检查仍需人工完成。
-- 不要创建第二个 rc.5 tag，也不要发布重建的 tarball。现有 rc.5 `C+1` tag 不是当前 `main` tip，当前 Promotion
-  workflow 无法直接推广它；若后续恢复 npm 发布，应从 `main` 重新构建 candidate，不要改写已发布 rc.5 tag。
+- **已发布：** `0.1.0-rc.6` — 当前 npm 公开发布版本；精确产物 SHA-256
+  `21ddbea0ae3fd88994d4e4731429ef4d8cb75db2b97e83cd7530a0386e425825`。
+- **发布候选：** `0.2.0`，位于 `feat/0.2.0-workspace`；目标 tag `v0.2.0`。
+- **待完成：** 受保护 PR approval、candidate workflow、browser evidence 和 promotion workflow。
+- 不得手动 publish，也不得绕过受保护门禁。
 
 ## 1. 准备源码
 
@@ -43,7 +41,7 @@ Candidate 全绿后，在 candidate `C` 上创建只改 checksum 的 `C+1`：
 - public CI 在精确 `C+1` 上全绿；
 - tag 指向 `C+1`，不是 `C`。
 
-rc.5 已完成：`C=d138d65`，`C+1/tag=0a6ccc5`。不要重新打 tag。
+stable release 同样遵守 C/C+1 顺序：`C+1` 是只改 checksum 的提交，tag 指向它。
 
 ## 3. Browser evidence
 
@@ -83,7 +81,7 @@ secret。
 
 ```text
 candidate_run_id, candidate_commit=C, release_commit=C+1,
-candidate_sha256, version, browser_evidence_run_id
+candidate_sha256, version=0.2.0, browser_evidence_run_id
 ```
 
 workflow 校验 candidate/browser evidence 与 main-push CI，使用临时非 channel tag 发布精确 tarball，

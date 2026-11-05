@@ -5,7 +5,7 @@ English | [中文](CHANGELOG.zh.md)
 All notable changes to `dsh-charter` are recorded here. The project follows a pre-1.0 version line while the
 DSH plugin ABI is still moving.
 
-## 0.2.0 — unreleased
+## 0.2.0 — release candidate
 
 Workspace and dependency-plan upgrade. Versioning from this release onward uses plain increments
 (`0.2.0`, `0.2.1`, ...) and never an `rc` suffix.

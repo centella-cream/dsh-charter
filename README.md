@@ -16,8 +16,8 @@ deliverables, evidence, and dependency state survive compaction and remain visib
 
 ## Status
 
-- **Published release:** `0.1.0-rc.6` remains the latest npm release. It is not the 0.2 workspace line.
-- **Current development:** `0.2.0` on `feat/0.2.0-workspace`; a local-tarball preview, not published.
+- **Published release:** `0.1.0-rc.6` is the latest public npm release.
+- **Release candidate:** `0.2.0` is prepared on `feat/0.2.0-workspace`; publication runs through the protected release workflow.
 - **Primary DSH baseline:** `0.2.2-rc.1`; nine declared DSH versions are source-matrix verified.
 - Versioning from `0.2.0` onward uses plain increments (`0.2.0`, `0.2.1`, ...), never an `rc` suffix.
 
@@ -88,12 +88,18 @@ execution guards for restrictions that must be machine-enforced.
 
 ## Install
 
-The published stable line is `0.1.0-rc.6`. The current 0.2.0 workspace line is a development preview and is
-installed from a built tarball:
+The last public release is `0.1.0-rc.6`. The 0.2.0 release candidate is installed from the candidate tarball
+until publication completes:
 
 ```bash
 npm pack
 dsh plugin --profile web add ./dsh-charter-0.2.0.tgz
+```
+
+After publication, install the exact release with:
+
+```bash
+dsh plugin --profile web add dsh-charter@0.2.0
 ```
 
 For Desktop, use **Desktop → Plugins → Install/Update**, or import the same local tarball if your Desktop build

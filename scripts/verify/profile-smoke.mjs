@@ -36,9 +36,9 @@ function value(flag, fallback) {
 }
 const artifact = value('--artifact')
 const sums = value('--sha256')
-const dshVersion = value('--dsh-version', '0.2.1-rc.4')
+const dshVersion = value('--dsh-version', '0.2.2-rc.1')
 const port = Number(value('--port', '19444'))
-if (artifact === undefined || sums === undefined) throw new Error('usage: profile-smoke.mjs --artifact <tgz> --sha256 <SHA256SUMS> [--dsh-version 0.2.1-rc.4] [--port 19444]')
+if (artifact === undefined || sums === undefined) throw new Error('usage: profile-smoke.mjs --artifact <tgz> --sha256 <SHA256SUMS> [--dsh-version 0.2.2-rc.1] [--port 19444]')
 const digest = createHash('sha256').update(readFileSync(artifact)).digest('hex')
 const expected = readFileSync(sums, 'utf8').split('\n').find(row => row.trim().endsWith(`  ${basename(artifact)}`))
 if (expected === undefined || digest !== expected.trim().split(/\s+/u)[0]) throw new Error('artifact digest mismatch')
