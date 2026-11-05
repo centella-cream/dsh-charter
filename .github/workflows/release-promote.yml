@@ -1,6 +1,6 @@
 name: Promote release candidate
 
-# Protected, no-build/no-pack promotion. The candidate artifact is the only
+# No-build/no-pack promotion. The candidate artifact is the only
 # source of release bytes. Inputs are untrusted; use env: interpolation and
 # validate every identifier before touching the repository or npm.
 on:
@@ -170,6 +170,8 @@ jobs:
       - name: Prepare npm, tag, and draft Release
         run: |
           set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           TAG="v$VERSION"
           PUBLISHED=0
           if npm view "dsh-charter@$VERSION" version >/dev/null 2>&1; then

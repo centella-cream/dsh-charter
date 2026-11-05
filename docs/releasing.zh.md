@@ -64,7 +64,7 @@ secret。
 
 ### 运行
 
-在受保护 `release` environment 运行 `release-promote.yml`，输入：
+在 `release` environment 运行 `release-promote.yml`，输入：
 
 ```text
 candidate_run_id, candidate_commit=C, release_commit=C+1,
@@ -75,8 +75,7 @@ workflow 校验 candidate 与 main-push CI，使用临时非 channel tag 发布�
 回读 registry bytes，移动 `next`/`latest` 并做防回退检查，创建/校验 GitHub Release、附加
 `release-evidence.json`，最后才公开 prerelease。
 
-不要为发布手工执行 `npm publish`、`npm dist-tag` 或 `gh release`；它们会绕过 environment 审批、token
-scope 和 release evidence。
+不要为发布手工执行 `npm publish`、`npm dist-tag` 或 `gh release`；它们会绕过仓库发布 workflow、token scope 和 release evidence。
 
 ## 4. 发布后
 

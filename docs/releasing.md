@@ -67,7 +67,7 @@ publication. Rotate the token before expiry and update the secret in the same ma
 
 ### Run
 
-Run `release-promote.yml` from the protected `release` environment with:
+Run `release-promote.yml` from the `release` environment with:
 
 ```text
 candidate_run_id, candidate_commit=C, release_commit=C+1,
@@ -79,8 +79,7 @@ temporary non-channel tag, verifies the registry bytes, moves `next`/`latest` wi
 creates or validates the GitHub Release, attaches `release-evidence.json`, and only then makes the release
 public (prerelease only when the version itself is a prerelease).
 
-Do not run manual `npm publish`, `npm dist-tag`, or `gh release` commands for a release. They bypass environment
-approval, token scope, and release evidence.
+Do not run manual `npm publish`, `npm dist-tag`, or `gh release` commands for a release. They bypass the repository release workflow, token scope, and release evidence.
 
 ## 4. Post-release
 

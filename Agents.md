@@ -210,7 +210,7 @@ version that is not yet tracked**. This is a release requirement, not optional e
       labeled honestly.
 - [ ] English and Chinese long-form docs updated together; Chinese normative plan updated when details changed.
 - [ ] User uncommitted work untouched; release branch clean of unrelated edits; commits single-purpose.
-- [ ] Explicit approval obtained before tagging, publishing, or touching the user's Desktop app/profile.
+- [ ] Explicit user release request obtained before tagging, publishing, or touching the user's Desktop app/profile.
 
 ## Quick commands
 
