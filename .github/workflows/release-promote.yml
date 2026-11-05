@@ -25,6 +25,7 @@ on:
 permissions:
   contents: write
   actions: read
+  id-token: write
 
 concurrency:
   group: release-promote
@@ -233,7 +234,7 @@ jobs:
             # Publish under a non-channel tag first; next/latest move only after
             # version and tarball readback. This uses the repository NPM_TOKEN
             # granular automation token instead of OIDC/provenance.
-            npm publish "candidate/$(basename candidate/*.tgz)" --access public --tag "promotion-$VERSION"
+            npm publish "./candidate/$(basename candidate/*.tgz)" --access public --tag "promotion-$VERSION"
           fi
           npm view "dsh-charter@$VERSION" version >/dev/null
           rm -rf /tmp/published && mkdir -p /tmp/published
