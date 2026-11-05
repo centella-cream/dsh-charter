@@ -149,7 +149,7 @@ npm run verify:compaction # 手动真实模型 compaction 检查
 node scripts/verify/compat-matrix.mjs --versions all --allow-new-release
 ```
 
-当前源码证据：36 个测试文件 / 429 个测试；九版本 DSH 矩阵 9/9、每版 429/429。版本矩阵和 profile 检查
+当前源码证据：36 个测试文件 / 433 个测试；九版本 DSH 矩阵 9/9、每版 429/429。版本矩阵和 profile 检查
 与真实 Gateway、Electron、可访问性和 512 项性能门禁分开记录。
 
 文档：

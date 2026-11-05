@@ -167,7 +167,7 @@ npm run verify:compaction # manual real-model compaction check
 node scripts/verify/compat-matrix.mjs --versions all --allow-new-release
 ```
 
-Current source evidence: 36 test files / 429 tests; nine-version DSH matrix 9/9 at 429/429. The version matrix
+Current source evidence: 36 test files / 433 tests; nine-version DSH matrix 9/9 at 429/429. The version matrix
 and profile checks are separate from real Gateway, Electron, accessibility, and 512-item performance gates.
 
 Documentation:
