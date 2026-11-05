@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { assertRecordConsistency, createEmptyRecord, migrateRecordV1ToV2 } from '../../src/core/record.js'
-import { emptySnapshot } from '../../src/core/render.js'
+import { assertRecordConsistency, createEmptyRecord, legacyValidityFor, migrateRecordV1ToV2 } from '../../src/core/record.js'
+import { buildSnapshotUnchecked, emptySnapshot } from '../../src/core/render.js'
 import { DEFAULT_CHARTER_LIMITS } from '../../src/core/limits.js'
 import { charterRecordSchema, charterRecordV1Schema } from '../../src/core/schemas.js'
 
@@ -53,7 +53,7 @@ describe('record v2 migration', () => {
       recordSchemaVersion: 1,
       current,
     } as never)
-    const states = Object.fromEntries(migrated.current.items.map(entry => [entry.text, entry.validity?.state]))
+    const states = Object.fromEntries(migrated.current.items.map(entry => [entry.text, legacyValidityFor(entry)?.state]))
     expect(states).toEqual({
       unchecked: 'unassessed',
       attested: 'attested',
@@ -61,6 +61,48 @@ describe('record v2 migration', () => {
       invalid: 'invalid',
       unknown: 'unknown',
     })
+  })
+
+  it('keeps a v1 record with history structurally consistent after migration', () => {
+    const base = createEmptyRecord({ createdAt: 1 }, DEFAULT_CHARTER_LIMITS)
+    const current = buildSnapshotUnchecked(1, undefined, [{
+      kind: 'invariant',
+      id: 'legacy-item',
+      text: 'legacy',
+      review: 'accepted',
+      lifecycle: 'current',
+      verification: { state: 'verified', by: 'user' },
+      origin: 'user',
+      order: 0,
+      createdRevision: 1,
+    }])
+    const requestDigest = 'sha256:' + '1'.repeat(64)
+    const v1 = {
+      ...base,
+      recordSchemaVersion: 1 as const,
+      current,
+      history: [{
+        revision: 1,
+        baseRevision: 0,
+        mutationId: 'legacy-mutation',
+        requestDigest,
+        resultDigest: current.stateDigest,
+        actor: { kind: 'owner' as const },
+        at: 1,
+        changes: [],
+      }],
+      recentMutations: [{
+        mutationId: 'legacy-mutation',
+        requestDigest,
+        committedRevision: 1,
+        resultDigest: current.stateDigest,
+        ids: {},
+      }],
+    }
+    const migrated = migrateRecordV1ToV2(v1 as never)
+    expect(migrated.current.stateDigest).toBe(current.stateDigest)
+    expect(migrated.history.at(-1)?.resultDigest).toBe(migrated.current.stateDigest)
+    expect(() => assertRecordConsistency(migrated, DEFAULT_CHARTER_LIMITS)).not.toThrow()
   })
 })
 

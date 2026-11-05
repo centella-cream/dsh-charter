@@ -90,8 +90,8 @@ candidate_sha256, version=0.2.0, browser_evidence_run_id
 
 The workflow validates the candidate/browser evidence and main-push CI, publishes the exact tarball under a
 temporary non-channel tag, verifies the registry bytes, moves `next`/`latest` with pre-write regression checks,
-creates or validates the GitHub Release, attaches `release-evidence.json`, and only then makes the prerelease
-public.
+creates or validates the GitHub Release, attaches `release-evidence.json`, and only then makes the release
+public (prerelease only when the version itself is a prerelease).
 
 Do not run manual `npm publish`, `npm dist-tag`, or `gh release` commands for a release. They bypass environment
 approval, token scope, browser evidence, and release evidence.

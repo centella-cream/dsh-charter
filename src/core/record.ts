@@ -62,29 +62,37 @@ export class RevisionConflict extends Error {
 }
 
 function migratedSnapshot(snapshot: CharterRecordV1['current']): CharterRecord['current'] {
-  const items = snapshot.items.map(item => {
-    const verification = item.verification
-    const validity = verification.state === 'unchecked'
-      ? { state: 'unassessed' as const }
-      : verification.state === 'verified' && verification.by === 'user'
-        ? { state: 'attested' as const, atRevision: Math.max(1, snapshot.revision) }
-        : verification.state === 'verified'
-          ? {
-              state: 'valid' as const,
-              validator: 'legacy-validator',
-              inputDigest: sha256Json({ version: 1, legacy: true, text: item.text }),
-              checkedAtRevision: Math.max(1, snapshot.revision),
-            }
-          : {
-              state: verification.state === 'failed' ? 'invalid' as const : 'unknown' as const,
-              validator: 'legacy-validator',
-              inputDigest: sha256Json({ version: 1, legacy: true, text: item.text }),
-              checkedAtRevision: Math.max(1, snapshot.revision),
-              ...(verification.reason === undefined ? {} : { reason: verification.reason }),
-            }
-    return { ...item, validity }
-  })
-  return buildSnapshotUnchecked(snapshot.revision, snapshot.objective, items)
+  // In-memory migration must preserve the persisted item bytes and the v1
+  // state digest. Validity is derived for display by legacyValidityFor().
+  return snapshot as unknown as CharterRecord['current']
+}
+
+/**
+ * Derive the read-time v2 validity label for a migrated v1 item without
+ * mutating the persisted record. Explicit v2 validity always wins.
+ */
+export function legacyValidityFor(item: CharterRecord['current']['items'][number]): NonNullable<CharterRecord['current']['items'][number]['validity']> | undefined {
+  if (item.validity !== undefined) return item.validity
+  const verification = item.verification
+  if (verification.state === 'unchecked') return { state: 'unassessed' }
+  if (verification.state === 'verified' && verification.by === 'user') {
+    return { state: 'attested', atRevision: Math.max(1, item.createdRevision) }
+  }
+  if (verification.state === 'verified') {
+    return {
+      state: 'valid',
+      validator: 'legacy-validator',
+      inputDigest: sha256Json({ version: 1, legacy: true, text: item.text }),
+      checkedAtRevision: Math.max(1, item.createdRevision),
+    }
+  }
+  return {
+    state: verification.state === 'failed' ? 'invalid' : 'unknown',
+    validator: 'legacy-validator',
+    inputDigest: sha256Json({ version: 1, legacy: true, text: item.text }),
+    checkedAtRevision: Math.max(1, item.createdRevision),
+    ...(verification.reason === undefined ? {} : { reason: verification.reason }),
+  }
 }
 
 /** Read-only v1 projection to the v2 in-memory shape; no bytes are written here. */
