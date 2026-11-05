@@ -13,8 +13,8 @@ tag、不删除已发布 Release、不在打 tag 后重建字节。
 
 - **已发布：** `0.1.0-rc.6` — 当前 npm 公开发布版本；精确产物 SHA-256
   `21ddbea0ae3fd88994d4e4731429ef4d8cb75db2b97e83cd7530a0386e425825`。
-- **发布候选：** `0.2.0`，位于 `feat/0.2.0-workspace`；目标 tag `v0.2.0`。
-- **待完成：** 本地合入 `main`、candidate workflow、browser evidence 和 promotion workflow。
+- **发布候选：** `0.2.0` 已本地合入 `main`；目标 tag `v0.2.0`。
+- **待完成：** main 分支 candidate workflow、browser evidence 和 promotion workflow。
 - 不得手动 publish，也不得绕过受保护门禁。
 
 ## 1. 准备源码

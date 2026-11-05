@@ -14,8 +14,8 @@ tagging.
 
 - **Published:** `0.1.0-rc.6` — latest public npm release; exact artifact SHA-256
   `21ddbea0ae3fd88994d4e4731429ef4d8cb75db2b97e83cd7530a0386e425825`.
-- **Release candidate:** `0.2.0` on `feat/0.2.0-workspace`; target tag `v0.2.0`.
-- **Pending:** protected PR approval, candidate workflow, browser evidence, and promotion workflow.
+- **Release candidate:** `0.2.0` merged locally to `main`; target tag `v0.2.0`.
+- **Pending:** main-branch candidate workflow, browser evidence, and promotion workflow.
 - Do not manually publish or bypass the protected gates.
 
 ## 1. Prepare the source
