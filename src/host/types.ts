@@ -352,6 +352,7 @@ export type CharterSourceIntegrityResult =
         readonly batchId: string
         readonly integrity: import('../core/source-registry.js').SourceIntegrity
       }[]
+      readonly truncated?: boolean
     }
   | { readonly ok: false; readonly code: CharterErrorCode; readonly message: string }
 

@@ -327,6 +327,7 @@ export const charterSourceIntegrityResultSchema = z.discriminatedUnion('ok', [
       batchId: z.string(),
       integrity: z.enum(['not-applicable', 'intact', 'missing', 'mismatch', 'unsupported']),
     }).strict()),
+    truncated: z.boolean().optional(),
   }).strict(),
   z.object({ ok: z.literal(false), code: charterErrorCodeSchema, message: z.string() }).strict(),
 ])

@@ -1016,7 +1016,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
         setBatchIntegrity(Object.fromEntries(result.batches.map(batch => [batch.batchId, batch.integrity])))
       }).catch(() => undefined)
     }
-  }, [section, source])
+  }, [section, source, view?.revision])
 
   if (state.status === 'connecting' && view === null) {
     return (
@@ -2620,10 +2620,12 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                                 if (result.ok) {
                                   const changed = result.items.filter(item => item.integrity !== 'intact').length
                                     + result.batches.filter(batch => batch.integrity !== 'intact' && batch.integrity !== 'not-applicable').length
-                                  setIntegrityFeedback(t('integrity.summary', {
-                                    count: result.items.length + result.batches.length,
-                                    changed,
-                                  }))
+                                  setIntegrityFeedback(
+                                    t('integrity.summary', {
+                                      count: result.items.length + result.batches.length,
+                                      changed,
+                                    }) + (result.truncated === true ? ` ${t('integrity.truncated')}` : ''),
+                                  )
                                 } else {
                                   setIntegrityFeedback(errorLabel(result.code, t))
                                 }

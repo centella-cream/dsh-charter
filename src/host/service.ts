@@ -1345,10 +1345,11 @@ export class CharterService extends Service {
       }
     }
     const session = this.ctx.sessions.get(sessionId)
+    const shared = this.sourceProjectionShared(session, filtered)
     const mapped = filtered.slice(start, start + limit).map(batch => ({
       id: batch.id,
       source: batch.source,
-      sourceIntegrity: sourceIntegrity(batch.source, this.proposalSourceContext(session, view, batch)),
+      sourceIntegrity: sourceIntegrity(batch.source, this.proposalSourceContext(view, batch, shared)),
       capturedAtRevision: batch.capturedAtRevision,
       candidates: batch.candidates.map(candidate => {
         if (candidate.kind === 'tombstone') {
@@ -1842,16 +1843,35 @@ export class CharterService extends Service {
     return ops.length === request.ops.length ? request : { ...request, ops }
   }
 
-  private proposalSourceContext(
+  private sourceProjectionShared(
     session: Session | undefined,
+    batches: readonly NonNullable<CharterView['proposalBatches']>[number][],
+  ): {
+    readonly events?: SourceProjectionContext['events']
+    readonly bootstrap?: import('./types.js').CharterBootstrapResult
+  } {
+    if (session === undefined) return {}
+    return {
+      ...(batches.some(batch => batch.source.kind === 'message')
+        ? {
+            events: readSessionEvents(session).map(event => ({
+              seq: event.seq,
+              type: event.type,
+              data: event.data,
+            })),
+          }
+        : {}),
+      ...(batches.some(batch => batch.source.kind === 'compaction-summary')
+        ? { bootstrap: this.bootstrap(session.id) }
+        : {}),
+    }
+  }
+
+  private proposalSourceContext(
     view: CharterView,
     batch: NonNullable<CharterView['proposalBatches']>[number],
+    shared: ReturnType<CharterService['sourceProjectionShared']>,
   ): SourceProjectionContext {
-    const events = session === undefined ? undefined : readSessionEvents(session).map(event => ({
-      seq: event.seq,
-      type: event.type,
-      data: event.data,
-    }))
     const candidates = batch.candidates.flatMap(candidate => {
       if (candidate.kind === 'tombstone') return []
       const item = view.items.find(entry => entry.id === candidate.id)
@@ -1863,13 +1883,12 @@ export class CharterService extends Service {
         text,
       }]
     })
-    const extraction = session === undefined ? undefined : this.bootstrap(session.id)
     return {
-      ...(events === undefined ? {} : { events }),
+      ...(shared.events === undefined ? {} : { events: shared.events }),
       candidates,
-      ...(batch.source.kind === 'compaction-summary' && extraction?.available
-        && extraction.proposal.source.summarySeq === batch.source.summarySeq
-        ? { compaction: extraction.proposal }
+      ...(batch.source.kind === 'compaction-summary' && shared.bootstrap?.available
+        && shared.bootstrap.proposal.source.summarySeq === batch.source.summarySeq
+        ? { compaction: shared.bootstrap.proposal }
         : {}),
     }
   }
@@ -1888,10 +1907,14 @@ export class CharterService extends Service {
     if (view.status !== 'ready') return { ok: false, code: 'UNAVAILABLE', message: 'Charter is not readable' }
     const items: { itemId: string; integrity: import('./validators.js').EvidenceIntegrity }[] = []
     let evidenceChecks = 0
+    let truncated = false
     const integrityDeadline = Date.now() + 5_000
     for (const item of view.items) {
       if (item.evidence === undefined || item.evidence.length === 0) continue
-      if (evidenceChecks >= 16 || Date.now() > integrityDeadline) break
+      if (evidenceChecks >= 16 || Date.now() > integrityDeadline) {
+        truncated = true
+        break
+      }
       let integrity: import('./validators.js').EvidenceIntegrity = 'not-applicable'
       for (const evidence of item.evidence.slice(0, 4)) {
         if (evidenceChecks >= 16) break
@@ -1901,11 +1924,12 @@ export class CharterService extends Service {
       }
       items.push({ itemId: item.id, integrity })
     }
+    const shared = this.sourceProjectionShared(session, view.proposalBatches ?? [])
     const batches = (view.proposalBatches ?? []).map(batch => ({
       batchId: batch.id,
-      integrity: sourceIntegrity(batch.source, this.proposalSourceContext(session, view, batch)),
+      integrity: sourceIntegrity(batch.source, this.proposalSourceContext(view, batch, shared)),
     }))
-    return { ok: true, revision: view.revision, items, batches }
+    return { ok: true, revision: view.revision, items, batches, ...(truncated ? { truncated: true } : {}) }
   }
 
   async runValidators(
