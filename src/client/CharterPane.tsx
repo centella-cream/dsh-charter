@@ -24,7 +24,6 @@ import type {
 import { CHARTER_LOCALE_NS, type CharterLocaleKey } from './locales.js'
 import { inspectUserText } from '../core/normalize.js'
 import { dependencyProjection } from '../core/dependencies.js'
-import { sourceIntegrity } from '../core/source-integrity.js'
 import { draftAdmission } from './admission.js'
 import {
   bootstrapReplayPending,
@@ -719,7 +718,13 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   const [validatorExpectation, setValidatorExpectation] = useState('')
   const [validatorFeedback, setValidatorFeedback] = useState<string | null>(null)
   const [validatorRunning, setValidatorRunning] = useState(false)
+  const [reviewLimit, setReviewLimit] = useState(50)
   const [integrityFeedback, setIntegrityFeedback] = useState<string | null>(null)
+  const [messageCandidates, setMessageCandidates] = useState<readonly import('../host/types.js').CharterMessageCandidate[]>([])
+  const [messageSeq, setMessageSeq] = useState<number | undefined>(undefined)
+  const [messageKind, setMessageKind] = useState<'invariant' | 'deliverable'>('invariant')
+  const [messageStart, setMessageStart] = useState('')
+  const [messageEnd, setMessageEnd] = useState('')
   const bootstrapId = useId()
   const applyHintId = useId()
   const [confirmAbandon, setConfirmAbandon] = useState(false)
@@ -996,6 +1001,15 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
     if (draftState.maintenanceSaving || maintenanceReplay) return
     if (archiveInputRef.current !== null) archiveInputRef.current.value = ''
   }, [draftState.maintenanceSaving, maintenanceReplay, recordState?.kind])
+  useEffect(() => {
+    if (section !== 'history' || source.queryMessages === undefined) return
+    void source.queryMessages().then(result => {
+      if (result.ok) {
+        setMessageCandidates(result.messages)
+        setMessageSeq(current => current ?? result.messages.at(-1)?.seq)
+      }
+    }).catch(() => undefined)
+  }, [section, source])
 
   if (state.status === 'connecting' && view === null) {
     return (
@@ -2020,13 +2034,52 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                     <span className="charter-kicker">{t('review.kicker')}</span>
                     <h3 id="charter-message-proposal-title">{t('review.messageProposal')}</h3>
                   </div>
-                  <ActionButton
-                    variant="outline"
-                    disabled={saving || unknownBlocked}
-                    onClick={() => { void draft.proposeLatestMessage() }}
-                  >
-                    {t('review.saveLatestMessage')}
-                  </ActionButton>
+                  <div className="charter-validator-form">
+                    <select
+                      aria-label={t('message.pick')}
+                      value={messageSeq ?? ''}
+                      onChange={event => setMessageSeq(event.target.value === '' ? undefined : Number(event.target.value))}
+                    >
+                      <option value="">{t('message.pick')}</option>
+                      {messageCandidates.map(candidate => (
+                        <option key={candidate.seq} value={candidate.seq}>{candidate.excerpt}</option>
+                      ))}
+                    </select>
+                    <select
+                      aria-label={t('message.kind')}
+                      value={messageKind}
+                      onChange={event => setMessageKind(event.target.value as 'invariant' | 'deliverable')}
+                    >
+                      <option value="invariant">{t('invariants.kicker')}</option>
+                      <option value="deliverable">{t('deliverables.kicker')}</option>
+                    </select>
+                    <input
+                      aria-label={t('message.rangeStart')}
+                      placeholder={t('message.rangeStart')}
+                      value={messageStart}
+                      onChange={event => setMessageStart(event.target.value)}
+                    />
+                    <input
+                      aria-label={t('message.rangeEnd')}
+                      placeholder={t('message.rangeEnd')}
+                      value={messageEnd}
+                      onChange={event => setMessageEnd(event.target.value)}
+                    />
+                    <ActionButton
+                      variant="outline"
+                      disabled={saving || unknownBlocked || messageSeq === undefined}
+                      onClick={() => {
+                        void draft.proposeLatestMessage({
+                          ...(messageSeq === undefined ? {} : { seq: messageSeq }),
+                          kind: messageKind,
+                          ...(messageStart.trim() === '' ? {} : { start: Number(messageStart) }),
+                          ...(messageEnd.trim() === '' ? {} : { end: Number(messageEnd) }),
+                        })
+                      }}
+                    >
+                      {t('review.saveLatestMessage')}
+                    </ActionButton>
+                  </div>
                 </div>
               </section>
             )}
@@ -2041,7 +2094,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                   <span className="charter-count">{inactiveItems.length}</span>
                 </div>
                 <ul className="charter-timeline">
-                  {inactiveItems.map(item => (
+                  {inactiveItems.slice(0, reviewLimit).map(item => (
                     <li key={item.id} className="charter-timeline__row">
                       <span className="charter-timeline__kind">{item.kind === 'invariant' ? t('invariants.kicker') : t('deliverables.kicker')}</span>
                       <span className="charter-timeline__text">{item.text}</span>
@@ -2067,7 +2120,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                   <span className="charter-count">{closedObjectiveProposals.length}</span>
                 </div>
                 <ul className="charter-timeline">
-                  {closedObjectiveProposals.map(proposal => (
+                  {closedObjectiveProposals.slice(0, reviewLimit).map(proposal => (
                     <li key={proposal.id} className="charter-timeline__row">
                       <span className="charter-timeline__kind">{t('objective.kicker')}</span>
                       <span className="charter-timeline__text">{proposal.text === '' ? proposal.textDigest ?? '' : proposal.text}</span>
@@ -2093,7 +2146,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                   <span className="charter-count">{pendingItemProposals.length}</span>
                 </div>
                 <ul className="charter-proposal-list">
-                  {pendingItemProposals.map(item => {
+                  {pendingItemProposals.slice(0, reviewLimit).map(item => {
                     const batch = batchByItem.get(item.id)
                     return (
                       <li key={item.id} className="charter-proposal">
@@ -2194,7 +2247,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                   <span className="charter-count">{view.proposalBatches!.length}</span>
                 </div>
                 <ol className="charter-batch-list">
-                  {view.proposalBatches!.slice().reverse().map(batch => {
+                  {view.proposalBatches!.slice().reverse().slice(0, reviewLimit).map(batch => {
                     const pending = batch.candidates.filter(candidate =>
                       candidate.kind === 'item'
                       && view.items.some(item => item.id === candidate.id && item.review === 'pending')).length
@@ -2203,9 +2256,6 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                         <span className="charter-batch__source">{t(`review.source.${batch.source.kind}`)}</span>
                         <span className="charter-batch__revision">{t('review.captured', { revision: batch.capturedAtRevision })}</span>
                         <span className="charter-batch__count">{t('review.pendingCandidates', { count: pending })}</span>
-                        <span className="charter-batch__count">
-                          {t('review.sourceIntegrity', { integrity: sourceIntegrity(batch.source) })}
-                        </span>
                       </li>
                     )
                   })}
@@ -2456,6 +2506,22 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
               </>
             )}
 
+            {area === 'review' && (
+              (pendingItemProposals.length > reviewLimit
+                || inactiveItems.length > reviewLimit
+                || closedObjectiveProposals.length > reviewLimit
+                || pendingObjectiveProposals.length > reviewLimit
+                || (view.proposalBatches?.length ?? 0) > reviewLimit)
+                ? (
+                    <div className="charter-recovery__actions">
+                      <ActionButton variant="outline" onClick={() => setReviewLimit(current => current + 50)}>
+                        {t('history.showMore', { count: 50 })}
+                      </ActionButton>
+                    </div>
+                  )
+                : null
+            )}
+
             {area === 'diagnostics' && (
               <>
                 {source.runValidators !== undefined && (
@@ -2541,7 +2607,11 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                                 const result = await source.sourceIntegrity!()
                                 if (result.ok) {
                                   const changed = result.items.filter(item => item.integrity !== 'intact').length
-                                  setIntegrityFeedback(t('integrity.summary', { count: result.items.length, changed }))
+                                    + result.batches.filter(batch => batch.integrity !== 'intact' && batch.integrity !== 'not-applicable').length
+                                  setIntegrityFeedback(t('integrity.summary', {
+                                    count: result.items.length + result.batches.length,
+                                    changed,
+                                  }))
                                 } else {
                                   setIntegrityFeedback(errorLabel(result.code, t))
                                 }

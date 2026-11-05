@@ -151,6 +151,7 @@ export interface CharterProposalQueryRequest {
   readonly review?: 'pending' | 'accepted' | 'rejected'
   readonly batchId?: string
   readonly candidateKind?: 'item' | 'objective'
+  readonly objectiveCursor?: string | undefined
 }
 
 export type CharterProposalQueryResult =
@@ -161,6 +162,7 @@ export type CharterProposalQueryResult =
       readonly objectiveProposals: import('../core/schemas.js').ObjectiveProposal[]
       readonly filterDigest: string
       readonly nextCursor?: string
+      readonly nextObjectiveCursor?: string
     }
   | {
       readonly ok: false
@@ -320,6 +322,24 @@ export type CharterEditResult =
       readonly view?: CharterView
     }
 
+export interface CharterMessageCandidate {
+  readonly seq: number
+  readonly role: 'user'
+  readonly excerpt: string
+  readonly length: number
+}
+
+export type CharterMessageListResult =
+  | { readonly ok: true; readonly messages: readonly CharterMessageCandidate[] }
+  | { readonly ok: false; readonly code: CharterErrorCode; readonly message: string }
+
+export interface CharterMessageProposalOptions {
+  readonly seq?: number
+  readonly kind?: 'invariant' | 'deliverable'
+  readonly start?: number
+  readonly end?: number
+}
+
 export type CharterSourceIntegrityResult =
   | {
       readonly ok: true
@@ -327,6 +347,10 @@ export type CharterSourceIntegrityResult =
       readonly items: readonly {
         readonly itemId: string
         readonly integrity: import('./validators.js').EvidenceIntegrity
+      }[]
+      readonly batches: readonly {
+        readonly batchId: string
+        readonly integrity: import('../core/source-registry.js').SourceIntegrity
       }[]
     }
   | { readonly ok: false; readonly code: CharterErrorCode; readonly message: string }

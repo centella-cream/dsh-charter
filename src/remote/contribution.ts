@@ -8,6 +8,8 @@ import {
   charterChangeSetPreviewResultSchema,
   charterValidatorRunRequestSchema,
   charterSourceIntegrityResultSchema,
+  charterMessageListSchema,
+  charterMessageProposeRequestSchema,
   charterValidatorRunResultSchema,
   charterFrameSchema,
   charterInitializeRequestWireSchema,
@@ -173,10 +175,10 @@ export const charterRemoteContribution: TypertRemoteContribution = {
       create: () => charterValidatorRunResultSchema,
     },
   }, {
-    id: 'dsh-charter#charter/proposeMessage',
+    id: 'dsh-charter#charter/queryMessages',
     service: 'charterRemote',
     namespace: 'charter',
-    method: 'proposeMessage',
+    method: 'queryMessages',
     invocation: { kind: 'direct' },
     parameters: [{
       name: 'sessionId',
@@ -186,6 +188,27 @@ export const charterRemoteContribution: TypertRemoteContribution = {
         mode: 'strict',
         typeSymbol: 'dsh-charter/SessionId',
         create: () => sessionIdSchema,
+      },
+    }],
+    result: {
+      mode: 'strict',
+      typeSymbol: 'dsh-charter/CharterMessageListResult',
+      create: () => charterMessageListSchema,
+    },
+  }, {
+    id: 'dsh-charter#charter/proposeMessage',
+    service: 'charterRemote',
+    namespace: 'charter',
+    method: 'proposeMessage',
+    invocation: { kind: 'direct' },
+    parameters: [{
+      name: 'request',
+      wire: 'request',
+      source: 'json',
+      codec: {
+        mode: 'strict',
+        typeSymbol: 'dsh-charter/CharterMessageProposeRequest',
+        create: () => charterMessageProposeRequestSchema,
       },
     }],
     result: {

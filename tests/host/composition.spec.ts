@@ -498,7 +498,99 @@ describe('dsh-charter host composition', () => {
       validator: { kind: 'workspace.path-exists', path: 'evidence.txt' },
     }], { kind: 'user' })
     expect(forbidden).toMatchObject({ ok: false, code: 'FORBIDDEN' })
+
+    await writeFile(join(root, 'huge.txt'), Buffer.alloc(1_048_577), 'utf8')
+    await service.runValidators(session.id, [{
+      itemId,
+      validator: {
+        kind: 'workspace.file-digest',
+        path: 'huge.txt',
+        expectedDigest: `sha256:${'0'.repeat(64)}`,
+      },
+    }])
+    expect(service.view(session).items[0]?.validity).toMatchObject({
+      state: 'unknown',
+      reason: expect.stringMatching(/size limit/i),
+    })
   })
+
+  it('resolves batch-candidate proposed prerequisites independent of accept order', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-batch-prereq-'))
+    roots.push(root)
+    const ctx = await mount(root)
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('batch-prereq'), {
+      meta: { cwd: root, createdAt: 1_700_000_001_063 },
+    })
+    await waitForReady(service, session)
+    const proposed = await service.edit({
+      sessionId: session.id,
+      mutationId: 'batch-prereq-propose',
+      baseRevision: 0,
+      ops: [
+        { type: 'item.propose', item: { clientRef: 'base', kind: 'deliverable', text: 'Base', order: 0, progress: 'not-started' } },
+        {
+          type: 'item.propose',
+          item: { clientRef: 'dependent', kind: 'deliverable', text: 'Dependent', order: 1, progress: 'not-started', proposedRequires: ['base'] },
+        },
+      ],
+    })
+    if (!proposed.ok) throw new Error('batch prerequisite proposal failed')
+    const baseId = proposed.ids.base!
+    const dependentId = proposed.ids.dependent!
+    expect(service.view(session).items.find(item => item.id === dependentId)?.proposedRequires)
+      .toEqual([baseId])
+    const accepted = await service.edit({
+      sessionId: session.id,
+      mutationId: 'batch-prereq-accept',
+      baseRevision: 1,
+      ops: [
+        { type: 'item.accept', itemId: dependentId },
+        { type: 'item.accept', itemId: baseId },
+      ],
+    })
+    expect(accepted).toMatchObject({ ok: true })
+    const dependent = service.view(session).items.find(item => item.id === dependentId)
+    expect(dependent !== undefined && 'requires' in dependent ? dependent.requires : undefined).toEqual([baseId])
+  })
+
+  it('pages objective proposals independently without duplicate rows', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-objective-pages-'))
+    roots.push(root)
+    const ctx = await mount(root)
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('objective-pages'), {
+      meta: { cwd: root, createdAt: 1_700_000_001_062 },
+    })
+    await waitForReady(service, session)
+    const ops = Array.from({ length: 70 }, (_, index) => ({
+      type: 'objective.propose' as const,
+      clientRef: `objective-${index}`,
+      text: `Objective ${index}`,
+    }))
+    const added = await service.edit({
+      sessionId: session.id,
+      mutationId: 'objective-pages-add',
+      baseRevision: 0,
+      ops,
+    })
+    if (!added.ok) throw new Error('objective seed failed')
+    const ids = new Set<string>()
+    let cursor: string | undefined
+    for (let pageCount = 0; pageCount < 4; pageCount += 1) {
+      const page = service.queryProposalsById(session.id, {
+        limit: 64,
+        ...(cursor === undefined ? {} : { objectiveCursor: cursor }),
+      })
+      expect(page.ok).toBe(true)
+      if (!page.ok) throw new Error('objective page failed')
+      for (const proposal of page.objectiveProposals) ids.add(proposal.id)
+      cursor = page.nextObjectiveCursor
+      if (cursor === undefined) break
+    }
+    expect(ids.size).toBe(70)
+  })
+
 
   it('returns a canonical Change Set preview digest and rejects a stale preview', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-charter-change-preview-'))
@@ -947,6 +1039,54 @@ describe('dsh-charter host composition', () => {
     })
   })
 
+  it('proposes a selected message range with the chosen kind', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-message-range-'))
+    roots.push(root)
+    const ctx = await mount(root)
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('message-range'), {
+      meta: { cwd: root, createdAt: 1_700_000_001_064 },
+    })
+    await waitForReady(service, session)
+    const append = session as unknown as {
+      append(type: string, data: unknown, opts?: unknown): unknown
+    }
+    append.append('user/message', {
+      id: 'message-range-1',
+      role: 'user',
+      content: [{ type: 'text', text: 'First message' }],
+      source: { kind: 'user' },
+    }, { surfaceOp: 'append' })
+    append.append('user/message', {
+      id: 'message-range-2',
+      role: 'user',
+      content: [{ type: 'text', text: 'Second message body' }],
+      source: { kind: 'user' },
+    }, { surfaceOp: 'append' })
+    const candidates = service.messageCandidates(session.id)
+    expect(candidates.ok).toBe(true)
+    if (!candidates.ok) return
+    const second = candidates.messages.at(-1)!
+    const proposed = await service.proposeFromMessage(session, {
+      seq: second.seq,
+      kind: 'deliverable',
+      start: 0,
+      end: 6,
+    })
+    expect(proposed).toMatchObject({ ok: true })
+    const item = service.view(session).items[0]!
+    expect(item).toMatchObject({ kind: 'deliverable', text: 'Second', review: 'pending', origin: 'user' })
+    expect(service.view(session).proposalBatches?.[0]?.source).toMatchObject({
+      kind: 'message',
+      seqs: [second.seq],
+      selection: { start: 0, end: 6 },
+    })
+    expect(await service.sourceIntegrityById(session.id)).toMatchObject({
+      ok: true,
+      batches: [expect.objectContaining({ integrity: 'intact' })],
+    })
+  })
+
   it('saves the latest real user message as a pending message proposal', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-charter-message-proposal-'))
     roots.push(root)
@@ -975,6 +1115,10 @@ describe('dsh-charter host composition', () => {
       kind: 'message',
       role: 'user',
       digest: expect.stringMatching(/^sha256:/u),
+    })
+    expect(await service.sourceIntegrityById(session.id)).toMatchObject({
+      ok: true,
+      batches: [expect.objectContaining({ integrity: 'intact' })],
     })
   })
 
@@ -1023,8 +1167,13 @@ describe('dsh-charter host composition', () => {
     expect(view.proposalBatches?.[0]?.source).toEqual({
       kind: 'agent-tool',
       toolCallId: 'tool-call-1',
+      projectionVersion: 1,
       at: expect.any(Number),
       digest: expect.stringMatching(/^sha256:/u),
+    })
+    expect(await service.sourceIntegrityById(session.id)).toMatchObject({
+      ok: true,
+      batches: [expect.objectContaining({ integrity: 'intact' })],
     })
     const replayed = await tool.execute({ items: [
       { kind: 'invariant', text: 'Agent proposal' },
@@ -1538,6 +1687,39 @@ describe('dsh-charter host composition', () => {
 })
 
 describe('charter bootstrap', () => {
+  it('dedupes repeated active item.add applications by source digest', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-bootstrap-active-'))
+    roots.push(root)
+    const ctx = await mount(root)
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('bootstrap-active'), {
+      meta: { cwd: root, createdAt: 1_700_000_001_061 },
+    })
+    await waitForReady(service, session)
+    const append = session as unknown as { append(type: string, data: unknown): unknown }
+    append.append('compaction/summary', {
+      summary: [{ type: 'text', text: '## Pending Jobs\n- Active task.\n' }],
+      shadowedTokenCount: 1,
+    })
+    const draft = service.bootstrap(session.id)
+    if (!draft.available) throw new Error('bootstrap unavailable')
+    const request = {
+      sessionId: session.id,
+      mutationId: 'bootstrap-active-apply',
+      baseRevision: 0,
+      draftHandle: draft.proposal.draftHandle!,
+      ops: [{
+        type: 'item.add' as const,
+        item: { clientRef: 'bootstrap-del-0', kind: 'deliverable' as const, text: 'Active task.', order: 0, progress: 'not-started' as const },
+      }],
+    }
+    expect(await service.applyBootstrap(request)).toMatchObject({ ok: true })
+    const repeated = await service.applyBootstrap({ ...request, mutationId: 'bootstrap-active-repeat' })
+    expect(repeated).toMatchObject({ ok: true, replayed: true })
+    expect(service.view(session).items.filter(item => item.text === 'Active task.')).toHaveLength(1)
+    expect(service.view(session).items[0]).toMatchObject({ review: 'accepted' })
+  })
+
   it('returns a review-only draft from the latest compaction summary', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-charter-bootstrap-'))
     roots.push(root)
@@ -1584,6 +1766,10 @@ describe('charter bootstrap', () => {
       sessionId: 'bootstrap',
       projectionVersion: 1,
       digest: expect.stringMatching(/^sha256:/u),
+    })
+    expect(await service.sourceIntegrityById(session.id)).toMatchObject({
+      ok: true,
+      batches: [expect.objectContaining({ integrity: 'intact' })],
     })
 
     const forged = await service.applyBootstrap({

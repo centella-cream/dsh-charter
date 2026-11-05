@@ -86,6 +86,9 @@ export function validateState(
       && item.validity.checkedAtRevision > revision) {
       throw charterError('CORRUPT_STATE', `item ${item.id} validity revision is outside the snapshot`)
     }
+    if (item.validity?.state === 'attested' && item.validity.atRevision > revision) {
+      throw charterError('CORRUPT_STATE', `item ${item.id} attested revision is outside the snapshot`)
+    }
 
     if (item.lifecycle === 'superseded' && item.supersededBy === undefined) {
       throw charterError('CORRUPT_STATE', `superseded item ${item.id} has no successor`)

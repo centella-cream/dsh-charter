@@ -1,4 +1,5 @@
 import { charterError } from './errors.js'
+import { forkProjectionDigest } from './source-registry.js'
 import type { CharterLimits } from './limits.js'
 import { sha256Json } from './digest.js'
 import { buildSnapshotUnchecked } from './render.js'
@@ -141,7 +142,8 @@ export function forkRecord(input: ForkRecordInput): CharterRecord {
         parentBatchId: batch.id,
         parentSessionId: input.parentSessionId,
         parentRevision: input.parent.current.revision,
-        digest: sha256Json({ version: 1, parentBatchId: batch.id, candidates: batch.candidates }),
+        digest: forkProjectionDigest({ parentBatchId: batch.id, parentSessionId: input.parentSessionId, parentRevision: input.parent.current.revision, sourceRefs: batch.candidates.flatMap(candidate => candidate.kind === 'tombstone' ? [] : [{ kind: candidate.kind, id: candidate.id }]) }),
+        projectionVersion: 1,
         sourceRefs: batch.candidates.flatMap(candidate =>
           candidate.kind === 'tombstone' ? [] : [{ kind: candidate.kind, id: candidate.id }]),
         at: input.at,
@@ -159,10 +161,21 @@ export function forkRecord(input: ForkRecordInput): CharterRecord {
     const childBatchId = parent.proposalBatchId === undefined
       ? undefined
       : forkBatchIdByParent.get(parent.proposalBatchId)
+    const proposedRequires = parent.proposedRequires === undefined
+      ? undefined
+      : parent.proposedRequires.flatMap(id => input.ids[id] === undefined ? [] : [input.ids[id]!])
+    const evidence = parent.evidence === undefined
+      ? undefined
+      : parent.evidence.map(binding => binding.kind === 'workspace-file'
+        ? binding
+        : { ...binding, sessionId: input.parentSessionId })
     return {
       ...item,
       ...(childBatchId === undefined ? {} : { proposalBatchId: childBatchId }),
       ...(parent.reviewedAtRevision === undefined ? {} : { reviewedAtRevision: 1 }),
+      ...(parent.validity === undefined ? {} : { validity: { state: 'unassessed' as const } }),
+      ...(proposedRequires === undefined || proposedRequires.length === 0 ? {} : { proposedRequires }),
+      ...(evidence === undefined ? {} : { evidence }),
     } as CharterItem
   })
   const finalCurrent = buildSnapshotUnchecked(1, objective, finalItems)

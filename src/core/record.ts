@@ -521,6 +521,9 @@ export function commitRecord(input: CommitRecordInput): CharterRecord {
     if (op.type === 'item.propose') {
       const id = input.ids[op.item.clientRef]
       if (id !== undefined) proposedCandidates.push({ kind: 'item', id })
+    } else if (op.type === 'item.add' && input.proposalSource !== undefined) {
+      const id = input.ids[op.item.clientRef]
+      if (id !== undefined) proposedCandidates.push({ kind: 'item', id })
     } else if (op.type === 'objective.propose') {
       const id = input.ids[op.clientRef]
       if (id !== undefined) proposedCandidates.push({ kind: 'objective', id })
@@ -537,6 +540,9 @@ export function commitRecord(input: CommitRecordInput): CharterRecord {
     limits: input.limits,
     ...(input.record.objectiveProposals === undefined ? {} : { objectiveProposals: input.record.objectiveProposals }),
     ...(proposalBatchId === undefined ? {} : { proposalBatchId }),
+    ...(proposalBatchId === undefined || input.proposalSource === undefined
+      ? {}
+      : { activeProposalBatchId: proposalBatchId }),
   })
   const pendingProposalCount = applied.snapshot.items.filter(item => item.review === 'pending').length
     + applied.objectiveProposals.filter(proposal => proposal.review === 'pending').length

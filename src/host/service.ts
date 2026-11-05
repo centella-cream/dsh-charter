@@ -27,6 +27,12 @@ import { changeSetPreviewDigest, planChangeSet, type PlannedChangeSet } from '..
 import { sha256Json, sha256Text } from '../core/digest.js'
 import { dependencyProjection } from '../core/dependencies.js'
 import { sourceIntegrity } from '../core/source-integrity.js'
+import {
+  agentProjectionDigest,
+  compactionProjectionDigest,
+  messageProjectionDigest,
+  type SourceProjectionContext,
+} from '../core/source-registry.js'
 import { evaluateEvidenceIntegrity, evaluateValidators } from './validators.js'
 import {
   CHARTER_RECORD_SCHEMA_VERSION,
@@ -1390,13 +1396,58 @@ export class CharterService extends Service {
           filterDigest,
         }), 'utf8').toString('base64url')
       : undefined
+    const allObjectives = (view.objectiveProposals ?? [])
+      .filter(proposal => request.review === undefined || proposal.review === request.review)
+    let objectiveStart = 0
+    if (request.objectiveCursor !== undefined) {
+      try {
+        const parsed = JSON.parse(Buffer.from(request.objectiveCursor, 'base64url').toString('utf8')) as {
+          readonly v?: unknown
+          readonly revision?: unknown
+          readonly offset?: unknown
+          readonly filterDigest?: unknown
+        }
+        if (parsed.v !== 1 || !Number.isSafeInteger(parsed.offset) || (parsed.offset as number) < 0) {
+          throw new Error('cursor shape')
+        }
+        if (parsed.revision !== view.revision) {
+          return { ok: false, code: 'STALE_REVISION', message: 'objective proposal cursor was created for another revision' }
+        }
+        if (parsed.filterDigest !== filterDigest) throw new Error('cursor filter')
+        objectiveStart = parsed.offset as number
+      } catch {
+        return { ok: false, code: 'INVALID_CURSOR', message: 'invalid objective proposal cursor' }
+      }
+    }
+    const objectivePage: typeof allObjectives = []
+    for (const proposal of allObjectives.slice(objectiveStart, objectiveStart + limit)) {
+      const candidate = [...objectivePage, proposal]
+      if (Buffer.byteLength(JSON.stringify({ revision: view.revision, objectiveProposals: candidate }), 'utf8')
+        > maxResponseBytes) {
+        if (objectivePage.length === 0) {
+          return { ok: false, code: 'LIMIT_EXCEEDED', message: 'one objective proposal exceeds the query response byte cap' }
+        }
+        break
+      }
+      objectivePage.push(proposal)
+    }
+    const objectiveNext = objectiveStart + objectivePage.length
+    const nextObjectiveCursor = objectiveNext < allObjectives.length
+      ? Buffer.from(JSON.stringify({
+          v: 1,
+          revision: view.revision,
+          offset: objectiveNext,
+          filterDigest,
+        }), 'utf8').toString('base64url')
+      : undefined
     return {
       ok: true,
       revision: view.revision,
       batches,
-      objectiveProposals: [...(view.objectiveProposals ?? [])],
+      objectiveProposals: objectivePage,
       filterDigest,
       ...(nextCursor === undefined ? {} : { nextCursor }),
+      ...(nextObjectiveCursor === undefined ? {} : { nextObjectiveCursor }),
     }
   }
 
@@ -1592,7 +1643,11 @@ export class CharterService extends Service {
       at: result.proposal.source.at,
       sessionId: sessionId as string,
       projectionVersion: 1,
-      digest: this.bootstrapDraftHandle(result.proposal),
+      digest: compactionProjectionDigest({
+        sessionId: sessionId as string,
+        summarySeq: result.proposal.source.summarySeq,
+        projectionVersion: 1,
+      }, result.proposal),
     }
   }
 
@@ -1656,8 +1711,26 @@ export class CharterService extends Service {
       if (op.type === 'objective.redirect') {
         return unavailableResult('INVALID_ARGUMENT', 'bootstrap apply cannot redirect an objective')
       }
+      if (op.type === 'item.add') {
+        const activeRef = /^bootstrap-(inv|del)-(\d+)$/u.exec(op.item.clientRef)
+        if (activeRef === null) {
+          return unavailableResult('INVALID_ARGUMENT', 'bootstrap active item must reference the reviewed extraction')
+        }
+        const expectedKind = activeRef[1] === 'inv' ? 'invariant' : 'deliverable'
+        const index = Number(activeRef[2])
+        const candidates = expectedKind === 'invariant'
+          ? extraction.proposal.invariants
+          : extraction.proposal.deliverables
+        if (op.item.kind !== expectedKind || !Number.isSafeInteger(index) || index < 0 || index >= candidates.length) {
+          return unavailableResult('INVALID_ARGUMENT', 'bootstrap active candidate reference is invalid')
+        }
+        ops.push({ ...op, item: withModified(op.item, op.item.text !== candidates[index]) })
+        continue
+      }
       if (op.type !== 'item.propose') {
-        ops.push(op.type === 'item.add' ? { ...op, item: stripModified(op.item) } : op)
+        ops.push(op.type === 'item.supersede'
+          ? { ...op, replacement: stripModified(op.replacement) }
+          : op)
         continue
       }
       const candidateRef = /^bootstrap-(inv|del)-(\d+)$/u.exec(op.item.clientRef)
@@ -1683,7 +1756,11 @@ export class CharterService extends Service {
       }
       ops.push({ ...op, item: stripModified(op.item) })
     }
-    const sourceDigest = this.bootstrapDraftHandle(extraction.proposal)
+    const sourceDigest = compactionProjectionDigest({
+      sessionId: normalized.sessionId,
+      summarySeq: extraction.proposal.source.summarySeq,
+      projectionVersion: 1,
+    }, extraction.proposal)
     const applyRequest = { ...normalized, ops }
     return this.edit(applyRequest, actor, {
       kind: 'compaction-summary',
@@ -1691,7 +1768,11 @@ export class CharterService extends Service {
       at: extraction.proposal.source.at,
       sessionId: normalized.sessionId,
       projectionVersion: 1,
-      digest: sourceDigest,
+      digest: compactionProjectionDigest({
+        sessionId: normalized.sessionId,
+        summarySeq: extraction.proposal.source.summarySeq,
+        projectionVersion: 1,
+      }, extraction.proposal),
     }, { allowContentModified: true, dedupeSourceDigest: sourceDigest })
   }
 
@@ -1754,7 +1835,8 @@ export class CharterService extends Service {
     const existingKeys = new Set(record.current.items
       .filter(item => batchItemIds.has(item.id))
       .map(item => `${item.kind}:${item.text}`))
-    const ops = request.ops.filter(op => op.type !== 'item.propose'
+    const ops = request.ops.filter(op =>
+      (op.type !== 'item.propose' && op.type !== 'item.add')
       || !existingKeys.has(`${op.item.kind}:${op.item.text}`))
     return ops.length === request.ops.length ? request : { ...request, ops }
   }
@@ -1772,16 +1854,50 @@ export class CharterService extends Service {
     const view = this.view(session)
     if (view.status !== 'ready') return { ok: false, code: 'UNAVAILABLE', message: 'Charter is not readable' }
     const items: { itemId: string; integrity: import('./validators.js').EvidenceIntegrity }[] = []
+    let evidenceChecks = 0
+    const integrityDeadline = Date.now() + 5_000
     for (const item of view.items) {
       if (item.evidence === undefined || item.evidence.length === 0) continue
+      if (evidenceChecks >= 16 || Date.now() > integrityDeadline) break
       let integrity: import('./validators.js').EvidenceIntegrity = 'not-applicable'
-      for (const evidence of item.evidence.slice(0, 8)) {
+      for (const evidence of item.evidence.slice(0, 4)) {
+        if (evidenceChecks >= 16) break
+        evidenceChecks += 1
         const next = await evaluateEvidenceIntegrity({ root: identityOf(session).cwd, evidence })
         integrity = next !== 'intact' ? next : integrity === 'not-applicable' ? 'intact' : integrity
       }
       items.push({ itemId: item.id, integrity })
     }
-    return { ok: true, revision: view.revision, items }
+    const events = readSessionEvents(session).map(event => ({
+      seq: event.seq,
+      type: event.type,
+      data: event.data,
+    }))
+    const extraction = this.bootstrap(session.id)
+    const batches = (view.proposalBatches ?? []).map(batch => {
+      const candidates = batch.candidates.flatMap(candidate => {
+        if (candidate.kind === 'tombstone') return []
+        const item = view.items.find(entry => entry.id === candidate.id)
+        const proposal = (view.objectiveProposals ?? []).find(entry => entry.id === candidate.id)
+        const text = item?.text ?? proposal?.text
+        if (text === undefined) return []
+        return [{
+          kind: candidate.kind === 'item' ? 'item' as const : 'objective' as const,
+          text,
+          ...(item?.proposedRequires === undefined ? {} : { proposedRequires: item.proposedRequires }),
+        }]
+      })
+      const context: SourceProjectionContext = {
+        events,
+        candidates,
+        ...(batch.source.kind === 'compaction-summary' && extraction.available
+          && extraction.proposal.source.summarySeq === batch.source.summarySeq
+          ? { compaction: extraction.proposal }
+          : {}),
+      }
+      return { batchId: batch.id, integrity: sourceIntegrity(batch.source, context) }
+    })
+    return { ok: true, revision: view.revision, items, batches }
   }
 
   async runValidators(
@@ -1843,14 +1959,47 @@ export class CharterService extends Service {
     return { ok: true, revision: edit.committedRevision, results: evaluations.map(evaluation => evaluation.validity) }
   }
 
+  messageCandidates(sessionId: SessionIdType): import('./types.js').CharterMessageListResult {
+    const session = this.ctx.sessions.get(sessionId)
+    if (session === undefined) return { ok: false, code: 'NOT_FOUND', message: 'The Session is not live' }
+    const messages: import('./types.js').CharterMessageCandidate[] = []
+    for (const event of readSessionEvents(session)) {
+      if (event.type !== 'user/message') continue
+      const data = event.data as { source?: { kind?: string }; content?: readonly { type?: string; text?: string }[] }
+      if (data.source?.kind !== 'user') continue
+      const text = (data.content ?? [])
+        .filter(block => block.type === 'text' && typeof block.text === 'string')
+        .map(block => block.text)
+        .join('\n')
+        .trim()
+      if (text.length === 0) continue
+      messages.push({
+        seq: event.seq,
+        role: 'user',
+        excerpt: text.length > 160 ? `${text.slice(0, 157)}...` : text,
+        length: text.length,
+      })
+    }
+    return { ok: true, messages: messages.slice(-20) }
+  }
+
   async proposeFromLatestMessage(
     session: Session,
+    actor: CharterActor = { kind: 'owner' },
+  ): Promise<CharterEditResult> {
+    return this.proposeFromMessage(session, {}, actor)
+  }
+
+  async proposeFromMessage(
+    session: Session,
+    options: import('./types.js').CharterMessageProposalOptions = {},
     actor: CharterActor = { kind: 'owner' },
   ): Promise<CharterEditResult> {
     const events = readSessionEvents(session)
     let selected: { seq: number; text: string } | undefined
     for (const event of events) {
       if (event.type !== 'user/message') continue
+      if (options.seq !== undefined && event.seq !== options.seq) continue
       const data = event.data as { source?: { kind?: string }; content?: readonly { type?: string; text?: string }[] }
       if (data.source?.kind !== 'user') continue
       const text = (data.content ?? [])
@@ -1861,23 +2010,40 @@ export class CharterService extends Service {
       if (text.length > 0) selected = { seq: event.seq, text }
     }
     if (selected === undefined) {
-      return unavailableResult('NOT_FOUND', 'No user message is available to save as a proposal')
+      return unavailableResult('NOT_FOUND', 'No matching user message is available to save as a proposal')
     }
+    const start = options.start ?? 0
+    const end = options.end ?? selected.text.length
+    if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end)
+      || start < 0 || end < start || end > selected.text.length) {
+      return unavailableResult('INVALID_ARGUMENT', 'message selection is outside the selected message')
+    }
+    const text = selected.text.slice(start, end).trim()
+    if (text.length === 0) return unavailableResult('INVALID_ARGUMENT', 'message selection is empty')
     const view = this.view(session)
     if (view.status !== 'ready') {
       return unavailableResult('UNAVAILABLE', 'Charter is not editable in its current state')
     }
+    const selection = start === 0 && end === selected.text.length ? undefined : { start, end }
     const source = {
       kind: 'message' as const,
       sessionId: session.id as string,
       sessionCreatedAt: identityOf(session).createdAt,
       projectionVersion: 1,
-      digest: sha256Text(selected.text),
+      digest: messageProjectionDigest({
+        sessionId: session.id as string,
+        sessionCreatedAt: identityOf(session).createdAt,
+        seqs: [selected.seq],
+        role: 'user',
+        ...(selection === undefined ? {} : { selection }),
+      }, [text]),
       seqs: [selected.seq],
       role: 'user' as const,
+      ...(selection === undefined ? {} : { selection }),
       at: Date.now(),
     }
-    const mutationId = `message-proposal-${sha256Text(`${session.id}:${selected.seq}:${source.digest}`).slice(7, 39)}`
+    const kind = options.kind ?? 'invariant'
+    const mutationId = `message-proposal-${sha256Text(`${session.id}:${selected.seq}:${kind}:${text}:${JSON.stringify(selection ?? null)}`).slice(7, 39)}`
     const existing = this.recordFor(session)?.recentMutations.find(receipt => receipt.mutationId === mutationId)
     if (existing !== undefined) {
       return { ok: true, replayed: true, committedRevision: existing.committedRevision, ids: {}, view: this.view(session) }
@@ -1888,12 +2054,20 @@ export class CharterService extends Service {
       baseRevision: view.revision,
       ops: [{
         type: 'item.propose',
-        item: {
-          clientRef: 'message-proposal',
-          kind: 'invariant',
-          text: selected.text,
-          order: view.items.reduce((maximum, item) => Math.max(maximum, item.order), -1) + 1,
-        },
+        item: kind === 'invariant'
+          ? {
+              clientRef: 'message-proposal',
+              kind: 'invariant',
+              text,
+              order: view.items.reduce((maximum, item) => Math.max(maximum, item.order), -1) + 1,
+            }
+          : {
+              clientRef: 'message-proposal',
+              kind: 'deliverable',
+              text,
+              order: view.items.reduce((maximum, item) => Math.max(maximum, item.order), -1) + 1,
+              progress: 'not-started',
+            },
       }],
     }, actor, source)
   }
@@ -1915,6 +2089,11 @@ export class CharterService extends Service {
     const activeDeliverableIds = new Set(view.items
       .filter(item => item.kind === 'deliverable' && item.review === 'accepted' && item.lifecycle === 'current')
       .map(item => item.id))
+    const unknownRequires = items.flatMap(input => input.requires ?? [])
+      .filter(id => !activeDeliverableIds.has(id))
+    if (unknownRequires.length > 0) {
+      return { ok: false, message: `charter_propose requires must reference current active deliverables: ${[...new Set(unknownRequires)].join(', ')}` }
+    }
     const ops: import('../core/schemas.js').CharterOp[] = items.map((input, index) => ({
       type: 'item.propose',
       item: input.kind === 'invariant'
@@ -1931,9 +2110,7 @@ export class CharterService extends Service {
             order: nextOrder + index,
             progress: 'not-started',
             ...(input.requires === undefined ? {} : {
-              proposedRequires: [...new Set(input.requires)]
-                .filter(id => activeDeliverableIds.has(id))
-                .sort(),
+              proposedRequires: [...new Set(input.requires)].sort(),
             }),
           },
     }))
@@ -1952,8 +2129,13 @@ export class CharterService extends Service {
     }, { kind: 'agent-tool' }, {
       kind: 'agent-tool',
       toolCallId: callId,
+      projectionVersion: 1,
       at: Date.now(),
-      digest: sha256Json({ version: 1, items }),
+      digest: agentProjectionDigest(callId, items.map(item => ({
+        kind: 'item' as const,
+        text: item.text,
+        proposedRequires: item.requires ?? [],
+      }))),
     })
     return result.ok
       ? { ok: true, revision: result.committedRevision }
@@ -2047,9 +2229,15 @@ export class CharterService extends Service {
                 : 'user'
             const withOrigin: CharterEditRequest = {
               ...request,
-              ops: request.ops.map(op => op.type === 'item.propose'
-                ? { ...op, item: { ...op.item, origin: sourceOrigin } }
-                : op),
+              ops: request.ops.map(op => {
+                if (op.type === 'item.propose' || op.type === 'item.add') {
+                  return { ...op, item: { ...op.item, origin: sourceOrigin } }
+                }
+                if (op.type === 'item.supersede') {
+                  return { ...op, replacement: { ...op.replacement, origin: sourceOrigin } }
+                }
+                return op
+              }),
             }
             const effectiveRequest = options.dedupeSourceDigest === undefined
               ? withOrigin
@@ -2081,10 +2269,6 @@ export class CharterService extends Service {
             produced = true
             return nextRecord
           })
-          if (this.ctx.sessions.get(session.id) !== session) {
-            this.fenceWrite(session.id, 'edit')
-            return unavailableResult('UNAVAILABLE', 'The Session lifecycle changed while the edit was being written; the Session is fenced', this.view(session))
-          }
           if (deduped) {
             this.publish(session.id)
             return {
@@ -2094,6 +2278,10 @@ export class CharterService extends Service {
               ids: {},
               view: this.view(session),
             }
+          }
+          if (this.ctx.sessions.get(session.id) !== session) {
+            this.fenceWrite(session.id, 'edit')
+            return unavailableResult('UNAVAILABLE', 'The Session lifecycle changed while the edit was being written; the Session is fenced', this.view(session))
           }
           this.recordStates.set(session.id, {
             kind: 'healthy',

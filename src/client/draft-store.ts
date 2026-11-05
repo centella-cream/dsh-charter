@@ -926,14 +926,16 @@ export class CharterDraft {
     return attempt?.lifecycle === this.state.lifecycle ? attempt : undefined
   }
 
-  async proposeLatestMessage(): Promise<void> {
+  async proposeLatestMessage(
+    options: import('../host/types.js').CharterMessageProposalOptions = {},
+  ): Promise<void> {
     const source = this.resolveSource()
     if (source?.proposeMessage === undefined) {
       this.update({ feedback: { kind: 'error', code: 'UNAVAILABLE' } })
       return
     }
     try {
-      const result = await source.proposeMessage()
+      const result = await source.proposeMessage(options)
       if (result.ok) {
         this.update({ feedback: { kind: 'saved', revision: result.committedRevision } })
       } else {

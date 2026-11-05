@@ -40,7 +40,10 @@ export interface CharterSource {
   /** Extract a review-only draft from the latest compaction summary. */
   readonly bootstrap: () => Promise<CharterBootstrapResult>
   /** Save the latest real user message as a pending proposal. */
-  readonly proposeMessage?: () => Promise<CharterEditResult>
+  readonly queryMessages?: () => Promise<import('../host/types.js').CharterMessageListResult>
+  readonly proposeMessage?: (
+    options?: import('../host/types.js').CharterMessageProposalOptions,
+  ) => Promise<CharterEditResult>
   /** Owner-only registered validator run. */
   readonly sourceIntegrity?: () => Promise<import('../host/types.js').CharterSourceIntegrityResult>
   readonly runValidators?: (
@@ -179,12 +182,24 @@ export class CharterSessionSource implements CharterSource {
     return result.value
   }
 
-  readonly proposeMessage = async (): Promise<CharterEditResult> => {
+  readonly queryMessages = async (): Promise<import('../host/types.js').CharterMessageListResult> => {
     const remote = this.remote
     if (remote === undefined) {
       return { ok: false, code: 'UNAVAILABLE', message: 'Charter connection is unavailable.' }
     }
-    const result = await remote.proposeMessage(this.sessionId)
+    const result = await remote.queryMessages(this.sessionId)
+    if (!result.ok) throw result.error
+    return result.value
+  }
+
+  readonly proposeMessage = async (
+    options: import('../host/types.js').CharterMessageProposalOptions = {},
+  ): Promise<CharterEditResult> => {
+    const remote = this.remote
+    if (remote === undefined) {
+      return { ok: false, code: 'UNAVAILABLE', message: 'Charter connection is unavailable.' }
+    }
+    const result = await remote.proposeMessage({ sessionId: this.sessionId, ...options })
     if (!result.ok) throw result.error
     return result.value
   }
@@ -387,21 +402,25 @@ export class CharterSessionSource implements CharterSource {
       items.push(...value.items)
       itemCursor = value.nextCursor
     } while (itemCursor !== undefined)
-    const objectiveProposals: import('../core/schemas.js').ObjectiveProposal[] = []
+    const objectiveBysId = new Map<string, import('../core/schemas.js').ObjectiveProposal>()
     const batches: NonNullable<CharterView['proposalBatches']> = []
     let proposalCursor: string | undefined
+    let objectiveCursor: string | undefined
     do {
       const page = await remote.queryProposals(this.sessionId, {
         limit: 64,
         ...(proposalCursor === undefined ? {} : { cursor: proposalCursor }),
+        ...(objectiveCursor === undefined ? {} : { objectiveCursor }),
       })
       if (!page.ok) throw page.error
       const value = page.value
       if (!value.ok) throw new Error(value.message)
       batches.push(...(value.batches as unknown as NonNullable<CharterView['proposalBatches']>))
-      objectiveProposals.push(...value.objectiveProposals)
+      for (const proposal of value.objectiveProposals) objectiveBysId.set(proposal.id, proposal)
       proposalCursor = value.nextCursor
-    } while (proposalCursor !== undefined)
+      objectiveCursor = value.nextObjectiveCursor
+    } while (proposalCursor !== undefined || objectiveCursor !== undefined)
+    const objectiveProposals = [...objectiveBysId.values()]
     if (generation !== this.attachGeneration || refresh !== this.viewRefresh) return
     const view: CharterView = {
       status: summary.status,

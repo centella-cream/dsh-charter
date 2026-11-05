@@ -68,7 +68,8 @@ export function validateDependencyGraph(items: readonly CharterItem[]): void {
     }
     for (const prerequisiteId of proposed) {
       const prerequisite = byId.get(prerequisiteId)
-      if (prerequisite === undefined || prerequisite.kind !== 'deliverable' || !isStandingItem(prerequisite)) {
+      if (prerequisite === undefined || prerequisite.kind !== 'deliverable'
+        || (!isStandingItem(prerequisite) && !(prerequisite.review === 'pending' && prerequisite.lifecycle === 'current'))) {
         throw charterError('INVALID_CHANGE_SET', `deliverable ${item.id} has a dangling proposed prerequisite ${prerequisiteId}`)
       }
     }

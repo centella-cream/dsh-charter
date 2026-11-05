@@ -391,6 +391,7 @@ export const proposalSourceSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('agent-tool'),
     toolCallId: identifierSchema,
+    projectionVersion: z.number().int().positive().optional(),
     at: z.number().int().nonnegative(),
     digest: digestSchema.optional(),
   }).strict(),
@@ -407,6 +408,7 @@ export const proposalSourceSchema = z.discriminatedUnion('kind', [
       kind: z.enum(['item', 'objective']),
       id: z.string(),
     }).strict()).optional(),
+    projectionVersion: z.number().int().positive().optional(),
     digest: digestSchema.optional(),
     at: z.number().int().nonnegative(),
   }).strict(),

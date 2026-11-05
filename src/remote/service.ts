@@ -22,6 +22,7 @@ import type {
   CharterValidatorRequest,
   CharterValidatorRunResult,
   CharterSourceIntegrityResult,
+  CharterMessageListResult,
 } from '../host/types.js'
 import { resolveRemoteActor } from './actor.js'
 import { remoteMethod } from './compat.js'
@@ -79,7 +80,22 @@ export class CharterRemoteService extends TypertRemoteService {
       session: (sessionId: SessionId): SessionId => sessionId,
     },
   })
-  proposeMessage(sessionId: SessionId): Promise<CharterEditResult> {
+  queryMessages(sessionId: SessionId): Promise<CharterMessageListResult> {
+    return Promise.resolve(this.ctx.charter.messageCandidates(sessionId))
+  }
+
+  @remoteMethod({
+    resources: {
+      session: (request: { readonly sessionId: SessionId }): SessionId => request.sessionId,
+    },
+  })
+  proposeMessage(request: {
+    readonly sessionId: SessionId
+    readonly seq?: number
+    readonly kind?: 'invariant' | 'deliverable'
+    readonly start?: number
+    readonly end?: number
+  }): Promise<CharterEditResult> {
     let actor: CharterActor
     try {
       actor = resolveRemoteActor(this.ctx)
@@ -89,11 +105,11 @@ export class CharterRemoteService extends TypertRemoteService {
       }
       throw error
     }
-    const session = this.ctx.sessions.get(sessionId)
+    const session = this.ctx.sessions.get(request.sessionId)
     if (session === undefined) {
       return Promise.resolve({ ok: false, code: 'NOT_FOUND', message: 'The Session is not live' })
     }
-    return this.ctx.charter.proposeFromLatestMessage(session, actor)
+    return this.ctx.charter.proposeFromMessage(session, request, actor)
   }
 
   @remoteMethod({
@@ -269,6 +285,7 @@ export class CharterRemoteService extends TypertRemoteService {
       readonly review?: 'pending' | 'accepted' | 'rejected'
       readonly batchId?: string
       readonly candidateKind?: 'item' | 'objective'
+      readonly objectiveCursor?: string
     } = {},
   ): Promise<CharterProposalQueryResult> {
     resolveRemoteActor(this.ctx)
@@ -279,6 +296,7 @@ export class CharterRemoteService extends TypertRemoteService {
       ...(options.review === undefined ? {} : { review: options.review }),
       ...(options.batchId === undefined ? {} : { batchId: options.batchId }),
       ...(options.candidateKind === undefined ? {} : { candidateKind: options.candidateKind }),
+      ...(options.objectiveCursor === undefined ? {} : { objectiveCursor: options.objectiveCursor }),
     }))
   }
 

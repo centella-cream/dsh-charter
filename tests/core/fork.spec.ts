@@ -56,6 +56,68 @@ describe('charter fork', () => {
     expect(JSON.stringify(child)).not.toContain('parent-mutation')
   })
 
+  it('remaps validity, proposed prerequisites, and evidence into the child namespace', () => {
+    const identity = { createdAt: 1 }
+    const actor: CharterActor = { kind: 'owner' }
+    const parentRequest = normalizeEditRequest({
+      sessionId: 'parent',
+      mutationId: 'parent-validity-evidence',
+      baseRevision: 0,
+      ops: [
+        { type: 'item.add', item: { clientRef: 'a', kind: 'deliverable', text: 'Existing', order: 0, progress: 'done' } },
+        { type: 'item.propose', item: { clientRef: 'p', kind: 'deliverable', text: 'Pending', order: 1, progress: 'not-started', proposedRequires: ['parent-a'] } },
+      ],
+    })
+    let parent = commitRecord({
+      record: createEmptyRecord(identity, limits),
+      request: parentRequest,
+      requestDigest: requestDigestOf(parentRequest, identity, actor),
+      ids: { a: 'parent-a', p: 'parent-p' },
+      actor,
+      at: 1,
+      limits,
+    })
+    const validityRequest = normalizeEditRequest({
+      sessionId: 'parent',
+      mutationId: 'parent-validity',
+      baseRevision: 1,
+      ops: [{
+        type: 'item.validity.set',
+        itemId: 'parent-a',
+        validity: { state: 'attested', atRevision: 2 },
+        evidence: [{
+          kind: 'message',
+          sessionId: 'parent',
+          seq: 1,
+          projectionVersion: 1,
+          digest: `sha256:${'a'.repeat(64)}`,
+        }],
+      }],
+    })
+    parent = commitRecord({
+      record: parent,
+      request: validityRequest,
+      requestDigest: requestDigestOf(validityRequest, identity, { kind: 'host' }),
+      ids: {},
+      actor: { kind: 'host' },
+      at: 2,
+      limits,
+    })
+    const child = forkRecord({
+      parentSessionId: 'parent',
+      parent,
+      childIdentity: { createdAt: 2, parentSession: 'parent' },
+      ids: { 'parent-a': 'child-a', 'parent-p': 'child-p' },
+      mutationId: 'fork-validity',
+      at: 3,
+      limits,
+    })
+    const active = child.current.items.find(item => item.id === 'child-a')
+    expect(active?.validity).toEqual({ state: 'unassessed' })
+    expect(active?.evidence?.[0]).toMatchObject({ kind: 'message', sessionId: 'parent' })
+    expect(child.current.items.find(item => item.id === 'child-p')?.proposedRequires).toEqual(['child-a'])
+  })
+
   it('carries objective proposal candidates into the child namespace', () => {
     const identity = { createdAt: 1 }
     const actor: CharterActor = { kind: 'owner' }

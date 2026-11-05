@@ -22,6 +22,7 @@ export interface ApplyOpsInput {
   readonly origin?: 'user' | 'agent'
   readonly objectiveProposals?: readonly ObjectiveProposal[]
   readonly proposalBatchId?: string
+  readonly activeProposalBatchId?: string
 }
 
 export interface ApplyOpsOutput {
@@ -86,6 +87,48 @@ function assertEditable(item: CharterItem): void {
   }
 }
 
+function resolveProposedRequires(
+  item: NewItemInput,
+  ids: Readonly<Record<string, string>>,
+): NewItemInput {
+  if (item.kind !== 'deliverable' || item.proposedRequires === undefined) return item
+  return {
+    ...item,
+    proposedRequires: item.proposedRequires.map(id => ids[id] ?? id),
+  }
+}
+
+function reorderAccepts(
+  ops: readonly CharterOp[],
+  items: ReadonlyMap<string, CharterItem>,
+): CharterOp[] {
+  const accepts = ops.filter((op): op is Extract<CharterOp, { type: 'item.accept' }> => op.type === 'item.accept')
+  if (accepts.length < 2) return [...ops]
+  const acceptIds = new Set(accepts.map(op => op.itemId))
+  const dependencies = new Map<string, string[]>()
+  for (const op of accepts) {
+    const item = items.get(op.itemId)
+    dependencies.set(op.itemId, (item?.proposedRequires ?? []).filter(id => acceptIds.has(id)))
+  }
+  const ordered: string[] = []
+  const visiting = new Set<string>()
+  const visited = new Set<string>()
+  const visit = (id: string): void => {
+    if (visited.has(id)) return
+    if (visiting.has(id)) throw charterError('INVALID_CHANGE_SET', 'proposed prerequisite acceptance contains a cycle')
+    visiting.add(id)
+    for (const dependency of dependencies.get(id) ?? []) visit(dependency)
+    visiting.delete(id)
+    visited.add(id)
+    ordered.push(id)
+  }
+  for (const op of accepts) visit(op.itemId)
+  const byId = new Map(ordered.map((id, index) => [id, index]))
+  const sorted = [...accepts].sort((left, right) => byId.get(left.itemId)! - byId.get(right.itemId)!)
+  let cursor = 0
+  return ops.map(op => op.type === 'item.accept' ? sorted[cursor++]! : op)
+}
+
 export function applyOps(input: ApplyOpsInput): ApplyOpsOutput {
   if (input.nextRevision !== input.snapshot.revision + 1) {
     throw charterError('INVALID_ARGUMENT', 'nextRevision must advance exactly once')
@@ -97,6 +140,7 @@ export function applyOps(input: ApplyOpsInput): ApplyOpsOutput {
   let objective = input.snapshot.objective
   const objectiveProposals = new Map((input.objectiveProposals ?? []).map(proposal => [proposal.id, { ...proposal }]))
   const items = new Map(input.snapshot.items.map(item => [item.id, copyItem(item)]))
+  const ops = reorderAccepts(input.ops, items)
   const changes: CharterChange[] = []
   const purgeIds = new Set(
     input.ops.filter((op): op is Extract<CharterOp, { type: 'item.purge' }> => op.type === 'item.purge')
@@ -122,7 +166,7 @@ export function applyOps(input: ApplyOpsInput): ApplyOpsOutput {
   }
 
   const origin = input.origin ?? 'user'
-  for (const op of input.ops) {
+  for (const op of ops) {
     switch (op.type) {
       case 'objective.initialize': {
         if (objective !== undefined) {
@@ -239,7 +283,9 @@ export function applyOps(input: ApplyOpsInput): ApplyOpsOutput {
       case 'item.add': {
         const id = requireMappedId(input.ids, op.item.clientRef)
         if (items.has(id)) throw charterError('INVALID_REFERENCE', `minted item id ${id} already exists`)
-        items.set(id, itemFromInput(op.item, id, input.nextRevision, origin))
+        items.set(id, itemFromInput(resolveProposedRequires(op.item, input.ids), id, input.nextRevision, origin, {
+          ...(input.activeProposalBatchId === undefined ? {} : { proposalBatchId: input.activeProposalBatchId }),
+        }))
         changes.push({ type: 'item.added', itemId: id })
         break
       }
@@ -247,7 +293,7 @@ export function applyOps(input: ApplyOpsInput): ApplyOpsOutput {
         const id = requireMappedId(input.ids, op.item.clientRef)
         if (items.has(id)) throw charterError('INVALID_REFERENCE', `minted item id ${id} already exists`)
         // A proposal is always pending, even when a user imported it from history.
-        items.set(id, itemFromInput(op.item, id, input.nextRevision, 'agent', {
+        items.set(id, itemFromInput(resolveProposedRequires(op.item, input.ids), id, input.nextRevision, 'agent', {
           ...(input.proposalBatchId === undefined ? {} : { proposalBatchId: input.proposalBatchId }),
         }))
         changes.push({ type: 'item.added', itemId: id })
@@ -365,7 +411,7 @@ export function applyOps(input: ApplyOpsInput): ApplyOpsOutput {
         }
         items.set(item.id, { ...item, lifecycle: 'superseded', supersededBy: replacementId })
         items.set(replacementId, itemFromInput(
-          op.replacement,
+          resolveProposedRequires(op.replacement, input.ids),
           replacementId,
           input.nextRevision,
           origin,
