@@ -21,13 +21,13 @@ Current release state (2026-10-30):
 - `0.1.0-rc.5`: previous accepted npm release; its canonical GitHub tag/release remains pending restoration.
 - Active release: `0.1.0-rc.6`, formally accepted.
 - Active development: `0.2.0` on `feat/0.2.0-workspace`; package versions from 0.2.0 onward never use an `rc` suffix.
-- 0.2.0 source evidence: 36 files / 428 tests and the nine-version matrix pass 428/428 on the current development tree.
+- 0.2.0 source evidence: 36 files / 429 tests and the nine-version matrix pass 429/429 on the current development tree.
 - Pending: restore the canonical rc.5 GitHub tag/release and complete the protected browser evidence/post-release checks.
 
 | Item | Result |
 | --- | --- |
 | Strict TypeScript check | Pass on the current tree |
-| Vitest | 36 files / 428 tests pass (`npm test`, which builds first) |
+| Vitest | 36 files / 429 tests pass (`npm test`, which builds first) |
 | Host ESM build + browser factory bundle | Pass |
 | Remote contract and client smoke | Pass |
 | Normal package smoke | Pass |
@@ -35,9 +35,9 @@ Current release state (2026-10-30):
 | Packed-artifact recovery smoke | Pass: export, target removal, restore, receipt replay, two restarts, healthy-target refusal, packed fault subset |
 | Real `TypertGatewayService` | Pass on exact artifact with isolated DSH `0.2.1-rc.3` and `rc.4` graphs |
 | Compatibility sentinels | Pass on `0.1.7-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4`, `0.2.1-rc.5` |
-| Nine-version full rerun | Pass via tracked `compat-matrix --versions all --allow-new-release` (428/428 each) |
+| Nine-version full rerun | Pass via tracked `compat-matrix --versions all --allow-new-release` (429/429 each) |
 | Fresh Web profile matrix (historical rc.6) | PASS: local rc.6 artifact (pre-withdrawal) installed and served on DSH `0.1.7-rc.2`, `0.2.0-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4`, `0.2.1-rc.5` |
-| Fresh Web profile 0.2.2 | PASS on 2026-11-05: fresh `DSH_HOME` + `dsh@0.2.2-rc.1 plugin --profile web add` of `dsh-charter-0.2.0.tgz`; Web boot, page HTTP 200, charter bundle HTTP 200 |
+| Fresh Web profile 0.2.2 | PASS on 2026-11-05: fresh `DSH_HOME` + `dsh@0.2.2-rc.1 plugin --profile web add` of `dsh-charter-0.2.0.tgz` (SHA-256 `fde5531d457effc713f4423f8b46c8f0e591770e59c55e19956f000c11bdeffc`); Web boot, page HTTP 200, charter bundle HTTP 200; boot graph contains `dsh-charter` and the page index contains `dsh-charter/client.js` |
 | Untracked `0.2.2-alpha.2` probe | strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run; explicitly unsupported in rc.6 |
 | Local Web + Desktop profiles | 0.2.0 development artifact installed into local `web` and `desktop` profiles on DSH `0.2.2-rc.1`; profile copies boot and serve the charter bundle. This is local evidence, not release-artifact evidence. |
 | Real browser recovery | Manual protected evidence gate; not automated |
@@ -50,9 +50,9 @@ The `feat/0.2.0-workspace` tree has passed source-level acceptance for the imple
 - record v2 write path and in-memory v1 migration;
 - dependency `requires` validation, derived readiness, and dependency-aware prompt equivalence;
 - three-area Pane information architecture and dependency editor;
-- proposal-batch provenance, objective-proposal lifecycle, summary/item/proposal/change query endpoints, `watchSummary`, and pending-only `charter_propose` ;
-- `npm run check`: 36 files / 428 tests;
-- nine-version DSH matrix: 428/428 on every declared version;
+- proposal-batch provenance, objective-proposal lifecycle, summary/item/proposal/change query endpoints, `watchSummary`, and pending-only `charter_propose`;
+- `npm run check`: 36 files / 429 tests;
+- nine-version DSH matrix: 429/429 on every declared version;
 - normal package smoke: `dsh-charter-0.2.0.tgz` installs and its client factory bundle loads.
 
 This is source acceptance, not a release acceptance: real browser/Desktop A/B, real-model compaction, performance,
@@ -86,17 +86,17 @@ The tracked runner creates isolated pnpm projects with strict peers and runs typ
 
 | DSH version | Evidence |
 | --- | --- |
-| `0.1.7-rc.2` | 428/428 tracked matrix PASS |
-| `0.2.0-rc.1` | 428/428 tracked matrix PASS |
-| `0.2.0-rc.2` | 428/428 tracked matrix PASS |
-| `0.2.1-rc.1` | 428/428 tracked matrix PASS |
-| `0.2.1-rc.2` | 428/428 tracked matrix PASS |
-| `0.2.1-rc.3` | 428/428 tracked matrix PASS |
-| `0.2.1-rc.4` | 428/428 tracked matrix PASS |
-| `0.2.1-rc.5` | 428/428 tracked matrix PASS |
-| `0.2.2-rc.1` | 428/428 tracked matrix PASS |
+| `0.1.7-rc.2` | 429/429 tracked matrix PASS |
+| `0.2.0-rc.1` | 429/429 tracked matrix PASS |
+| `0.2.0-rc.2` | 429/429 tracked matrix PASS |
+| `0.2.1-rc.1` | 429/429 tracked matrix PASS |
+| `0.2.1-rc.2` | 429/429 tracked matrix PASS |
+| `0.2.1-rc.3` | 429/429 tracked matrix PASS |
+| `0.2.1-rc.4` | 429/429 tracked matrix PASS |
+| `0.2.1-rc.5` | 429/429 tracked matrix PASS |
+| `0.2.2-rc.1` | 429/429 tracked matrix PASS |
 
-The current 0.2.0 development tree passed `compat-matrix --versions all --allow-new-release` on 2026-11-05: every declared version passed typecheck, build, and 428/428 tests. Installs use pnpm strict peer resolution, exact tool pins, a single zod 4.6.7 graph, full `pnpm list --depth Infinity` graph validation, and recorded lockfile SHA-256 values. The untracked `0.2.2-alpha.2` probe is recorded as unsupported: strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run.
+The current 0.2.0 development tree passed `compat-matrix --versions all --allow-new-release` on 2026-11-05: every declared version passed typecheck, build, and 429/429 tests. Installs use pnpm strict peer resolution, exact tool pins, a single zod 4.6.7 graph, full `pnpm list --depth Infinity` graph validation, and recorded lockfile SHA-256 values. The untracked `0.2.2-alpha.2` probe is recorded as unsupported: strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run.
 
 ## 4. What the tests cover
 
