@@ -28,7 +28,7 @@ tagging.
 3. Run `npm ci`, `npm run check`, and the normal `npm run smoke:package`.
 4. Run the compatibility regression over every declared DSH version and probe untracked `next`/`latest`
    versions. A missing, peer-drifted, or untested version blocks release.
-5. Open a PR from the release branch. `main` requires green CI and an approving review; do not bypass branch protection. Keep the worktree free of secrets, user records, and `.tmp` artifacts.
+5. Run the local gates on a local non-`main` branch. Merge into local `main` linearly, then push `main`. Do not push development branches; the remote keeps only `main`. Keep the worktree free of secrets, user records, and `.tmp` artifacts.
 
 ## 2. Build the candidate bytes once
 
@@ -40,7 +40,7 @@ pass `--artifact`/`--sha256`; no downstream job may rebuild or repack.
 After the candidate is green, create the checksum-only `C+1` commit on top of candidate `C`:
 
 - `git diff --name-only C C+1` is exactly `SHA256SUMS`;
-- `C+1` is a direct child of `C`; if `main` is protected, land it through a second approved PR that contains only `SHA256SUMS`;
+- `C+1` is a direct child of `C`; commit only `SHA256SUMS` on local `main` and push it directly.
 - public CI is green on the exact `C+1` commit;
 - the tag targets `C+1`, not `C`.
 

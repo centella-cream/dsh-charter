@@ -14,7 +14,7 @@ tag、不删除已发布 Release、不在打 tag 后重建字节。
 - **已发布：** `0.1.0-rc.6` — 当前 npm 公开发布版本；精确产物 SHA-256
   `21ddbea0ae3fd88994d4e4731429ef4d8cb75db2b97e83cd7530a0386e425825`。
 - **发布候选：** `0.2.0`，位于 `feat/0.2.0-workspace`；目标 tag `v0.2.0`。
-- **待完成：** 受保护 PR approval、candidate workflow、browser evidence 和 promotion workflow。
+- **待完成：** 本地合入 `main`、candidate workflow、browser evidence 和 promotion workflow。
 - 不得手动 publish，也不得绕过受保护门禁。
 
 ## 1. 准备源码
@@ -26,7 +26,7 @@ tag、不删除已发布 Release、不在打 tag 后重建字节。
 3. 运行 `npm ci`、`npm run check` 和普通 `npm run smoke:package`。
 4. 对每个声明 DSH 版本跑兼容回归，并 probe 未跟踪的 `next`/`latest` 版本；缺失、peer drift 或未验证版本
    阻断发布。
-5. 从 release 分支创建 PR；`main` 要求 CI 全绿和 approving review，不得绕过分支保护。工作树不得包含 secrets、用户记录或 `.tmp` 产物。
+5. 在本地非 `main` 分支跑完门禁，线性合入本地 `main`，再推送 `main`。不要推送开发分支；远程只保留 `main`。工作树不得包含 secrets、用户记录或 `.tmp` 产物。
 
 ## 2. 只构建一次候选字节
 
@@ -37,7 +37,7 @@ exact-artifact package smoke、packed-recovery smoke、exact artifact Gateway �
 Candidate 全绿后，在 candidate `C` 上创建只改 checksum 的 `C+1`：
 
 - `git diff --name-only C C+1` 只有 `SHA256SUMS`；
-- `C+1` 是 `C` 的直接子提交；若 `main` 受保护，通过只改 `SHA256SUMS` 的第二个 approved PR 合入；
+- `C+1` 是 `C` 的直接子提交；在本地 `main` 只提交 `SHA256SUMS` 并直接推送。
 - public CI 在精确 `C+1` 上全绿；
 - tag 指向 `C+1`，不是 `C`。
 

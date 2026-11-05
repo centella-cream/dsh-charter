@@ -38,6 +38,15 @@ npm run check
 
 `npm run build` also runs the Remote and client smoke checks.
 
+## Branch workflow (solo maintainer)
+
+The remote keeps only `main`. Do development on local non-`main` branches; do not push those branches.
+Run the local gates, merge into local `main` linearly, then push `main`. Protected actions on `main` are
+force-pushes, deletion, and non-linear merges, not a PR review requirement.
+
+External contributors may still open PRs from forks. The maintainer reviews and merges them locally under
+the same main-only policy.
+
 ## Pull requests
 
 A good pull request:

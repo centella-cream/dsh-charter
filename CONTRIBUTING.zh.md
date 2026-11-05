@@ -40,6 +40,13 @@ npm run check
 
 `npm run build` 同时运行 Remote 和 client smoke 检查。
 
+## 分支流程（单维护者）
+
+远程仓库只保留 `main`。开发在本地非 `main` 分支进行，不推送开发分支；完成本地门禁后线性合入本地
+`main`，再推送 `main`。`main` 的保护是不允许 force-push、删除和非线性合并，而不是 PR review 要求。
+
+外部贡献者仍可从 fork 提交 PR；维护者按同样的 main-only 策略在本地审查和合并。
+
 ## Pull request
 
 一个好的 PR：

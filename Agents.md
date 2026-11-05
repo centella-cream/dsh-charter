@@ -145,7 +145,7 @@ The worktree may hold uncommitted user-authored plan/docs/source changes (for ex
 `docs/history/`, the 0.2 design, README updates, and source edits). Those are user property, not scratch work.
 
 **Rule:** never revert, stash, clean, or rewrite uncommitted user work without explicit consent (no
-`git checkout -- .`, `git reset --hard`, `git clean`). Do release work on the release branch, keep commits
+`git checkout -- .`, `git reset --hard`, `git clean`). Do release work on a local release branch, keep commits
 single-purpose with conventional prefixes, and leave `dist/`, `*.tgz`, `.tmp/`, `node_modules/`, `lib/`,
 `.build-ts/`, and `docs/archive/` untracked. Do not rewrite published history; do not push tags before the gates;
 do not commit, tag, or publish without an explicit request.
