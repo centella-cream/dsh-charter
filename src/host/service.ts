@@ -1297,6 +1297,13 @@ export class CharterService extends Service {
     }
   }
 
+  private isQueryableView(view: CharterView): boolean {
+    return view.status === 'ready'
+      || (view.status === 'unavailable'
+        && view.lifecycle !== undefined
+        && view.recordState?.kind === 'healthy')
+  }
+
   queryProposalsById(
     sessionId: SessionIdType,
     request: import('./types.js').CharterProposalQueryRequest = {},
@@ -1306,7 +1313,7 @@ export class CharterService extends Service {
       return { ok: false, code: 'LIMIT_EXCEEDED', message: 'limit must be between 1 and 64' }
     }
     const view = this.viewById(sessionId)
-    if (view.status !== 'ready') {
+    if (!this.isQueryableView(view)) {
       return { ok: false, code: 'UNAVAILABLE', message: 'Charter is not ready for proposal queries' }
     }
     const filterDigest = sha256Json({
@@ -1467,7 +1474,7 @@ export class CharterService extends Service {
 
   queryItemsById(sessionId: SessionIdType, request: ItemQueryRequest): CharterItemQueryResult {
     const view = this.viewById(sessionId)
-    if (view.status !== 'ready' || view.lifecycle === undefined) {
+    if (!this.isQueryableView(view) || view.lifecycle === undefined) {
       return { ok: false, code: 'UNAVAILABLE', message: 'Charter is not ready for query', revision: view.revision }
     }
     const sourceKindById = new Map<string, string>()

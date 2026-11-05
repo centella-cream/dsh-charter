@@ -26,6 +26,9 @@ describe('charter Remote contract', () => {
       if (descriptor.result.mode === 'strict') expect(typeof descriptor.result.create).toBe('function')
       expect(descriptor.id).toContain('dsh-charter#charter/')
     }
+    for (const descriptor of charterRemoteContribution.descriptors) {
+      if (descriptor.mode === 'stream') expect(descriptor.cancellation).toEqual({ parameter: 'signal' })
+    }
     const edit = charterRemoteContribution.descriptors.find(item => item.method === 'edit')
     const bootstrap = charterRemoteContribution.descriptors.find(item => item.method === 'bootstrap')
     expect(bootstrap?.parameters[0]?.name).toBe('sessionId')

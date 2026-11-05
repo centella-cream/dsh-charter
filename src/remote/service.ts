@@ -286,7 +286,7 @@ export class CharterRemoteService extends TypertRemoteService {
       readonly batchId?: string
       readonly candidateKind?: 'item' | 'objective'
       readonly objectiveCursor?: string
-    } = {},
+    },
   ): Promise<CharterProposalQueryResult> {
     resolveRemoteActor(this.ctx)
     return Promise.resolve(this.ctx.charter.queryProposalsById(sessionId, {

@@ -85,6 +85,7 @@ export const charterRemoteContribution: TypertRemoteContribution = {
         create: () => sessionIdSchema,
       },
     }],
+    cancellation: { parameter: 'signal' },
     result: {
       mode: 'strict',
       typeSymbol: 'dsh-charter/CharterSummaryFrame',

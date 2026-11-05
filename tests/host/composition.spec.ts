@@ -1631,6 +1631,10 @@ describe('dsh-charter host composition', () => {
     expect(stored.items.map(item => item.text)).toEqual(['Survives another process'])
     expect(stored.promptText).toContain('Survives another process')
     expect(stored.message).toContain('read-only')
+    const items = secondService.queryItemsById(SessionId('stored'), { limit: 10 })
+    expect(items.ok).toBe(true)
+    const proposals = secondService.queryProposalsById(SessionId('stored'), { limit: 10 })
+    expect(proposals.ok).toBe(true)
 
     const views: Awaited<ReturnType<CharterService['view']>>[] = []
     const unsubscribe = secondService.subscribe(SessionId('stored'), view => { if (view !== null) views.push(view) })
