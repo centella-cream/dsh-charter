@@ -37,7 +37,7 @@ Current release state (2026-10-30):
 | Compatibility sentinels | Pass on `0.1.7-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4`, `0.2.1-rc.5` |
 | Nine-version full rerun | Pass via tracked `compat-matrix --versions all --allow-new-release` (428/428 each) |
 | Fresh Web profile matrix (historical rc.6) | PASS: local rc.6 artifact (pre-withdrawal) installed and served on DSH `0.1.7-rc.2`, `0.2.0-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4`, `0.2.1-rc.5` |
-| Fresh Web profile 0.2.2 | PASS on 2026-11-05: fresh `DSH_HOME` + `dsh@0.2.2-rc.1 plugin --profile web add` of `dsh-charter-0.2.0.tgz`; Web boot, page HTTP 200, charter bundle HTTP 200 (3,134,931 bytes) |
+| Fresh Web profile 0.2.2 | PASS on 2026-11-05: fresh `DSH_HOME` + `dsh@0.2.2-rc.1 plugin --profile web add` of `dsh-charter-0.2.0.tgz`; Web boot, page HTTP 200, charter bundle HTTP 200 |
 | Untracked `0.2.2-alpha.2` probe | strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run; explicitly unsupported in rc.6 |
 | Local Web + Desktop profiles | 0.2.0 development artifact installed into local `web` and `desktop` profiles on DSH `0.2.2-rc.1`; profile copies boot and serve the charter bundle. This is local evidence, not release-artifact evidence. |
 | Real browser recovery | Manual protected evidence gate; not automated |

@@ -34,7 +34,7 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 | packed recovery smoke | 通过：export、删除 target、restore、receipt replay、两次 restart、健康目标拒绝、packed fault 子集 |
 | 真实 `TypertGatewayService` | 精确 artifact 在隔离的 DSH `0.2.1-rc.3` / `rc.4` 依赖图上通过 |
 | 兼容 sentinel | `0.1.7-rc.2`、`0.2.1-rc.2`、`0.2.1-rc.4`、`0.2.1-rc.5`、`0.2.2-rc.1` 通过 |
-| Fresh Web 0.2.2 | 2026-11-05 PASS：全新 `DSH_HOME` + `dsh@0.2.2-rc.1 plugin --profile web add` 安装 `dsh-charter-0.2.0.tgz`；Web 启动、页面 HTTP 200、charter bundle HTTP 200（3,134,931 bytes） |
+| Fresh Web 0.2.2 | 2026-11-05 PASS：全新 `DSH_HOME` + `dsh@0.2.2-rc.1 plugin --profile web add` 安装 `dsh-charter-0.2.0.tgz`；Web 启动、页面 HTTP 200、charter bundle HTTP 200 |
 | 九版本全量 rerun | tracked `compat-matrix --versions all --allow-new-release` 通过（每版本 428/428） |
 | 未跟踪 `0.2.2-alpha.2` probe | strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run；rc.6 明确不支持 |
 | 本地 Web + Desktop profile | 0.2.0 开发 artifact 已装入本地 web/desktop profile；Desktop app 为 `0.2.2-rc.1`，真实 Electron ABI/交互仍需人工门禁 |
