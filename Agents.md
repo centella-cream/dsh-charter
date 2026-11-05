@@ -179,7 +179,7 @@ version that is not yet tracked**. This is a release requirement, not optional e
 - If a new DSH version passes, add it to all declaration sites and docs in one change. If it fails, either fix the
   adapter or keep it explicitly unsupported in the release notes; never silently claim compatibility.
 - The compatibility result is a pre-push/pre-release gate: a failing minimum or current version blocks the branch push
-  for a release candidate, PR approval, tag, and npm publish.
+  for a release candidate, main push, tag, and npm publish.
 - Gateway and browser acceptance remain separate gates; a green source matrix does not replace exact-artifact,
   production-Remote, or real-profile evidence.
 
