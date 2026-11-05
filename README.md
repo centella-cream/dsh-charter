@@ -12,31 +12,66 @@ English | [中文](README.zh.md)
 
 `dsh-charter` is a durable, user-owned session contract for
 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). Goals, hard constraints,
-deliverables, evidence, and dependency state survive compaction and remain visible and editable.
+deliverables, evidence, and dependency relationships survive compaction and remain visible and editable.
+
+![Charter tab in the current 0.2 build](docs/assets/charter-pane.zh.png)
+
+> The current **0.2** Pane in a local Web profile. UI strings follow the active DSH language; this image uses
+> demo values so no private Session content is published.
+
+## Contents
+
+- [Status](#status)
+- [Why](#why)
+- [0.2 headline: constraint relationships](#02-headline-constraint-relationships)
+- [Other 0.2 capabilities](#other-02-capabilities)
+- [How it works](#how-it-works)
+- [Install](#install)
+- [Quick start](#quick-start)
+- [The Charter tab](#the-charter-tab)
+- [Configuration](#configuration)
+- [Compatibility](#compatibility)
+- [Security and privacy](#security-and-privacy)
+- [Development](#development)
+- [Documentation](#documentation)
+- [Contributing](#contributing)
+- [License](#license)
 
 ## Status
 
-- **Published release:** `0.1.0-rc.6` is the latest public npm release.
-- **Release candidate:** `0.2.0` is on `main`; publication runs through the protected release workflow.
+- **Published release:** `0.1.0-rc.6` — latest public npm release.
+- **Release candidate:** `0.2.0` on `main`; publication runs through the protected candidate/browser/promotion
+  workflows and is not complete yet.
 - **Primary DSH baseline:** `0.2.2-rc.1`; nine declared DSH versions are source-matrix verified.
-- Versioning from `0.2.0` onward uses plain increments (`0.2.0`, `0.2.1`, ...), never an `rc` suffix.
+- Versioning from `0.2.0` onward uses plain increments (`0.2.0`, `0.2.1`, …), never an `rc` suffix.
 
-## What it does
+## Why
 
-Compaction can summarize away standing constraints such as *“run tests before delivery”* or *“keep the
-API backward compatible”*. `dsh-charter` keeps them in a separate, user-owned record and rebuilds the
-model-visible context deterministically on every request.
+Compaction replaces older history with a summary. A summary can keep the general task while quietly dropping
+standing constraints such as *“do not touch migrations/”*, *“run tests before delivery”*, or *“keep the API
+backward compatible”*. Promoting those constraints to the system prompt would instead cross the user-content
+permission boundary.
 
-- **Independent authority.** One `dsh-storage-domain` record per Session is the only authority.
-  Compaction summaries and UI caches never write or recover it.
-- **User role by construction.** Charter text enters user-role runtime context, never a system-role message.
-  The model can read the charter; it cannot write it.
-- **Atomic Apply.** One Change Set commits completely or not at all, with revision conflict, idempotent retry,
-  and Host-canonical preview digest.
-- **Safe onboarding.** A compacted Session can produce a review-only draft from its latest summary. Nothing
-  becomes effective until the user accepts it.
-- **Bounded and recoverable.** Prompt/record budgets are explicit; overflow is surfaced or rejected, never
-  silently dropped. Export/restore and write-uncertain fencing protect the stored record.
+`dsh-charter` solves a narrow problem well:
+
+- **Independent authority.** One `dsh-storage-domain` record per Session is the only authoritative source.
+  Compaction summaries and UI caches are never writers or recovery sources.
+- **User role by construction.** Editable user text enters user-role runtime context, never a system-role
+  message. The model can read the charter through `charter_read`; it cannot write it.
+- **Deterministic rebuild.** The same record revision and renderer version produce byte-identical context.
+  `{{...}}` runs are escaped so older DSH prompt interpolators cannot rewrite user text.
+- **Explicit budgets.** The Pane shows a live context meter and per-field byte counters. Overflow is rejected
+  or surfaced for selection — never silently truncated.
+- **Atomic Apply.** One Change Set commits completely or not at all, with revision conflicts, idempotent retries,
+  and a Host-canonical preview digest.
+- **Safe onboarding.** An existing compacted Session gets a review-only draft from its latest usable compaction
+  summary; nothing becomes effective until you review and apply it.
+- **Recoverable records.** Export/restore is owner-only, healthy records refuse overwrite, and an uncertain write
+  fences only that Session until a Host restart.
+- **Fail closed per Session.** A structurally invalid record is preserved for diagnosis and never overwritten.
+
+A charter is a declaration, not an enforcement policy. Use Host permissions, sandbox policy, hooks, or
+execution guards for restrictions that must be machine-enforced.
 
 ## 0.2 headline: constraint relationships
 
@@ -55,40 +90,58 @@ Migration (D2) ───────┴──> Release (D3)
 - **Deterministic dependency projection.** Standing deliverables receive stable `D<n>` keys in canonical
   topological order. The prompt renders prerequisites before dependents, so the model knows which commitments
   are executable and what must happen first.
-- **Derived readiness, not a second status field.** Readiness is computed from acceptance, lifecycle,
-  prerequisite readiness, and progress: `ready`, `waiting`, `blocked`, `dependency-conflict`,
-  `in-progress`, or `terminal`. This avoids storing a stale duplicate of dependency state.
-- **Visible and editable in the Pane.** Workspace shows a dependency plan with prerequisite selectors and
-  status. An invalid graph is surfaced instead of crashing the Pane, and Apply is disabled while the plan is
-  inconsistent.
+- **Derived readiness.** Readiness is computed from acceptance, lifecycle, prerequisite readiness, and progress:
+  `ready`, `waiting`, `blocked`, `dependency-conflict`, `in-progress`, or `terminal`. No stale duplicate status
+  is stored.
+- **Visible and editable.** Workspace shows a dependency plan with prerequisite selectors and status. An invalid
+  graph is surfaced instead of breaking the Pane, and Apply is disabled while the plan is inconsistent.
 - **Lifecycle-safe.** Archive, restore, supersede, fork, and proposal acceptance validate or remap the graph.
   `proposedRequires` lets a pending deliverable reference candidates that become formal requirements on
   acceptance.
-- **Bounded and safe.** The relation set lives inside the same record budget and prompt budget as the rest of
-  the charter; there is no separate graph authority.
+- **Bounded.** The relation set stays inside the same record and prompt budgets; there is no second graph
+  authority.
 
-This is a deliberate boundary: dependencies are a user-authored **execution constraint**, not an enforced
-sandbox or permission system.
+Dependencies are a user-authored **execution constraint**, not an enforced sandbox or permission system.
 
 ## Other 0.2 capabilities
 
 - Three primary areas: **Workspace**, **Review Center**, and **Diagnostics & Maintenance**.
 - Record schema v2 with in-memory v1 migration, proposal batches, typed provenance, and objective proposals.
-- `summary`/`watchSummary` plus paged item/proposal/change queries; the Pane uses summary + queries and keeps
+- `summary`/`watchSummary` plus paged item/proposal/change queries. The Pane uses summary + queries and keeps
   the full-watch stream only as a compatibility fallback.
-- Pending-only `charter_propose` tool and user-triggered message proposals with selection and kind.
+- Pending-only `charter_propose` tool and user-triggered message proposals with text selection and kind.
 - Evidence Integrity and Fact Validity, including owner-only registered validators:
   `workspace.path-exists`, `workspace.file-digest`, and `workspace.file-contains`.
 - Source-integrity projection checks for message, compaction-summary, and agent-tool batches; fork projections
   are explicitly reported as `unsupported`.
 - Fork with item/validity/evidence/dependency remapping; Recovery Center export/initialize/restore.
+- English/Chinese UI, light/dark themes, keyboard focus states, and container-query responsiveness.
 
-A charter is a declaration, not an enforcement policy. Use Host permissions, sandbox policy, hooks, or
-execution guards for restrictions that must be machine-enforced.
+## How it works
+
+```mermaid
+flowchart LR
+  U[User edits the Charter tab] --> A[charter.edit]
+  A --> B[Atomic single-record update]
+  B --> D[(dsh_charter_v1 storage domain)]
+  D --> R[Deterministic renderer]
+  R --> C[user-role runtime context]
+  D --> T[charter_read]
+  P[Compaction] -. never writes .-> D
+  P --> S[compaction/summary]
+  S --> H[Review-only history draft]
+  H --> U
+  W[charter.watchSummary] --> U
+```
+
+The Host initializes a record on `session/created` and before the first prompt on `agent/created`. The browser
+registers a conversation-view entry; the Pane and `charter.watchSummary` read the same revisioned projection.
+`charter.bootstrap` returns a review-only draft from the latest usable compaction summary and never writes
+storage.
 
 ## Install
 
-The last public release is `0.1.0-rc.6`. The 0.2.0 release candidate is installed from the candidate tarball
+The latest public release is `0.1.0-rc.6`. The 0.2.0 release candidate is installed from the candidate tarball
 until publication completes:
 
 ```bash
@@ -106,33 +159,52 @@ For Desktop, use **Desktop → Plugins → Install/Update**, or import the same 
 supports local plugin installs. `dsh plugin --profile desktop` is refused by the Electron application that owns
 that profile.
 
-The plugin must run on a declared DSH version:
+### Requirements
 
-| DSH version | Status |
-| --- | --- |
-| `0.1.7-rc.2` | Supported (minimum) |
-| `0.2.0-rc.1` / `0.2.0-rc.2` | Supported |
-| `0.2.1-rc.1` / `0.2.1-rc.2` / `0.2.1-rc.3` / `0.2.1-rc.4` / `0.2.1-rc.5` | Supported |
-| `0.2.2-rc.1` | Supported (primary baseline) |
-| `0.3.x` | Not declared until verified |
+- DSH: only the versions listed in the [compatibility matrix](docs/design/compatibility.md) are supported.
+  `0.2.1+` is required for per-Peer Remote resource authorization.
+- Node.js **`^22.19.0 || >=24.0.0`**.
+- A Web or Desktop profile.
 
-See the full [compatibility matrix](docs/design/compatibility.md) for evidence and degradation notes.
-Node.js `^22.19.0 || >=24.0.0` is required.
+Pin an exact version for reproducible profiles. pnpm release-age resolution can hide a freshly published
+version from unversioned `@next`/`@latest`; do not bypass the compatibility gate to force an older release.
 
 ## Quick start
 
+### Start a new charter
+
 1. Open a live Session and select the **Charter** tab.
 2. Set the objective, add invariants and deliverables, and configure `requires` where needed.
-3. Inspect the exact model-visible preview and click **Apply**.
-4. In Review Center, accept or reject pending proposals; diagnostics shows source integrity, validator actions,
-   record health, export, and restore.
+3. Use **Preview context** to inspect the exact user-role text and byte count.
+4. Click **Apply**. A revision conflict preserves your draft and shows the server revision.
 
-For a previously compacted Session, Review Center offers a draft extracted from the latest usable compaction
-summary. Review, edit, and apply only what should become effective.
+### Bring an existing compacted Session
+
+1. Open an old Session that is live in this Host process.
+2. Open **Charter**. If the charter is empty, Review Center offers a draft from the latest usable
+   `compaction/summary`.
+3. Review or edit the candidates, uncheck anything stale, and apply only what should become effective.
+
+A Session that is not live in the current Host process is shown read-only; start it here to edit.
+
+## The Charter tab
+
+The Pane opens from the Session view. On wide screens it uses a left section navigation; on narrow screens it
+uses a horizontal tab strip.
+
+| Area | Purpose |
+| --- | --- |
+| **Workspace** | Current objective, invariants, deliverables, constraint plan, and unresolved blockers |
+| **Review Center** | Pending proposal batches, history drafts, non-current items, and recent changes |
+| **Diagnostics & Maintenance** | Prompt/preview health, source integrity, validators, record health, export/restore, capabilities |
+
+The Pane keeps a sticky Preview / Discard / Apply toolbar, shows the exact model-visible context, and reports
+budget usage per field. Long values are split instead of silently truncated. Pending proposals remain visible
+and reviewable; overflow becomes reviewable proposals rather than an arbitrary active-count failure.
 
 ## Configuration
 
-Override defaults in the profile patch:
+Defaults live in `cordis.patch.yml`. Override them in the profile patch:
 
 ```yaml
 - id: charter
@@ -143,47 +215,87 @@ Override defaults in the profile patch:
     contextOrder: 130
 ```
 
-All limits are documented in the [user guide](docs/user-guide.md). The only model-visible capacity is
-`maxPromptBytes`; `maxItems` and `maxPendingItems` bound stored records.
+| Field | Default | Meaning |
+| --- | ---: | --- |
+| `maxPromptBytes` | 8192 | UTF-8 budget for the charter contribution only |
+| `maxObjectiveBytes` | 4096 | UTF-8 budget for the objective |
+| `maxItemBytes` | 1024 | per-item text budget |
+| `maxItems` | 512 | all-items storage limit |
+| `maxPendingItems` | 512 | pending-proposal limit |
+| `maxOps` | 1024 | operations per Apply |
+| `maxRecordBytes` | 1048576 | one Session record |
+| `historyLimit` | 64 | recent history receipts |
+| `maxHistoryBytes` | 131072 | recent history bytes |
+| `mutationLimit` | 128 | recent mutation receipts |
+| `maintenanceLimit` | 16 | recent initialize/restore receipts |
+| `maxRecoveryBytes` | 4194304 | full recovery-archive budget |
+| `contextOrder` | 130 | runtime-context order |
 
-## Security
+The only model-visible capacity is `maxPromptBytes`; `maxItems` and `maxPendingItems` bound storage.
+
+## Compatibility
+
+| DSH version | Status |
+| --- | --- |
+| `0.1.7-rc.2` | Supported (minimum) |
+| `0.2.0-rc.1` / `0.2.0-rc.2` | Supported |
+| `0.2.1-rc.1` / `0.2.1-rc.2` / `0.2.1-rc.3` / `0.2.1-rc.4` / `0.2.1-rc.5` | Supported |
+| `0.2.2-rc.1` | Supported (primary baseline) |
+| `0.3.x` | Not declared until verified |
+
+"Supported" means typecheck, build, tests, and Remote/client smoke for that version, plus the profile gates
+recorded in the [compatibility matrix](docs/design/compatibility.md). `0.1.7` and `0.2.0` have no per-Peer Remote
+resource authorization; use them only in a trusted single-operator environment.
+
+## Security and privacy
 
 - User-authored text never enters a system-role message.
-- The model has no write capability; `charter_read` is read-only.
+- The model has no charter write capability; `charter_read` is read-only.
 - `owner` may perform all edits including purge; `user` may perform ordinary edits but not purge; host-only
   validator results cannot be forged through the client edit path.
 - Registered validators are owner-only, read only within the Session workspace, enforce file/byte/deadline
   bounds, and never execute arbitrary shell commands.
-- Ordinary logs contain ids, kinds, revisions, and error codes, not user body text.
-
-See [SECURITY.md](SECURITY.md) for the threat model and reporting path.
+- Ordinary logs contain ids, kinds, revisions, and error codes — not user body text.
+- A charter is not a permission system. See [SECURITY.md](SECURITY.md) for the threat model and reporting path.
 
 ## Development
 
 ```bash
-npm run check             # typecheck + build + remote/client smoke + Vitest
-npm run smoke:package     # packed tarball installability
-npm run verify:compaction # manual real-model compaction check
+npm ci
+npm run check              # typecheck + build + remote/client smoke + Vitest
+npm run smoke:package      # packed tarball installability
+npm run verify:compaction  # manual real-model compaction check
 node scripts/verify/compat-matrix.mjs --versions all --allow-new-release
 ```
 
-Current source evidence: 36 test files / 434 tests; nine-version DSH matrix 9/9 at 434/434. The version matrix
-and profile checks are separate from real Gateway, Electron, accessibility, and 512-item performance gates.
+Current source evidence: **36 files / 434 tests**, and the nine-version DSH matrix passes **9/9** at
+**434/434**. See the [verification record](docs/verification.md) for exact commands and the distinction between
+source, local-matrix, exact-artifact, and manual evidence.
 
-Documentation:
+CI runs `npm run check` and `npm run smoke:package` on Node `22.19.0` and `24`; the release candidate, browser
+evidence, and promotion workflows are separate gates. A green candidate is not a publication.
 
-- [User guide](docs/user-guide.md)
-- [Compatibility](docs/design/compatibility.md)
+## Documentation
+
+- [Documentation index and conventions](docs/README.md)
+- [User and operator guide](docs/user-guide.md)
+- [Compatibility matrix](docs/design/compatibility.md)
 - [Verification record](docs/verification.md)
-- [Charter design](docs/design/charter-design-v1.md)
-- [0.2 workspace design](docs/design/charter-workspace-v2.zh.md)
-- [Releasing](docs/releasing.md)
+- [Charter design (v1)](docs/design/charter-design-v1.md)
+- [0.2 workspace topic design](docs/design/charter-workspace-v2.zh.md)
+- [Release notes](docs/release-notes/README.md)
+- [Release checklist](docs/releasing.md)
+- [Version roadmap](docs/design/version-roadmap.md)
+
+Historical designs, reviews, and release plans are frozen under `docs/history/`; research notes remain under
+`docs/research/`.
 
 ## Contributing
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md) before changing code, release metadata, or user state. Do not push,
-tag, or publish without explicit approval.
+Read [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md) before changing the Host
+contract, prompt boundary, or client bundle. Security reports follow [SECURITY.md](SECURITY.md). The remote keeps
+only `main`; development branches stay local and are merged linearly before pushing.
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+[MIT](LICENSE) © 2026 dsh-charter contributors.
