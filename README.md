@@ -17,7 +17,7 @@ deliverables, evidence, and dependency state survive compaction and remain visib
 ## Status
 
 - **Published release:** `0.1.0-rc.6` is the latest public npm release.
-- **Release candidate:** `0.2.0` is prepared on `feat/0.2.0-workspace`; publication runs through the protected release workflow.
+- **Release candidate:** `0.2.0` is on `main`; publication runs through the protected release workflow.
 - **Primary DSH baseline:** `0.2.2-rc.1`; nine declared DSH versions are source-matrix verified.
 - Versioning from `0.2.0` onward uses plain increments (`0.2.0`, `0.2.1`, ...), never an `rc` suffix.
 
