@@ -17,12 +17,12 @@ Environment: macOS, Node `v22.23.1`, npm `12.0.2`, pnpm `12.3.4`. Local DSH deve
 
 Current release state (2026-11-05):
 
-- Published: `0.1.0-rc.6` (npm `latest`/`next`; exact SHA-256 `21ddbea0ae3fd88994d4e4731429ef4d8cb75db2b97e83cd7530a0386e425825`). GitHub Release uses recovery tag `v0.1.0-rc.6-republished`.
-- `0.1.0-rc.5`: previous accepted npm release; its canonical GitHub tag/release remains pending restoration.
-- Active release: `0.1.0-rc.6`, formally accepted.
-- Active development: `0.2.0` release candidate on `main`; package versions from 0.2.0 onward never use an `rc` suffix.
+- Published: `0.2.0` (npm `latest`/`next`; exact SHA-256 `7bafffc24c18c9655d68a9a61017db54920839a159dfeeba0643337c3aae4286`). GitHub Release `v0.2.0` is public and immutable.
+- `0.1.0-rc.6`: previous public release; recovery tag `v0.1.0-rc.6-republished`.
+- Active release: `0.2.0`, published and immutable.
+- Versioning from 0.2.0 onward uses plain increments and never an `rc` suffix.
 - 0.2.0 source evidence: 36 files / 434 tests and the nine-version matrix pass 434/434 on the current development tree.
-- Pending: main-branch candidate run and promotion.
+- Pending: post-release Desktop/browser diagnostics and real-model compaction checks.
 
 | Item | Result |
 | --- | --- |
@@ -31,7 +31,7 @@ Current release state (2026-11-05):
 | Host ESM build + browser factory bundle | Pass |
 | Remote contract and client smoke | Pass |
 | Normal package smoke | Pass |
-| Exact-artifact package smoke | Pass on the published rc.6 `.tgz` bytes (`21ddbea0…`) without rebuild |
+| Exact-artifact package smoke | Pass on the published `0.2.0` `.tgz` bytes (`7bafffc2…`) without rebuild |
 | Packed-artifact recovery smoke | Pass: export, target removal, restore, receipt replay, two restarts, healthy-target refusal, packed fault subset |
 | Real `TypertGatewayService` | Pass on exact artifact with isolated DSH `0.2.1-rc.3` and `rc.4` graphs |
 | Compatibility sentinels | Pass on `0.1.7-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4`, `0.2.1-rc.5` |
@@ -45,7 +45,7 @@ Current release state (2026-11-05):
 
 ### 1.1 0.2.0 development acceptance
 
-The `feat/0.2.0-workspace` tree has passed source-level acceptance for the implemented workspace core:
+The `main` tree has passed source-level acceptance for the implemented workspace core:
 
 - record v2 write path and in-memory v1 migration;
 - dependency `requires` validation, derived readiness, and dependency-aware prompt equivalence;

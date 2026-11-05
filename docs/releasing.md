@@ -12,10 +12,10 @@ tagging.
 
 ## Current state (2026-11-05)
 
-- **Published:** `0.1.0-rc.6` — latest public npm release; exact artifact SHA-256
-  `21ddbea0ae3fd88994d4e4731429ef4d8cb75db2b97e83cd7530a0386e425825`.
-- **Release candidate:** `0.2.0` merged locally to `main`; target tag `v0.2.0`.
-- **Pending:** main-branch candidate workflow and promotion workflow.
+- **Published:** `0.2.0` — npm `latest`/`next`, GitHub Release `v0.2.0`; exact artifact SHA-256
+  `7bafffc24c18c9655d68a9a61017db54920839a159dfeeba0643337c3aae4286`.
+- **Previous release:** `0.1.0-rc.6` (recovery tag `v0.1.0-rc.6-republished`).
+- **Pending:** post-release Desktop/browser diagnostics and real-model compaction checks.
 - Do not manually publish or bypass the protected gates.
 
 ## 1. Prepare the source

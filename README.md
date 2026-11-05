@@ -4,7 +4,7 @@
 [![GitHub](https://img.shields.io/badge/GitHub-centella--cream%2Fdsh--charter-181717?logo=github)](https://github.com/centella-cream/dsh-charter)
 [![DSH](https://img.shields.io/badge/DSH-9%20verified%20versions-4b6bfb)](docs/design/compatibility.md)
 [![Node](https://img.shields.io/badge/node-%5E22.19%20%7C%7C%20%3E%3D24-339933)](package.json)
-[![Status: preview](https://img.shields.io/badge/status-preview-orange)](#status)
+[![Status: 0.2.0 stable](https://img.shields.io/badge/status-0.2.0-brightgreen)](#status)
 
 English | [中文](README.zh.md)
 
@@ -39,9 +39,8 @@ deliverables, evidence, and dependency relationships survive compaction and rema
 
 ## Status
 
-- **Published release:** `0.1.0-rc.6` — latest public npm release.
-- **Release candidate:** `0.2.0` on `main`; publication runs through the protected candidate/promotion workflows and is
-  not complete yet.
+- **Published release:** `0.2.0` — npm `latest` and `next`, GitHub Release `v0.2.0`.
+- **Previous release:** `0.1.0-rc.6`.
 - **Primary DSH baseline:** `0.2.2-rc.1`; nine declared DSH versions are source-matrix verified.
 - Versioning from `0.2.0` onward uses plain increments (`0.2.0`, `0.2.1`, …), never an `rc` suffix.
 
@@ -141,18 +140,17 @@ storage.
 
 ## Install
 
-The latest public release is `0.1.0-rc.6`. The 0.2.0 release candidate is installed from the candidate tarball
-until publication completes:
-
-```bash
-npm pack
-dsh plugin --profile web add ./dsh-charter-0.2.0.tgz
-```
-
-After publication, install the exact release with:
+The latest public release is `0.2.0`. Install the exact version for a reproducible profile:
 
 ```bash
 dsh plugin --profile web add dsh-charter@0.2.0
+```
+
+For air-gapped machines or exact-artifact verification, install the published tarball:
+
+```bash
+npm pack dsh-charter@0.2.0
+dsh plugin --profile web add ./dsh-charter-0.2.0.tgz
 ```
 
 For Desktop, use **Desktop → Plugins → Install/Update**, or import the same local tarball if your Desktop build

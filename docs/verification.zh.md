@@ -14,14 +14,13 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 
 ## 1. 当前结论
 
-当前发布状态（2026-10-30）：
+当前发布状态（2026-11-05）：
 
-- 已发布：`0.1.0-rc.6`（npm `latest`/`next`；精确 SHA-256 `21ddbea0ae3fd88994d4e4731429ef4d8cb75db2b97e83cd7530a0386e425825`）。GitHub Release 使用 recovery tag `v0.1.0-rc.6-republished`。
-- `0.1.0-rc.5`：上一个已验收 npm 版本；规范 GitHub tag/release 仍待恢复。
-- 当前版本：`0.1.0-rc.6`，已正式验收。
-- 当前开发线：`0.2.0`（`feat/0.2.0-workspace`）；从 0.2.0 起版本号不使用 `rc` 后缀。
+- 已发布：`0.2.0`（npm `latest`/`next`；精确 SHA-256 `7bafffc24c18c9655d68a9a61017db54920839a159dfeeba0643337c3aae4286`）。GitHub Release `v0.2.0` 已公开且不可变。
+- `0.1.0-rc.6`：上一公开版本；使用 recovery tag `v0.1.0-rc.6-republished`。
+- 当前版本：`0.2.0`，已发布且不可变；从 0.2.0 起版本号不使用 `rc` 后缀。
 - 0.2.0 源码证据：36 个测试文件 / 434 个测试，当前开发树九版本矩阵 434/434 通过。
-- 待完成：恢复 rc.5 规范 GitHub tag/release，并完成发布后检查。
+- 待完成：发布后的 Desktop/浏览器诊断与真实模型 compaction 检查。
 
 | 项目 | 结果 |
 | --- | --- |
@@ -30,7 +29,7 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 | Host ESM 构建 + 浏览器 factory bundle | 通过 |
 | Remote 契约与 client smoke | 通过 |
 | 普通 package smoke | 通过 |
-| exact-artifact package smoke | 对已发布 rc.6 `.tgz` 字节（`21ddbea0…`）通过，不重建 |
+| exact-artifact package smoke | 对已发布 `0.2.0` `.tgz` 字节（`7bafffc2…`）通过，不重建 |
 | packed recovery smoke | 通过：export、删除 target、restore、receipt replay、两次 restart、健康目标拒绝、packed fault 子集 |
 | 真实 `TypertGatewayService` | 精确 artifact 在隔离的 DSH `0.2.1-rc.3` / `rc.4` 依赖图上通过 |
 | 兼容 sentinel | `0.1.7-rc.2`、`0.2.1-rc.2`、`0.2.1-rc.4`、`0.2.1-rc.5`、`0.2.2-rc.1` 通过 |

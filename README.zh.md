@@ -4,7 +4,7 @@
 [![GitHub](https://img.shields.io/badge/GitHub-centella--cream%2Fdsh--charter-181717?logo=github)](https://github.com/centella-cream/dsh-charter)
 [![DSH](https://img.shields.io/badge/DSH-9%20verified%20versions-4b6bfb)](docs/design/compatibility.zh.md)
 [![Node](https://img.shields.io/badge/node-%5E22.19%20%7C%7C%20%3E%3D24-339933)](package.json)
-[![Status: preview](https://img.shields.io/badge/status-preview-orange)](#状态)
+[![Status: 0.2.0 stable](https://img.shields.io/badge/status-0.2.0-brightgreen)](#状态)
 
 [English](README.md) | 中文
 
@@ -38,9 +38,8 @@
 
 ## 状态
 
-- **已发布版本：**`0.1.0-rc.6` — 当前 npm 公开发布版本。
-- **发布候选：**`0.2.0` 已在 `main`；公开发布仍需通过受保护的 candidate / promotion
-  workflow，尚未完成。
+- **已发布版本：**`0.2.0` — npm `latest` 和 `next`，GitHub Release `v0.2.0`。
+- **上一版本：**`0.1.0-rc.6`。
 - **主要 DSH 基线：**`0.2.2-rc.1`；九个声明版本通过源码矩阵验证。
 - 从 `0.2.0` 起版本号使用普通递增（`0.2.0`、`0.2.1`…），不再使用 `rc` 后缀。
 
@@ -128,17 +127,17 @@ compaction summary 返回只读草案，不写 storage。
 
 ## 安装
 
-当前公开版本是 `0.1.0-rc.6`；0.2.0 发布候选在正式发布前通过候选 tarball 安装：
-
-```bash
-npm pack
-dsh plugin --profile web add ./dsh-charter-0.2.0.tgz
-```
-
-正式发布后，使用精确版本安装：
+当前公开版本是 `0.2.0`。可复现 profile 请安装精确版本：
 
 ```bash
 dsh plugin --profile web add dsh-charter@0.2.0
+```
+
+离线机器或需要精确验证 artifact 时，安装已发布 tarball：
+
+```bash
+npm pack dsh-charter@0.2.0
+dsh plugin --profile web add ./dsh-charter-0.2.0.tgz
 ```
 
 Desktop 请使用 **Desktop → Plugins → Install/Update**；若 Desktop 构建支持本地插件导入，也可导入同一
