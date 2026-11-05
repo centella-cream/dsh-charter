@@ -6,6 +6,7 @@ import { Context } from '@deepseek-ai/cordis'
 import { Service } from '@deepseek-ai/cordis'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import Storage from '@deepseek-ai/dsh-storage'
 import * as StorageDomain from '@deepseek-ai/dsh-storage-domain'
 import { DomainError } from '@deepseek-ai/dsh-storage-domain'
@@ -31,9 +32,21 @@ function identityMeta(createdAt: number, parentSession?: SessionId) {
   return { meta: { cwd: '/work', createdAt, ...(parentSession === undefined ? {} : { parentSession }) } }
 }
 
+function installToolExecutor(ctx: Context): void {
+  const tools = ctx.tools as unknown as {
+    setExecutor?: (executor: unknown) => () => void
+  }
+  if (typeof tools.setExecutor !== 'function') return
+  ctx.effect(() => tools.setExecutor!({
+    describe: () => ({ schemas: [], knownNames: [] }),
+    execute: async () => ({ results: [], additionalContexts: [], concluded: false }),
+  }))
+}
+
 async function mount(root: string, config: Partial<Record<string, number>> = {}): Promise<Context> {
   const ctx = new Context()
   contexts.push(ctx)
+  await ctx.plugin(SessionProjectionRegistry)
   await ctx.plugin(AgentRegistry)
   await ctx.plugin(SessionStore)
   await ctx.plugin(Storage)
@@ -41,6 +54,7 @@ async function mount(root: string, config: Partial<Record<string, number>> = {})
   await ctx.plugin(StorageDomain, { backend: 'json' })
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
+  installToolExecutor(ctx)
   await ctx.plugin(CharterService, config as never)
   return ctx
 }
@@ -793,6 +807,7 @@ class FakeStorageDomain extends Service {
 async function mountFault(state: FaultState, config: Partial<Record<string, number>> = {}): Promise<Context> {
   const ctx = new Context()
   contexts.push(ctx)
+  await ctx.plugin(SessionProjectionRegistry)
   await ctx.plugin(AgentRegistry)
   await ctx.plugin(SessionStore)
   await ctx.plugin(SystemPrompt)

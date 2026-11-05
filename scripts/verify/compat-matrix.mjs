@@ -126,6 +126,7 @@ async function prepareProject(version, workRoot, allowNewRelease) {
     '@deepseek-ai/dsh-client-ui-session': version,
     '@deepseek-ai/dsh-client-ui-slots': version,
     '@deepseek-ai/dsh-session': version,
+    '@deepseek-ai/dsh-session-projection': version,
     '@deepseek-ai/dsh-storage': version,
     '@deepseek-ai/dsh-storage-domain': version,
     '@deepseek-ai/dsh-storage-json': version,

@@ -37,6 +37,7 @@ describe('published DSH compatibility metadata', () => {
     '0.2.1-rc.3',
     '0.2.1-rc.4',
     '0.2.1-rc.5',
+    '0.2.2-rc.1',
   ].join(' || ')
 
   it('keeps engines.dsh and every DSH peer range in sync with the verified matrix', () => {

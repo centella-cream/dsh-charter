@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import AgentRegistry, { type Agent } from '@deepseek-ai/dsh-agent'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import Storage from '@deepseek-ai/dsh-storage'
 import * as StorageDomain from '@deepseek-ai/dsh-storage-domain'
 import * as StorageJson from '@deepseek-ai/dsh-storage-json'
@@ -22,6 +23,17 @@ afterEach(async () => {
   await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true })))
 })
 
+function installToolExecutor(ctx: Context): void {
+  const tools = ctx.tools as unknown as {
+    setExecutor?: (executor: unknown) => () => void
+  }
+  if (typeof tools.setExecutor !== 'function') return
+  ctx.effect(() => tools.setExecutor!({
+    describe: () => ({ schemas: [], knownNames: [] }),
+    execute: async () => ({ results: [], additionalContexts: [], concluded: false }),
+  }))
+}
+
 async function mount(
   root: string,
   config: Partial<Record<string, number>> = {},
@@ -29,6 +41,7 @@ async function mount(
 ): Promise<Context> {
   const ctx = new Context()
   contexts.push(ctx)
+  await ctx.plugin(SessionProjectionRegistry)
   await ctx.plugin(AgentRegistry)
   await ctx.plugin(SessionStore)
   await ctx.plugin(Storage)
@@ -36,6 +49,7 @@ async function mount(
   await ctx.plugin(StorageDomain, { backend: 'json' })
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
+  installToolExecutor(ctx)
   await ctx.plugin(CharterService, config as never)
   // Test harness convenience: `sessions.create` stands for the DSH lifecycle
   // that authoritatively reports a new Agent. Real Host code never infers a
