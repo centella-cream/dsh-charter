@@ -1916,8 +1916,13 @@ export class CharterService extends Service {
         break
       }
       let integrity: import('./validators.js').EvidenceIntegrity = 'not-applicable'
-      for (const evidence of item.evidence.slice(0, 4)) {
-        if (evidenceChecks >= 16) break
+      const evidenceToCheck = item.evidence.slice(0, 4)
+      if (item.evidence.length > evidenceToCheck.length) truncated = true
+      for (const evidence of evidenceToCheck) {
+        if (evidenceChecks >= 16) {
+          truncated = true
+          break
+        }
         evidenceChecks += 1
         const next = await evaluateEvidenceIntegrity({ root: identityOf(session).cwd, evidence })
         integrity = next !== 'intact' ? next : integrity === 'not-applicable' ? 'intact' : integrity

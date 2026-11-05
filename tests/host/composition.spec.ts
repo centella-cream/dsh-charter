@@ -528,6 +528,45 @@ describe('dsh-charter host composition', () => {
     })
   })
 
+  it('flags source integrity truncation when an item carries more than four evidence bindings', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-integrity-trunc-'))
+    roots.push(root)
+    const ctx = await mount(root)
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('integrity-trunc'), {
+      meta: { cwd: root, createdAt: 1_700_000_001_066 },
+    })
+    await waitForReady(service, session)
+    const added = await service.edit(addInvariant(session.id, 0, 'integrity-trunc-seed', 'Evidence-heavy item'))
+    if (!added.ok) throw new Error('seed failed')
+    const itemId = added.ids['integrity-trunc-seed']!
+    const evidence = Array.from({ length: 5 }, (_, index) => ({
+      kind: 'workspace-file' as const,
+      path: `missing-${index}.txt`,
+      projectionVersion: 1,
+      digest: `sha256:${String(index).padStart(64, '0')}`,
+    }))
+    const written = await service.edit({
+      sessionId: session.id,
+      mutationId: 'integrity-trunc-evidence',
+      baseRevision: 1,
+      ops: [{
+        type: 'item.validity.set',
+        itemId,
+        validity: {
+          state: 'unknown',
+          validator: 'workspace.path-exists',
+          inputDigest: `sha256:${'a'.repeat(64)}`,
+          checkedAtRevision: 2,
+          reason: 'fixture',
+        },
+        evidence,
+      }],
+    }, { kind: 'host' })
+    expect(written).toMatchObject({ ok: true })
+    expect(await service.sourceIntegrityById(session.id)).toMatchObject({ ok: true, truncated: true })
+  })
+
   it('keeps agent source integrity after proposed prerequisites are accepted', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-charter-agent-source-'))
     roots.push(root)
