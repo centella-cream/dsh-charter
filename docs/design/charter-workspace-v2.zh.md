@@ -12,23 +12,31 @@
 
 ## 0.1 实现状态与已知差距
 
-本文件的状态是 **Implemented — pending release acceptance**：0.2 功能范围已通过源码验收；仍待完成的是发布人工
-门禁，而不是未实现的功能合同。
+本文件的状态是 **Implemented — pending release acceptance**。workspace/query/proposal/evidence/validator 的
+主要合同已实现并通过源码门禁，但仍有功能边界和发布人工门禁，不能把当前分支读成完整可发布 0.2.0。
 
-已实现并已验收的关键合同：
+已实现：
 
-- Pane 对 active/history 列表窗口化渲染；store 走 summary + 分页 query，旧 Host 保留 full-watch fallback。
+- Pane active/history/pending/inactive/batch 列表窗口化；store 走 summary + 分页 query，旧 Host 保留 full-watch fallback。
 - queryItems/queryProposals/queryChanges 的 facets、validity filter、filter digest、revision-bound cursor 和响应
-  字节上限。
-- message proposal、Change Set canonical preview digest/`PREVIEW_MISMATCH`、proposedRequires、fork typed source
-  refs、按来源派生的 origin、bootstrap objective extraction 绑定。
-- Evidence Integrity、Fact Validity 和注册式 validator：`workspace.path-exists`、`workspace.file-digest`、
-  `workspace.file-contains`；owner-only、工作区路径约束、超时/权限/不可读→unknown、正文变更→stale、结果不进
-  standing prompt。
-- v1 `verification` 到 v2 `validity` 的内存映射；validator 结果带 evidence、input digest、revision 和结果 digest。
+  字节上限；`objectiveProposals` 独立 cursor 和字节上限。
+- message proposal 的选择器、正文范围、kind 和 projection digest；Change Set canonical preview digest/
+  `PREVIEW_MISMATCH`；proposedRequires 支持 batch-candidate 和同 Change Set 接受顺序；fork 重映射
+  validity/proposedRequires/evidence；bootstrap active item dedupe；来源派生的 origin。
+- Evidence Integrity/Fact Validity：registered validator、owner-only、文件大小/总字节/总时长/并发边界、
+  timeout/权限/不可读→unknown、正文变更→stale、结果不进 standing prompt；v1 verification→v2 validity 映射。
+- source registry 按 source kind/projectionVersion 复算 message/compaction/agent-tool projection；未知投影返回
+  unsupported，缺 digest 返回 missing，不把“有 digest”当作 intact。
 
-剩余发布工作：真实 Gateway 授权/配额覆盖、Desktop ABI/Plugins UI 人工验证、可访问性/触屏/200% 文本矩阵、
-512 条性能证据，以及最终 artifact 门禁。
+仍存在的功能边界：
+
+- fork source integrity 为 `unsupported`：child record 不保存父来源投影；fork typed refs 已保留但完整复算需要父记录。
+- `charter_propose` 的 requires 仍只解析当前 active deliverable IDs；agent batch-candidate 引用暂不支持。
+- message proposal 目前只接受真实 user message，不支持 assistant/tool 消息选择。
+- Pane 仍一次取回全部分页（渲染已窗口化），网络层分页/窗口化仍是优化项。
+- queryProposals 的 review 过滤是 batch 级命中，响应保留该 batch 的全部 candidate；这是当前契约，不是 candidate 级过滤。
+- 真实 Gateway 授权/配额、Desktop ABI/Plugins UI、可访问性/触屏/200% 文本、真实模型 compaction、512 条性能人工
+  证据和最终 artifact 门禁仍未完成。
 
 ## 1. 决策摘要
 
