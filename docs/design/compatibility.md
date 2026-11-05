@@ -31,7 +31,7 @@ This document answers three questions:
 | `0.2.2-rc.1` | Supported (primary development baseline) | same + real Web profile install/startup, boot graph, bundle HTTP |
 | `0.1.5-rc.1` / `0.1.5-rc.2` / `0.1.5-rc.3` | Not supported | contract differences too large; see section 4 |
 | `0.1.6-alpha.x` | Not supported | same generation as 0.1.5; not individually verified |
-| `0.2.2-alpha.2` | Not supported | probed 2026-10-30: strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run; not covered by the rc.6 declaration |
+| `0.2.2-alpha.2` / `0.2.2-alpha.3` | Not supported | strict-peer install fails because these alpha lines require a Cordis 4.0.6 alpha graph; the 0.2.2-rc.1 line pins Cordis 4.1.0. No tests run. |
 | `0.3.x` | Not declared | major upgrade requires re-verification |
 
 The DSH peer ranges and `engines.dsh` in `package.json` are exactly the nine verified versions:

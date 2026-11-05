@@ -31,7 +31,7 @@
 | `0.2.2-rc.1` | 支持（主开发基线） | 同上 + typecheck/build/Vitest/remote/client smoke + 真实 Web profile 安装/启动、boot graph、bundle HTTP |
 | `0.1.5-rc.1` / `0.1.5-rc.2` / `0.1.5-rc.3` | 不支持 | 契约差异过大，见第 4 节 |
 | `0.1.6-alpha.x` | 不支持 | 与 0.1.5 同代，未逐一验证 |
-| `0.2.2-alpha.2` | 不支持 | strict-peer 安装失败：该 DSH 要求 Cordis ~4.0.6-alpha.1，而 rc.6 固定 4.0.5；不进入测试 |
+| `0.2.2-alpha.2` / `0.2.2-alpha.3` | 不支持 | strict-peer 安装失败：这些 alpha 版本要求 Cordis 4.0.6 alpha 图；0.2.2-rc.1 线固定 Cordis 4.1.0，不进入测试 |
 | `0.3.x` | 未声明 | 大版本升级需要重新核验 |
 
 `package.json` 的 DSH peer 范围与 `engines.dsh` 就是已验证的九个精确版本：

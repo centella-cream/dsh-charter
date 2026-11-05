@@ -3,5 +3,10 @@
     "phase": "install",
     "peer": "@deepseek-ai/cordis",
     "reason": "DSH 0.2.2-alpha.2 requires Cordis ~4.0.6-alpha.1; rc.5 pins Cordis 4.0.5. Strict-peer install rejects the generation before tests run."
+  },
+  "0.2.2-alpha.3": {
+    "phase": "install",
+    "peer": "@deepseek-ai/cordis",
+    "reason": "DSH 0.2.2-alpha.3 requires Cordis ~4.0.6-alpha.2; this branch pins Cordis 4.1.0. Strict-peer install rejects the generation before tests run."
   }
 }
