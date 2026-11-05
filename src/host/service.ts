@@ -546,7 +546,11 @@ export class CharterService extends Service {
       const rawTable = domain.table(CHARTER_SESSIONS_TABLE) as unknown as KvTable<SessionIdType, unknown>
       this.sessionsTable = rawTable as unknown as KvTable<SessionIdType, CharterRecord>
       for (const [id, stored] of rawTable.entries()) {
-        const parsed = charterRecordSchema.safeParse(stored)
+        let parsed = charterRecordSchema.safeParse(stored)
+        if (!parsed.success) {
+          const legacy = charterRecordV1Schema.safeParse(stored)
+          if (legacy.success) parsed = { success: true, data: migrateRecordV1ToV2(legacy.data) }
+        }
         if (!parsed.success) {
           // One unreadable or forward-skewed document must degrade only its
           // own Session; keep the raw document untouched for diagnosis.
