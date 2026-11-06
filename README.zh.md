@@ -101,7 +101,8 @@ deliverable 的**前置约束**，而这些关系会进入存储契约、校验�
   `workspace.path-exists`、`workspace.file-digest`、`workspace.file-contains`。
 - message/compaction-summary/agent-tool batch 的 source integrity 投影复算；fork source integrity 明确返回
   `unsupported`。
-- fork 的 item/validity/evidence/依赖重映射；Recovery Center 支持 export/initialize/restore。
+- fork 的 item/validity/evidence/依赖重映射；Recovery Center 支持 export/initialize，以及从最多 5 份的
+  owner-only 快照缓存恢复。
 - 中英文 UI、明暗主题、键盘 focus 状态和容器查询响应式布局。
 
 ## 工作原理
@@ -111,6 +112,8 @@ flowchart LR
   U[用户在 Charter 页编辑] --> A[charter.edit]
   A --> B[原子单记录更新]
   B --> D[(dsh_charter_v1 storage domain)]
+  D -. 有界快照 .-> Q[(dsh_charter_archives_v1 / 最多 5 份)]
+  Q --> X[owner-only 恢复缓存]
   D --> R[确定性 renderer]
   R --> C[user-role runtime context]
   D --> T[charter_read]

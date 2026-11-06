@@ -113,7 +113,8 @@ Dependencies are a user-authored **execution constraint**, not an enforced sandb
   `workspace.path-exists`, `workspace.file-digest`, and `workspace.file-contains`.
 - Source-integrity projection checks for message, compaction-summary, and agent-tool batches; fork projections
   are explicitly reported as `unsupported`.
-- Fork with item/validity/evidence/dependency remapping; Recovery Center export/initialize/restore.
+- Fork with item/validity/evidence/dependency remapping; Recovery Center export/initialize and owner-only restore
+  from a bounded five-snapshot cache.
 - English/Chinese UI, light/dark themes, keyboard focus states, and container-query responsiveness.
 
 ## How it works
@@ -123,6 +124,8 @@ flowchart LR
   U[User edits the Charter tab] --> A[charter.edit]
   A --> B[Atomic single-record update]
   B --> D[(dsh_charter_v1 storage domain)]
+  D -. bounded snapshots .-> Q[(dsh_charter_archives_v1 / max 5)]
+  Q --> X[Owner-only restore cache]
   D --> R[Deterministic renderer]
   R --> C[user-role runtime context]
   D --> T[charter_read]

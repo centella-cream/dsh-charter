@@ -1005,7 +1005,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   }, [view?.sessionId, view?.lifecycle, draftState.ops, draftState.editor, draftState.editorText, draftState.newInvariant, draftState.newDeliverable])
 
   useEffect(() => {
-    if ((section !== 'context' && section !== 'recovery') || source.listArchives === undefined) return
+    if (!maintenanceEnabled || (section !== 'context' && section !== 'recovery') || source.listArchives === undefined) return
     let active = true
     setArchiveCacheProblem(null)
     void source.listArchives().then(result => {
@@ -1019,7 +1019,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
       if (active) setArchiveCacheProblem(t('recovery.cacheUnavailable'))
     })
     return () => { active = false }
-  }, [section, source, view?.revision, draftState.maintenanceSaving, recoveryBusy, t])
+  }, [maintenanceEnabled, section, source, view?.revision, draftState.maintenanceSaving, recoveryBusy, t])
   useEffect(() => {
     if (draftState.maintenanceSaving || maintenanceReplay) return
     if (archiveInputRef.current !== null) archiveInputRef.current.value = ''
