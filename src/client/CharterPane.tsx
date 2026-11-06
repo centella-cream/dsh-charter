@@ -2942,7 +2942,6 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                   <div className="charter-archivecache">
                     <div className="charter-archivecache__head">
                       <strong>{t('recovery.cacheTitle')}</strong>
-                      <span className="charter-hint">{t('recovery.cacheLimit', { limit: 5 })}</span>
                     </div>
                     {archiveCacheProblem !== null
                       ? <p className="charter-archivecache__empty" role="alert">{archiveCacheProblem}</p>
@@ -2970,14 +2969,14 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                             </ul>
                           )}
                   </div>
-                  <p className="charter-hint">{t('recovery.cacheRestoreHint')}</p>
+                  <p className="charter-hint">{t('recovery.cacheHint')}</p>
                   <details className="charter-recovery__import">
                     <summary>{t('recovery.importTitle')}</summary>
                     <p className="charter-hint">{t('recovery.importHint')}</p>
                     <label className="charter-recovery__file">
-                      <span className="charter-fieldlabel">{t('recovery.chooseFile')}</span>
                       <input
                         ref={archiveInputRef}
+                        aria-label={t('recovery.chooseFile')}
                         type="file"
                         accept="application/json,.json"
                         disabled={recoveryBusy || unknownBlocked}
