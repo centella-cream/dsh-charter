@@ -21,7 +21,7 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 - `0.1.0-rc.6`：更早的公开版本；使用 recovery tag `v0.1.0-rc.6-republished`。
 - 从 0.2.0 起版本号使用普通递增，不使用 `rc` 后缀。
 - 当前源码证据：0.2.1 候选树在源码提交 `071a4ba065345b0d029c8d500149261e27bdd061` 上通过 36 个测试文件 / 441 个测试，九版本矩阵 441/441 通过。
-- 发布后诊断：真实模型 compaction PASS（session `session-da7e7b0d-f0b0-49a2-8391-148b4782892c`）；512 条性能单独记录。
+- 发布后诊断：真实模型 compaction PASS（session `session-da7e7b0d-f0b0-49a2-8391-148b4782892c`）；512 条性能于 2026-11-06 PASS（core read/planning p95，见下）。
 
 | 项目 | 结果 |
 | --- | --- |

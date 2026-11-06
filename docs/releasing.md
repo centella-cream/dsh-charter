@@ -15,7 +15,7 @@ tagging.
 - **Published:** `0.2.1` — npm `latest`/`next`, GitHub Release `v0.2.1`; exact artifact SHA-256
   `d4ae14e19b4d65264a53b57c0f9d3f93eb8303189e8daa3f3f35beb97104d498`.
 - **Previous release:** `0.2.0` (GitHub Release `v0.2.0`, npm `latest`/`next` before 0.2.1).
-- **Pending:** 512-item performance remains a post-release diagnostic; real-model compaction passed.
+- **Post-release diagnostics:** real-model compaction and 512-item core performance both passed.
 - Do not manually publish or bypass the protected gates.
 
 ## 1. Prepare the source

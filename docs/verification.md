@@ -22,7 +22,7 @@ Current release state (2026-11-06):
 - `0.1.0-rc.6`: earlier public release; recovery tag `v0.1.0-rc.6-republished`.
 - Versioning from 0.2.0 onward uses plain increments and never an `rc` suffix.
 - Current source evidence: 36 files / 441 tests and the nine-version matrix pass 441/441 on the 0.2.1 candidate tree at `071a4ba065345b0d029c8d500149261e27bdd061`.
-- Post-release diagnostics: real-model compaction PASS (session `session-da7e7b0d-f0b0-49a2-8391-148b4782892c`); 512-item performance remains separately recorded.
+- Post-release diagnostics: real-model compaction PASS (session `session-da7e7b0d-f0b0-49a2-8391-148b4782892c`); 512-item performance PASS on 2026-11-06 (core read/planning p95, see below).
 
 | Item | Result |
 | --- | --- |
@@ -43,7 +43,7 @@ Current release state (2026-11-06):
 | 0.2.1 local human acceptance | PASS on 2026-11-06: user completed local acceptance of the 0.2.1 UI/interaction batch. |
 | 0.2.1 Desktop ABI | PASS on 2026-11-06: Desktop profile installed the exact candidate, the Electron process was restarted, and the Pane/tab ABI was confirmed. |
 | Real-model compaction | PASS on 2026-11-06 for `session-da7e7b0d-f0b0-49a2-8391-148b4782892c`: latest compaction seq 32610–32614, post-compaction snapshot seq 32623, `charter_read` call/result seq 32631/32632; injected, digest match, injection-after-compaction, survival, authenticated standing read, and no-checkpoint-leak all pass. |
-| 512-item performance | Pending manual gate; the source query test covers 512-item paging but not the p95 budget. |
+| 512-item performance | PASS on 2026-11-06, local Node `22.23.1`: 512 pending items, 300 warm-ups then 30 samples; full pagination query p95 5.2 ms and 5-op Change Set planning p95 0.6 ms against the 100 ms budget. This measures the pure core read/planning path, not UI/network. |
 | Real browser diagnostics | Local manual checks recorded; not a release gate |
 | Real-model compaction | Separately recorded PASS (2026-10-22); still a manual release gate |
 
