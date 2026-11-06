@@ -59,7 +59,7 @@
 4. 关系采用少量明确类型，不建设任意节点都能连线的通用图。
 5. 历史、时间、来源和诊断元数据不进入常驻 prompt。
 6. 模型只能读取当前契约和提出 proposal，不能接受提案、改变依赖、归档条目或切换当前重点。
-7. 恢复使用 Host 维护的最近 5 份归档快照，更早快照自动清理；下载导出只用于外部校验、分析或备份，恢复不依赖下载。
+7. 恢复使用 Host 维护的归档快照：每 Session 最近 5 份、profile 全局最多 25 份，最旧优先清理；下载导出只用于外部校验、分析或备份，恢复不依赖下载。
 
 本文建议首个依赖模型只覆盖 deliverable 的 `requires`。该新增范围需要先修订版本路线，再形成实现承诺。
 约束适用范围 `appliesTo` 和用户控制的 Focus 作为后续实验项，只有受控 A/B 显示收益后才进入稳定契约。
@@ -1083,7 +1083,7 @@ predicate-based 批量写入。Host 计算的 canonical summary digest 与客户
 | `applyChangeSet` | owner / user | 复用 op 级授权；purge 和等价不可逆清除仍为 owner-only |
 | `runValidators` | owner-only | 先检查 principal、Session resource、validator capability 和 workspace 权限，再读取文件或 storage |
 | `charter_propose` | 当前 live Session 的 agent tool call | 使用 pending-only 专用 handler，不复用 owner/user edit 权限 |
-| export / initialize / restore | owner-only | 保持现有维护授权和 healthy-target 拒绝规则 |
+| export / initialize / restore / listArchives / readArchive | owner-only | 保持现有维护授权和 healthy-target 拒绝规则；归档缓存读取与导出同级 |
 
 `runValidators` 是一个 RPC 内的两阶段协议：先在已授权 workspace 上 evaluation，生成 validator version、input digest 和
 结构化结果；再在 mutation queue 内重读 base revision 和 input binding，以一个 durable Change Set 提交整批结果。Evaluation

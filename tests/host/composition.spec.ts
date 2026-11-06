@@ -1245,16 +1245,18 @@ describe('dsh-charter host composition', () => {
       sessions.push(session)
     }
     let total = 0
-    for (let attempt = 0; attempt < 100; attempt += 1) {
-      total = sessions.reduce((sum, session) => {
+    let stable = 0
+    for (let attempt = 0; attempt < 200; attempt += 1) {
+      const next = sessions.reduce((sum, session) => {
         const listed = service.listArchives(session.id, { kind: 'owner' })
         return sum + (listed.ok ? listed.archives.length : 0)
       }, 0)
-      if (total > 0 && total <= 25) break
+      stable = next === total && next === 25 ? stable + 1 : 0
+      total = next
+      if (stable >= 3) break
       await new Promise(resolve => setTimeout(resolve, 5))
     }
-    expect(total).toBeGreaterThan(0)
-    expect(total).toBeLessThanOrEqual(25)
+    expect(total).toBe(25)
   })
 
   it('proposes a selected message range with the chosen kind', async () => {

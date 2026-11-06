@@ -108,7 +108,7 @@ Dependencies are a user-authored **execution constraint**, not an enforced sandb
 - Record schema v2 with in-memory v1 migration, proposal batches, typed provenance, and objective proposals.
 - `summary`/`watchSummary` plus paged item/proposal/change queries. The Pane uses summary + queries and keeps
   the full-watch stream only as a compatibility fallback.
-- Pending-only `charter_propose` tool and user-triggered message proposals with text selection and kind.
+- Pending-only `charter_propose` tool and user-triggered message proposals with an editable body and kind.
 - Evidence Integrity and Fact Validity, including owner-only registered validators:
   `workspace.path-exists`, `workspace.file-digest`, and `workspace.file-contains`.
 - Source-integrity projection checks for message, compaction-summary, and agent-tool batches; fork projections

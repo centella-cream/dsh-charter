@@ -776,6 +776,12 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
     setMessageSeq(undefined)
     setMessageDraft('')
     setMessageKind('invariant')
+    setValidatorItemId('')
+    setValidatorKind('workspace.path-exists')
+    setValidatorPath('')
+    setValidatorExpectation('')
+    setValidatorFeedback(null)
+    setIntegrityFeedback(null)
     if (archiveInputRef.current !== null) archiveInputRef.current.value = ''
   }, [source, view?.sessionId, view?.lifecycle, draftState.lifecycle])
 

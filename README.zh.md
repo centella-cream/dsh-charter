@@ -96,7 +96,7 @@ deliverable 的**前置约束**，而这些关系会进入存储契约、校验�
 - record schema v2、内存 v1 迁移、proposal batch、类型化 provenance 和 objective proposal。
 - `summary`/`watchSummary` 及分页 item/proposal/change query；Pane 使用 summary + query，完整 watch 仅作为
   兼容回退。
-- pending-only `charter_propose`；用户触发的 message proposal（选择器、范围、kind）。
+- pending-only `charter_propose`；用户触发的 message proposal（选择器、可编辑正文、kind）。
 - Evidence Integrity 与 Fact Validity，以及 owner-only 注册式验证器：
   `workspace.path-exists`、`workspace.file-digest`、`workspace.file-contains`。
 - message/compaction-summary/agent-tool batch 的 source integrity 投影复算；fork source integrity 明确返回
