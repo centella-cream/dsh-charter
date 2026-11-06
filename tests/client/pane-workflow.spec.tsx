@@ -226,6 +226,40 @@ describe('0.2 workspace and dependency plan', () => {
     expect(tree.root.findAll(node => node.type === 'details')).toHaveLength(0)
   })
 
+  it('clears the message proposal draft when the Session changes', async () => {
+    const first = view({ revision: 0 })
+    const second = view({ revision: 0, sessionId: SessionId('pane-other-session') })
+    const base = source(first)
+    let current = first
+    let snapshot: CharterClientState = { status: 'ready', view: current, error: null }
+    const listeners = new Set<() => void>()
+    const src = {
+      ...base,
+      getSnapshot: () => snapshot,
+      subscribe: (listener: () => void) => { listeners.add(listener); return () => listeners.delete(listener) },
+      queryMessages: async () => {
+        const text = current.sessionId === sessionId ? 'Session A text' : 'Session B text'
+        return { ok: true as const, messages: [{ seq: 1, role: 'user' as const, excerpt: text, text, length: text.length }] }
+      },
+      proposeMessage: async () => ({ ok: true as const, replayed: false, committedRevision: 1, ids: {}, view: current }),
+    } as unknown as CharterSessionSource
+    const draft = new CharterDraft(sessionId, () => src)
+    draft.bindLifecycle(lifecycle)
+    const tree = mount(src, draft)
+    act(() => tree.root.findAll(node => node.type === 'button' && textOf(node).includes('nav.review'))[0]!.props.onClick())
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
+    expect(tree.root.findAll(node => node.type === 'textarea' && node.props['aria-label'] === 'message.textLabel')[0]?.props.value)
+      .toBe('Session A text')
+    act(() => {
+      current = second
+      snapshot = { status: 'ready', view: current, error: null }
+      for (const listener of [...listeners]) listener()
+    })
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
+    expect(tree.root.findAll(node => node.type === 'textarea' && node.props['aria-label'] === 'message.textLabel')[0]?.props.value)
+      .toBe('Session B text')
+  })
+
   it('stages a manual item proposal instead of an accepted item', () => {
     const ready = view({ revision: 0 })
     const src = source(ready)
