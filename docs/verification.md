@@ -40,6 +40,7 @@ Current release state (2026-11-06):
 | Fresh Web profile 0.2.2 | PASS on 2026-11-05: fresh `DSH_HOME` + `dsh@0.2.2-rc.1 plugin --profile web add` of `dsh-charter-0.2.0.tgz` (SHA-256 `fde5531d457effc713f4423f8b46c8f0e591770e59c55e19956f000c11bdeffc`); Web boot, page HTTP 200, charter bundle HTTP 200; boot graph contains `dsh-charter` and the page index contains `dsh-charter/client.js` |
 | Untracked `0.2.2-alpha.2` / `0.2.2-alpha.3` probes | strict-peer install fails because these alpha lines require a Cordis 4.0.6 alpha graph; the 0.2.2-rc.1 line pins Cordis 4.1.0; no tests run; explicitly unsupported. |
 | 0.2.1 real Web Pane | PASS on 2026-11-06: local Web profile installed the `0.2.1` candidate artifact; Pane reports `v0.2.1`, diagnostics/recovery cache and the editable message proposal render, and the browser console is clean. |
+| 0.2.1 local human acceptance | PASS on 2026-11-06: user completed local acceptance of the 0.2.1 UI/interaction batch. |
 | 0.2.1 Desktop ABI | Pending: Desktop profile has the candidate installed; the running Electron process must be restarted and the tab/tool ABI checked manually. |
 | Real-model compaction | Pending manual gate. |
 | 512-item performance | Pending manual gate; the source query test covers 512-item paging but not the p95 budget. |
