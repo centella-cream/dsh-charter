@@ -61,7 +61,7 @@ same commit. Do not delete a historical decision just because it is inactive; mo
 | [release-notes/0.1.0-rc.5.md](release-notes/0.1.0-rc.5.md) | Historical | 0.1.0-rc.5 | Published npm release note. |
 | [release-notes/0.1.0-rc.6.md](release-notes/0.1.0-rc.6.md) | Historical | 0.1.0-rc.6 | Published/accepted release note. |
 | [release-notes/0.2.0.md](release-notes/0.2.0.md) | Historical | 0.2.0 | Published npm release and GitHub Release. |
-| [release-notes/0.2.1.md](release-notes/0.2.1.md) | Release candidate | 0.2.1 | Local acceptance and promotion pending. |
+| [release-notes/0.2.1.md](release-notes/0.2.1.md) | Historical | 0.2.1 | Published npm release and GitHub Release. |
 
 ## Maintenance rules
 

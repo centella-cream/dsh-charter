@@ -59,7 +59,7 @@
 | [release-notes/0.1.0-rc.5.md](release-notes/0.1.0-rc.5.md) | Historical | 0.1.0-rc.5 | 已发布 npm 版本的发布说明。 |
 | [release-notes/0.1.0-rc.6.md](release-notes/0.1.0-rc.6.md) | Historical | 0.1.0-rc.6 | 已发布并验收的发布说明。 |
 | [release-notes/0.2.0.md](release-notes/0.2.0.md) | Historical | 0.2.0 | 已发布 npm 版本和 GitHub Release。 |
-| [release-notes/0.2.1.md](release-notes/0.2.1.md) | Release candidate | 0.2.1 | 本地验收与 promotion 待完成。 |
+| [release-notes/0.2.1.md](release-notes/0.2.1.md) | Historical | 0.2.1 | 已发布 npm 版本和 GitHub Release。 |
 
 ## 维护规则
 

@@ -36,10 +36,9 @@ rc.5 fixed the correctness defect inside the promised 0.1 workflow: previously e
 
 ## 2. Current Release State
 
-- `0.2.0` is published on npm (`latest`/`next`) and as GitHub Release `v0.2.0`; its tag, assets, and npm bytes
+- `0.2.1` is published on npm (`latest`/`next`) and as GitHub Release `v0.2.1`; its tag, assets, and npm bytes
   are immutable.
-- `0.2.1` is the current release candidate on the local development line. It is not tagged, released, or
-  published; local acceptance and promotion remain pending.
+- `0.2.0` is the previous public release.
 - `0.2.1` is a compatible post-`0.2.0` patch: editable message proposals, clearer diagnostics/typography, and an
   owner-only bounded recovery cache. It does not change `recordSchemaVersion` 2 or the model tool surface; the
   `dsh_charter_archives_v1` domain is a bounded derivative cache, not a second authority.

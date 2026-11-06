@@ -35,9 +35,8 @@ rc.5 修复了与产品承诺冲突的审阅正确性问题：此前历史草案
 
 ## 2. 当前发布状态
 
-- `0.2.0` 已发布到 npm（`latest`/`next`）和 GitHub Release `v0.2.0`；tag、资产和 npm 字节不可变。
-- `0.2.1` 是当前本地开发线上的发布候选；尚未打 tag、发布 GitHub Release 或发布 npm，本地验收与 promotion
-  仍待完成。
+- `0.2.1` 已发布到 npm（`latest`/`next`）和 GitHub Release `v0.2.1`；tag、资产和 npm 字节不可变。
+- `0.2.0` 是上一公开版本。
 - `0.2.1` 是 `0.2.0` 之后的兼容补丁：可编辑消息提案、更清晰的诊断/排版、owner-only 有界恢复缓存。不改变
   `recordSchemaVersion` 2 或模型工具面；`dsh_charter_archives_v1` 是有界派生物缓存，不是第二正本。
 - `0.1.0-rc.6` 仍是上一个公开版本。历史 rc tag/release 不可变。

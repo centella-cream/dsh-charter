@@ -11,12 +11,10 @@ tag、不删除已发布 Release、不在打 tag 后重建字节。
 
 ## 当前状态（2026-11-06）
 
-- **已发布：** `0.2.0` — npm `latest`/`next`，GitHub Release `v0.2.0`；精确产物 SHA-256
-  `7bafffc24c18c9655d68a9a61017db54920839a159dfeeba0643337c3aae4286`。
-- **发布候选：** `0.2.1` 在本地开发分支；尚未打 tag、发布 GitHub Release 或 npm。
-- **上一版本：** `0.1.0-rc.6`（recovery tag `v0.1.0-rc.6-republished`）。
-- **待完成：** 本地验收、真实浏览器/Desktop ABI、真实模型 compaction、512 条性能、最终
-  artifact/SHA256SUMS、candidate 和 promotion workflow。
+- **已发布：** `0.2.1` — npm `latest`/`next`，GitHub Release `v0.2.1`；精确产物 SHA-256
+  `d4ae14e19b4d65264a53b57c0f9d3f93eb8303189e8daa3f3f35beb97104d498`。
+- **上一版本：** `0.2.0`（GitHub Release `v0.2.0`，0.2.1 之前的 npm `latest`/`next`）。
+- **待完成：** 真实模型 compaction（压缩后 `charter_read` 证据）和 512 条性能仍作为发布后诊断记录。
 - 不得手动 publish，也不得绕过受保护门禁。
 
 ## 1. 准备源码

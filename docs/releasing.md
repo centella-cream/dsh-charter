@@ -12,12 +12,11 @@ tagging.
 
 ## Current state (2026-11-06)
 
-- **Published:** `0.2.0` — npm `latest`/`next`, GitHub Release `v0.2.0`; exact artifact SHA-256
-  `7bafffc24c18c9655d68a9a61017db54920839a159dfeeba0643337c3aae4286`.
-- **Release candidate:** `0.2.1` on a local development branch; no tag, GitHub Release, or npm publication yet.
-- **Previous release:** `0.1.0-rc.6` (recovery tag `v0.1.0-rc.6-republished`).
-- **Pending:** local acceptance, real browser/Desktop ABI, real-model compaction, 512-item performance, final
-  artifact/SHA256SUMS, candidate and promotion workflows.
+- **Published:** `0.2.1` — npm `latest`/`next`, GitHub Release `v0.2.1`; exact artifact SHA-256
+  `d4ae14e19b4d65264a53b57c0f9d3f93eb8303189e8daa3f3f35beb97104d498`.
+- **Previous release:** `0.2.0` (GitHub Release `v0.2.0`, npm `latest`/`next` before 0.2.1).
+- **Pending:** real-model compaction (post-compaction `charter_read` evidence) and 512-item performance remain
+  post-release diagnostics.
 - Do not manually publish or bypass the protected gates.
 
 ## 1. Prepare the source

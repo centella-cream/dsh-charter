@@ -17,12 +17,12 @@ Environment: macOS, Node `v22.23.1`, npm `12.0.2`, pnpm `12.3.4`. Local DSH deve
 
 Current release state (2026-11-06):
 
-- Published: `0.2.0` (npm `latest`/`next`; exact SHA-256 `7bafffc24c18c9655d68a9a61017db54920839a159dfeeba0643337c3aae4286`). GitHub Release `v0.2.0` is public and immutable.
-- Release candidate: `0.2.1` on a local development branch; no tag, GitHub Release, or npm publication yet. The candidate artifact digest is recorded in the root `SHA256SUMS`.
-- `0.1.0-rc.6`: previous public release; recovery tag `v0.1.0-rc.6-republished`.
+- Published: `0.2.1` (npm `latest`/`next`; exact SHA-256 `d4ae14e19b4d65264a53b57c0f9d3f93eb8303189e8daa3f3f35beb97104d498`). GitHub Release `v0.2.1` is public and immutable.
+- `0.2.0`: previous public release; GitHub Release `v0.2.0` remains immutable.
+- `0.1.0-rc.6`: earlier public release; recovery tag `v0.1.0-rc.6-republished`.
 - Versioning from 0.2.0 onward uses plain increments and never an `rc` suffix.
 - Current source evidence: 36 files / 441 tests and the nine-version matrix pass 441/441 on the 0.2.1 candidate tree at `071a4ba065345b0d029c8d500149261e27bdd061`.
-- Pending: local acceptance, real browser/Desktop ABI, real-model compaction, 512-item performance, final artifact/SHA256SUMS, and promotion.
+- Pending post-release diagnostics: real-model compaction still needs a post-compaction `charter_read` tool call; 512-item performance remains separately recorded.
 
 | Item | Result |
 | --- | --- |
@@ -31,7 +31,7 @@ Current release state (2026-11-06):
 | Host ESM build + browser factory bundle | Pass |
 | Remote contract and client smoke | Pass |
 | Normal package smoke | Pass |
-| Exact-artifact package smoke | Pass on the current `0.2.1` candidate `.tgz` bytes from the root `SHA256SUMS`, without rebuild |
+| Exact-artifact package smoke | Pass on the published `0.2.1` `.tgz` bytes (`d4ae14e1…`) from the root `SHA256SUMS`, without rebuild |
 | Packed-artifact recovery smoke | Pass: export, target removal, restore, receipt replay, two restarts, healthy-target refusal, packed fault subset |
 | Real `TypertGatewayService` | Pass on exact artifact with isolated DSH `0.2.1-rc.3` and `rc.4` graphs |
 | Compatibility sentinels | Pass on `0.1.7-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4`, `0.2.1-rc.5` |
@@ -41,8 +41,8 @@ Current release state (2026-11-06):
 | Untracked `0.2.2-alpha.2` / `0.2.2-alpha.3` probes | strict-peer install fails because these alpha lines require a Cordis 4.0.6 alpha graph; the 0.2.2-rc.1 line pins Cordis 4.1.0; no tests run; explicitly unsupported. |
 | 0.2.1 real Web Pane | PASS on 2026-11-06: local Web profile installed the `0.2.1` candidate artifact; Pane reports `v0.2.1`, diagnostics/recovery cache and the editable message proposal render, and the browser console is clean. |
 | 0.2.1 local human acceptance | PASS on 2026-11-06: user completed local acceptance of the 0.2.1 UI/interaction batch. |
-| 0.2.1 Desktop ABI | Pending: Desktop profile has the candidate installed; the running Electron process must be restarted and the tab/tool ABI checked manually. |
-| Real-model compaction | Pending manual gate. |
+| 0.2.1 Desktop ABI | PASS on 2026-11-06: Desktop profile installed the exact candidate, the Electron process was restarted, and the Pane/tab ABI was confirmed. |
+| Real-model compaction | WAIT: injection/digest/survival/checkpoint checks pass; a post-compaction `charter_read` tool call is still required. |
 | 512-item performance | Pending manual gate; the source query test covers 512-item paging but not the p95 budget. |
 | Real browser diagnostics | Local manual checks recorded; not a release gate |
 | Real-model compaction | Separately recorded PASS (2026-10-22); still a manual release gate |
