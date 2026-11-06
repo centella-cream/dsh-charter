@@ -18,7 +18,7 @@ Environment: macOS, Node `v22.23.1`, npm `12.0.2`, pnpm `12.3.4`. Local DSH deve
 Current release state (2026-11-06):
 
 - Published: `0.2.0` (npm `latest`/`next`; exact SHA-256 `7bafffc24c18c9655d68a9a61017db54920839a159dfeeba0643337c3aae4286`). GitHub Release `v0.2.0` is public and immutable.
-- Release candidate: `0.2.1` on a local development branch; no tag, GitHub Release, or npm publication yet. Candidate artifact SHA-256: `41e4a36ccc44dfff069fe842a12283cf6f28d0f9f2d7047e6c9334ed5e02a472`.
+- Release candidate: `0.2.1` on a local development branch; no tag, GitHub Release, or npm publication yet. The candidate artifact digest is recorded in the root `SHA256SUMS`.
 - `0.1.0-rc.6`: previous public release; recovery tag `v0.1.0-rc.6-republished`.
 - Versioning from 0.2.0 onward uses plain increments and never an `rc` suffix.
 - Current source evidence: 36 files / 441 tests and the nine-version matrix pass 441/441 on the 0.2.1 candidate tree at `071a4ba065345b0d029c8d500149261e27bdd061`.
@@ -31,7 +31,7 @@ Current release state (2026-11-06):
 | Host ESM build + browser factory bundle | Pass |
 | Remote contract and client smoke | Pass |
 | Normal package smoke | Pass |
-| Exact-artifact package smoke | Pass on the `0.2.1` candidate `.tgz` bytes (`41e4a36c…`) without rebuild |
+| Exact-artifact package smoke | Pass on the current `0.2.1` candidate `.tgz` bytes from the root `SHA256SUMS`, without rebuild |
 | Packed-artifact recovery smoke | Pass: export, target removal, restore, receipt replay, two restarts, healthy-target refusal, packed fault subset |
 | Real `TypertGatewayService` | Pass on exact artifact with isolated DSH `0.2.1-rc.3` and `rc.4` graphs |
 | Compatibility sentinels | Pass on `0.1.7-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4`, `0.2.1-rc.5` |
