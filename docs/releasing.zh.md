@@ -22,7 +22,8 @@ tag、不删除已发布 Release、不在打 tag 后重建字节。
 1. 确认范围符合[版本路线](design/version-roadmap.zh.md)和当前稳定化计划；候选版本不夹带计划外功能。
 2. 在同一次修改中更新全部元数据：`package.json` version、`engines.dsh`、peer ranges、
    `dsh.compatibility.dshReleases`、`package-lock.json`、README/README.zh、兼容文档、验证记录、
-   CHANGELOG、release notes 和根 `SHA256SUMS`。
+   CHANGELOG、release notes 和根 `SHA256SUMS`。构建候选字节前，必须把 README/README.zh 更新到当前最新能力，
+   并用已验收构建重新生成 Pane 截图；README 文案或截图过期会阻断发布。
 3. 运行 `npm ci`、`npm run check` 和普通 `npm run smoke:package`。
 4. 对每个声明 DSH 版本跑兼容回归，并 probe 未跟踪的 `next`/`latest` 版本；缺失、peer drift 或未验证版本
    阻断发布。

@@ -24,7 +24,9 @@ tagging.
    plan. No unplanned feature should enter a release candidate.
 2. Update every metadata site in one change: `package.json` version, `engines.dsh`, peer ranges,
    `dsh.compatibility.dshReleases`, `package-lock.json`, README/README.zh, compatibility docs,
-   verification, CHANGELOGs, release notes, and root `SHA256SUMS`.
+   verification, CHANGELOGs, release notes, and root `SHA256SUMS`. Before the candidate is built, refresh
+   README/README.zh with the latest capabilities and the current Pane screenshots from the accepted build; stale
+   README copy or screenshots block the release.
 3. Run `npm ci`, `npm run check`, and the normal `npm run smoke:package`.
 4. Run the compatibility regression over every declared DSH version and probe untracked `next`/`latest`
    versions. A missing, peer-drifted, or untested version blocks release.

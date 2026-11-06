@@ -153,10 +153,13 @@ published history; do not push tags before the gates; do not commit, tag, or pub
 
 ### 8. RC release workflow
 
-**Rule:** pin exact versions in install docs; use the local tarball fallback when registry resolution is blocked;
-wait out the pnpm maturity window or verify the exact artifact; write versioned release notes
-(`docs/release-notes/<version>.md`) and add the evidence to `docs/verification.md`. Pack once, verify those exact
-bytes (`npm run smoke:package -- --artifact … --sha256 SHA256SUMS` and `scripts/verify/recovery-smoke.mjs …
+**Rule:** before building candidate bytes, refresh `README.md` and `README.zh.md` against the current accepted
+tree: the capability list, install/update instructions, compatibility statement, and screenshots of the current
+Pane (`docs/assets/`) must describe the release being shipped, not an earlier build. A stale README or screenshot
+blocks candidate construction, tagging, and publishing. Then pin exact versions in install docs; use the local
+tarball fallback when registry resolution is blocked; wait out the pnpm maturity window or verify the exact
+artifact; write versioned release notes (`docs/release-notes/<version>.md`) and add the evidence to
+`docs/verification.md`. Pack once, verify those exact bytes (`npm run smoke:package -- --artifact … --sha256 SHA256SUMS` and `scripts/verify/recovery-smoke.mjs …
 --artifact … --sha256 SHA256SUMS`), install into a fresh profile, then tag. Create the tag only after the digest
 commit is pushed and public CI is green on that commit. Publish the verified tarball under `next`; moving
 `latest` to the newest RC is deliberate project policy until a stable release exists — do not describe it as an
@@ -207,6 +210,8 @@ version that is not yet tracked**. This is a release requirement, not optional e
 - [ ] Fresh profile: Web start, Charter tab, zh/en switch; update/rollback and old-record behavior checked.
 - [ ] Every metadata site in the Lesson 4 list is consistent (package version, engines, peers, `dshReleases`,
       lockfile, README, compatibility, verification, CHANGELOG, release notes, `SHA256SUMS`).
+- [ ] README/README.zh describe the latest capabilities and current Pane style, with screenshots produced from the
+      accepted build; stale copy or stale screenshots block the release.
 - [ ] Test counts, digests, and coverage claims match the current tree; manual vs CI vs local-matrix evidence is
       labeled honestly.
 - [ ] English and Chinese long-form docs updated together; Chinese normative plan updated when details changed.
