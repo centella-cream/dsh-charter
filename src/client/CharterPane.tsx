@@ -1037,7 +1037,6 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
     return () => { active = false }
   }, [section, source, view?.sessionId])
 
-  
 
   if (state.status === 'connecting' && view === null) {
     return (

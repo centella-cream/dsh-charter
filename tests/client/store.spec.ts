@@ -276,6 +276,24 @@ describe('client charter source', () => {
     await source.dispose()
   })
 
+  it('keeps batch integrity when the same revision arrives from the query view', async () => {
+    const source = new CharterSessionSource({} as never, SessionId('session-integrity'))
+    const base = view(1, 'integrity', 'session-integrity')
+    const batch = {
+      id: 'batch-1',
+      source: { kind: 'manual', actor: 'user', at: 1 },
+      capturedAtRevision: 1,
+      candidates: [],
+    }
+    source.accept({ ...base, proposalBatches: [batch as never] })
+    source.accept({
+      ...base,
+      proposalBatches: [{ ...batch, sourceIntegrity: 'intact' } as never],
+    })
+    expect(source.getSnapshot().view?.proposalBatches?.[0]?.sourceIntegrity).toBe('intact')
+    await source.dispose()
+  })
+
   it('publishes same-revision record-state, digest, and capability changes', async () => {
     const source = new CharterSessionSource({} as never, SessionId('session-record-state'))
     const seen: string[] = []

@@ -2537,16 +2537,24 @@ export class CharterService extends Service {
   private async pruneArchiveCache(): Promise<void> {
     const table = this.archivesTable
     if (table === undefined) return
-    const byRecency = (entries: Array<[string, CharterArchiveCacheEntry]>): Array<[string, CharterArchiveCacheEntry]> =>
-      entries.sort((left, right) => (right[1].archivedAt - left[1].archivedAt) || (right[1].revision - left[1].revision))
+    const combined = new Map<string, CharterArchiveCacheEntry>([
+      ...[...table.entries()],
+      ...[...this.pendingArchives.entries()],
+    ])
+    const ordered = [...combined.entries()].sort((left, right) =>
+      (right[1].archivedAt - left[1].archivedAt) || (right[1].revision - left[1].revision))
     const perSession = new Map<string, number>()
-    for (const [key, entry] of byRecency([...table.entries()])) {
+    let total = 0
+    for (const [key, entry] of ordered) {
       const count = perSession.get(entry.sessionId) ?? 0
-      if (count >= CHARTER_ARCHIVE_CACHE_LIMIT) await table.delete(key)
-      else perSession.set(entry.sessionId, count + 1)
+      if (count >= CHARTER_ARCHIVE_CACHE_LIMIT || total >= CHARTER_ARCHIVE_TOTAL_LIMIT) {
+        if (this.pendingArchives.get(key) === entry) this.pendingArchives.delete(key)
+        else await table.delete(key)
+        continue
+      }
+      perSession.set(entry.sessionId, count + 1)
+      total += 1
     }
-    const remaining = byRecency([...table.entries()])
-    for (const [key] of remaining.slice(CHARTER_ARCHIVE_TOTAL_LIMIT)) await table.delete(key)
   }
 
   /**
@@ -2577,6 +2585,8 @@ export class CharterService extends Service {
       }
       this.pendingArchives.set(key, entry)
       try {
+        await this.pruneArchiveCache()
+        if (this.pendingArchives.get(key) !== entry) return
         await table.put(key, entry)
         await this.pruneArchiveCache()
       } finally {

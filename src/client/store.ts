@@ -77,6 +77,29 @@ function messageOf(error: unknown): string {
 
 const ATTACH_TIMEOUT_MS = 15_000
 
+function batchIntegrityOf(view: CharterView): string {
+  return JSON.stringify((view.proposalBatches ?? []).map(batch => [batch.id, batch.sourceIntegrity ?? null]))
+}
+
+/**
+ * `accept()` may publish the Host frame before the query plane has enriched
+ * proposal batches with source integrity. Carry the richer same-revision
+ * batches forward; a later query frame can then refresh them.
+ */
+function carryBatchIntegrity(next: CharterView, current: CharterView): CharterView {
+  if (next.proposalBatches === undefined || current.proposalBatches === undefined) return next
+  const previous = new Map(current.proposalBatches.map(batch => [batch.id, batch]))
+  let changed = false
+  const proposalBatches = next.proposalBatches.map(batch => {
+    if (batch.sourceIntegrity !== undefined) return batch
+    const earlier = previous.get(batch.id)
+    if (earlier?.sourceIntegrity === undefined) return batch
+    changed = true
+    return { ...batch, sourceIntegrity: earlier.sourceIntegrity }
+  })
+  return changed ? { ...next, proposalBatches } : next
+}
+
 export class CharterSessionSource implements CharterSource {
   private state = INITIAL_STATE
   private readonly listeners = new Set<() => void>()
@@ -479,6 +502,10 @@ export class CharterSessionSource implements CharterSource {
   private publishIfNewer(view: CharterView): void {
     if (view.sessionId !== this.sessionId) return
     const current = this.state.view
+    const merged = current !== null && current.revision === view.revision
+      && current.lifecycle === view.lifecycle
+      ? carryBatchIntegrity(view, current)
+      : view
     // First introduction of a lifecycle (old Host view without a fingerprint,
     // then a reconnected new Host view) is authoritative too.
     const lifecycleChanged = current !== null
@@ -495,21 +522,22 @@ export class CharterSessionSource implements CharterSource {
     }
     const sameView = current !== null
       && !lifecycleChanged
-      && view.revision === current.revision
-      && view.status === current.status
-      && view.promptDigest === current.promptDigest
-      && view.message === current.message
-      && view.overBudget === current.overBudget
-      && JSON.stringify(view.limits) === JSON.stringify(current.limits)
-      && JSON.stringify(view.recordState ?? null) === JSON.stringify(current.recordState ?? null)
-      && JSON.stringify(view.capabilities ?? null) === JSON.stringify(current.capabilities ?? null)
+      && merged.revision === current.revision
+      && merged.status === current.status
+      && merged.promptDigest === current.promptDigest
+      && merged.message === current.message
+      && merged.overBudget === current.overBudget
+      && JSON.stringify(merged.limits) === JSON.stringify(current.limits)
+      && JSON.stringify(merged.recordState ?? null) === JSON.stringify(current.recordState ?? null)
+      && JSON.stringify(merged.capabilities ?? null) === JSON.stringify(current.capabilities ?? null)
+      && batchIntegrityOf(merged) === batchIntegrityOf(current)
     // Connection readiness is separate from business-data dedupe. A retry or
     // reattach that delivers the same view must still recover `ready` (and
     // clear the first-frame watchdog); an already-ready pane with the identical
     // view is the only case that needs no publish.
     if (sameView && this.state.status === 'ready' && this.state.error === null) return
     this.clearWatchdog()
-    this.publish({ status: 'ready', view, error: null })
+    this.publish({ status: 'ready', view: merged, error: null })
   }
 
   private publish(state: CharterClientState): void {

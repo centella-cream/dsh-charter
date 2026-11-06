@@ -1222,6 +1222,41 @@ describe('dsh-charter host composition', () => {
       .toMatchObject({ ok: false, code: 'FORBIDDEN' })
   })
 
+  it('keeps the profile-wide archive cache bounded across Sessions', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-archive-global-'))
+    roots.push(root)
+    const ctx = await mount(root)
+    const service = ctx.charter as CharterService
+    const sessions = []
+    for (let index = 0; index < 6; index += 1) {
+      const session = ctx.sessions.create(SessionId(`archive-global-${index}`), {
+        meta: { cwd: root, createdAt: 1_700_000_001_300 + index },
+      })
+      await waitForReady(service, session)
+      for (let edit = 0; edit < 4; edit += 1) {
+        const request = addInvariant(
+          session.id,
+          service.view(session).revision,
+          `archive-global-${index}-${edit}`,
+          `Global invariant ${index}-${edit}`,
+        )
+        await expect(service.edit(request)).resolves.toMatchObject({ ok: true })
+      }
+      sessions.push(session)
+    }
+    let total = 0
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      total = sessions.reduce((sum, session) => {
+        const listed = service.listArchives(session.id, { kind: 'owner' })
+        return sum + (listed.ok ? listed.archives.length : 0)
+      }, 0)
+      if (total > 0 && total <= 25) break
+      await new Promise(resolve => setTimeout(resolve, 5))
+    }
+    expect(total).toBeGreaterThan(0)
+    expect(total).toBeLessThanOrEqual(25)
+  })
+
   it('proposes a selected message range with the chosen kind', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-charter-message-range-'))
     roots.push(root)
