@@ -2141,7 +2141,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                 </div>
                 <div className="charter-messageproposal__form">
                   <label className="charter-messageproposal__field">
-                    <span>{t('message.pick')}</span>
+                    <span className="charter-fieldlabel">{t('message.pick')}</span>
                     <select
                       aria-label={t('message.pick')}
                       value={messageSeq ?? ''}
@@ -2160,7 +2160,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                     </select>
                   </label>
                   <label className="charter-messageproposal__field">
-                    <span>{t('message.textLabel')}</span>
+                    <span className="charter-fieldlabel">{t('message.textLabel')}</span>
                     <textarea
                       aria-label={t('message.textLabel')}
                       className="charter-messageproposal__textarea"
@@ -2172,7 +2172,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                     </span>
                   </label>
                   <div className="charter-messageproposal__field">
-                    <span>{t('message.kind')}</span>
+                    <span className="charter-fieldlabel">{t('message.kind')}</span>
                     <div className="charter-messageproposal__kind" role="group" aria-label={t('message.kind')}>
                       <button
                         type="button"
@@ -2673,7 +2673,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                     <p className="charter-hint">{t('validators.hint')}</p>
                     <div className="charter-validator__form">
                       <label className="charter-validator__field">
-                        <span>{t('validators.targetLabel')}</span>
+                        <span className="charter-fieldlabel">{t('validators.targetLabel')}</span>
                         <select
                           aria-label={t('validators.itemAria')}
                           value={validatorItemId}
@@ -2692,7 +2692,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                       </label>
                       <div className="charter-validator__row">
                         <label className="charter-validator__field">
-                          <span>{t('validators.methodLabel')}</span>
+                          <span className="charter-fieldlabel">{t('validators.methodLabel')}</span>
                           <select
                             aria-label={t('validators.kindAria')}
                             value={validatorKind}
@@ -2704,7 +2704,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                           </select>
                         </label>
                         <label className="charter-validator__field">
-                          <span>{t('validators.pathLabel')}</span>
+                          <span className="charter-fieldlabel">{t('validators.pathLabel')}</span>
                           <input
                             aria-label={t('validators.pathAria')}
                             placeholder={t('validators.pathPlaceholder')}
@@ -2715,7 +2715,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                       </div>
                       {validatorKind !== 'workspace.path-exists' && (
                         <label className="charter-validator__field">
-                          <span>{t('validators.expectationLabel')}</span>
+                          <span className="charter-fieldlabel">{t('validators.expectationLabel')}</span>
                           <input
                             aria-label={t('validators.expectationAria')}
                             placeholder={validatorKind === 'workspace.file-digest' ? 'sha256:...' : t('validators.containsPlaceholder')}
@@ -2975,7 +2975,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                     <summary>{t('recovery.importTitle')}</summary>
                     <p className="charter-hint">{t('recovery.importHint')}</p>
                     <label className="charter-recovery__file">
-                      <span className="charter-kicker">{t('recovery.chooseFile')}</span>
+                      <span className="charter-fieldlabel">{t('recovery.chooseFile')}</span>
                       <input
                         ref={archiveInputRef}
                         type="file"
