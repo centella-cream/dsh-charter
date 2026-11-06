@@ -19,13 +19,13 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 - 已发布：`0.2.0`（npm `latest`/`next`；精确 SHA-256 `7bafffc24c18c9655d68a9a61017db54920839a159dfeeba0643337c3aae4286`）。GitHub Release `v0.2.0` 已公开且不可变。
 - `0.1.0-rc.6`：上一公开版本；使用 recovery tag `v0.1.0-rc.6-republished`。
 - 当前版本：`0.2.0`，已发布且不可变；从 0.2.0 起版本号不使用 `rc` 后缀。
-- 当前源码证据：36 个测试文件 / 438 个测试，九版本矩阵 438/438 通过。已发布 0.2.0 artifact 早于发布后的消息提案 UI 澄清，携带 434 测试的源码构建。
+- 当前源码证据：36 个测试文件 / 440 个测试，九版本矩阵 440/440 通过。已发布 0.2.0 artifact 早于发布后的消息提案 UI 澄清，携带 434 测试的源码构建。
 - 待完成：发布后的 Desktop/浏览器诊断与真实模型 compaction 检查。
 
 | 项目 | 结果 |
 | --- | --- |
 | TypeScript 严格检查 | 当前树通过 |
-| Vitest | 36 个测试文件 / 438 个测试通过（`npm test`，先 build） |
+| Vitest | 36 个测试文件 / 440 个测试通过（`npm test`，先 build） |
 | Host ESM 构建 + 浏览器 factory bundle | 通过 |
 | Remote 契约与 client smoke | 通过 |
 | 普通 package smoke | 通过 |
@@ -35,7 +35,7 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 | 兼容 sentinel | `0.1.7-rc.2`、`0.2.1-rc.2`、`0.2.1-rc.4`、`0.2.1-rc.5`、`0.2.2-rc.1` 通过 |
 | Fresh Web profile matrix (historical rc.6) | PASS：历史 rc.6 artifact 曾在 DSH `0.1.7-rc.2`、`0.2.0-rc.2`、`0.2.1-rc.2`、`0.2.1-rc.4`、`0.2.1-rc.5` 上安装并启动 |
 | Fresh Web 0.2.2 | 2026-11-05 PASS：全新 `DSH_HOME` + `dsh@0.2.2-rc.1 plugin --profile web add` 安装 `dsh-charter-0.2.0.tgz`（SHA-256 `fde5531d457effc713f4423f8b46c8f0e591770e59c55e19956f000c11bdeffc`）；Web 启动、页面 HTTP 200、charter bundle HTTP 200；boot graph 含 `dsh-charter`，页面 index 含 `dsh-charter/client.js` |
-| 九版本全量 rerun | tracked `compat-matrix --versions all --allow-new-release` 通过（每版本 438/438） |
+| 九版本全量 rerun | tracked `compat-matrix --versions all --allow-new-release` 通过（每版本 440/440） |
 | 未跟踪 `0.2.2-alpha.2` probe | strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run；rc.6 明确不支持 |
 | 本地 Web + Desktop profile | 0.2.0 开发 artifact 已装入本地 web/desktop profile；Desktop app 为 `0.2.2-rc.1`，真实 Electron ABI/交互仍需人工门禁 |
 | 真实浏览器恢复 | 受保护的人工 evidence gate；未自动化 |
@@ -69,19 +69,19 @@ CI（`.github/workflows/ci.yml`）在 Node `22.19.0` / `24` 上运行 `npm run c
 
 | DSH 版本 | 证据 |
 | --- | --- |
-| `0.1.7-rc.2` | 438/438 tracked matrix PASS |
-| `0.2.0-rc.1` | 438/438 tracked matrix PASS |
-| `0.2.0-rc.2` | 438/438 tracked matrix PASS |
-| `0.2.1-rc.1` | 438/438 tracked matrix PASS |
-| `0.2.1-rc.2` | 438/438 tracked matrix PASS |
-| `0.2.1-rc.3` | 438/438 tracked matrix PASS |
-| `0.2.1-rc.4` | 438/438 tracked matrix PASS |
-| `0.2.1-rc.5` | 438/438 tracked matrix PASS |
-| `0.2.2-rc.1` | 438/438 tracked matrix PASS |
+| `0.1.7-rc.2` | 440/440 tracked matrix PASS |
+| `0.2.0-rc.1` | 440/440 tracked matrix PASS |
+| `0.2.0-rc.2` | 440/440 tracked matrix PASS |
+| `0.2.1-rc.1` | 440/440 tracked matrix PASS |
+| `0.2.1-rc.2` | 440/440 tracked matrix PASS |
+| `0.2.1-rc.3` | 440/440 tracked matrix PASS |
+| `0.2.1-rc.4` | 440/440 tracked matrix PASS |
+| `0.2.1-rc.5` | 440/440 tracked matrix PASS |
+| `0.2.2-rc.1` | 440/440 tracked matrix PASS |
 
-当前 main 树在源码提交 `e94b0568e989ae8392052e175c73976519657826` 上于 2026-11-06 通过
-`compat-matrix --versions all --allow-new-release`：每个声明版本均通过 typecheck、build 和 438/438 测试；本地证据为
-`.tmp/review-fixes-matrix5.json`。安装使用 pnpm strict peer、精确工具版本、单一 zod 4.6.7 图、完整 `pnpm list --depth Infinity` 图校验，并记录 lockfile SHA-256。未跟踪 `0.2.2-alpha.2` 已 probe：strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run，rc.6 明确不支持。
+当前 main 树在源码提交 `8568c23a10b59101eb709a5ceca8566883e70fd0` 上于 2026-11-06 通过
+`compat-matrix --versions all --allow-new-release`：每个声明版本均通过 typecheck、build 和 440/440 测试；本地证据为
+`.tmp/review-fixes-matrix6.json`。安装使用 pnpm strict peer、精确工具版本、单一 zod 4.6.7 图、完整 `pnpm list --depth Infinity` 图校验，并记录 lockfile SHA-256。未跟踪 `0.2.2-alpha.2` 已 probe：strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run，rc.6 明确不支持。
 
 ## 4. 测试覆盖
 
