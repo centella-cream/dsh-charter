@@ -20,7 +20,7 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 - 发布候选：`0.2.1` 在本地开发分支；尚未打 tag、发布 GitHub Release 或 npm。
 - `0.1.0-rc.6`：上一公开版本；使用 recovery tag `v0.1.0-rc.6-republished`。
 - 从 0.2.0 起版本号使用普通递增，不使用 `rc` 后缀。
-- 当前源码证据：版本 bump 前为 36 个测试文件 / 441 个测试，九版本矩阵 441/441 通过；最终 0.2.1 候选树必须在 promotion 前重跑。
+- 当前源码证据：0.2.1 候选树在源码提交 `071a4ba065345b0d029c8d500149261e27bdd061` 上通过 36 个测试文件 / 441 个测试，九版本矩阵 441/441 通过。
 - 待完成：本地验收、真实浏览器/Desktop ABI、真实模型 compaction、512 条性能、最终 artifact/SHA256SUMS 和 promotion。
 
 | 项目 | 结果 |
@@ -80,9 +80,9 @@ CI（`.github/workflows/ci.yml`）在 Node `22.19.0` / `24` 上运行 `npm run c
 | `0.2.1-rc.5` | 441/441 tracked matrix PASS |
 | `0.2.2-rc.1` | 441/441 tracked matrix PASS |
 
-当前 main 树在源码提交 `cf3cc59af617fe725b966220681e869fbed07388` 上于 2026-11-06 通过
+0.2.1 候选树在源码提交 `071a4ba065345b0d029c8d500149261e27bdd061` 上于 2026-11-06 通过
 `compat-matrix --versions all --allow-new-release`：每个声明版本均通过 typecheck、build 和 441/441 测试；本地证据为
-`.tmp/review-fixes-matrix7.json`。安装使用 pnpm strict peer、精确工具版本、单一 zod 4.6.7 图、完整 `pnpm list --depth Infinity` 图校验，并记录 lockfile SHA-256。未跟踪 `0.2.2-alpha.2` 已 probe：strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run，rc.6 明确不支持。
+`.tmp/0.2.1-matrix.json`。安装使用 pnpm strict peer、精确工具版本、单一 zod 4.6.7 图、完整 `pnpm list --depth Infinity` 图校验，并记录 lockfile SHA-256。未跟踪 `0.2.2-alpha.2` 已 probe：strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run，rc.6 明确不支持。
 
 ## 4. 测试覆盖
 

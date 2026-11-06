@@ -21,7 +21,7 @@ Current release state (2026-11-06):
 - Release candidate: `0.2.1` on a local development branch; no tag, GitHub Release, or npm publication yet.
 - `0.1.0-rc.6`: previous public release; recovery tag `v0.1.0-rc.6-republished`.
 - Versioning from 0.2.0 onward uses plain increments and never an `rc` suffix.
-- Current source evidence: 36 files / 441 tests and the nine-version matrix pass 441/441 on the pre-bump tree; rerun on the final 0.2.1 candidate before promotion.
+- Current source evidence: 36 files / 441 tests and the nine-version matrix pass 441/441 on the 0.2.1 candidate tree at `071a4ba065345b0d029c8d500149261e27bdd061`.
 - Pending: local acceptance, real browser/Desktop ABI, real-model compaction, 512-item performance, final artifact/SHA256SUMS, and promotion.
 
 | Item | Result |
@@ -96,9 +96,9 @@ The tracked runner creates isolated pnpm projects with strict peers and runs typ
 | `0.2.1-rc.5` | 441/441 tracked matrix PASS |
 | `0.2.2-rc.1` | 441/441 tracked matrix PASS |
 
-The clean main-tree run at source commit `cf3cc59af617fe725b966220681e869fbed07388` passed
+The 0.2.1 candidate tree at source commit `071a4ba065345b0d029c8d500149261e27bdd061` passed
 `compat-matrix --versions all --allow-new-release` on 2026-11-06: every declared version passed typecheck, build,
-and 441/441 tests. The local evidence file is `.tmp/review-fixes-matrix7.json`. Installs use pnpm strict peer resolution, exact tool pins, a single zod 4.6.7 graph, full `pnpm list --depth Infinity` graph validation, and recorded lockfile SHA-256 values. The untracked `0.2.2-alpha.2` probe is recorded as unsupported: strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run.
+and 441/441 tests. The local evidence file is `.tmp/0.2.1-matrix.json`. Installs use pnpm strict peer resolution, exact tool pins, a single zod 4.6.7 graph, full `pnpm list --depth Infinity` graph validation, and recorded lockfile SHA-256 values. The untracked `0.2.2-alpha.2` probe is recorded as unsupported: strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run.
 
 ## 4. What the tests cover
 
