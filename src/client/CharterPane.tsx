@@ -792,9 +792,6 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   const invariants = projectedItems.filter(item => item.kind === 'invariant')
   const deliverables = projectedItems.filter((item): item is ProjectedItem & { kind: 'deliverable' } => item.kind === 'deliverable')
   const counts = itemCounts(projectedItems)
-  const committedActive = (view?.items ?? []).filter(item =>
-    item.lifecycle === 'current' && item.review === 'accepted').length
-  const committedStored = view?.items.length ?? 0
   const activeInvariants = activeItems(invariants)
   const pendingInvariants = pendingItems(invariants)
   // The Pane renders the single sorted projected list (filtered to the working
@@ -1477,8 +1474,6 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
             <div className="charter-chips">
               <StatusTag tone="info">{t('header.version', { version: CHARTER_VERSION })}</StatusTag>
               <StatusTag>{t('stats.revision', { revision: view.revision })}</StatusTag>
-              <StatusTag>{t('stats.active', { count: committedActive })}</StatusTag>
-              <StatusTag>{t('stats.stored', { count: committedStored })}</StatusTag>
               {ops.length > 0 && (
                 <StatusTag tone="info">
                   {t('stats.afterApply', { active: counts.active, stored: projectedItems.length })}
