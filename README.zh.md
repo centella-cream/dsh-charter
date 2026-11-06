@@ -250,7 +250,7 @@ npm run verify:compaction  # 手动真实模型 compaction 检查
 node scripts/verify/compat-matrix.mjs --versions all --allow-new-release
 ```
 
-当前源码证据：**36 个测试文件 / 435 个测试**，九版本 DSH 矩阵 **9/9**、每版 **435/435** 通过。精确命令
+当前源码证据：**36 个测试文件 / 437 个测试**，九版本 DSH 矩阵 **9/9**、每版 **437/437** 通过。精确命令
 和 source/local-matrix/exact-artifact/manual 证据的区别见[验证记录](docs/verification.zh.md)。
 
 CI 在 Node `22.19.0` 和 `24` 上运行 `npm run check` 与 `npm run smoke:package`；release candidate 和 promotion 是独立门禁。green candidate 不等于已发布。

@@ -330,6 +330,39 @@ export const charterMessageProposeRequestSchema = z.object({
   end: z.number().int().nonnegative().optional(),
 }).strict()
 
+
+export const charterArchiveEntrySchema = z.object({
+  key: z.string().min(1),
+  revision: z.number().int().nonnegative(),
+  archivedAt: z.number().int().nonnegative(),
+  payloadDigest: z.string(),
+  recordDigest: z.string(),
+  lifecycle: z.string().nullable(),
+}).strict()
+
+export const charterArchiveListRequestSchema = z.object({
+  sessionId: z.string().min(1),
+}).strict()
+
+export const charterArchiveReadRequestSchema = z.object({
+  sessionId: z.string().min(1),
+  key: z.string().min(1),
+}).strict()
+
+export const charterArchiveListResultSchema = z.discriminatedUnion('ok', [
+  z.object({
+    ok: z.literal(true),
+    archives: z.array(charterArchiveEntrySchema),
+    limit: z.number().int().positive(),
+  }).strict(),
+  z.object({ ok: z.literal(false), code: charterErrorCodeSchema, message: z.string() }).strict(),
+])
+
+export const charterArchiveReadResultSchema = z.discriminatedUnion('ok', [
+  z.object({ ok: z.literal(true), archive: charterRecordArchiveSchema }).strict(),
+  z.object({ ok: z.literal(false), code: charterErrorCodeSchema, message: z.string() }).strict(),
+])
+
 export const charterSourceIntegrityResultSchema = z.discriminatedUnion('ok', [
   z.object({
     ok: z.literal(true),
@@ -510,6 +543,12 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     'charter/queryMessages': (
       sessionId: SessionId,
     ) => Promise<RemoteResult<CharterMessageListResult>>
+    'charter/listArchives': (
+      request: { readonly sessionId: SessionId },
+    ) => Promise<RemoteResult<import('../host/types.js').CharterArchiveListResult>>
+    'charter/readArchive': (
+      request: { readonly sessionId: SessionId; readonly key: string },
+    ) => Promise<RemoteResult<import('../host/types.js').CharterArchiveReadResult>>
     'charter/proposeMessage': (
       request: import('../host/types.js').CharterMessageProposalOptions & { readonly sessionId: SessionId },
     ) => Promise<RemoteResult<CharterEditResult>>
@@ -566,6 +605,12 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
       proposeMessage: (
         request: import('../host/types.js').CharterMessageProposalOptions & { readonly sessionId: SessionId },
       ) => Promise<RemoteResult<CharterEditResult>>
+      listArchives: (
+        request: { readonly sessionId: SessionId },
+      ) => Promise<RemoteResult<import('../host/types.js').CharterArchiveListResult>>
+      readArchive: (
+        request: { readonly sessionId: SessionId; readonly key: string },
+      ) => Promise<RemoteResult<import('../host/types.js').CharterArchiveReadResult>>
       previewChangeSet: (
         request: CharterEditRequest,
       ) => Promise<RemoteResult<CharterChangeSetPreviewResult>>

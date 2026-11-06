@@ -12,7 +12,7 @@ import type {
   CharterOp,
   DeliverableProgress,
 } from '../core/schemas.js'
-import type { CharterView } from '../host/types.js'
+import type { CharterArchiveEntry, CharterView } from '../host/types.js'
 import type { CharterSource } from './store.js'
 import type {
   BootstrapProblem,
@@ -730,6 +730,9 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   const [confirmAbandon, setConfirmAbandon] = useState(false)
   const [confirmDiscardAll, setConfirmDiscardAll] = useState(false)
   const [archivePreview, setArchivePreview] = useState<ArchivePreview | null>(null)
+  const [archiveEntries, setArchiveEntries] = useState<readonly CharterArchiveEntry[]>([])
+  const [archiveCacheProblem, setArchiveCacheProblem] = useState<string | null>(null)
+  const [activeArchiveKey, setActiveArchiveKey] = useState<string | null>(null)
   const [previewMode, setPreviewMode] = useState<'formatted' | 'exact'>('formatted')
   const [confirmRecovery, setConfirmRecovery] = useState<'initialize' | 'restore' | null>(null)
   const [confirmRestoreKey, setConfirmRestoreKey] = useState<string | null>(null)
@@ -767,6 +770,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
     setConfirmRecovery(null)
     setExportProblem(null)
     setExporting(false)
+    setActiveArchiveKey(null)
     if (archiveInputRef.current !== null) archiveInputRef.current.value = ''
   }, [source, view?.sessionId, view?.lifecycle, draftState.lifecycle])
 
@@ -998,9 +1002,21 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   }, [view?.sessionId, view?.lifecycle, draftState.ops, draftState.editor, draftState.editorText, draftState.newInvariant, draftState.newDeliverable])
 
   useEffect(() => {
-    if (draftState.maintenanceSaving || maintenanceReplay) return
-    if (archiveInputRef.current !== null) archiveInputRef.current.value = ''
-  }, [draftState.maintenanceSaving, maintenanceReplay, recordState?.kind])
+    if ((section !== 'context' && section !== 'recovery') || source.listArchives === undefined) return
+    let active = true
+    setArchiveCacheProblem(null)
+    void source.listArchives().then(result => {
+      if (!active) return
+      if (result.ok) {
+        setArchiveEntries(result.archives)
+      } else {
+        setArchiveCacheProblem(errorLabel(result.code, t))
+      }
+    }).catch(() => {
+      if (active) setArchiveCacheProblem(t('recovery.cacheUnavailable'))
+    })
+    return () => { active = false }
+  }, [section, source, view?.revision, draftState.maintenanceSaving, recoveryBusy, t])
   useEffect(() => {
     if (section !== 'history' || source.queryMessages === undefined) return
     void source.queryMessages().then(result => {
@@ -1195,13 +1211,84 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
       if (epoch !== exportEpochRef.current) return
       exportInFlightRef.current = false
       setExporting(false)
-      if (result.ok) downloadArchive(result.filename, result.archive)
-      else setExportProblem(errorText(result.code))
+      if (result.ok) {
+        downloadArchive(result.filename, result.archive)
+        void source.listArchives?.().then(list => {
+          if (list.ok) setArchiveEntries(list.archives)
+        }).catch(() => undefined)
+      } else setExportProblem(errorText(result.code))
     }).catch(() => {
       if (epoch !== exportEpochRef.current) return
       exportInFlightRef.current = false
       setExporting(false)
       setExportProblem(t('recovery.exportFailed'))
+    })
+  }
+
+  const chooseCachedArchive = (entry: CharterArchiveEntry): void => {
+    if (recoveryBusy || unknownBlocked || source.readArchive === undefined) return
+    const generation = ++archiveGenerationRef.current
+    const expectedSessionId = view?.sessionId
+    const expectedLifecycle = draftState.lifecycle ?? view?.lifecycle ?? null
+    const label = t('recovery.cacheRevision', { revision: entry.revision })
+    const isCurrent = (): boolean => generation === archiveGenerationRef.current
+      && viewRef.current?.sessionId === expectedSessionId
+      && (draft.getSnapshot().lifecycle ?? null) === expectedLifecycle
+    setActiveArchiveKey(entry.key)
+    setArchivePreview({ fileName: label })
+    setExportProblem(null)
+    setConfirmRecovery(null)
+    if (view === null) return
+    const maxBytes = view.limits.maxRecoveryBytes ?? 4 * 1_024 * 1_024
+    const lifecycle = draftState.lifecycle ?? view.lifecycle ?? null
+    void source.readArchive(entry.key).then(async result => {
+      if (!isCurrent()) return
+      if (!result.ok) {
+        setArchivePreview({ fileName: label, errorKey: 'recovery.invalidArchive' })
+        return
+      }
+      const preview = await previewArchive(result.archive, {
+        sessionId: view.sessionId,
+        lifecycle,
+        maxRecoveryBytes: maxBytes,
+      })
+      if (!isCurrent()) return
+      if (!preview.ok) {
+        const key = preview.reason === 'fileTooLarge'
+          ? 'recovery.fileTooLargeLimit'
+          : preview.reason === 'invalidJson'
+            ? 'recovery.invalidJson'
+            : preview.reason === 'invalidArchive'
+              ? 'recovery.invalidArchive'
+              : preview.reason === 'sessionMismatch'
+                ? 'recovery.sessionMismatchPreview'
+                : preview.reason === 'lifecycleMismatch'
+                  ? 'recovery.lifecycleMismatchPreview'
+                  : preview.reason === 'cryptoUnavailable'
+                    ? 'recovery.cryptoUnavailable'
+                    : 'recovery.digestMismatchPreview'
+        setArchivePreview({
+          fileName: label,
+          errorKey: key,
+          ...(preview.reason === 'fileTooLarge' ? { errorParams: { limit: formatBytes(t, maxBytes) } } : {}),
+        })
+        return
+      }
+      if (!isCurrent()) return
+      setArchivePreview({
+        fileName: label,
+        archive: preview.archive,
+        health: preview.health,
+        revision: preview.revision,
+        lifecycle: preview.lifecycle,
+        digest: preview.digest,
+        exportedAt: preview.exportedAt,
+        sourceSession: preview.sourceSession,
+        payloadDigestOk: preview.payloadDigestOk,
+        recordDigestOk: preview.recordDigestOk,
+      })
+    }).catch(() => {
+      if (isCurrent()) setArchivePreview({ fileName: label, errorKey: 'recovery.invalidArchive' })
     })
   }
 
@@ -2576,7 +2663,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
             {area === 'diagnostics' && (
               <>
                 {source.runValidators !== undefined && (
-                  <section className="charter-card charter-section" aria-labelledby="charter-validator-title">
+                  <section className="charter-card charter-section charter-validator" aria-labelledby="charter-validator-title">
                     <div className="charter-cardhead">
                       <div className="charter-cardtitle">
                         <span className="charter-kicker">{t('diagnostics.kicker')}</span>
@@ -2584,100 +2671,130 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                       </div>
                     </div>
                     <p className="charter-hint">{t('validators.hint')}</p>
-                    <div className="charter-validator-form">
-                      <select
-                        aria-label={t('validators.itemAria')}
-                        value={validatorItemId}
-                        onChange={event => setValidatorItemId(event.target.value)}
-                      >
-                        <option value="">{t('validators.pickItem')}</option>
-                        {view.items.filter(item => item.review === 'accepted' && item.lifecycle === 'current').map(item => (
-                          <option key={item.id} value={item.id}>{item.text}</option>
-                        ))}
-                      </select>
-                      <select
-                        aria-label={t('validators.kindAria')}
-                        value={validatorKind}
-                        onChange={event => setValidatorKind(event.target.value as typeof validatorKind)}
-                      >
-                        <option value="workspace.path-exists">workspace.path-exists</option>
-                        <option value="workspace.file-digest">workspace.file-digest</option>
-                        <option value="workspace.file-contains">workspace.file-contains</option>
-                      </select>
-                      <input
-                        aria-label={t('validators.pathAria')}
-                        placeholder={t('validators.pathPlaceholder')}
-                        value={validatorPath}
-                        onChange={event => setValidatorPath(event.target.value)}
-                      />
+                    <div className="charter-validator__form">
+                      <label className="charter-validator__field">
+                        <span>{t('validators.targetLabel')}</span>
+                        <select
+                          aria-label={t('validators.itemAria')}
+                          value={validatorItemId}
+                          onChange={event => setValidatorItemId(event.target.value)}
+                        >
+                          <option value="">{t('validators.pickItem')}</option>
+                          {view.items
+                            .filter(item => item.review === 'accepted' && item.lifecycle === 'current')
+                            .map(item => (
+                              <option key={item.id} value={item.id}>
+                                {item.kind === 'invariant' ? t('invariants.kicker') : t('deliverables.kicker')} · {item.text}
+                              </option>
+                            ))}
+                        </select>
+                        <span className="charter-hint">{t('validators.targetHint')}</span>
+                      </label>
+                      <div className="charter-validator__row">
+                        <label className="charter-validator__field">
+                          <span>{t('validators.methodLabel')}</span>
+                          <select
+                            aria-label={t('validators.kindAria')}
+                            value={validatorKind}
+                            onChange={event => setValidatorKind(event.target.value as typeof validatorKind)}
+                          >
+                            <option value="workspace.path-exists">{t('validators.kind.path-exists')}</option>
+                            <option value="workspace.file-digest">{t('validators.kind.file-digest')}</option>
+                            <option value="workspace.file-contains">{t('validators.kind.file-contains')}</option>
+                          </select>
+                        </label>
+                        <label className="charter-validator__field">
+                          <span>{t('validators.pathLabel')}</span>
+                          <input
+                            aria-label={t('validators.pathAria')}
+                            placeholder={t('validators.pathPlaceholder')}
+                            value={validatorPath}
+                            onChange={event => setValidatorPath(event.target.value)}
+                          />
+                        </label>
+                      </div>
                       {validatorKind !== 'workspace.path-exists' && (
-                        <input
-                          aria-label={t('validators.expectationAria')}
-                          placeholder={validatorKind === 'workspace.file-digest' ? 'sha256:...' : t('validators.containsPlaceholder')}
-                          value={validatorExpectation}
-                          onChange={event => setValidatorExpectation(event.target.value)}
-                        />
+                        <label className="charter-validator__field">
+                          <span>{t('validators.expectationLabel')}</span>
+                          <input
+                            aria-label={t('validators.expectationAria')}
+                            placeholder={validatorKind === 'workspace.file-digest' ? 'sha256:...' : t('validators.containsPlaceholder')}
+                            value={validatorExpectation}
+                            onChange={event => setValidatorExpectation(event.target.value)}
+                          />
+                        </label>
                       )}
-                      <ActionButton
-                        variant="outline"
-                        disabled={validatorRunning || validatorItemId === '' || validatorPath.trim() === ''}
-                        onClick={() => {
-                          void (async () => {
-                            setValidatorRunning(true)
-                            setValidatorFeedback(null)
-                            try {
-                              const result = await source.runValidators!([{
-                                itemId: validatorItemId,
-                                validator: {
-                                  kind: validatorKind,
-                                  path: validatorPath.trim(),
-                                  ...(validatorKind === 'workspace.file-digest' ? { expectedDigest: validatorExpectation.trim() } : {}),
-                                  ...(validatorKind === 'workspace.file-contains' ? { contains: validatorExpectation } : {}),
-                                },
-                              }])
-                              setValidatorFeedback(result.ok ? t('validators.done') : errorLabel(result.code, t))
-                            } catch {
-                              setValidatorFeedback(t('validators.failed'))
-                            } finally {
-                              setValidatorRunning(false)
-                            }
-                          })()
-                        }}
-                      >
-                        {t('validators.run')}
-                      </ActionButton>
-                    </div>
-                    {validatorFeedback !== null && <p className="charter-hint" role="status">{validatorFeedback}</p>}
-                    {source.sourceIntegrity !== undefined && (
-                      <div className="charter-recovery__actions">
+                      <div className="charter-validator__actions">
                         <ActionButton
                           variant="outline"
+                          disabled={validatorRunning || validatorItemId === '' || validatorPath.trim() === ''}
                           onClick={() => {
                             void (async () => {
+                              setValidatorRunning(true)
+                              setValidatorFeedback(null)
                               try {
-                                const result = await source.sourceIntegrity!()
-                                if (result.ok) {
-                                  const changed = result.items.filter(item => item.integrity !== 'intact').length
-                                    + result.batches.filter(batch => batch.integrity !== 'intact' && batch.integrity !== 'not-applicable').length
-                                  setIntegrityFeedback(
-                                    t('integrity.summary', {
-                                      count: result.items.length + result.batches.length,
-                                      changed,
-                                    }) + (result.truncated === true ? ` ${t('integrity.truncated')}` : ''),
-                                  )
-                                } else {
-                                  setIntegrityFeedback(errorLabel(result.code, t))
-                                }
+                                const result = await source.runValidators!([{
+                                  itemId: validatorItemId,
+                                  validator: {
+                                    kind: validatorKind,
+                                    path: validatorPath.trim(),
+                                    ...(validatorKind === 'workspace.file-digest' ? { expectedDigest: validatorExpectation.trim() } : {}),
+                                    ...(validatorKind === 'workspace.file-contains' ? { contains: validatorExpectation } : {}),
+                                  },
+                                }])
+                                setValidatorFeedback(result.ok ? t('validators.done') : errorLabel(result.code, t))
                               } catch {
-                                setIntegrityFeedback(t('validators.failed'))
+                                setValidatorFeedback(t('validators.failed'))
+                              } finally {
+                                setValidatorRunning(false)
                               }
                             })()
                           }}
                         >
-                          {t('integrity.check')}
+                          {t('validators.run')}
                         </ActionButton>
                       </div>
-                    )}
+                    </div>
+                    {validatorFeedback !== null && <p className="charter-hint" role="status">{validatorFeedback}</p>}
+                  </section>
+                )}
+                {source.sourceIntegrity !== undefined && (
+                  <section className="charter-card charter-section" aria-labelledby="charter-integrity-title">
+                    <div className="charter-cardhead">
+                      <div className="charter-cardtitle">
+                        <span className="charter-kicker">{t('diagnostics.kicker')}</span>
+                        <h3 id="charter-integrity-title">{t('integrity.title')}</h3>
+                      </div>
+                    </div>
+                    <p className="charter-hint">{t('integrity.hint')}</p>
+                    <div className="charter-validator__actions">
+                      <ActionButton
+                        variant="outline"
+                        onClick={() => {
+                          void (async () => {
+                            try {
+                              const result = await source.sourceIntegrity!()
+                              if (result.ok) {
+                                const changed = result.items.filter(item => item.integrity !== 'intact').length
+                                  + result.batches.filter(batch => batch.integrity !== 'intact' && batch.integrity !== 'not-applicable').length
+                                setIntegrityFeedback(
+                                  t('integrity.summary', {
+                                    count: result.items.length + result.batches.length,
+                                    changed,
+                                  }) + (result.truncated === true ? ` ${t('integrity.truncated')}` : ''),
+                                )
+                              } else {
+                                setIntegrityFeedback(errorLabel(result.code, t))
+                              }
+                            } catch {
+                              setIntegrityFeedback(t('validators.failed'))
+                            }
+                          })()
+                        }}
+                      >
+                        {t('integrity.check')}
+                      </ActionButton>
+                    </div>
                     {integrityFeedback !== null && <p className="charter-hint" role="status">{integrityFeedback}</p>}
                   </section>
                 )}
@@ -2822,19 +2939,55 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                       </div>
                     </div>
                   )}
-                  <label className="charter-recovery__file">
-                    <span className="charter-kicker">{t('recovery.chooseFile')}</span>
-                    <input
-                      ref={archiveInputRef}
-                      type="file"
-                      accept="application/json,.json"
-                      disabled={recoveryBusy || unknownBlocked}
-                      onChange={event => {
-                        const file = event.currentTarget.files?.[0]
-                        if (file !== undefined) chooseArchive(file)
-                      }}
-                    />
-                  </label>
+                  <div className="charter-archivecache">
+                    <div className="charter-archivecache__head">
+                      <strong>{t('recovery.cacheTitle')}</strong>
+                      <span className="charter-hint">{t('recovery.cacheLimit', { limit: 5 })}</span>
+                    </div>
+                    {archiveCacheProblem !== null
+                      ? <p className="charter-archivecache__empty" role="alert">{archiveCacheProblem}</p>
+                      : archiveEntries.length === 0
+                        ? <p className="charter-archivecache__empty">{t('recovery.cacheEmpty')}</p>
+                        : (
+                            <ul className="charter-archivecache__list" aria-label={t('recovery.cacheAria')}>
+                              {archiveEntries.map(entry => (
+                                <li key={entry.key}>
+                                  <button
+                                    type="button"
+                                    className={`charter-archivecache__item${activeArchiveKey === entry.key ? ' is-active' : ''}`}
+                                    aria-pressed={activeArchiveKey === entry.key}
+                                    onClick={() => chooseCachedArchive(entry)}
+                                  >
+                                    <span className="charter-archivecache__revision">
+                                      {t('recovery.cacheRevision', { revision: entry.revision })}
+                                    </span>
+                                    <span className="charter-archivecache__meta">
+                                      {formatTimestamp(entry.archivedAt)} · {shortText(entry.recordDigest.replace('sha256:', ''), 16)}
+                                    </span>
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                  </div>
+                  <p className="charter-hint">{t('recovery.cacheRestoreHint')}</p>
+                  <details className="charter-recovery__import">
+                    <summary>{t('recovery.importTitle')}</summary>
+                    <p className="charter-hint">{t('recovery.importHint')}</p>
+                    <label className="charter-recovery__file">
+                      <span className="charter-kicker">{t('recovery.chooseFile')}</span>
+                      <input
+                        ref={archiveInputRef}
+                        type="file"
+                        accept="application/json,.json"
+                        disabled={recoveryBusy || unknownBlocked}
+                        onChange={event => {
+                          const file = event.currentTarget.files?.[0]
+                          if (file !== undefined) chooseArchive(file)
+                        }}
+                      />
+                    </label>
+                  </details>
                   {archivePreview !== null && (
                     <div className="charter-recovery__preview">
                       <strong>{t('recovery.previewTitle')}</strong>

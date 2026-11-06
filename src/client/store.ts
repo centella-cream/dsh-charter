@@ -52,6 +52,9 @@ export interface CharterSource {
   /** Apply a committed view returned by edit immediately, without waiting for the stream. */
   readonly accept: (view: CharterView) => void
   readonly retry: () => void
+  /** Recent internally cached archives; restore does not require a download. */
+  readonly listArchives?: () => Promise<import('../host/types.js').CharterArchiveListResult>
+  readonly readArchive?: (key: string) => Promise<import('../host/types.js').CharterArchiveReadResult>
   /** Export the complete raw record archive (owner-only maintenance call). */
   readonly exportRecord: () => Promise<CharterRecordExport>
   /** Explicitly initialize an absent-unconfirmed record. */
@@ -200,6 +203,26 @@ export class CharterSessionSource implements CharterSource {
       return { ok: false, code: 'UNAVAILABLE', message: 'Charter connection is unavailable.' }
     }
     const result = await remote.proposeMessage({ sessionId: this.sessionId, ...options })
+    if (!result.ok) throw result.error
+    return result.value
+  }
+
+  readonly listArchives = async (): Promise<import('../host/types.js').CharterArchiveListResult> => {
+    const remote = this.remote
+    if (remote === undefined) {
+      return { ok: false, code: 'UNAVAILABLE', message: 'Charter connection is unavailable.' }
+    }
+    const result = await remote.listArchives({ sessionId: this.sessionId })
+    if (!result.ok) throw result.error
+    return result.value
+  }
+
+  readonly readArchive = async (key: string): Promise<import('../host/types.js').CharterArchiveReadResult> => {
+    const remote = this.remote
+    if (remote === undefined) {
+      return { ok: false, code: 'UNAVAILABLE', message: 'Charter connection is unavailable.' }
+    }
+    const result = await remote.readArchive({ sessionId: this.sessionId, key })
     if (!result.ok) throw result.error
     return result.value
   }

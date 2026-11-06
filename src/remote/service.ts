@@ -23,6 +23,8 @@ import type {
   CharterValidatorRunResult,
   CharterSourceIntegrityResult,
   CharterMessageListResult,
+  CharterArchiveListResult,
+  CharterArchiveReadResult,
 } from '../host/types.js'
 import { resolveRemoteActor } from './actor.js'
 import { remoteMethod } from './compat.js'
@@ -82,6 +84,24 @@ export class CharterRemoteService extends TypertRemoteService {
   })
   queryMessages(sessionId: SessionId): Promise<CharterMessageListResult> {
     return Promise.resolve(this.ctx.charter.messageCandidates(sessionId))
+  }
+
+  @remoteMethod({
+    resources: {
+      session: (request: { readonly sessionId: SessionId }): SessionId => request.sessionId,
+    },
+  })
+  listArchives(request: { readonly sessionId: SessionId }): Promise<CharterArchiveListResult> {
+    return Promise.resolve(this.ctx.charter.listArchives(request.sessionId))
+  }
+
+  @remoteMethod({
+    resources: {
+      session: (request: { readonly sessionId: SessionId }): SessionId => request.sessionId,
+    },
+  })
+  readArchive(request: { readonly sessionId: SessionId; readonly key: string }): Promise<CharterArchiveReadResult> {
+    return Promise.resolve(this.ctx.charter.readArchive(request.sessionId, request.key))
   }
 
   @remoteMethod({

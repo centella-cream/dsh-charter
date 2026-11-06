@@ -81,9 +81,14 @@ import { recordMaintenanceAvailable } from '../core/limits.js'
 import { forkRecord } from '../core/fork.js'
 import { isStandingItem } from '../core/state.js'
 import {
+  CHARTER_ARCHIVE_CACHE_LIMIT,
+  CHARTER_ARCHIVES_TABLE,
   CHARTER_DOMAIN_NAME,
   CHARTER_SESSIONS_TABLE,
+  archiveCacheKey,
+  charterArchivesDomainSpec,
   charterDomainSpec,
+  type CharterArchiveCacheEntry,
 } from './domain.js'
 import { defineCharterProposeTool, defineCharterReadTool } from './tool.js'
 import type {
@@ -103,6 +108,9 @@ import type {
   CharterProposalQueryResult,
   CharterChangeQueryResult,
   CharterChangeRow,
+  CharterArchiveEntry,
+  CharterArchiveListResult,
+  CharterArchiveReadResult,
 } from './types.js'
 import type { SessionStartSource as StartSource } from '@deepseek-ai/dsh-agent'
 
@@ -264,6 +272,8 @@ export class CharterService extends Service {
 
   private readonly config: CharterConfig
   private sessionsTable: KvTable<SessionIdType, CharterRecord> | undefined
+  private archivesTable: KvTable<string, CharterArchiveCacheEntry> | undefined
+  private archivesDomain: { close(): Promise<void> } | undefined
   private globalFailure?: string
   private admissionOpen = true
   private readonly unavailable = new Map<SessionIdType, string>()
@@ -545,6 +555,13 @@ export class CharterService extends Service {
       const domain = await this.ctx.storageDomain.open(charterDomainSpec)
       const rawTable = domain.table(CHARTER_SESSIONS_TABLE) as unknown as KvTable<SessionIdType, unknown>
       this.sessionsTable = rawTable as unknown as KvTable<SessionIdType, CharterRecord>
+      try {
+        const archives = await this.ctx.storageDomain.open(charterArchivesDomainSpec)
+        this.archivesDomain = archives
+        this.archivesTable = archives.table(CHARTER_ARCHIVES_TABLE) as unknown as KvTable<string, CharterArchiveCacheEntry>
+      } catch (error) {
+        this.ctx.logger.warn(`charter: archive cache is unavailable: ${describeError(error)}`)
+      }
       for (const [id, stored] of rawTable.entries()) {
         let parsed = charterRecordSchema.safeParse(stored)
         if (!parsed.success) {
@@ -587,7 +604,11 @@ export class CharterService extends Service {
         }
         this.mutationQueues.clear()
         for (const sessionId of [...this.listeners.keys()]) this.closeListeners(sessionId)
+        const archivesDomain = this.archivesDomain
+        this.archivesTable = undefined
+        this.archivesDomain = undefined
         await domain.close()
+        await archivesDomain?.close()
         this.sessionsTable = undefined
       }, 'charter.domain')
     } catch (error) {
@@ -715,6 +736,9 @@ export class CharterService extends Service {
       this.recordStates.set(session.id, inspection.state)
       if (inspection.state.kind === 'healthy') this.unavailable.delete(session.id)
       this.publish(session.id)
+      if (inspection.state.kind === 'healthy' && inspection.record !== undefined) {
+        void this.captureArchive(session, inspection.record)
+      }
       if (inspection.state.kind !== 'healthy') return
     }
 
@@ -795,6 +819,7 @@ export class CharterService extends Service {
         this.waitingForParent.delete(session.id)
         this.recordStates.set(session.id, { kind: 'healthy', recordDigest: recordDigestOf(record) })
         this.publish(session.id)
+        void this.captureArchive(session, record)
       })
     } catch (error) {
       if (putMayHaveLanded && !(error instanceof DomainError && (error.code === 'closed' || error.code === 'missing-key'))) {
@@ -2354,6 +2379,7 @@ export class CharterService extends Service {
             recordDigest: recordDigestOf(table.get(session.id)),
           })
           this.publish(session.id)
+          await this.captureArchive(session, next)
           return {
             ok: true,
             replayed: false,
@@ -2495,6 +2521,85 @@ export class CharterService extends Service {
   }
 
   /** Export the complete raw record for one Session (owner-only). */
+
+  /**
+   * Best-effort bounded archive cache. It stores the exact record envelope at
+   * each successful revision so recovery does not depend on a downloaded file.
+   */
+  private async captureArchive(session: Session, record: CharterRecord): Promise<void> {
+    const table = this.archivesTable
+    if (table === undefined) return
+    try {
+      const archive = buildRecordArchive({
+        sessionId: session.id,
+        lifecycle: lifecycleFingerprint(identityOf(session)),
+        health: 'healthy',
+        revision: record.current.revision,
+        record,
+        exportedAt: Date.now(),
+      })
+      assertArchiveAdmission(archive, this.config)
+      const key = archiveCacheKey(session.id, record.current.revision)
+      await table.put(key, {
+        key,
+        sessionId: session.id,
+        revision: record.current.revision,
+        archivedAt: archive.exportedAt,
+        archive,
+      })
+      const prefix = `${session.id}--r`
+      const entries = [...table.entries()]
+        .filter(([entryKey]) => entryKey.startsWith(prefix))
+        .sort((left, right) => (right[1].archivedAt - left[1].archivedAt) || (right[1].revision - left[1].revision))
+      if (entries.length > CHARTER_ARCHIVE_CACHE_LIMIT) {
+        for (const [entryKey] of entries.slice(CHARTER_ARCHIVE_CACHE_LIMIT)) {
+          await table.delete(entryKey)
+        }
+      }
+    } catch (error) {
+      this.ctx.logger.warn(`charter: could not cache archive for ${session.id}: ${describeError(error)}`)
+    }
+  }
+
+  listArchives(sessionId: SessionIdType): CharterArchiveListResult {
+    if (this.ctx.sessions.get(sessionId) === undefined) {
+      return { ok: false, code: 'NOT_FOUND', message: 'The Session is not live' }
+    }
+    const table = this.archivesTable
+    if (table === undefined) {
+      return { ok: false, code: 'UNAVAILABLE', message: 'The archive cache is unavailable' }
+    }
+    const prefix = `${sessionId}--r`
+    const archives: CharterArchiveEntry[] = [...table.entries()]
+      .filter(([key]) => key.startsWith(prefix))
+      .map(([, entry]) => ({
+        key: entry.key,
+        revision: entry.revision,
+        archivedAt: entry.archivedAt,
+        payloadDigest: entry.archive.payloadDigest,
+        recordDigest: entry.archive.source.recordDigest,
+        lifecycle: entry.archive.source.lifecycle,
+      }))
+      .sort((left, right) => (right.archivedAt - left.archivedAt) || (right.revision - left.revision))
+    return { ok: true, archives: archives.slice(0, CHARTER_ARCHIVE_CACHE_LIMIT), limit: CHARTER_ARCHIVE_CACHE_LIMIT }
+  }
+
+  readArchive(sessionId: SessionIdType, key: string): CharterArchiveReadResult {
+    if (this.ctx.sessions.get(sessionId) === undefined) {
+      return { ok: false, code: 'NOT_FOUND', message: 'The Session is not live' }
+    }
+    const table = this.archivesTable
+    if (table === undefined) {
+      return { ok: false, code: 'UNAVAILABLE', message: 'The archive cache is unavailable' }
+    }
+    if (!key.startsWith(`${sessionId}--r`)) {
+      return { ok: false, code: 'NOT_FOUND', message: 'The archive does not belong to this Session' }
+    }
+    const entry = table.get(key)
+    if (entry === undefined) return { ok: false, code: 'NOT_FOUND', message: 'The archive is no longer cached' }
+    return { ok: true, archive: entry.archive }
+  }
+
   exportRecord(sessionId: SessionIdType, actor: CharterActor = { kind: 'owner' }): CharterRecordExport {
     const gate = this.maintenanceGate(actor)
     if (!gate.ok) return { ok: false, code: gate.code, message: gate.message }
@@ -2534,6 +2639,9 @@ export class CharterService extends Service {
     } catch (error) {
       if (error instanceof CharterError) return { ok: false, code: error.code, message: error.message }
       throw error
+    }
+    if (inspection.state.kind === 'healthy' && inspection.record !== undefined) {
+      void this.captureArchive(session, inspection.record)
     }
     const safe = String(sessionId).replace(/[^A-Za-z0-9._-]+/gu, '-')
     const revision = inspection.record?.current.revision ?? 0
@@ -2628,6 +2736,7 @@ export class CharterService extends Service {
         }
         this.recordStates.set(session.id, { kind: 'healthy', recordDigest: recordDigestOf(next) })
         this.publish(session.id)
+        await this.captureArchive(session, next)
         return this.maintenanceResult(session, false)
       } catch (error) {
         if (error instanceof CharterError) return { ok: false, code: error.code, message: error.message }
@@ -2803,6 +2912,7 @@ export class CharterService extends Service {
         }
         this.recordStates.set(session.id, { kind: 'healthy', recordDigest: recordDigestOf(next) })
         this.publish(session.id)
+        await this.captureArchive(session, next)
         return this.maintenanceResult(session, false)
       } catch (error) {
         if (error instanceof CharterError) return { ok: false, code: error.code, message: error.message }

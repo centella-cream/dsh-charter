@@ -944,7 +944,7 @@ describe('rc.3 scripted storage fault backend (RC3-08)', () => {
       state.pending.shift()!()
       await waitFor(service, deferredSession, () => service.view(deferredSession).status === 'ready')
       await waitFor(service, otherSession, () => service.view(otherSession).status === 'ready')
-      expect(state.medium.size).toBe(2)
+      expect([...state.medium.keys()].filter(key => !key.includes('--r'))).toHaveLength(2)
     } finally {
       while (state.pending.length > 0) state.pending.shift()!()
     }

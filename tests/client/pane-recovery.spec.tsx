@@ -192,6 +192,38 @@ describe('Storage & recovery Pane section', () => {
     expect(tree.root.findAll(node => node.type === 'button' && textOf(node) === 'recovery.restore')).toHaveLength(0)
   })
 
+  it('lists cached archives and previews one without a download', async () => {
+    const h = harness(invalidView())
+    const archive = archiveFor(createEmptyRecord({ createdAt: 1_700_000_000_000 }, DEFAULT_CHARTER_LIMITS))
+    const cache = h.source as unknown as {
+      listArchives: () => Promise<{ ok: true; archives: readonly unknown[]; limit: number }>
+      readArchive: (key: string) => Promise<{ ok: true; archive: CharterRecordArchive }>
+    }
+    cache.listArchives = async () => ({
+      ok: true,
+      limit: 5,
+      archives: [{
+        key: 'cached-1',
+        revision: 1,
+        archivedAt: 1_700_000_000_500,
+        payloadDigest: archive.payloadDigest,
+        recordDigest: archive.source.recordDigest,
+        lifecycle,
+      }],
+    })
+    cache.readArchive = async () => ({ ok: true, archive })
+    const tree = mount(invalidView(), h)
+    await act(async () => { await Promise.resolve() })
+    expect(textOf(tree.root)).toContain('recovery.cacheTitle')
+    act(() => {
+      const cached = tree.root.findAll(node => node.type === 'button' && textOf(node).includes('recovery.cacheRevision'))[0]
+      cached?.props.onClick?.()
+    })
+    await act(async () => { await Promise.resolve() })
+    expect(textOf(tree.root)).toContain('recovery.previewTitle')
+    expect(buttonByLabel(tree, 'recovery.restore')).toBeDefined()
+  })
+
   it('offers a diagnostic export for an invalid record', async () => {
     const h = harness(invalidView())
     const tree = mount(invalidView(), h)

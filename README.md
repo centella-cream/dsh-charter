@@ -266,8 +266,8 @@ npm run verify:compaction  # manual real-model compaction check
 node scripts/verify/compat-matrix.mjs --versions all --allow-new-release
 ```
 
-Current source evidence: **36 files / 435 tests**, and the nine-version DSH matrix passes **9/9** at
-**435/435**. See the [verification record](docs/verification.md) for exact commands and the distinction between
+Current source evidence: **36 files / 437 tests**, and the nine-version DSH matrix passes **9/9** at
+**437/437**. See the [verification record](docs/verification.md) for exact commands and the distinction between
 source, local-matrix, exact-artifact, and manual evidence.
 
 CI runs `npm run check` and `npm run smoke:package` on Node `22.19.0` and `24`; the release candidate and promotion workflows are separate gates. A green candidate is not a publication.

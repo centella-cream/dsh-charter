@@ -1192,6 +1192,28 @@ describe('dsh-charter host composition', () => {
     })
   })
 
+  it('keeps a bounded cache of recent archives and reads one back', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-archive-cache-'))
+    roots.push(root)
+    const ctx = await mount(root)
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('archive-cache'), {
+      meta: { cwd: root, createdAt: 1_700_000_001_200 },
+    })
+    await waitForReady(service, session)
+    for (let index = 0; index < 7; index += 1) {
+      const request = addInvariant(session.id, service.view(session).revision, `archive-edit-${index}`, `Cached invariant ${index}`)
+      await expect(service.edit(request)).resolves.toMatchObject({ ok: true })
+    }
+    const listed = service.listArchives(session.id)
+    expect(listed.ok).toBe(true)
+    if (!listed.ok) return
+    expect(listed.archives).toHaveLength(5)
+    expect(listed.archives.map(entry => entry.revision)).toEqual([7, 6, 5, 4, 3])
+    const latest = service.readArchive(session.id, listed.archives[0]!.key)
+    expect(latest).toMatchObject({ ok: true, archive: { source: { revision: 7, sessionId: 'archive-cache' } } })
+  })
+
   it('proposes a selected message range with the chosen kind', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-charter-message-range-'))
     roots.push(root)

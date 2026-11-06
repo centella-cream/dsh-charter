@@ -333,6 +333,23 @@ export interface CharterMessageCandidate {
   readonly length: number
 }
 
+export interface CharterArchiveEntry {
+  readonly key: string
+  readonly revision: number
+  readonly archivedAt: number
+  readonly payloadDigest: string
+  readonly recordDigest: string
+  readonly lifecycle: string | null
+}
+
+export type CharterArchiveListResult =
+  | { readonly ok: true; readonly archives: readonly CharterArchiveEntry[]; readonly limit: number }
+  | { readonly ok: false; readonly code: CharterErrorCode; readonly message: string }
+
+export type CharterArchiveReadResult =
+  | { readonly ok: true; readonly archive: import('../core/schemas.js').CharterRecordArchive }
+  | { readonly ok: false; readonly code: CharterErrorCode; readonly message: string }
+
 export type CharterMessageListResult =
   | { readonly ok: true; readonly messages: readonly CharterMessageCandidate[] }
   | { readonly ok: false; readonly code: CharterErrorCode; readonly message: string }
