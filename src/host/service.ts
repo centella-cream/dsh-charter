@@ -2116,8 +2116,12 @@ export class CharterService extends Service {
     const selection = start === 0 && end === selected.text.length
       ? undefined
       : { start: selected.leading + start, end: selected.leading + end }
+    const manualActor = actor.kind === 'owner' ? 'owner' as const : actor.kind === 'user' ? 'user' as const : undefined
+    if (edited && manualActor === undefined) {
+      return unavailableResult('FORBIDDEN', 'Only the owner or a user may create an edited proposal')
+    }
     const source = edited
-      ? { kind: 'manual' as const, actor: actor.kind === 'owner' ? 'owner' as const : 'user' as const, at: Date.now() }
+      ? { kind: 'manual' as const, actor: manualActor as 'owner' | 'user', at: Date.now() }
       : {
           kind: 'message' as const,
           sessionId: session.id as string,
