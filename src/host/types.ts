@@ -326,6 +326,10 @@ export interface CharterMessageCandidate {
   readonly seq: number
   readonly role: 'user'
   readonly excerpt: string
+  /** Full message text when available; bounded by the Host projection cap. */
+  readonly text?: string
+  /** True when the Host cap clipped the text field. */
+  readonly truncated?: boolean
   readonly length: number
 }
 
@@ -336,6 +340,8 @@ export type CharterMessageListResult =
 export interface CharterMessageProposalOptions {
   readonly seq?: number
   readonly kind?: 'invariant' | 'deliverable'
+  /** Optional edited proposal text; overrides the selected message slice. */
+  readonly text?: string
   readonly start?: number
   readonly end?: number
 }

@@ -2029,10 +2029,14 @@ export class CharterService extends Service {
         .join('\n')
         .trim()
       if (text.length === 0) continue
+      const messageProjectionLimit = 8_192
+      const clipped = text.length > messageProjectionLimit
       messages.push({
         seq: event.seq,
         role: 'user',
         excerpt: text.length > 160 ? `${text.slice(0, 157)}...` : text,
+        text: clipped ? text.slice(0, messageProjectionLimit) : text,
+        ...(clipped ? { truncated: true } : {}),
         length: text.length,
       })
     }
@@ -2074,8 +2078,11 @@ export class CharterService extends Service {
       || start < 0 || end < start || end > selected.text.length) {
       return unavailableResult('INVALID_ARGUMENT', 'message selection is outside the selected message')
     }
-    const text = selected.text.slice(start, end).trim()
+    const selectedText = selected.text.slice(start, end).trim()
+    const override = options.text === undefined ? undefined : options.text.trim()
+    const text = override ?? selectedText
     if (text.length === 0) return unavailableResult('INVALID_ARGUMENT', 'message selection is empty')
+    const edited = override !== undefined && override !== selectedText
     const view = this.view(session)
     if (view.status !== 'ready') {
       return unavailableResult('UNAVAILABLE', 'Charter is not editable in its current state')
@@ -2083,23 +2090,25 @@ export class CharterService extends Service {
     const selection = start === 0 && end === selected.text.length
       ? undefined
       : { start: selected.leading + start, end: selected.leading + end }
-    const source = {
-      kind: 'message' as const,
-      sessionId: session.id as string,
-      sessionCreatedAt: identityOf(session).createdAt,
-      projectionVersion: 1,
-      digest: messageProjectionDigest({
-        sessionId: session.id as string,
-        sessionCreatedAt: identityOf(session).createdAt,
-        seqs: [selected.seq],
-        role: 'user',
-        ...(selection === undefined ? {} : { selection }),
-      }, [text]),
-      seqs: [selected.seq],
-      role: 'user' as const,
-      ...(selection === undefined ? {} : { selection }),
-      at: Date.now(),
-    }
+    const source = edited
+      ? { kind: 'manual' as const, actor: actor.kind === 'owner' ? 'owner' as const : 'user' as const, at: Date.now() }
+      : {
+          kind: 'message' as const,
+          sessionId: session.id as string,
+          sessionCreatedAt: identityOf(session).createdAt,
+          projectionVersion: 1,
+          digest: messageProjectionDigest({
+            sessionId: session.id as string,
+            sessionCreatedAt: identityOf(session).createdAt,
+            seqs: [selected.seq],
+            role: 'user',
+            ...(selection === undefined ? {} : { selection }),
+          }, [text]),
+          seqs: [selected.seq],
+          role: 'user' as const,
+          ...(selection === undefined ? {} : { selection }),
+          at: Date.now(),
+        }
     const kind = options.kind ?? 'invariant'
     const mutationId = `message-proposal-${sha256Text(`${session.id}:${selected.seq}:${kind}:${text}:${JSON.stringify(selection ?? null)}`).slice(7, 39)}`
     const existing = this.recordFor(session)?.recentMutations.find(receipt => receipt.mutationId === mutationId)

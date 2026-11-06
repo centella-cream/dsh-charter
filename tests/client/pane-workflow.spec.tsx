@@ -205,7 +205,7 @@ describe('0.2 workspace and dependency plan', () => {
     const src = source(ready)
     ;(src as unknown as { queryMessages: () => Promise<{ ok: true; messages: readonly unknown[] }> }).queryMessages = async () => ({
       ok: true,
-      messages: [{ seq: 1, role: 'user', excerpt: 'Keep the API stable', length: 20 }],
+      messages: [{ seq: 1, role: 'user', excerpt: 'Keep the API stable', text: 'Keep the API stable', length: 20 }],
     })
     ;(src as unknown as { proposeMessage: (options: unknown) => Promise<unknown> }).proposeMessage = async () => ({
       ok: false,
@@ -220,11 +220,10 @@ describe('0.2 workspace and dependency plan', () => {
     const form = tree.root.findAll(node => node.props.className === 'charter-messageproposal__form')[0]
     expect(form).toBeDefined()
     expect(tree.root.findAll(node => node.type === 'select' && node.props['aria-label'] === 'message.pick')).toHaveLength(1)
-    expect(tree.root.findAll(node => node.type === 'select' && node.props['aria-label'] === 'message.kind')).toHaveLength(1)
-    const details = tree.root.findAll(node => node.type === 'details' && String(node.props.className).includes('charter-messageproposal__range'))
-    expect(details).toHaveLength(1)
-    expect(textOf(details[0]!)).toContain('message.rangeLabel')
-    expect(tree.root.findAll(node => node.type === 'input' && node.props['aria-label'] === 'message.rangeStart')).toHaveLength(1)
+    const textarea = tree.root.findAll(node => node.type === 'textarea' && node.props['aria-label'] === 'message.textLabel')[0]
+    expect(textarea?.props.value).toBe('Keep the API stable')
+    expect(tree.root.findAll(node => node.type === 'button' && node.props['aria-pressed'] === true)).toHaveLength(1)
+    expect(tree.root.findAll(node => node.type === 'details')).toHaveLength(0)
   })
 
   it('stages a manual item proposal instead of an accepted item', () => {

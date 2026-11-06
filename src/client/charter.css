@@ -1276,38 +1276,60 @@
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--charter-brand) 32%, transparent);
 }
 
-.charter-messageproposal__row {
-  display: grid;
-  grid-template-columns: minmax(160px, 220px) minmax(0, 1fr);
-  gap: 10px 14px;
-  align-items: start;
+.charter-messageproposal__kind {
+  display: inline-flex;
+  width: max-content;
+  max-width: 100%;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--charter-border);
+  border-radius: 8px;
+  background: var(--charter-surface-2);
 }
 
-.charter-messageproposal__range {
-  min-width: 0;
-  padding: 8px 10px;
-  border: 1px solid var(--charter-border-soft);
-  border-radius: 7px;
-  background: color-mix(in srgb, var(--charter-surface-2) 55%, transparent);
-}
-
-.charter-messageproposal__range summary {
-  cursor: pointer;
+.charter-messageproposal__choice {
+  min-height: 27px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 6px;
   color: var(--dsw-alias-label-secondary, #777);
-  font-size: 11px;
-  line-height: 1.4;
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
 }
 
-.charter-messageproposal__range .charter-hint {
-  margin: 5px 0 0;
-  line-height: 1.45;
+.charter-messageproposal__choice:hover {
+  color: var(--dsw-alias-label-primary, inherit);
+  background: color-mix(in srgb, var(--charter-surface) 70%, transparent);
 }
 
-.charter-messageproposal__rangegrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  margin-top: 8px;
+.charter-messageproposal__choice.is-active {
+  color: var(--dsw-alias-label-primary, inherit);
+  background: var(--charter-surface);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--charter-border) 70%, transparent);
+  font-weight: 600;
+}
+
+.charter-messageproposal__choice:focus-visible,
+.charter-messageproposal__textarea:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--charter-brand) 55%, transparent);
+  outline-offset: 1px;
+}
+
+.charter-messageproposal__textarea {
+  width: 100%;
+  min-height: 96px;
+  padding: 9px 10px;
+  border: 1px solid var(--charter-border);
+  border-radius: 7px;
+  outline: 0;
+  color: inherit;
+  background: var(--charter-surface-2);
+  font: inherit;
+  font-size: 12.5px;
+  line-height: 1.55;
+  resize: vertical;
 }
 
 .charter-messageproposal__actions {
@@ -1319,13 +1341,25 @@
   padding-top: 1px;
 }
 
+.charter-messageproposal__actions .charter-budget {
+  margin-right: auto;
+}
+
 @container (max-width: 560px) {
-  .charter-messageproposal__row {
-    grid-template-columns: minmax(0, 1fr);
+  .charter-messageproposal__kind {
+    width: 100%;
   }
 
-  .charter-messageproposal__rangegrid {
-    grid-template-columns: minmax(0, 1fr);
+  .charter-messageproposal__choice {
+    flex: 1;
+  }
+
+  .charter-messageproposal__actions {
+    justify-content: flex-start;
+  }
+
+  .charter-messageproposal__actions .charter-budget {
+    margin-right: 0;
   }
 }
 

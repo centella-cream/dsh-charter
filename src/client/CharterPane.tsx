@@ -724,8 +724,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   const [messageCandidates, setMessageCandidates] = useState<readonly import('../host/types.js').CharterMessageCandidate[]>([])
   const [messageSeq, setMessageSeq] = useState<number | undefined>(undefined)
   const [messageKind, setMessageKind] = useState<'invariant' | 'deliverable'>('invariant')
-  const [messageStart, setMessageStart] = useState('')
-  const [messageEnd, setMessageEnd] = useState('')
+  const [messageDraft, setMessageDraft] = useState('')
   const bootstrapId = useId()
   const applyHintId = useId()
   const [confirmAbandon, setConfirmAbandon] = useState(false)
@@ -1007,7 +1006,13 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
     void source.queryMessages().then(result => {
       if (result.ok) {
         setMessageCandidates(result.messages)
-        setMessageSeq(current => current ?? result.messages.at(-1)?.seq)
+        setMessageSeq(current => {
+          const next = current ?? result.messages.at(-1)?.seq
+          if (next === undefined) return undefined
+          const candidate = result.messages.find(message => message.seq === next)
+          setMessageDraft(draft => draft === '' ? candidate?.text ?? candidate?.excerpt ?? '' : draft)
+          return next
+        })
       }
     }).catch(() => undefined)
     if (source.sourceIntegrity !== undefined) {
@@ -1143,6 +1148,10 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
       ? 'diagnostics'
       : 'workspace'
   const goSection = (next: CharterSection): void => draft.setSection(next)
+  const selectedMessage = messageCandidates.find(message => message.seq === messageSeq)
+  const messageBytes = normalizedBytes(messageDraft)
+  const messageOverBudget = messageBytes > view.limits.maxItemBytes
+  const messageCanSave = messageSeq !== undefined && normalizedNonEmpty(messageDraft) && !messageOverBudget
   const queue = (op: CharterOp): void => {
     if (!online || view.status !== 'ready' || saving) return
     draft.stage(view, op)
@@ -2051,9 +2060,10 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                       value={messageSeq ?? ''}
                       onChange={event => {
                         const value = event.target.value
-                        setMessageSeq(value === '' ? undefined : Number(value))
-                        setMessageStart('')
-                        setMessageEnd('')
+                        const next = value === '' ? undefined : Number(value)
+                        const candidate = messageCandidates.find(message => message.seq === next)
+                        setMessageSeq(next)
+                        setMessageDraft(candidate?.text ?? candidate?.excerpt ?? '')
                       }}
                     >
                       <option value="">{t('message.pickPlaceholder')}</option>
@@ -2062,59 +2072,54 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                       ))}
                     </select>
                   </label>
-                  <div className="charter-messageproposal__row">
-                    <label className="charter-messageproposal__field">
-                      <span>{t('message.kind')}</span>
-                      <select
-                        aria-label={t('message.kind')}
-                        value={messageKind}
-                        onChange={event => setMessageKind(event.target.value as 'invariant' | 'deliverable')}
+                  <label className="charter-messageproposal__field">
+                    <span>{t('message.textLabel')}</span>
+                    <textarea
+                      aria-label={t('message.textLabel')}
+                      className="charter-messageproposal__textarea"
+                      value={messageDraft}
+                      onChange={event => setMessageDraft(event.target.value)}
+                    />
+                    <span className="charter-hint">
+                      {selectedMessage?.truncated === true ? t('message.truncated') : t('message.textHint')}
+                    </span>
+                  </label>
+                  <div className="charter-messageproposal__field">
+                    <span>{t('message.kind')}</span>
+                    <div className="charter-messageproposal__kind" role="group" aria-label={t('message.kind')}>
+                      <button
+                        type="button"
+                        className={`charter-messageproposal__choice${messageKind === 'invariant' ? ' is-active' : ''}`}
+                        aria-pressed={messageKind === 'invariant'}
+                        onClick={() => setMessageKind('invariant')}
                       >
-                        <option value="invariant">{t('invariants.kicker')}</option>
-                        <option value="deliverable">{t('deliverables.kicker')}</option>
-                      </select>
-                    </label>
-                    <details className="charter-messageproposal__range">
-                      <summary>{t('message.rangeLabel')}</summary>
-                      <p className="charter-hint">{t('message.rangeHint')}</p>
-                      <div className="charter-messageproposal__rangegrid">
-                        <label className="charter-messageproposal__field">
-                          <span>{t('message.rangeStart')}</span>
-                          <input
-                            aria-label={t('message.rangeStart')}
-                            inputMode="numeric"
-                            min={0}
-                            placeholder="0"
-                            type="number"
-                            value={messageStart}
-                            onChange={event => setMessageStart(event.target.value)}
-                          />
-                        </label>
-                        <label className="charter-messageproposal__field">
-                          <span>{t('message.rangeEnd')}</span>
-                          <input
-                            aria-label={t('message.rangeEnd')}
-                            inputMode="numeric"
-                            min={0}
-                            placeholder="—"
-                            type="number"
-                            value={messageEnd}
-                            onChange={event => setMessageEnd(event.target.value)}
-                          />
-                        </label>
-                      </div>
-                    </details>
+                        {t('invariants.kicker')}
+                      </button>
+                      <button
+                        type="button"
+                        className={`charter-messageproposal__choice${messageKind === 'deliverable' ? ' is-active' : ''}`}
+                        aria-pressed={messageKind === 'deliverable'}
+                        onClick={() => setMessageKind('deliverable')}
+                      >
+                        {t('deliverables.kicker')}
+                      </button>
+                    </div>
                   </div>
                   <div className="charter-messageproposal__actions">
+                    <span className={`charter-budget${messageOverBudget ? ' is-over' : ''}`}>
+                      {messageOverBudget
+                        ? t('budget.itemOver', { limit: formatBytes(t, view.limits.maxItemBytes) })
+                        : `${formatBytes(t, messageBytes)} / ${formatBytes(t, view.limits.maxItemBytes)}`}
+                    </span>
                     <ActionButton
                       variant="outline"
-                      disabled={saving || unknownBlocked || messageSeq === undefined}
+                      disabled={saving || unknownBlocked || !messageCanSave}
                       onClick={() => {
+                        if (!messageCanSave || messageSeq === undefined) return
                         void draft.proposeLatestMessage({
-                          ...(messageSeq === undefined ? {} : { seq: messageSeq }),
+                          seq: messageSeq,
                           kind: messageKind,
-                          ...(messageStart.trim() === '' ? {} : { start: Number(messageStart) }),
-                          ...(messageEnd.trim() === '' ? {} : { end: Number(messageEnd) }),
+                          text: messageDraft.trim(),
                         })
                       }}
                     >

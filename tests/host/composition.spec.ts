@@ -1244,6 +1244,18 @@ describe('dsh-charter host composition', () => {
       ok: true,
       batches: [expect.objectContaining({ integrity: 'intact' })],
     })
+    const third = candidates.messages.at(-1)!
+    const edited = await service.proposeFromMessage(session, {
+      seq: third.seq,
+      kind: 'invariant',
+      text: 'Edited message proposal',
+    })
+    expect(edited).toMatchObject({ ok: true })
+    expect(service.view(session).items.find(item => item.text === 'Edited message proposal')).toMatchObject({
+      kind: 'invariant',
+      review: 'pending',
+    })
+    expect(service.view(session).proposalBatches?.some(batch => batch.source.kind === 'manual')).toBe(true)
     expect(service.queryProposalsById(session.id)).toMatchObject({
       ok: true,
       batches: expect.arrayContaining([expect.objectContaining({ sourceIntegrity: 'intact' })]),

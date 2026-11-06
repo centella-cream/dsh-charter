@@ -313,6 +313,8 @@ export const charterMessageListSchema = z.discriminatedUnion('ok', [
       seq: z.number().int().nonnegative(),
       role: z.literal('user'),
       excerpt: z.string(),
+      text: z.string().optional(),
+      truncated: z.boolean().optional(),
       length: z.number().int().nonnegative(),
     }).strict()),
   }).strict(),
@@ -323,6 +325,7 @@ export const charterMessageProposeRequestSchema = z.object({
   sessionId: z.string().min(1),
   seq: z.number().int().nonnegative().optional(),
   kind: z.enum(['invariant', 'deliverable']).optional(),
+  text: z.string().max(65_536).optional(),
   start: z.number().int().nonnegative().optional(),
   end: z.number().int().nonnegative().optional(),
 }).strict()
