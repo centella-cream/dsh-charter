@@ -59,7 +59,7 @@
 - **原子 Apply。**一个 Change Set 要么完整提交，要么不提交；带 revision 冲突、幂等重试和 Host canonical
   preview digest。
 - **安全接入。**已有压缩历史的 Session 可以生成只读草案；用户确认前不会生效。
-- **可恢复。**export/restore 仅 owner 可用；Host 每个 Session 最多保留 5 份恢复快照；健康记录拒绝覆盖；
+- **可恢复。**export/restore 仅 owner 可用；Host 每个 Session 最多保留 5 份恢复快照（整个 profile 最多 25 份）；健康记录拒绝覆盖；
   写入结果不确定时只隔离该 Session，等待 Host 重启恢复。
 - **逐 Session fail closed。**结构损坏的记录会保留用于诊断，不会被覆盖。
 

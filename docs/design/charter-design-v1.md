@@ -233,7 +233,8 @@ automatically verify; a failed verification does not automatically archive.
 1. `CharterService.init()` registers Session and Agent lifecycle listeners before opening the domain.
 2. `openDomain()` opens `dsh_charter_v1` with a `sessions` table (`layout: per-record`), validates all records,
    and marks semantically inconsistent records unavailable. It also opens the optional
-   `dsh_charter_archives_v1` domain with an `archives` table for the latest five owner-only recovery snapshots;
+   `dsh_charter_archives_v1` domain with an `archives` table for the latest five owner-only recovery snapshots
+   per Session and at most 25 across the profile (oldest evicted first);
    failure to open the cache degrades export/restore without bricking the primary record.
 3. On `session/created`, the service initializes the Session in the background.
 4. On `agent/created` (serial and awaitable), the listener awaits initialization before the first prompt can be
@@ -242,9 +243,9 @@ automatically verify; a failed verification does not automatically archive.
    it never leaves two initialization promises waiting on each other.
 6. If a child Session appears before its parent record is durable, the child waits for `domain/changed` and
    retries.
-7. `session/disposed` aborts in-flight initialization, removes UI listeners, and purges that Session's cached
-   recovery archives. The durable record is not deleted; the cache is a bounded derivative, not a second
-   authority.
+7. `session/disposed` aborts in-flight initialization and removes UI listeners. It does not delete the record
+   or its recovery cache; the durable record is the authority, and the cache is a bounded derivative with
+   profile-wide eviction (never a second authority).
 8. On plugin unload, new edits are blocked, in-flight writes are awaited, listeners and domain are released.
 
 Session disposal closes every open watch subscription (listeners receive `null` and the stream generator exits),

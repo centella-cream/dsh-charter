@@ -27,6 +27,7 @@ export const CHARTER_ARCHIVES_DOMAIN_NAME = 'dsh_charter_archives_v1'
 export const CHARTER_ARCHIVES_DOMAIN_VERSION = 1
 export const CHARTER_ARCHIVES_TABLE = 'archives'
 export const CHARTER_ARCHIVE_CACHE_LIMIT = 5
+export const CHARTER_ARCHIVE_TOTAL_LIMIT = 25
 
 export interface CharterArchiveCacheEntry {
   readonly key: string

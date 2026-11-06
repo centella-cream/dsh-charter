@@ -66,7 +66,7 @@ permission boundary.
 - **Safe onboarding.** An existing compacted Session gets a review-only draft from its latest usable compaction
   summary; nothing becomes effective until you review and apply it.
 - **Recoverable records.** Export/restore is owner-only, the Host keeps at most five recent recovery snapshots per
-  Session, healthy records refuse overwrite, and an uncertain write fences only that Session until a Host restart.
+  Session (25 across the profile), healthy records refuse overwrite, and an uncertain write fences only that Session until a Host restart.
 - **Fail closed per Session.** A structurally invalid record is preserved for diagnosis and never overwritten.
 
 A charter is a declaration, not an enforcement policy. Use Host permissions, sandbox policy, hooks, or

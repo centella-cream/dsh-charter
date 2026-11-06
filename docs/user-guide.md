@@ -275,7 +275,8 @@ record ceiling is shown in **Context**.
 ## 5. Data and privacy
 
 - Authority: the `sessions` table in the `dsh_charter_v1` domain, one record per Session. Recovery snapshots live
-  in the bounded owner-only `archives` table of the `dsh_charter_archives_v1` domain (at most five per Session).
+  in the bounded owner-only `archives` table of the `dsh_charter_archives_v1` domain (at most five per Session,
+  oldest-first eviction, and at most 25 across the profile).
 - The record contains the objective, items, derived `promptText`/digest, recent history, and mutation receipts.
 - The record is bound to `createdAt`, `cwd`, and `parentSession`; reusing a Session id with a different
   lifecycle rejects reads and overwrites.
@@ -333,8 +334,7 @@ After uninstalling:
 
 UI Purge is **per-item only**: it cannot remove the objective, the record identity/revision, or a whole Session
 record. To delete charter data permanently, stop DSH and remove both the corresponding `dsh_charter_v1` record and
-its `dsh_charter_archives_v1` cache entries
-record (or the whole profile storage directory) after verifying the path.
+its `dsh_charter_archives_v1` cache entries (or the whole profile storage directory) after verifying the path.
 
 ## 9. Development
 

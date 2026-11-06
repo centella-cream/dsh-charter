@@ -222,7 +222,7 @@ describe('0.2 workspace and dependency plan', () => {
     expect(tree.root.findAll(node => node.type === 'select' && node.props['aria-label'] === 'message.pick')).toHaveLength(1)
     const textarea = tree.root.findAll(node => node.type === 'textarea' && node.props['aria-label'] === 'message.textLabel')[0]
     expect(textarea?.props.value).toBe('Keep the API stable')
-    expect(tree.root.findAll(node => node.type === 'button' && node.props.role === 'radio' && node.props['aria-checked'] === true)).toHaveLength(1)
+    expect(tree.root.findAll(node => node.type === 'button' && node.props['aria-pressed'] === true)).toHaveLength(1)
     expect(tree.root.findAll(node => node.type === 'details')).toHaveLength(0)
   })
 

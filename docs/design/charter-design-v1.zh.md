@@ -287,6 +287,19 @@ table: sessions
 key: SessionId
 ```
 
+恢复缓存使用独立 domain：
+
+```text
+name: dsh_charter_archives_v1
+version: 1
+layout: per-record
+table: archives
+key: sessionId--revision
+policy: 每 Session 最多 5 份；整个 profile 最多 25 份，最旧优先淘汰
+```
+
+缓存是 owner-only 的派生物，不是第二正本；host 打开失败时降级为无缓存，不影响主 record。
+
 记录形状：
 
 ```ts
@@ -752,7 +765,7 @@ Session dispose：
 
 - 停止该 Session 的初始化任务和流；
 - 清除 runtime 引用；
-- 不删除持久记录。
+- 不删除持久记录，也不按 dispose 清空恢复缓存；缓存统一受 profile 级 LRU 上限约束。
 
 插件卸载：
 

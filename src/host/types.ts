@@ -187,7 +187,10 @@ export interface CharterView {
   /** Structured record health (defaults to unknown/legacy-host on old frames). */
   readonly recordState?: CharterRecordState | undefined
   readonly capabilities?: CharterViewCapabilities | undefined
-  readonly proposalBatches?: ProposalBatch[] | undefined
+  readonly proposalBatches?: Array<ProposalBatch & {
+    /** View-level copy supplied by the client query plane; absent on raw Host frames. */
+    readonly sourceIntegrity?: import('../core/source-registry.js').SourceIntegrity
+  }> | undefined
   readonly objectiveProposals?: import('../core/schemas.js').ObjectiveProposal[] | undefined
 }
 

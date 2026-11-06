@@ -82,6 +82,7 @@ import { forkRecord } from '../core/fork.js'
 import { isStandingItem } from '../core/state.js'
 import {
   CHARTER_ARCHIVE_CACHE_LIMIT,
+  CHARTER_ARCHIVE_TOTAL_LIMIT,
   CHARTER_ARCHIVES_TABLE,
   CHARTER_DOMAIN_NAME,
   CHARTER_SESSIONS_TABLE,
@@ -274,6 +275,8 @@ export class CharterService extends Service {
   private sessionsTable: KvTable<SessionIdType, CharterRecord> | undefined
   private archivesTable: KvTable<string, CharterArchiveCacheEntry> | undefined
   private archivesDomain: { close(): Promise<void> } | undefined
+  /** Captures awaiting their durable put; visible to list/read immediately. */
+  private readonly pendingArchives = new Map<string, CharterArchiveCacheEntry>()
   private globalFailure?: string
   private admissionOpen = true
   private readonly unavailable = new Map<SessionIdType, string>()
@@ -486,7 +489,6 @@ export class CharterService extends Service {
     }, { global: true })
 
     this.ctx.on('session/disposed', session => {
-      void this.purgeArchiveCache(session.id).catch(() => undefined)
       this.closeListeners(session.id)
       this.waitingForParent.delete(session.id)
       this.unavailable.delete(session.id)
@@ -2528,6 +2530,26 @@ export class CharterService extends Service {
   /** Export the complete raw record for one Session (owner-only). */
 
   /**
+   * Bounded cache policy: at most five snapshots per Session and at most
+   * `CHARTER_ARCHIVE_TOTAL_LIMIT` across all Sessions. Oldest snapshots are
+   * evicted first; this is a derivative cache, never the authoritative record.
+   */
+  private async pruneArchiveCache(): Promise<void> {
+    const table = this.archivesTable
+    if (table === undefined) return
+    const byRecency = (entries: Array<[string, CharterArchiveCacheEntry]>): Array<[string, CharterArchiveCacheEntry]> =>
+      entries.sort((left, right) => (right[1].archivedAt - left[1].archivedAt) || (right[1].revision - left[1].revision))
+    const perSession = new Map<string, number>()
+    for (const [key, entry] of byRecency([...table.entries()])) {
+      const count = perSession.get(entry.sessionId) ?? 0
+      if (count >= CHARTER_ARCHIVE_CACHE_LIMIT) await table.delete(key)
+      else perSession.set(entry.sessionId, count + 1)
+    }
+    const remaining = byRecency([...table.entries()])
+    for (const [key] of remaining.slice(CHARTER_ARCHIVE_TOTAL_LIMIT)) await table.delete(key)
+  }
+
+  /**
    * Best-effort bounded archive cache. It stores the exact record envelope at
    * each successful revision so recovery does not depend on a downloaded file.
    */
@@ -2546,33 +2568,22 @@ export class CharterService extends Service {
       })
       assertArchiveAdmission(archive, this.config)
       const key = archiveCacheKey(session.id, record.current.revision)
-      await table.put(key, {
+      const entry: CharterArchiveCacheEntry = {
         key,
         sessionId: session.id,
         revision: record.current.revision,
         archivedAt: archive.exportedAt,
         archive,
-      })
-      const prefix = `${session.id}--r`
-      const entries = [...table.entries()]
-        .filter(([entryKey]) => entryKey.startsWith(prefix))
-        .sort((left, right) => (right[1].archivedAt - left[1].archivedAt) || (right[1].revision - left[1].revision))
-      if (entries.length > CHARTER_ARCHIVE_CACHE_LIMIT) {
-        for (const [entryKey] of entries.slice(CHARTER_ARCHIVE_CACHE_LIMIT)) {
-          await table.delete(entryKey)
-        }
+      }
+      this.pendingArchives.set(key, entry)
+      try {
+        await table.put(key, entry)
+        await this.pruneArchiveCache()
+      } finally {
+        this.pendingArchives.delete(key)
       }
     } catch (error) {
       this.ctx.logger.warn(`charter: could not cache archive for ${session.id}: ${describeError(error)}`)
-    }
-  }
-
-  private async purgeArchiveCache(sessionId: SessionIdType): Promise<void> {
-    const table = this.archivesTable
-    if (table === undefined) return
-    const prefix = `${sessionId}--r`
-    for (const key of [...table.keys()]) {
-      if (key.startsWith(prefix)) await table.delete(key)
     }
   }
 
@@ -2587,9 +2598,12 @@ export class CharterService extends Service {
       return { ok: false, code: 'UNAVAILABLE', message: 'The archive cache is unavailable' }
     }
     const prefix = `${sessionId}--r`
-    const archives: CharterArchiveEntry[] = [...table.entries()]
-      .filter(([key]) => key.startsWith(prefix))
-      .map(([, entry]) => ({
+    const combined = new Map<string, CharterArchiveCacheEntry>([
+      ...[...table.entries()].filter(([key]) => key.startsWith(prefix)),
+      ...[...this.pendingArchives.entries()].filter(([key]) => key.startsWith(prefix)),
+    ])
+    const archives: CharterArchiveEntry[] = [...combined.values()]
+      .map(entry => ({
         key: entry.key,
         revision: entry.revision,
         archivedAt: entry.archivedAt,
@@ -2614,7 +2628,7 @@ export class CharterService extends Service {
     if (!key.startsWith(`${sessionId}--r`)) {
       return { ok: false, code: 'NOT_FOUND', message: 'The archive does not belong to this Session' }
     }
-    const entry = table.get(key)
+    const entry = table.get(key) ?? this.pendingArchives.get(key)
     if (entry === undefined) return { ok: false, code: 'NOT_FOUND', message: 'The archive is no longer cached' }
     return { ok: true, archive: entry.archive }
   }

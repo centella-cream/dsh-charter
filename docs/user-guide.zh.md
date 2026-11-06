@@ -249,7 +249,7 @@ Web 进程可以只读显示另一个进程中 live 的 Session 的已存会话�
 ## 5. 数据与隐私
 
 - 正本：`dsh_charter_v1` domain 的 `sessions` 表，每个 Session 一条记录。恢复快照位于 `dsh_charter_archives_v1`
-  domain 的 `archives` 表，owner-only，每 Session 最多 5 份。
+  domain 的 `archives` 表，owner-only，每 Session 最多 5 份；整个 profile 最多 25 份，超出时淘汰最旧快照。
 - 记录包含目标、条目、派生 `promptText`/digest、近期 history 和 mutation 回执。
 - 记录绑定 `createdAt`、`cwd`、`parentSession`，Session id 复用但 lifecycle 不同时会拒绝读取和覆盖。
 - 普通日志只记录稳定 id、kind、revision 和错误码，不记录用户正文。

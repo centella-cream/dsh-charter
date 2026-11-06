@@ -720,7 +720,6 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   const [validatorRunning, setValidatorRunning] = useState(false)
   const [reviewLimit, setReviewLimit] = useState(50)
   const [integrityFeedback, setIntegrityFeedback] = useState<string | null>(null)
-  const [batchIntegrity, setBatchIntegrity] = useState<Record<string, string>>({})
   const [messageCandidates, setMessageCandidates] = useState<readonly import('../host/types.js').CharterMessageCandidate[]>([])
   const [messageSeq, setMessageSeq] = useState<number | undefined>(undefined)
   const [messageKind, setMessageKind] = useState<'invariant' | 'deliverable'>('invariant')
@@ -1038,15 +1037,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
     return () => { active = false }
   }, [section, source, view?.sessionId])
 
-  useEffect(() => {
-    if (section !== 'history' || source.sourceIntegrity === undefined) return
-    let active = true
-    void source.sourceIntegrity().then(result => {
-      if (!active || !result.ok) return
-      setBatchIntegrity(Object.fromEntries(result.batches.map(batch => [batch.batchId, batch.integrity])))
-    }).catch(() => undefined)
-    return () => { active = false }
-  }, [section, source, view?.sessionId])
+  
 
   if (state.status === 'connecting' && view === null) {
     return (
@@ -2189,21 +2180,19 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                   </label>
                   <div className="charter-messageproposal__field">
                     <span className="charter-fieldlabel">{t('message.kind')}</span>
-                    <div className="charter-messageproposal__kind" role="radiogroup" aria-label={t('message.kind')}>
+                    <div className="charter-messageproposal__kind" role="group" aria-label={t('message.kind')}>
                       <button
                         type="button"
-                        role="radio"
                         className={`charter-messageproposal__choice${messageKind === 'invariant' ? ' is-active' : ''}`}
-                        aria-checked={messageKind === 'invariant'}
+                        aria-pressed={messageKind === 'invariant'}
                         onClick={() => setMessageKind('invariant')}
                       >
                         {t('invariants.kicker')}
                       </button>
                       <button
                         type="button"
-                        role="radio"
                         className={`charter-messageproposal__choice${messageKind === 'deliverable' ? ' is-active' : ''}`}
-                        aria-checked={messageKind === 'deliverable'}
+                        aria-pressed={messageKind === 'deliverable'}
                         onClick={() => setMessageKind('deliverable')}
                       >
                         {t('deliverables.kicker')}
@@ -2407,9 +2396,9 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                         <span className="charter-batch__source">{t(`review.source.${batch.source.kind}`)}</span>
                         <span className="charter-batch__revision">{t('review.captured', { revision: batch.capturedAtRevision })}</span>
                         <span className="charter-batch__count">{t('review.pendingCandidates', { count: pending })}</span>
-                        {batchIntegrity[batch.id] !== undefined && (
+                        {batch.sourceIntegrity !== undefined && batch.sourceIntegrity !== 'not-applicable' && (
                           <span className="charter-batch__count">
-                            {t('review.sourceIntegrity', { integrity: batchIntegrity[batch.id]! })}
+                            {t('review.sourceIntegrity', { integrity: batch.sourceIntegrity })}
                           </span>
                         )}
                       </li>
@@ -2968,13 +2957,12 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                       : archiveEntries.length === 0
                         ? <p className="charter-archivecache__empty">{t('recovery.cacheEmpty')}</p>
                         : (
-                            <div className="charter-archivecache__list" role="radiogroup" aria-label={t('recovery.cacheAria')}>
+                            <ul className="charter-archivecache__list" aria-label={t('recovery.cacheAria')}>
                               {archiveEntries.map(entry => (
-                                <div key={entry.key}>
+                                <li key={entry.key}>
                                   <button
                                     type="button"
-                                    role="radio"
-                                    aria-checked={activeArchiveKey === entry.key}
+                                    aria-pressed={activeArchiveKey === entry.key}
                                     className={`charter-archivecache__item${activeArchiveKey === entry.key ? ' is-active' : ''}`}
                                     onClick={() => chooseCachedArchive(entry)}
                                   >
@@ -2985,9 +2973,9 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                                       {formatTimestamp(entry.archivedAt)} · {shortText(entry.recordDigest.replace('sha256:', ''), 16)}
                                     </span>
                                   </button>
-                                </div>
+                                </li>
                               ))}
-                            </div>
+                            </ul>
                           )}
                   </div>
                   <p className="charter-hint">{t('recovery.cacheHint')}</p>
