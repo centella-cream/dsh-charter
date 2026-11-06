@@ -486,6 +486,7 @@ export class CharterService extends Service {
     }, { global: true })
 
     this.ctx.on('session/disposed', session => {
+      void this.purgeArchiveCache(session.id).catch(() => undefined)
       this.closeListeners(session.id)
       this.waitingForParent.delete(session.id)
       this.unavailable.delete(session.id)
@@ -2379,7 +2380,7 @@ export class CharterService extends Service {
             recordDigest: recordDigestOf(table.get(session.id)),
           })
           this.publish(session.id)
-          await this.captureArchive(session, next)
+          void this.captureArchive(session, next)
           return {
             ok: true,
             replayed: false,
@@ -2529,6 +2530,7 @@ export class CharterService extends Service {
   private async captureArchive(session: Session, record: CharterRecord): Promise<void> {
     const table = this.archivesTable
     if (table === undefined) return
+    if (!this.recordMaintenanceCapability().recordMaintenance) return
     try {
       const archive = buildRecordArchive({
         sessionId: session.id,
@@ -2561,7 +2563,18 @@ export class CharterService extends Service {
     }
   }
 
-  listArchives(sessionId: SessionIdType): CharterArchiveListResult {
+  private async purgeArchiveCache(sessionId: SessionIdType): Promise<void> {
+    const table = this.archivesTable
+    if (table === undefined) return
+    const prefix = `${sessionId}--r`
+    for (const key of [...table.keys()]) {
+      if (key.startsWith(prefix)) await table.delete(key)
+    }
+  }
+
+  listArchives(sessionId: SessionIdType, actor: CharterActor): CharterArchiveListResult {
+    const gate = this.maintenanceGate(actor)
+    if (!gate.ok) return { ok: false, code: gate.code, message: gate.message }
     if (this.ctx.sessions.get(sessionId) === undefined) {
       return { ok: false, code: 'NOT_FOUND', message: 'The Session is not live' }
     }
@@ -2584,7 +2597,9 @@ export class CharterService extends Service {
     return { ok: true, archives: archives.slice(0, CHARTER_ARCHIVE_CACHE_LIMIT), limit: CHARTER_ARCHIVE_CACHE_LIMIT }
   }
 
-  readArchive(sessionId: SessionIdType, key: string): CharterArchiveReadResult {
+  readArchive(sessionId: SessionIdType, key: string, actor: CharterActor): CharterArchiveReadResult {
+    const gate = this.maintenanceGate(actor)
+    if (!gate.ok) return { ok: false, code: gate.code, message: gate.message }
     if (this.ctx.sessions.get(sessionId) === undefined) {
       return { ok: false, code: 'NOT_FOUND', message: 'The Session is not live' }
     }

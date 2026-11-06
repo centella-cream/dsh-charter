@@ -1205,13 +1205,21 @@ describe('dsh-charter host composition', () => {
       const request = addInvariant(session.id, service.view(session).revision, `archive-edit-${index}`, `Cached invariant ${index}`)
       await expect(service.edit(request)).resolves.toMatchObject({ ok: true })
     }
-    const listed = service.listArchives(session.id)
+    let listed = service.listArchives(session.id, { kind: 'owner' })
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      if (listed.ok && listed.archives.length === 5 && listed.archives[0]?.revision === 7) break
+      await new Promise(resolve => setTimeout(resolve, 5))
+      listed = service.listArchives(session.id, { kind: 'owner' })
+    }
     expect(listed.ok).toBe(true)
     if (!listed.ok) return
     expect(listed.archives).toHaveLength(5)
     expect(listed.archives.map(entry => entry.revision)).toEqual([7, 6, 5, 4, 3])
-    const latest = service.readArchive(session.id, listed.archives[0]!.key)
+    const latest = service.readArchive(session.id, listed.archives[0]!.key, { kind: 'owner' })
     expect(latest).toMatchObject({ ok: true, archive: { source: { revision: 7, sessionId: 'archive-cache' } } })
+    expect(service.listArchives(session.id, { kind: 'user' })).toMatchObject({ ok: false, code: 'FORBIDDEN' })
+    expect(service.readArchive(session.id, listed.archives[0]!.key, { kind: 'user' }))
+      .toMatchObject({ ok: false, code: 'FORBIDDEN' })
   })
 
   it('proposes a selected message range with the chosen kind', async () => {

@@ -86,9 +86,12 @@ peer 兼容检查结果为准。
 
 - **导出**：下载完整记录归档（identity、当前快照、有界历史、mutation 与 maintenance 回执）。归档包含会话契约
   文本，属敏感数据。
-- **恢复**：只接受本地 JSON 归档（绝不接受 URL 或 Host 路径）。Pane 先校验外层封装、文件大小
-  （`maxRecoveryBytes`）、Session 与 lifecycle，并预览 health/revision/lifecycle/digest；Host 在写入前再次完整
-  校验，且需要第二次确认。仅对 `absent-unconfirmed` 或 `invalid` 目标提供恢复；健康记录不能被覆盖。
+- **恢复**：Host 自动保留最近 5 份归档缓存，Pane 直接列出并预览 health/revision/lifecycle/digest，Host 在写入前
+  再次完整校验，且需要第二次确认；不需要先下载。仅对 `absent-unconfirmed` 或 `invalid` 目标提供恢复；健康
+  记录不能被覆盖。
+- **高级导入**：只接受本地 JSON 归档（绝不接受 URL 或 Host 路径），用于另一台机器导出的归档或缓存出现前
+  保存的旧文件；同样经过完整校验和二次确认。
+- **下载**仅用于外部校验、审计或备份，与恢复解耦；恢复不依赖下载。
 - **显式空初始化**：仅对 `absent-unconfirmed` 可用，需要破坏性二次确认，因为不可读的外层文档同样表现为缺失。
 - `write-uncertain`：存储写入可能已落盘也可能没有。重启 Host 让插件重新加载介质；在此之前该 Session 保持只读。
 - 维护操作在 DSH `0.2.1+` 上 owner-only；旧版 DSH 显示能力不可用。不支持跨 Session/lifecycle 恢复、force 导入或
@@ -245,7 +248,8 @@ Web 进程可以只读显示另一个进程中 live 的 Session 的已存会话�
 
 ## 5. 数据与隐私
 
-- 正本：`dsh_charter_v1` domain 的 `sessions` 表，每个 Session 一条记录。
+- 正本：`dsh_charter_v1` domain 的 `sessions` 表，每个 Session 一条记录。恢复快照位于 `dsh_charter_archives_v1`
+  domain 的 `archives` 表，owner-only，每 Session 最多 5 份。
 - 记录包含目标、条目、派生 `promptText`/digest、近期 history 和 mutation 回执。
 - 记录绑定 `createdAt`、`cwd`、`parentSession`，Session id 复用但 lifecycle 不同时会拒绝读取和覆盖。
 - 普通日志只记录稳定 id、kind、revision 和错误码，不记录用户正文。
@@ -298,7 +302,7 @@ dsh plugin --profile web remove dsh-charter
 - 重新安装后同一 Session 会重新读取原记录。
 
 UI Purge **只能逐条清除条目**，不能删除目标、record identity/revision 或整条 Session record。如需彻底删除会话契约
-数据，请先停止 DSH，确认路径后清理对应的 `dsh_charter_v1` domain 记录（或整个 profile storage 目录）。
+数据，请先停止 DSH，确认路径后清理对应的 `dsh_charter_v1` 记录和 `dsh_charter_archives_v1` 缓存（或整个 profile storage 目录）。
 
 ## 9. 开发与贡献
 

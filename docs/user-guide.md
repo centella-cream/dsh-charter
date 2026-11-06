@@ -90,10 +90,13 @@ short record digest, and over-budget flag.
 
 - **Export** downloads the complete record archive (identity, current snapshot, bounded history, mutation and
   maintenance receipts). The archive contains your charter text and is sensitive.
-- **Recovery** accepts a local JSON archive only (never a URL or Host path). The Pane validates the outer envelope,
-  file size (`maxRecoveryBytes`), Session, and lifecycle, previews health/revision/lifecycle/digest, and requires a
-  second confirmation before the Host revalidates and writes anything. Restore is offered only for an
-  `absent-unconfirmed` or `invalid` target; a healthy record cannot be overwritten.
+- **Recovery** lists the latest five archives cached by the Host; the Pane previews health/revision/lifecycle/digest
+  and requires a second confirmation before the Host revalidates and writes anything. No download is needed.
+  Restore is offered only for an `absent-unconfirmed` or `invalid` target; a healthy record cannot be overwritten.
+- **Advanced import** accepts a local JSON archive only (never a URL or Host path), for archives exported from
+  another machine or kept before the cache existed. The same validation and confirmation gates apply.
+- The download is for external analysis, auditing, or backup; it is independent from restore. A downloaded
+  archive is not required to recover.
 - **Explicit empty initialization** is available for `absent-unconfirmed` and requires a destructive second
   confirmation, because an unreadable outer document also appears absent.
 - `write-uncertain` means a storage write may or may not have landed. Restart the Host so it reloads the medium; the
@@ -271,7 +274,8 @@ record ceiling is shown in **Context**.
 
 ## 5. Data and privacy
 
-- Authority: the `sessions` table in the `dsh_charter_v1` domain, one record per Session.
+- Authority: the `sessions` table in the `dsh_charter_v1` domain, one record per Session. Recovery snapshots live
+  in the bounded owner-only `archives` table of the `dsh_charter_archives_v1` domain (at most five per Session).
 - The record contains the objective, items, derived `promptText`/digest, recent history, and mutation receipts.
 - The record is bound to `createdAt`, `cwd`, and `parentSession`; reusing a Session id with a different
   lifecycle rejects reads and overwrites.
@@ -328,7 +332,8 @@ After uninstalling:
 - reinstalling reads the same record for the same Session.
 
 UI Purge is **per-item only**: it cannot remove the objective, the record identity/revision, or a whole Session
-record. To delete charter data permanently, stop DSH and remove the corresponding `dsh_charter_v1` domain
+record. To delete charter data permanently, stop DSH and remove both the corresponding `dsh_charter_v1` record and
+its `dsh_charter_archives_v1` cache entries
 record (or the whole profile storage directory) after verifying the path.
 
 ## 9. Development

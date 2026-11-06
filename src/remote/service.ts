@@ -92,7 +92,16 @@ export class CharterRemoteService extends TypertRemoteService {
     },
   })
   listArchives(request: { readonly sessionId: SessionId }): Promise<CharterArchiveListResult> {
-    return Promise.resolve(this.ctx.charter.listArchives(request.sessionId))
+    let actor: CharterActor
+    try {
+      actor = resolveRemoteActor(this.ctx)
+    } catch (error) {
+      if (error instanceof CharterError) {
+        return Promise.resolve({ ok: false, code: error.code, message: error.message })
+      }
+      throw error
+    }
+    return Promise.resolve(this.ctx.charter.listArchives(request.sessionId, actor))
   }
 
   @remoteMethod({
@@ -101,7 +110,16 @@ export class CharterRemoteService extends TypertRemoteService {
     },
   })
   readArchive(request: { readonly sessionId: SessionId; readonly key: string }): Promise<CharterArchiveReadResult> {
-    return Promise.resolve(this.ctx.charter.readArchive(request.sessionId, request.key))
+    let actor: CharterActor
+    try {
+      actor = resolveRemoteActor(this.ctx)
+    } catch (error) {
+      if (error instanceof CharterError) {
+        return Promise.resolve({ ok: false, code: error.code, message: error.message })
+      }
+      throw error
+    }
+    return Promise.resolve(this.ctx.charter.readArchive(request.sessionId, request.key, actor))
   }
 
   @remoteMethod({

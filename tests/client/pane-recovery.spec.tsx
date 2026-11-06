@@ -189,7 +189,8 @@ describe('Storage & recovery Pane section', () => {
     await act(async () => { await Promise.resolve() })
     expect(h.calls.export).toBe(1)
     // A healthy target must not offer restore.
-    expect(tree.root.findAll(node => node.type === 'button' && textOf(node) === 'recovery.restore')).toHaveLength(0)
+    expect(tree.root.findAll(node => node.type === 'button' && textOf(node) === 'recovery.restoreCached')).toHaveLength(0)
+    expect(tree.root.findAll(node => node.type === 'button' && textOf(node) === 'recovery.restoreFile')).toHaveLength(0)
   })
 
   it('lists cached archives and previews one without a download', async () => {
@@ -221,7 +222,7 @@ describe('Storage & recovery Pane section', () => {
     })
     await act(async () => { await Promise.resolve() })
     expect(textOf(tree.root)).toContain('recovery.previewTitle')
-    expect(buttonByLabel(tree, 'recovery.restore')).toBeDefined()
+    expect(buttonByLabel(tree, 'recovery.restoreCached')).toBeDefined()
   })
 
   it('offers a diagnostic export for an invalid record', async () => {
@@ -256,7 +257,7 @@ describe('Storage & recovery Pane section', () => {
       if (textOf(tree.root).includes('recovery.verified')) break
     }
     expect(textOf(tree.root)).toContain('recovery.previewTitle')
-    click(tree, 'recovery.restore')
+    click(tree, 'recovery.restoreFile')
     expect(h.calls.restore).toHaveLength(0)
     expect(buttonByLabel(tree, 'recovery.restoreConfirm')).toBeDefined()
     click(tree, 'recovery.restoreConfirm')
@@ -401,7 +402,7 @@ describe('rc.5 restore confirmation binding', () => {
       await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
       if (textOf(tree.root).includes('recovery.verified')) break
     }
-    click(tree, 'recovery.restore')
+    click(tree, 'recovery.restoreFile')
     expect(tree.root.findAll(node => node.type === 'button' && textOf(node) === 'recovery.restoreConfirm')).toHaveLength(1)
     act(() => h.setView({
       ...invalidView(),
@@ -428,7 +429,7 @@ describe('rc.5 archive confirmation binding', () => {
       await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
       if (textOf(tree.root).includes('recovery.verified')) break
     }
-    click(tree, 'recovery.restore')
+    click(tree, 'recovery.restoreFile')
     expect(tree.root.findAll(node => node.type === 'button' && textOf(node) === 'recovery.restoreConfirm')).toHaveLength(1)
     selectArchive(tree, archiveFor(recordB))
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })

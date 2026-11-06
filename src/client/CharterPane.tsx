@@ -733,6 +733,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   const [archiveEntries, setArchiveEntries] = useState<readonly CharterArchiveEntry[]>([])
   const [archiveCacheProblem, setArchiveCacheProblem] = useState<string | null>(null)
   const [activeArchiveKey, setActiveArchiveKey] = useState<string | null>(null)
+  const [archiveSource, setArchiveSource] = useState<'cache' | 'file' | null>(null)
   const [previewMode, setPreviewMode] = useState<'formatted' | 'exact'>('formatted')
   const [confirmRecovery, setConfirmRecovery] = useState<'initialize' | 'restore' | null>(null)
   const [confirmRestoreKey, setConfirmRestoreKey] = useState<string | null>(null)
@@ -771,6 +772,11 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
     setExportProblem(null)
     setExporting(false)
     setActiveArchiveKey(null)
+    setArchiveSource(null)
+    setMessageCandidates([])
+    setMessageSeq(undefined)
+    setMessageDraft('')
+    setMessageKind('invariant')
     if (archiveInputRef.current !== null) archiveInputRef.current.value = ''
   }, [source, view?.sessionId, view?.lifecycle, draftState.lifecycle])
 
@@ -1015,26 +1021,32 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
     return () => { active = false }
   }, [section, source, view?.revision, draftState.maintenanceSaving, recoveryBusy, t])
   useEffect(() => {
+    if (draftState.maintenanceSaving || maintenanceReplay) return
+    if (archiveInputRef.current !== null) archiveInputRef.current.value = ''
+  }, [draftState.maintenanceSaving, maintenanceReplay, recordState?.kind])
+
+  useEffect(() => {
     if (section !== 'history' || source.queryMessages === undefined) return
+    let active = true
     void source.queryMessages().then(result => {
-      if (result.ok) {
-        setMessageCandidates(result.messages)
-        setMessageSeq(current => {
-          const next = current ?? result.messages.at(-1)?.seq
-          if (next === undefined) return undefined
-          const candidate = result.messages.find(message => message.seq === next)
-          setMessageDraft(draft => draft === '' ? candidate?.text ?? candidate?.excerpt ?? '' : draft)
-          return next
-        })
-      }
+      if (!active || !result.ok) return
+      setMessageCandidates(result.messages)
+      const last = result.messages.at(-1)
+      setMessageSeq(last?.seq)
+      setMessageDraft(last?.text ?? '')
     }).catch(() => undefined)
-    if (source.sourceIntegrity !== undefined) {
-      void source.sourceIntegrity().then(result => {
-        if (!result.ok) return
-        setBatchIntegrity(Object.fromEntries(result.batches.map(batch => [batch.batchId, batch.integrity])))
-      }).catch(() => undefined)
-    }
-  }, [section, source, view?.revision])
+    return () => { active = false }
+  }, [section, source, view?.sessionId])
+
+  useEffect(() => {
+    if (section !== 'history' || source.sourceIntegrity === undefined) return
+    let active = true
+    void source.sourceIntegrity().then(result => {
+      if (!active || !result.ok) return
+      setBatchIntegrity(Object.fromEntries(result.batches.map(batch => [batch.batchId, batch.integrity])))
+    }).catch(() => undefined)
+    return () => { active = false }
+  }, [section, source, view?.sessionId])
 
   if (state.status === 'connecting' && view === null) {
     return (
@@ -1164,7 +1176,9 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   const selectedMessage = messageCandidates.find(message => message.seq === messageSeq)
   const messageBytes = normalizedBytes(messageDraft)
   const messageOverBudget = messageBytes > view.limits.maxItemBytes
-  const messageCanSave = messageSeq !== undefined && normalizedNonEmpty(messageDraft) && !messageOverBudget
+  const messageTextAvailable = selectedMessage?.text !== undefined
+  const messageCanSave = messageSeq !== undefined && messageTextAvailable
+    && normalizedNonEmpty(messageDraft) && !messageOverBudget
   const queue = (op: CharterOp): void => {
     if (!online || view.status !== 'ready' || saving) return
     draft.stage(view, op)
@@ -1232,6 +1246,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
       && viewRef.current?.sessionId === expectedSessionId
       && (draft.getSnapshot().lifecycle ?? null) === expectedLifecycle
     setActiveArchiveKey(entry.key)
+    setArchiveSource('cache')
     setArchivePreview({ fileName: label })
     setExportProblem(null)
     setConfirmRecovery(null)
@@ -1298,6 +1313,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
       && viewRef.current?.sessionId === expectedSessionId
       && (draft.getSnapshot().lifecycle ?? null) === expectedLifecycle
     setArchivePreview({ fileName: file.name })
+    setArchiveSource('file')
     setExportProblem(null)
     setConfirmRecovery(null)
     if (view === null) return
@@ -2145,7 +2161,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                         const next = value === '' ? undefined : Number(value)
                         const candidate = messageCandidates.find(message => message.seq === next)
                         setMessageSeq(next)
-                        setMessageDraft(candidate?.text ?? candidate?.excerpt ?? '')
+                        setMessageDraft(candidate?.text ?? '')
                       }}
                     >
                       <option value="">{t('message.pickPlaceholder')}</option>
@@ -2159,28 +2175,35 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                     <textarea
                       aria-label={t('message.textLabel')}
                       className="charter-messageproposal__textarea"
+                      disabled={messageSeq !== undefined && !messageTextAvailable}
                       value={messageDraft}
                       onChange={event => setMessageDraft(event.target.value)}
                     />
                     <span className="charter-hint">
-                      {selectedMessage?.truncated === true ? t('message.truncated') : t('message.textHint')}
+                      {messageSeq !== undefined && !messageTextAvailable
+                        ? t('message.legacyUnavailable')
+                        : selectedMessage?.truncated === true
+                          ? t('message.truncated')
+                          : t('message.textHint')}
                     </span>
                   </label>
                   <div className="charter-messageproposal__field">
                     <span className="charter-fieldlabel">{t('message.kind')}</span>
-                    <div className="charter-messageproposal__kind" role="group" aria-label={t('message.kind')}>
+                    <div className="charter-messageproposal__kind" role="radiogroup" aria-label={t('message.kind')}>
                       <button
                         type="button"
+                        role="radio"
                         className={`charter-messageproposal__choice${messageKind === 'invariant' ? ' is-active' : ''}`}
-                        aria-pressed={messageKind === 'invariant'}
+                        aria-checked={messageKind === 'invariant'}
                         onClick={() => setMessageKind('invariant')}
                       >
                         {t('invariants.kicker')}
                       </button>
                       <button
                         type="button"
+                        role="radio"
                         className={`charter-messageproposal__choice${messageKind === 'deliverable' ? ' is-active' : ''}`}
-                        aria-pressed={messageKind === 'deliverable'}
+                        aria-checked={messageKind === 'deliverable'}
                         onClick={() => setMessageKind('deliverable')}
                       >
                         {t('deliverables.kicker')}
@@ -2873,7 +2896,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                   <div className="charter-cardhead">
                     <div className="charter-cardtitle">
                       <span className="charter-kicker">{t('recovery.title')}</span>
-                      <h3 id="charter-restore-title">{t('recovery.restore')}</h3>
+                      <h3 id="charter-restore-title">{t('recovery.restoreTitle')}</h3>
                     </div>
                   </div>
                   {recordState?.kind === 'write-uncertain' && (
@@ -2934,6 +2957,8 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                       </div>
                     </div>
                   )}
+                  {maintenanceEnabled && (
+                    <>
                   <div className="charter-archivecache">
                     <div className="charter-archivecache__head">
                       <strong>{t('recovery.cacheTitle')}</strong>
@@ -2943,13 +2968,14 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                       : archiveEntries.length === 0
                         ? <p className="charter-archivecache__empty">{t('recovery.cacheEmpty')}</p>
                         : (
-                            <ul className="charter-archivecache__list" aria-label={t('recovery.cacheAria')}>
+                            <div className="charter-archivecache__list" role="radiogroup" aria-label={t('recovery.cacheAria')}>
                               {archiveEntries.map(entry => (
-                                <li key={entry.key}>
+                                <div key={entry.key}>
                                   <button
                                     type="button"
+                                    role="radio"
+                                    aria-checked={activeArchiveKey === entry.key}
                                     className={`charter-archivecache__item${activeArchiveKey === entry.key ? ' is-active' : ''}`}
-                                    aria-pressed={activeArchiveKey === entry.key}
                                     onClick={() => chooseCachedArchive(entry)}
                                   >
                                     <span className="charter-archivecache__revision">
@@ -2959,9 +2985,9 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                                       {formatTimestamp(entry.archivedAt)} · {shortText(entry.recordDigest.replace('sha256:', ''), 16)}
                                     </span>
                                   </button>
-                                </li>
+                                </div>
                               ))}
-                            </ul>
+                            </div>
                           )}
                   </div>
                   <p className="charter-hint">{t('recovery.cacheHint')}</p>
@@ -2982,6 +3008,8 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                       />
                     </label>
                   </details>
+                    </>
+                  )}
                   {archivePreview !== null && (
                     <div className="charter-recovery__preview">
                       <strong>{t('recovery.previewTitle')}</strong>
@@ -3030,7 +3058,11 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                         disabled={!maintenanceEnabled || recoveryBusy || !restoreAdmission.ok || !restoreArchiveReady}
                         onClick={restoreArchive}
                       >
-                        {confirmRecovery === 'restore' ? t('recovery.restoreConfirm') : t('recovery.restore')}
+                        {confirmRecovery === 'restore'
+                          ? t('recovery.restoreConfirm')
+                          : archiveSource === 'file'
+                            ? t('recovery.restoreFile')
+                            : t('recovery.restoreCached')}
                       </ActionButton>
                       {confirmRecovery === 'restore' && (
                         <ActionButton variant="outline" onClick={() => setConfirmRecovery(null)}>
