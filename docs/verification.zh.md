@@ -17,7 +17,7 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 当前发布状态（2026-11-06）：
 
 - 已发布：`0.2.0`（npm `latest`/`next`；精确 SHA-256 `7bafffc24c18c9655d68a9a61017db54920839a159dfeeba0643337c3aae4286`）。GitHub Release `v0.2.0` 已公开且不可变。
-- 发布候选：`0.2.1` 在本地开发分支；尚未打 tag、发布 GitHub Release 或 npm。
+- 发布候选：`0.2.1` 在本地开发分支；尚未打 tag、发布 GitHub Release 或 npm。候选 artifact SHA-256：`41e4a36ccc44dfff069fe842a12283cf6f28d0f9f2d7047e6c9334ed5e02a472`。
 - `0.1.0-rc.6`：上一公开版本；使用 recovery tag `v0.1.0-rc.6-republished`。
 - 从 0.2.0 起版本号使用普通递增，不使用 `rc` 后缀。
 - 当前源码证据：0.2.1 候选树在源码提交 `071a4ba065345b0d029c8d500149261e27bdd061` 上通过 36 个测试文件 / 441 个测试，九版本矩阵 441/441 通过。
@@ -30,7 +30,7 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 | Host ESM 构建 + 浏览器 factory bundle | 通过 |
 | Remote 契约与 client smoke | 通过 |
 | 普通 package smoke | 通过 |
-| exact-artifact package smoke | 对已发布 `0.2.0` `.tgz` 字节（`7bafffc2…`）通过，不重建 |
+| exact-artifact package smoke | 对 `0.2.1` 候选 `.tgz` 字节（`41e4a36c…`）通过，不重建 |
 | packed recovery smoke | 通过：export、删除 target、restore、receipt replay、两次 restart、健康目标拒绝、packed fault 子集 |
 | 真实 `TypertGatewayService` | 精确 artifact 在隔离的 DSH `0.2.1-rc.3` / `rc.4` 依赖图上通过 |
 | 兼容 sentinel | `0.1.7-rc.2`、`0.2.1-rc.2`、`0.2.1-rc.4`、`0.2.1-rc.5`、`0.2.2-rc.1` 通过 |
