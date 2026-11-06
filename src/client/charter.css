@@ -1236,6 +1236,99 @@
   font-size: 10.5px;
 }
 
+.charter-messageproposal__form {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.charter-messageproposal__field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+  color: var(--dsw-alias-label-secondary, #777);
+  font-size: 11px;
+}
+
+.charter-messageproposal__field > span {
+  color: var(--dsw-alias-label-primary, inherit);
+  font-weight: 600;
+}
+
+.charter-messageproposal__field select,
+.charter-messageproposal__field input {
+  width: 100%;
+  min-height: 32px;
+  padding: 0 9px;
+  border: 1px solid var(--charter-border);
+  border-radius: 7px;
+  outline: 0;
+  color: inherit;
+  background: var(--charter-surface-2);
+  font: inherit;
+  font-size: 12px;
+}
+
+.charter-messageproposal__field select:focus-visible,
+.charter-messageproposal__field input:focus-visible {
+  border-color: color-mix(in srgb, var(--charter-brand) 55%, var(--charter-border));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--charter-brand) 32%, transparent);
+}
+
+.charter-messageproposal__row {
+  display: grid;
+  grid-template-columns: minmax(160px, 220px) minmax(0, 1fr);
+  gap: 10px 14px;
+  align-items: start;
+}
+
+.charter-messageproposal__range {
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--charter-border-soft);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--charter-surface-2) 55%, transparent);
+}
+
+.charter-messageproposal__range summary {
+  cursor: pointer;
+  color: var(--dsw-alias-label-secondary, #777);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.charter-messageproposal__range .charter-hint {
+  margin: 5px 0 0;
+  line-height: 1.45;
+}
+
+.charter-messageproposal__rangegrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.charter-messageproposal__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 1px;
+}
+
+@container (max-width: 560px) {
+  .charter-messageproposal__row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .charter-messageproposal__rangegrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /* -------------------------------------------------------------------------- */
 /* Responsive                                                                */
 /* -------------------------------------------------------------------------- */

@@ -200,6 +200,33 @@ describe('0.2 workspace and dependency plan', () => {
     })
   })
 
+  it('lays out the message proposal as a clear form outside the card heading', async () => {
+    const ready = view({ revision: 0 })
+    const src = source(ready)
+    ;(src as unknown as { queryMessages: () => Promise<{ ok: true; messages: readonly unknown[] }> }).queryMessages = async () => ({
+      ok: true,
+      messages: [{ seq: 1, role: 'user', excerpt: 'Keep the API stable', length: 20 }],
+    })
+    ;(src as unknown as { proposeMessage: (options: unknown) => Promise<unknown> }).proposeMessage = async () => ({
+      ok: false,
+      code: 'UNAVAILABLE',
+      message: 'not used',
+    })
+    const draft = new CharterDraft(sessionId, () => src)
+    draft.bindLifecycle(lifecycle)
+    const tree = mount(src, draft)
+    act(() => tree.root.findAll(node => node.type === 'button' && textOf(node).includes('nav.review'))[0]!.props.onClick())
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
+    const form = tree.root.findAll(node => node.props.className === 'charter-messageproposal__form')[0]
+    expect(form).toBeDefined()
+    expect(tree.root.findAll(node => node.type === 'select' && node.props['aria-label'] === 'message.pick')).toHaveLength(1)
+    expect(tree.root.findAll(node => node.type === 'select' && node.props['aria-label'] === 'message.kind')).toHaveLength(1)
+    const details = tree.root.findAll(node => node.type === 'details' && String(node.props.className).includes('charter-messageproposal__range'))
+    expect(details).toHaveLength(1)
+    expect(textOf(details[0]!)).toContain('message.rangeLabel')
+    expect(tree.root.findAll(node => node.type === 'input' && node.props['aria-label'] === 'message.rangeStart')).toHaveLength(1)
+  })
+
   it('stages a manual item proposal instead of an accepted item', () => {
     const ready = view({ revision: 0 })
     const src = source(ready)

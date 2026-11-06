@@ -2035,43 +2035,77 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
             )}
 
             {area === 'review' && source.proposeMessage !== undefined && (
-              <section className="charter-card charter-section" aria-labelledby="charter-message-proposal-title">
+              <section className="charter-card charter-section charter-messageproposal" aria-labelledby="charter-message-proposal-title">
                 <div className="charter-cardhead">
                   <div className="charter-cardtitle">
                     <span className="charter-kicker">{t('review.kicker')}</span>
                     <h3 id="charter-message-proposal-title">{t('review.messageProposal')}</h3>
+                    <p className="charter-hint">{t('review.messageProposalHint')}</p>
                   </div>
-                  <div className="charter-validator-form">
+                </div>
+                <div className="charter-messageproposal__form">
+                  <label className="charter-messageproposal__field">
+                    <span>{t('message.pick')}</span>
                     <select
                       aria-label={t('message.pick')}
                       value={messageSeq ?? ''}
-                      onChange={event => setMessageSeq(event.target.value === '' ? undefined : Number(event.target.value))}
+                      onChange={event => {
+                        const value = event.target.value
+                        setMessageSeq(value === '' ? undefined : Number(value))
+                        setMessageStart('')
+                        setMessageEnd('')
+                      }}
                     >
-                      <option value="">{t('message.pick')}</option>
+                      <option value="">{t('message.pickPlaceholder')}</option>
                       {messageCandidates.map(candidate => (
                         <option key={candidate.seq} value={candidate.seq}>{candidate.excerpt}</option>
                       ))}
                     </select>
-                    <select
-                      aria-label={t('message.kind')}
-                      value={messageKind}
-                      onChange={event => setMessageKind(event.target.value as 'invariant' | 'deliverable')}
-                    >
-                      <option value="invariant">{t('invariants.kicker')}</option>
-                      <option value="deliverable">{t('deliverables.kicker')}</option>
-                    </select>
-                    <input
-                      aria-label={t('message.rangeStart')}
-                      placeholder={t('message.rangeStart')}
-                      value={messageStart}
-                      onChange={event => setMessageStart(event.target.value)}
-                    />
-                    <input
-                      aria-label={t('message.rangeEnd')}
-                      placeholder={t('message.rangeEnd')}
-                      value={messageEnd}
-                      onChange={event => setMessageEnd(event.target.value)}
-                    />
+                  </label>
+                  <div className="charter-messageproposal__row">
+                    <label className="charter-messageproposal__field">
+                      <span>{t('message.kind')}</span>
+                      <select
+                        aria-label={t('message.kind')}
+                        value={messageKind}
+                        onChange={event => setMessageKind(event.target.value as 'invariant' | 'deliverable')}
+                      >
+                        <option value="invariant">{t('invariants.kicker')}</option>
+                        <option value="deliverable">{t('deliverables.kicker')}</option>
+                      </select>
+                    </label>
+                    <details className="charter-messageproposal__range">
+                      <summary>{t('message.rangeLabel')}</summary>
+                      <p className="charter-hint">{t('message.rangeHint')}</p>
+                      <div className="charter-messageproposal__rangegrid">
+                        <label className="charter-messageproposal__field">
+                          <span>{t('message.rangeStart')}</span>
+                          <input
+                            aria-label={t('message.rangeStart')}
+                            inputMode="numeric"
+                            min={0}
+                            placeholder="0"
+                            type="number"
+                            value={messageStart}
+                            onChange={event => setMessageStart(event.target.value)}
+                          />
+                        </label>
+                        <label className="charter-messageproposal__field">
+                          <span>{t('message.rangeEnd')}</span>
+                          <input
+                            aria-label={t('message.rangeEnd')}
+                            inputMode="numeric"
+                            min={0}
+                            placeholder="—"
+                            type="number"
+                            value={messageEnd}
+                            onChange={event => setMessageEnd(event.target.value)}
+                          />
+                        </label>
+                      </div>
+                    </details>
+                  </div>
+                  <div className="charter-messageproposal__actions">
                     <ActionButton
                       variant="outline"
                       disabled={saving || unknownBlocked || messageSeq === undefined}
