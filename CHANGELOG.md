@@ -5,6 +5,35 @@ English | [中文](CHANGELOG.zh.md)
 All notable changes to `dsh-charter` are recorded here. The project follows a pre-1.0 version line while the
 DSH plugin ABI is still moving.
 
+## 0.2.1 — 2026-11-06 (release candidate)
+
+Post-`0.2.0` UI, diagnostics, and recovery-cache patch. No record-schema bump; existing `0.2.0` records remain
+readable.
+
+### Added
+
+- Editable message proposals: selecting a user message preloads its full text into an editable body; edited
+  proposals use manual provenance and the Host rejects non-human actors.
+- Bounded recovery cache in the owner-only `dsh_charter_archives_v1` domain with `listArchives`/`readArchive`
+  Remote entries: at most five snapshots per Session and 25 per profile, oldest-first eviction.
+- Diagnostics separates fact validity checks from evidence integrity; proposal batches render the query-plane
+  `sourceIntegrity` without an extra Host round trip.
+
+### Changed
+
+- Message-proposal, diagnostics, and recovery forms use one label/description hierarchy; the Pane header follows
+  the lighter `dsh-context` page-title scale and spacing.
+- Recovery lists cached snapshots directly; download export is independent from restore. Local JSON import stays
+  available as an advanced path.
+- README capability list and Pane screenshot describe the current 0.2.1 UI.
+
+### Fixed
+
+- Message proposal state resets when the Session changes; diagnostics state and feedback reset as well.
+- Same-revision query views retain proposal batch integrity after an Apply.
+- Cache snapshots survive Host restarts; no Session-disposal purge, and profile-wide LRU bounds orphan entries.
+- Restore wording distinguishes cached recovery from imported files.
+
 ## 0.2.0 — 2026-11-05
 
 Workspace and dependency-plan upgrade. Versioning from this release onward uses plain increments

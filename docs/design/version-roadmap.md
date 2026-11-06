@@ -6,7 +6,7 @@ English | [中文](version-roadmap.zh.md)
 >
 > **Status:** Active — version and scope authority.
 > **Version scope:** 0.1 history and current 0.2 development line.
-> **Baseline:** 2026-10-30; current development line `0.2.0` (no `rc` suffixes from 0.2.0 onward).
+> **Baseline:** 2026-11-06; current line `0.2.1` is a post-`0.2.0` release candidate (plain increments, no `rc`).
 > **Authority:** Chinese [version-roadmap.zh.md](version-roadmap.zh.md) is normative for scope.
 > **Supersedes / Superseded by:** none / none
 
@@ -23,6 +23,7 @@ The release path is:
   → 0.1.0 stable
   → 0.1.1 only if stable needs a compatible patch
   → 0.2.0 development → 0.2.0
+  → 0.2.1 post-0.2.0 UI/diagnostics/recovery-cache patch
 ```
 
 **`0.1.0-rc.6`** is published and formally accepted; its GitHub Release uses recovery tag `v0.1.0-rc.6-republished`. **`0.1.0-rc.5`** is the previous accepted release and its canonical GitHub tag/release is pending restoration. `0.1.1-rc.1` remains a post-stable patch spelling, not another rc.6.
@@ -35,14 +36,14 @@ rc.5 fixed the correctness defect inside the promised 0.1 workflow: previously e
 
 ## 2. Current Release State
 
-- The latest published version is `0.1.0-rc.6`; npm `latest` and `next` point to it, and it passed formal acceptance.
-  Its GitHub Release uses recovery tag `v0.1.0-rc.6-republished`; the exact artifact digest is in `SHA256SUMS`.
-- rc.5 is the previous accepted npm release; its canonical GitHub tag/release is pending restoration.
-- rc.4 remains a historical published compatibility patch and is immutable.
-- `main` contains the token-publish workflow used by the remaining promotion path. Published rc.4 history is
-  never rewritten.
-- Active development: `0.2.0` on `feat/0.2.0-workspace`; no tag/Release/npm publication exists. From `0.2.0`
-  onward package versions use plain increments and never an `rc` suffix.
+- `0.2.0` is published on npm (`latest`/`next`) and as GitHub Release `v0.2.0`; its tag, assets, and npm bytes
+  are immutable.
+- `0.2.1` is the current release candidate on the local development line. It is not tagged, released, or
+  published; local acceptance and promotion remain pending.
+- `0.2.1` is a compatible post-`0.2.0` patch: editable message proposals, clearer diagnostics/typography, and an
+  owner-only bounded recovery cache. It does not change `recordSchemaVersion` 2 or the model tool surface; the
+  `dsh_charter_archives_v1` domain is a bounded derivative cache, not a second authority.
+- `0.1.0-rc.6` remains the previous public release. Historical rc tags and releases are immutable.
 
 ## 3. Why rc.5
 

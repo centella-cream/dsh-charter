@@ -4,7 +4,7 @@
 [![GitHub](https://img.shields.io/badge/GitHub-centella--cream%2Fdsh--charter-181717?logo=github)](https://github.com/centella-cream/dsh-charter)
 [![DSH](https://img.shields.io/badge/DSH-9%20verified%20versions-4b6bfb)](docs/design/compatibility.zh.md)
 [![Node](https://img.shields.io/badge/node-%5E22.19%20%7C%7C%20%3E%3D24-339933)](package.json)
-[![Status: 0.2.0 stable](https://img.shields.io/badge/status-0.2.0-brightgreen)](#状态)
+[![Status: 0.2.1 candidate](https://img.shields.io/badge/status-0.2.1%20candidate-orange)](#状态)
 
 [English](README.md) | 中文
 
@@ -13,9 +13,9 @@
 `dsh-charter` 是 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的持久化、用户所有的
 会话契约插件。目标、硬约束、交付物、证据和依赖关系在上下文压缩后仍然保留，并且始终可查看、可编辑。
 
-![当前 0.2 构建中的会话契约页](docs/assets/charter-pane.zh.png)
+![当前 0.2.1 构建中的会话契约页](docs/assets/charter-pane.zh.png)
 
-> 这是本地 Web profile 中当前 **0.2** Pane 的界面。UI 文案跟随 DSH 当前语言；截图使用演示数据，不发布
+> 这是本地 Web profile 中当前 **0.2.1** Pane 的界面。UI 文案跟随 DSH 当前语言；截图使用演示数据，不发布
 > 任何私人 Session 内容。
 
 ## 目录
@@ -39,9 +39,19 @@
 ## 状态
 
 - **已发布版本：**`0.2.0` — npm `latest` 和 `next`，GitHub Release `v0.2.0`。
+- **发布候选：**`0.2.1` — `0.2.0` 之后的 UI、诊断和恢复缓存补丁；本地验收与 promotion 尚未完成，暂不要从
+  npm 安装。
 - **上一版本：**`0.1.0-rc.6`。
 - **主要 DSH 基线：**`0.2.2-rc.1`；九个声明版本通过源码矩阵验证。
 - 从 `0.2.0` 起版本号使用普通递增（`0.2.0`、`0.2.1`…），不再使用 `rc` 后缀。
+
+### 0.2.1 重点变化
+
+- 消息提案会从所选用户消息预填**可编辑正文**；原来的字符范围输入已移除。
+- 诊断区把事实有效性验证和证据完整性拆开，两处都说明验证对象和检查内容。
+- 恢复改为从 Host 维护的缓存选择快照（每 Session 5 份、整个 profile 25 份），不再要求先下载文件；
+  导出仍是独立的分析与备份操作。
+- Pane 页头和表单排版对齐更轻量的 `dsh-context` 层级。
 
 ## 为什么需要
 
@@ -130,7 +140,7 @@ compaction summary 返回只读草案，不写 storage。
 
 ## 安装
 
-当前公开版本是 `0.2.0`。可复现 profile 请安装精确版本：
+当前公开版本是 `0.2.0`；`0.2.1` 候选尚未发布到 npm。可复现 profile 请先安装已发布的精确版本：
 
 ```bash
 dsh plugin --profile web add dsh-charter@0.2.0

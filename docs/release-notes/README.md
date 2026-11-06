@@ -4,8 +4,8 @@
 > **Version scope:** all release notes.
 > **Authority:** [version roadmap](../design/version-roadmap.md).
 
-The latest published release is [0.1.0-rc.6](0.1.0-rc.6.md). [0.2.0](0.2.0.md) is the current development candidate
-(not published); [0.1.0-rc.5](0.1.0-rc.5.md) is the previous accepted release.
+The latest published release is [0.2.0](0.2.0.md). [0.2.1](0.2.1.md) is the current release candidate
+(local acceptance and promotion pending); [0.1.0-rc.6](0.1.0-rc.6.md) is the previous public release.
 
 Published release history is summarized in [CHANGELOG.md](../../CHANGELOG.md) and remains available through the
 immutable Git tags and GitHub Releases. Older per-release note files were removed during the rc.5 documentation

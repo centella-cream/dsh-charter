@@ -20,8 +20,8 @@ A status block has this shape:
 
 ```text
 > **Status:** Active
-> **Version scope:** 0.2.0
-> **Baseline:** 2026-11-03
+> **Version scope:** 0.2.1
+> **Baseline:** 2026-11-06
 > **Authority:** docs/design/version-roadmap.zh.md
 > **Supersedes / Superseded by:** none / <path or none>
 ```
@@ -60,7 +60,8 @@ same commit. Do not delete a historical decision just because it is inactive; mo
 | [user-guide.md](user-guide.md) | Active | current line | Installation and usage guide. |
 | [release-notes/0.1.0-rc.5.md](release-notes/0.1.0-rc.5.md) | Historical | 0.1.0-rc.5 | Published npm release note. |
 | [release-notes/0.1.0-rc.6.md](release-notes/0.1.0-rc.6.md) | Historical | 0.1.0-rc.6 | Published/accepted release note. |
-| [release-notes/0.2.0.md](release-notes/0.2.0.md) | Development candidate | 0.2.0 | Unpublished; no tag/Release/npm publish. |
+| [release-notes/0.2.0.md](release-notes/0.2.0.md) | Historical | 0.2.0 | Published npm release and GitHub Release. |
+| [release-notes/0.2.1.md](release-notes/0.2.1.md) | Release candidate | 0.2.1 | Local acceptance and promotion pending. |
 
 ## Maintenance rules
 

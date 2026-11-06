@@ -4,7 +4,7 @@
 
 > **状态：** Active — 版本与范围权威。
 > **版本范围：** 0.1 历史与当前 0.2 开发线。
-> **基准：** 2026-10-30；当前开发线 `0.2.0`（从 0.2.0 起不使用 `rc` 后缀）。
+> **基准：** 2026-11-06；当前线 `0.2.1` 是 `0.2.0` 之后的发布候选（普通递增，不使用 `rc` 后缀）。
 > **权威：** 中文版本为 scope 的 normative。
 > **替代/被替代：** 无 / 无
 
@@ -21,6 +21,7 @@
   → 0.1.0 stable
   → 0.1.1（仅在 stable 后确有兼容补丁时）
   → 0.2.0 开发线 → 0.2.0
+  → 0.2.1：0.2.0 之后的 UI、诊断与恢复缓存补丁
 ```
 
 **`0.1.0-rc.5`** 已发布到 npm，是最新发布版本；其规范 GitHub tag/release 待恢复。**`0.1.0-rc.6`** 在验收前
@@ -34,19 +35,12 @@ rc.5 修复了与产品承诺冲突的审阅正确性问题：此前历史草案
 
 ## 2. 当前发布状态
 
-### 2.1 已发布版本
-
-- 最新已发布版本是 `0.1.0-rc.6`；npm `latest` 和 `next` 指向 rc.6，并已正式验收。GitHub Release 使用
-  recovery tag `v0.1.0-rc.6-republished`；精确产物 digest 记录在根 `SHA256SUMS`。
-- rc.5 是上一个已验收 npm 版本；规范 GitHub tag/release 待恢复。
-- rc.4 是历史发布和不可变的 compatibility-only patch。
-
-### 2.2 rc.5 候选
-
-- rc.5 已实现、candidate 全绿并发布到 npm；规范 GitHub tag/release 待恢复，发布后检查仍需完成。
-  发布后检查仍待完成。
-- rc.6 已通过验收并发布；GitHub Release 使用 recovery tag `v0.1.0-rc.6-republished`。
-- `main` 已包含剩余 promotion 路径使用的 token 发布 workflow。已发布的 rc.4 历史永不改写。
+- `0.2.0` 已发布到 npm（`latest`/`next`）和 GitHub Release `v0.2.0`；tag、资产和 npm 字节不可变。
+- `0.2.1` 是当前本地开发线上的发布候选；尚未打 tag、发布 GitHub Release 或发布 npm，本地验收与 promotion
+  仍待完成。
+- `0.2.1` 是 `0.2.0` 之后的兼容补丁：可编辑消息提案、更清晰的诊断/排版、owner-only 有界恢复缓存。不改变
+  `recordSchemaVersion` 2 或模型工具面；`dsh_charter_archives_v1` 是有界派生物缓存，不是第二正本。
+- `0.1.0-rc.6` 仍是上一个公开版本。历史 rc tag/release 不可变。
 
 ## 3. 为什么是 rc.5
 

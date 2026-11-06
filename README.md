@@ -4,7 +4,7 @@
 [![GitHub](https://img.shields.io/badge/GitHub-centella--cream%2Fdsh--charter-181717?logo=github)](https://github.com/centella-cream/dsh-charter)
 [![DSH](https://img.shields.io/badge/DSH-9%20verified%20versions-4b6bfb)](docs/design/compatibility.md)
 [![Node](https://img.shields.io/badge/node-%5E22.19%20%7C%7C%20%3E%3D24-339933)](package.json)
-[![Status: 0.2.0 stable](https://img.shields.io/badge/status-0.2.0-brightgreen)](#status)
+[![Status: 0.2.1 candidate](https://img.shields.io/badge/status-0.2.1%20candidate-orange)](#status)
 
 English | [中文](README.zh.md)
 
@@ -14,9 +14,9 @@ English | [中文](README.zh.md)
 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). Goals, hard constraints,
 deliverables, evidence, and dependency relationships survive compaction and remain visible and editable.
 
-![Charter tab in the current 0.2 build](docs/assets/charter-pane.zh.png)
+![Charter tab in the current 0.2.1 build](docs/assets/charter-pane.zh.png)
 
-> The current **0.2** Pane in a local Web profile. UI strings follow the active DSH language; this image uses
+> The current **0.2.1** Pane in a local Web profile. UI strings follow the active DSH language; this image uses
 > demo values so no private Session content is published.
 
 ## Contents
@@ -40,9 +40,21 @@ deliverables, evidence, and dependency relationships survive compaction and rema
 ## Status
 
 - **Published release:** `0.2.0` — npm `latest` and `next`, GitHub Release `v0.2.0`.
+- **Release candidate:** `0.2.1` — post-`0.2.0` UI, diagnostics, and recovery-cache patch; local acceptance and
+  promotion are still pending, so do not install it from npm yet.
 - **Previous release:** `0.1.0-rc.6`.
 - **Primary DSH baseline:** `0.2.2-rc.1`; nine declared DSH versions are source-matrix verified.
 - Versioning from `0.2.0` onward uses plain increments (`0.2.0`, `0.2.1`, …), never an `rc` suffix.
+
+### 0.2.1 highlights
+
+- Message proposals now prefill an **editable body** from the selected user message; the old character-range
+  inputs are gone.
+- Diagnostics separates fact validation from evidence integrity, and both forms explain the target and check
+  being run.
+- Recovery restores from a Host-maintained cache (five per Session, 25 per profile) without requiring a
+  downloaded file; export stays a separate operation for analysis and backup.
+- The Pane header and form typography follow the lighter `dsh-context` hierarchy.
 
 ## Why
 
@@ -143,7 +155,8 @@ storage.
 
 ## Install
 
-The latest public release is `0.2.0`. Install the exact version for a reproducible profile:
+The latest public release is `0.2.0`. The `0.2.1` candidate is not on npm yet. Install the published exact
+version for a reproducible profile:
 
 ```bash
 dsh plugin --profile web add dsh-charter@0.2.0

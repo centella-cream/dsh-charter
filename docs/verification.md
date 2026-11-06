@@ -4,9 +4,9 @@ English | [中文](verification.zh.md)
 
 > **Status:** Active — current operating record.
 > **Version scope:** current development line.
-> **Baseline:** 2026-11-05
+> **Baseline:** 2026-11-06
 
-Verification date: 2026-11-05. Current source version: `0.2.0` (unreleased development). This is the current evidence record; historical per-commit narratives live in Git
+Verification date: 2026-11-06. Current source version: `0.2.1` (release candidate; not published). This is the current evidence record; historical per-commit narratives live in Git
 history and the Changelog. Temporary directories, profiles, tarballs, and fetched HTML live under `.tmp/` and are
 excluded from the published package.
 
@@ -15,14 +15,14 @@ Environment: macOS, Node `v22.23.1`, npm `12.0.2`, pnpm `12.3.4`. Local DSH deve
 
 ## 1. Current conclusion
 
-Current release state (2026-11-05):
+Current release state (2026-11-06):
 
 - Published: `0.2.0` (npm `latest`/`next`; exact SHA-256 `7bafffc24c18c9655d68a9a61017db54920839a159dfeeba0643337c3aae4286`). GitHub Release `v0.2.0` is public and immutable.
+- Release candidate: `0.2.1` on a local development branch; no tag, GitHub Release, or npm publication yet.
 - `0.1.0-rc.6`: previous public release; recovery tag `v0.1.0-rc.6-republished`.
-- Active release: `0.2.0`, published and immutable.
 - Versioning from 0.2.0 onward uses plain increments and never an `rc` suffix.
-- Current source evidence: 36 files / 441 tests and the nine-version matrix pass 441/441. The published 0.2.0 artifact predates the post-release message-proposal UI clarification and carries the 434-test source build.
-- Pending: post-release Desktop/browser diagnostics and real-model compaction checks.
+- Current source evidence: 36 files / 441 tests and the nine-version matrix pass 441/441 on the pre-bump tree; rerun on the final 0.2.1 candidate before promotion.
+- Pending: local acceptance, real browser/Desktop ABI, real-model compaction, 512-item performance, final artifact/SHA256SUMS, and promotion.
 
 | Item | Result |
 | --- | --- |

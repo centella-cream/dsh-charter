@@ -4,6 +4,32 @@
 
 记录 `dsh-charter` 的重要变更。DSH 插件 ABI 仍在演进，项目保持 pre-1.0 版本线。
 
+## 0.2.1 — 2026-11-06（发布候选）
+
+`0.2.0` 之后的 UI、诊断和恢复缓存补丁。不改变 record schema；已有 `0.2.0` 记录保持可读。
+
+### 新增
+
+- 可编辑消息提案：选择用户消息后把完整正文带入可编辑框；编辑后的提案使用 manual provenance，Host 拒绝
+  非人类 actor。
+- owner-only `dsh_charter_archives_v1` 恢复缓存与 `listArchives`/`readArchive` Remote 入口：每 Session
+  最多 5 份、整个 profile 最多 25 份，最旧优先淘汰。
+- 诊断区拆分事实有效性验证和证据完整性；proposal batch 直接渲染查询面的 `sourceIntegrity`，不再额外请求
+  Host。
+
+### 变更
+
+- 消息提案、诊断和恢复表单共用同一套标签/说明层级；Pane 页头采用更轻量的 `dsh-context` 标题比例和间距。
+- 恢复区直接列出缓存快照；下载导出与恢复解耦。本地 JSON 导入保留为高级路径。
+- README 能力列表和 Pane 截图更新为当前 0.2.1 界面。
+
+### 修复
+
+- Session 切换时重置消息提案状态，同时重置诊断状态和反馈。
+- Apply 后同 revision 的查询视图仍保留 proposal batch 的 integrity。
+- 缓存快照在 Host 重启后保留；不再随 Session dispose 清空，并用 profile 级 LRU 限制孤儿条目。
+- 恢复文案区分缓存恢复和文件导入。
+
 ## 0.2.0 — 2026-11-05
 
 工作区与依赖计划升级。从该版本起使用普通递增版本号（`0.2.0`、`0.2.1`……），不再使用 `rc` 后缀。
