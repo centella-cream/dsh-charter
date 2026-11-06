@@ -96,9 +96,9 @@ The tracked runner creates isolated pnpm projects with strict peers and runs typ
 | `0.2.1-rc.5` | 438/438 tracked matrix PASS |
 | `0.2.2-rc.1` | 438/438 tracked matrix PASS |
 
-The clean main-tree run at source commit `2ea302f867a3e9e1b9c7730c5e4845feae684bc9` passed
+The clean main-tree run at source commit `68c722c205a56b73a0c7b78cc118df1a52a0cb70` passed
 `compat-matrix --versions all --allow-new-release` on 2026-11-06: every declared version passed typecheck, build,
-and 438/438 tests. The local evidence file is `.tmp/review-fixes-matrix3.json`. Installs use pnpm strict peer resolution, exact tool pins, a single zod 4.6.7 graph, full `pnpm list --depth Infinity` graph validation, and recorded lockfile SHA-256 values. The untracked `0.2.2-alpha.2` probe is recorded as unsupported: strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run.
+and 438/438 tests. The local evidence file is `.tmp/review-fixes-matrix4.json`. Installs use pnpm strict peer resolution, exact tool pins, a single zod 4.6.7 graph, full `pnpm list --depth Infinity` graph validation, and recorded lockfile SHA-256 values. The untracked `0.2.2-alpha.2` probe is recorded as unsupported: strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run.
 
 ## 4. What the tests cover
 
