@@ -28,7 +28,10 @@ tagging.
 3. Run `npm ci`, `npm run check`, and the normal `npm run smoke:package`.
 4. Run the compatibility regression over every declared DSH version and probe untracked `next`/`latest`
    versions. A missing, peer-drifted, or untested version blocks release.
-5. Run the local gates on a local non-`main` branch. Merge into local `main` linearly, then push `main`. Do not push development branches; the remote keeps only `main`. Keep the worktree free of secrets, user records, and `.tmp` artifacts.
+5. Run the local gates on a local non-`main` branch and build the acceptance tarball/profile. Perform local human
+   acceptance against that exact build. Only after acceptance, merge into local `main` linearly, then push
+   `main`. Do not push development branches; the remote keeps only `main`. Keep the worktree free of secrets,
+   user records, and `.tmp` artifacts.
 
 ## 2. Build the candidate bytes once
 

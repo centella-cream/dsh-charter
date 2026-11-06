@@ -145,10 +145,11 @@ The worktree may hold uncommitted user-authored plan/docs/source changes (for ex
 `docs/history/`, the 0.2 design, README updates, and source edits). Those are user property, not scratch work.
 
 **Rule:** never revert, stash, clean, or rewrite uncommitted user work without explicit consent (no
-`git checkout -- .`, `git reset --hard`, `git clean`). Do release work on a local release branch, keep commits
+`git checkout -- .`, `git reset --hard`, `git clean`). Do feature work on a local non-`main` branch, keep commits
 single-purpose with conventional prefixes, and leave `dist/`, `*.tgz`, `.tmp/`, `node_modules/`, `lib/`,
-`.build-ts/`, and `docs/archive/` untracked. Do not rewrite published history; do not push tags before the gates;
-do not commit, tag, or publish without an explicit request.
+`.build-ts/`, and `docs/archive/` untracked. Do not push feature branches. Build an acceptance tarball/profile
+and perform local human acceptance before merging into local `main`; only then push `main`. Do not rewrite
+published history; do not push tags before the gates; do not commit, tag, or publish without an explicit request.
 
 ### 8. RC release workflow
 
@@ -210,6 +211,7 @@ version that is not yet tracked**. This is a release requirement, not optional e
       labeled honestly.
 - [ ] English and Chinese long-form docs updated together; Chinese normative plan updated when details changed.
 - [ ] User uncommitted work untouched; release branch clean of unrelated edits; commits single-purpose.
+- [ ] Local human acceptance completed against the exact build before merging to main or tagging/publishing.
 - [ ] Explicit user release request obtained before tagging, publishing, or touching the user's Desktop app/profile.
 
 ## Quick commands

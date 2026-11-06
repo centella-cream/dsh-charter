@@ -41,8 +41,18 @@ npm run check
 ## Branch workflow (solo maintainer)
 
 The remote keeps only `main`. Do development on local non-`main` branches; do not push those branches.
-Run the local gates, merge into local `main` linearly, then push `main`. Protected actions on `main` are
-force-pushes, deletion, and non-linear merges, not a PR review requirement.
+
+Fixed path for every change:
+
+1. Create a local non-`main` branch from local `main`.
+2. Implement and run the local gates there.
+3. Build an acceptance tarball/profile and perform **local human acceptance** against the exact build.
+4. Only after acceptance: merge the branch into local `main` linearly.
+5. Push `main` only. Protected actions on `main` are force-pushes, deletion, and non-linear merges, not a
+   PR review requirement.
+
+No release, tag, or remote branch is created before local acceptance. Record the acceptance result in the
+release verification notes.
 
 External contributors may still open PRs from forks. The maintainer reviews and merges them locally under
 the same main-only policy.

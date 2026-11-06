@@ -26,7 +26,9 @@ tag、不删除已发布 Release、不在打 tag 后重建字节。
 3. 运行 `npm ci`、`npm run check` 和普通 `npm run smoke:package`。
 4. 对每个声明 DSH 版本跑兼容回归，并 probe 未跟踪的 `next`/`latest` 版本；缺失、peer drift 或未验证版本
    阻断发布。
-5. 在本地非 `main` 分支跑完门禁，线性合入本地 `main`，再推送 `main`。不要推送开发分支；远程只保留 `main`。工作树不得包含 secrets、用户记录或 `.tmp` 产物。
+5. 在本地非 `main` 分支跑完门禁并构建验收 tarball/profile，对该精确构建做本地人工验收。验收确认后，
+   再线性合入本地 `main` 并推送 `main`。不要推送开发分支；远程只保留 `main`。工作树不得包含 secrets、
+   用户记录或 `.tmp` 产物。
 
 ## 2. 只构建一次候选字节
 
