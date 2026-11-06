@@ -79,9 +79,9 @@ CI（`.github/workflows/ci.yml`）在 Node `22.19.0` / `24` 上运行 `npm run c
 | `0.2.1-rc.5` | 438/438 tracked matrix PASS |
 | `0.2.2-rc.1` | 438/438 tracked matrix PASS |
 
-当前 main 树在源码提交 `68c722c205a56b73a0c7b78cc118df1a52a0cb70` 上于 2026-11-06 通过
+当前 main 树在源码提交 `e94b0568e989ae8392052e175c73976519657826` 上于 2026-11-06 通过
 `compat-matrix --versions all --allow-new-release`：每个声明版本均通过 typecheck、build 和 438/438 测试；本地证据为
-`.tmp/review-fixes-matrix4.json`。安装使用 pnpm strict peer、精确工具版本、单一 zod 4.6.7 图、完整 `pnpm list --depth Infinity` 图校验，并记录 lockfile SHA-256。未跟踪 `0.2.2-alpha.2` 已 probe：strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run，rc.6 明确不支持。
+`.tmp/review-fixes-matrix5.json`。安装使用 pnpm strict peer、精确工具版本、单一 zod 4.6.7 图、完整 `pnpm list --depth Infinity` 图校验，并记录 lockfile SHA-256。未跟踪 `0.2.2-alpha.2` 已 probe：strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run，rc.6 明确不支持。
 
 ## 4. 测试覆盖
 
