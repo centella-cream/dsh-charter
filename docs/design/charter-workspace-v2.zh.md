@@ -20,7 +20,7 @@
 - Pane active/history/pending/inactive/batch 列表窗口化；store 走 summary + 分页 query，旧 Host 保留 full-watch fallback。
 - queryItems/queryProposals/queryChanges 的 facets、validity filter、filter digest、revision-bound cursor 和响应
   字节上限；`objectiveProposals` 独立 cursor 和字节上限。
-- message proposal 的选择器、正文范围、kind 和 projection digest；Change Set canonical preview digest/
+- message proposal 的选择器、可编辑正文、kind 和 projection digest；编辑后的正文使用 manual provenance；Change Set canonical preview digest/
   `PREVIEW_MISMATCH`；proposedRequires 支持 batch-candidate 和同 Change Set 接受顺序；fork 重置 validity 并重映射
   proposedRequires/evidence；bootstrap active item dedupe；来源派生的 origin。
 - Evidence Integrity/Fact Validity：registered validator、owner-only、文件大小/总字节/总时长/并发边界、
@@ -35,7 +35,7 @@
 - fork source integrity 为 `unsupported`：child record 不保存父来源投影；fork typed refs 已保留但完整复算需要父记录。
   fork 将 validity 结论重置为 `unassessed`，保留 evidence/source 引用；不会把父 Session 的有效性结论带入 child。
 - `charter_propose` 的 requires 仍只解析当前 active deliverable IDs；agent batch-candidate 引用暂不支持。
-- message proposal 目前只接受真实 user message，不支持 assistant/tool 消息选择。
+- message proposal 只接受真实 user message；选中正文会预填到可编辑框，保存前可自由修改。
 - Pane 仍一次取回全部分页（渲染已窗口化），网络层分页/窗口化仍是优化项。
 - queryProposals 的 review 过滤是 batch 级命中，响应保留该 batch 的全部 candidate；这是当前契约，不是 candidate 级过滤。
 - 真实 Gateway 授权/配额、Desktop ABI/Plugins UI、可访问性/触屏/200% 文本、真实模型 compaction、512 条性能人工
