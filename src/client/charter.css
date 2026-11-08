@@ -1263,9 +1263,13 @@
 
 .charter-messageproposal__field select,
 .charter-messageproposal__field input {
+  box-sizing: border-box;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   min-height: 32px;
   padding: 0 9px;
+  overflow: hidden;
   border: 1px solid var(--charter-border);
   border-radius: 7px;
   outline: 0;
@@ -1273,12 +1277,115 @@
   background: var(--charter-surface-2);
   font: inherit;
   font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .charter-messageproposal__field select:focus-visible,
 .charter-messageproposal__field input:focus-visible {
   border-color: color-mix(in srgb, var(--charter-brand) 55%, var(--charter-border));
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--charter-brand) 32%, transparent);
+}
+
+.charter-messageproposal__picker {
+  position: relative;
+  min-width: 0;
+}
+
+.charter-messageproposal__trigger {
+  box-sizing: border-box;
+  display: flex;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 32px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 9px;
+  border: 1px solid var(--charter-border);
+  border-radius: 7px;
+  color: inherit;
+  background: var(--charter-surface-2);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.charter-messageproposal__trigger > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.charter-messageproposal__trigger:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.charter-messageproposal__trigger:focus-visible {
+  outline: 2px solid var(--charter-brand);
+  outline-offset: 1px;
+}
+
+.charter-messageproposal__chevron {
+  flex: none;
+  color: var(--dsw-alias-label-tertiary, #999);
+}
+
+.charter-messageproposal__menu {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 4px);
+  right: 0;
+  left: 0;
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 4px;
+  border: 1px solid var(--charter-border);
+  border-radius: 8px;
+  background: var(--charter-surface);
+  box-shadow: 0 8px 24px color-mix(in srgb, #000 22%, transparent);
+}
+
+.charter-messageproposal__option {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  width: 100%;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 6px;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  font-size: 11.5px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.charter-messageproposal__option:hover,
+.charter-messageproposal__option.is-selected {
+  background: var(--charter-surface-2);
+}
+
+.charter-messageproposal__option:focus-visible {
+  outline: 2px solid var(--charter-brand);
+  outline-offset: -1px;
+}
+
+.charter-messageproposal__optionseq {
+  color: var(--dsw-alias-label-tertiary, #999);
+  font-variant-numeric: tabular-nums;
+}
+
+.charter-messageproposal__optiontext {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .charter-messageproposal__kind {
@@ -1387,7 +1494,11 @@
 .charter-validator__field input {
   box-sizing: border-box;
   width: 100%;
+  max-width: 100%;
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   min-height: 32px;
   padding: 0 9px;
   border: 1px solid var(--charter-border);
@@ -2051,9 +2162,14 @@
 }
 
 .charter-dependency__select {
+  box-sizing: border-box;
   grid-column: 2 / -1;
-  min-height: 28px;
+  width: 100%;
+  min-width: 0;
   max-width: 100%;
+  min-height: 28px;
+  overflow: hidden;
+  text-overflow: ellipsis;
   border: 1px solid var(--charter-border-soft);
   border-radius: 6px;
   background: var(--charter-surface-2);

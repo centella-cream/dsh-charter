@@ -724,6 +724,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   const [messageSeq, setMessageSeq] = useState<number | undefined>(undefined)
   const [messageKind, setMessageKind] = useState<'invariant' | 'deliverable'>('invariant')
   const [messageDraft, setMessageDraft] = useState('')
+  const [messageMenuOpen, setMessageMenuOpen] = useState(false)
   const bootstrapId = useId()
   const applyHintId = useId()
   const [confirmAbandon, setConfirmAbandon] = useState(false)
@@ -744,6 +745,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   const exportInFlightRef = useRef(false)
   const viewRef = useRef(view)
   const archiveInputRef = useRef<HTMLInputElement | null>(null)
+  const messageMenuRef = useRef<HTMLDivElement | null>(null)
   const triggerRef = useRef<HTMLElement | null>(null)
   const statusRef = useRef<HTMLDivElement | null>(null)
 
@@ -776,6 +778,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
     setMessageSeq(undefined)
     setMessageDraft('')
     setMessageKind('invariant')
+    setMessageMenuOpen(false)
     setValidatorItemId('')
     setValidatorKind('workspace.path-exists')
     setValidatorPath('')
@@ -2051,7 +2054,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                             && candidate.lifecycle === 'current'
                             && candidate.id !== row.id,
                           ).map(candidate => (
-                            <option key={candidate.id} value={candidate.id}>{candidate.text}</option>
+                            <option key={candidate.id} value={candidate.id} title={candidate.text}>{shortText(candidate.text, 16)}</option>
                           ))}
                         </select>
                       </li>
@@ -2147,25 +2150,74 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                   </div>
                 </div>
                 <div className="charter-messageproposal__form">
-                  <label className="charter-messageproposal__field">
+                  <div className="charter-messageproposal__field">
                     <span className="charter-fieldlabel">{t('message.pick')}</span>
-                    <select
-                      aria-label={t('message.pick')}
-                      value={messageSeq ?? ''}
-                      onChange={event => {
-                        const value = event.target.value
-                        const next = value === '' ? undefined : Number(value)
-                        const candidate = messageCandidates.find(message => message.seq === next)
-                        setMessageSeq(next)
-                        setMessageDraft(candidate?.text ?? '')
+                    <div
+                      className="charter-messageproposal__picker"
+                      onBlur={event => {
+                        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setMessageMenuOpen(false)
+                      }}
+                      onKeyDown={event => {
+                        if (event.key === 'Escape') {
+                          setMessageMenuOpen(false)
+                          return
+                        }
+                        if (!messageMenuOpen || (event.key !== 'ArrowDown' && event.key !== 'ArrowUp')) return
+                        const options = [...messageMenuRef.current?.querySelectorAll<HTMLButtonElement>('[role="option"]') ?? []]
+                        if (options.length === 0) return
+                        event.preventDefault()
+                        const current = options.indexOf(document.activeElement as HTMLButtonElement)
+                        const next = event.key === 'ArrowDown'
+                          ? (current + 1) % options.length
+                          : (current - 1 + options.length) % options.length
+                        options[next]?.focus()
                       }}
                     >
-                      <option value="">{t('message.pickPlaceholder')}</option>
-                      {messageCandidates.map(candidate => (
-                        <option key={candidate.seq} value={candidate.seq}>{candidate.excerpt}</option>
-                      ))}
-                    </select>
-                  </label>
+                      <button
+                        type="button"
+                        className="charter-messageproposal__trigger"
+                        aria-label={t('message.pick')}
+                        aria-haspopup="listbox"
+                        aria-expanded={messageMenuOpen}
+                        disabled={messageCandidates.length === 0 || saving || unknownBlocked}
+                        onClick={() => setMessageMenuOpen(open => !open)}
+                      >
+                        <span>
+                          {selectedMessage === undefined
+                            ? t('message.pickPlaceholder')
+                            : `#${selectedMessage.seq} · ${shortText(selectedMessage.excerpt, 72)}`}
+                        </span>
+                        <span aria-hidden="true" className="charter-messageproposal__chevron">⌄</span>
+                      </button>
+                      {messageMenuOpen && (
+                        <div
+                          ref={messageMenuRef}
+                          className="charter-messageproposal__menu"
+                          role="listbox"
+                          aria-label={t('message.pick')}
+                        >
+                          {messageCandidates.map(candidate => (
+                            <button
+                              key={candidate.seq}
+                              type="button"
+                              role="option"
+                              aria-selected={candidate.seq === messageSeq}
+                              className={`charter-messageproposal__option${candidate.seq === messageSeq ? ' is-selected' : ''}`}
+                              title={candidate.excerpt}
+                              onClick={() => {
+                                setMessageSeq(candidate.seq)
+                                setMessageDraft(candidate.text ?? '')
+                                setMessageMenuOpen(false)
+                              }}
+                            >
+                              <span className="charter-messageproposal__optionseq">#{candidate.seq}</span>
+                              <span className="charter-messageproposal__optiontext">{candidate.excerpt}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                   <label className="charter-messageproposal__field">
                     <span className="charter-fieldlabel">{t('message.textLabel')}</span>
                     <textarea
@@ -2695,8 +2747,8 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                           {view.items
                             .filter(item => item.review === 'accepted' && item.lifecycle === 'current')
                             .map(item => (
-                              <option key={item.id} value={item.id}>
-                                {item.kind === 'invariant' ? t('invariants.kicker') : t('deliverables.kicker')} · {item.text}
+                              <option key={item.id} value={item.id} title={item.text}>
+                                {item.kind === 'invariant' ? t('invariants.kicker') : t('deliverables.kicker')} · {shortText(item.text, 14)}
                               </option>
                             ))}
                         </select>

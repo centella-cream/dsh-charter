@@ -219,7 +219,12 @@ describe('0.2 workspace and dependency plan', () => {
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
     const form = tree.root.findAll(node => node.props.className === 'charter-messageproposal__form')[0]
     expect(form).toBeDefined()
-    expect(tree.root.findAll(node => node.type === 'select' && node.props['aria-label'] === 'message.pick')).toHaveLength(1)
+    const picker = tree.root.findAll(node => node.type === 'button' && node.props['aria-label'] === 'message.pick')
+    expect(picker).toHaveLength(1)
+    expect(picker[0]?.props['aria-haspopup']).toBe('listbox')
+    act(() => picker[0]!.props.onClick())
+    expect(tree.root.findAll(node => node.props.role === 'listbox')).toHaveLength(1)
+    expect(tree.root.findAll(node => node.props.role === 'option')).toHaveLength(1)
     const textarea = tree.root.findAll(node => node.type === 'textarea' && node.props['aria-label'] === 'message.textLabel')[0]
     expect(textarea?.props.value).toBe('Keep the API stable')
     expect(tree.root.findAll(node => node.type === 'button' && node.props['aria-pressed'] === true)).toHaveLength(1)
