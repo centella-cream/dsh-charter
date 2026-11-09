@@ -2140,11 +2140,17 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
               </section>
             )}
 
+            {area === 'review' && (
+              <header className="charter-areahead">
+                <h2>{t('review.heading')}</h2>
+                <p className="charter-hint">{t('review.headingHint')}</p>
+              </header>
+            )}
+
             {area === 'review' && source.proposeMessage !== undefined && (
               <section className="charter-card charter-section charter-messageproposal" aria-labelledby="charter-message-proposal-title">
                 <div className="charter-cardhead">
                   <div className="charter-cardtitle">
-                    <span className="charter-kicker">{t('review.kicker')}</span>
                     <h3 id="charter-message-proposal-title">{t('review.messageProposal')}</h3>
                     <p className="charter-hint">{t('review.messageProposalHint')}</p>
                   </div>
@@ -2285,7 +2291,6 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
               <section className="charter-card charter-section" aria-labelledby="charter-inactive-title">
                 <div className="charter-cardhead">
                   <div className="charter-cardtitle">
-                    <span className="charter-kicker">{t('review.kicker')}</span>
                     <h3 id="charter-inactive-title">{t('review.inactiveItems')}</h3>
                   </div>
                   <span className="charter-count">{inactiveItems.length}</span>
@@ -2311,7 +2316,6 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
               <section className="charter-card charter-section" aria-labelledby="charter-objective-history-title">
                 <div className="charter-cardhead">
                   <div className="charter-cardtitle">
-                    <span className="charter-kicker">{t('review.kicker')}</span>
                     <h3 id="charter-objective-history-title">{t('review.objectiveHistory')}</h3>
                   </div>
                   <span className="charter-count">{closedObjectiveProposals.length}</span>
@@ -2337,7 +2341,6 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
               <section className="charter-card charter-section" aria-labelledby="charter-item-proposals-title">
                 <div className="charter-cardhead">
                   <div className="charter-cardtitle">
-                    <span className="charter-kicker">{t('review.kicker')}</span>
                     <h3 id="charter-item-proposals-title">{t('review.itemProposals')}</h3>
                   </div>
                   <span className="charter-count">{pendingItemProposals.length}</span>
@@ -2380,7 +2383,6 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
               <section className="charter-card charter-section" aria-labelledby="charter-objective-proposals-title">
                 <div className="charter-cardhead">
                   <div className="charter-cardtitle">
-                    <span className="charter-kicker">{t('review.kicker')}</span>
                     <h3 id="charter-objective-proposals-title">{t('review.objectiveProposals')}</h3>
                   </div>
                   <span className="charter-count">{pendingObjectiveProposals.length}</span>
@@ -2438,7 +2440,6 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
               <section className="charter-card charter-section" aria-labelledby="charter-batches-title">
                 <div className="charter-cardhead">
                   <div className="charter-cardtitle">
-                    <span className="charter-kicker">{t('review.kicker')}</span>
                     <h3 id="charter-batches-title">{t('review.title')}</h3>
                   </div>
                   <span className="charter-count">{view.proposalBatches!.length}</span>

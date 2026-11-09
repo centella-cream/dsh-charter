@@ -52,7 +52,7 @@ const en = {
   'nav.recovery': 'Storage & recovery',
   'nav.open': 'Open',
   'nav.workspaceHelp': 'See the current objective, global invariants, execution plan, and unresolved blockers.',
-  'nav.reviewHelp': 'Review pending proposals, history drafts, inactive items, and recent changes.',
+  'nav.reviewHelp': 'Review message proposals, compaction-history drafts, pending proposals, and recent changes.',
   'nav.diagnosticsHelp': 'Inspect prompt, budgets, record health, recovery, and capability diagnostics.',
   'nav.overviewHelp': 'See active commitments, counts, budget, and any pending review at a glance.',
   'nav.objectiveHelp': 'Read or redirect the current objective while the original objective stays immutable.',
@@ -96,7 +96,8 @@ const en = {
   'review.objectiveReason': 'Reason for replacing the current objective',
   'review.acceptObjective': 'Accept objective',
   'review.rejectObjective': 'Reject objective',
-  'review.kicker': 'Review Center',
+  'review.heading': 'Review Center',
+  'review.headingHint': 'Review message proposals, compaction-history drafts, pending proposals, and recent changes. Nothing changes until you apply it.',
   'review.title': 'Proposal batches',
   'review.captured': 'Captured at revision {revision}',
   'review.sourceIntegrity': 'Source: {integrity}',
@@ -125,7 +126,7 @@ const en = {
   'overview.objectiveHint': 'The original objective is immutable; a redirect keeps it for review.',
 
   'bootstrap.kicker': 'History draft',
-  'bootstrap.title': 'Charter draft from compaction history',
+  'bootstrap.title': 'Compaction history draft',
   'bootstrap.body': 'This draft was extracted from the latest compaction summary and is not effective yet. '
     + 'Review it, then apply.',
   'bootstrap.source': 'Source: compaction summary ({tokens} tokens shadowed)',
@@ -498,8 +499,8 @@ const en = {
 export type CharterLocaleKey = keyof typeof en
 
 const zh: Record<CharterLocaleKey, string> = {
-  tab: '会话契约',
-  'header.title': '会话契约',
+  tab: '契约',
+  'header.title': '契约',
   'header.subtitle': '压缩会改写历史，但你的约定不会。',
   'header.version': 'v{version}',
   'header.disclaimer': '这是提供给模型的声明性上下文，不强制执行，也不是安全边界。',
@@ -544,7 +545,7 @@ const zh: Record<CharterLocaleKey, string> = {
   'nav.recovery': '存储与恢复',
   'nav.open': '打开',
   'nav.workspaceHelp': '查看当前目标、全局硬约束、执行计划和未解决阻塞。',
-  'nav.reviewHelp': '审阅待处理提案、历史草案、非当前条目和近期变更。',
+  'nav.reviewHelp': '审阅消息提案、压缩历史草案、待处理提案和近期变更。',
   'nav.diagnosticsHelp': '检查 prompt、预算、记录健康、恢复和能力诊断。',
   'nav.overviewHelp': '一眼查看已生效的承诺、数量、预算和待审状态。',
   'nav.objectiveHelp': '查看或调整当前目标；原始目标保持不变。',
@@ -588,7 +589,8 @@ const zh: Record<CharterLocaleKey, string> = {
   'review.objectiveReason': '替换当前目标的理由',
   'review.acceptObjective': '接受目标',
   'review.rejectObjective': '拒绝目标',
-  'review.kicker': '审阅中心',
+  'review.heading': '审阅中心',
+  'review.headingHint': '审阅消息提案、压缩历史草案、待处理提案和近期变更；应用前不会改变契约。',
   'review.title': '提案批次',
   'review.captured': '捕获于 revision {revision}',
   'review.sourceIntegrity': '来源：{integrity}',
@@ -617,7 +619,7 @@ const zh: Record<CharterLocaleKey, string> = {
   'overview.objectiveHint': '原始目标不可改写；调整目标会保留原始版本供审阅。',
 
   'bootstrap.kicker': '历史草案',
-  'bootstrap.title': '从压缩历史生成会话契约草案',
+  'bootstrap.title': '压缩历史草案',
   'bootstrap.body': '这是从最近一次压缩摘要中抽取的草案，尚未生效。请检查后应用。',
   'bootstrap.source': '来源：压缩摘要（约 {tokens} tokens 被压缩）',
   'bootstrap.sourcePlain': '来源：压缩摘要',

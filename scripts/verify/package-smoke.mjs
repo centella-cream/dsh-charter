@@ -368,7 +368,7 @@ function verifyArtifactContents({ artifact, consumer, emptyNpmrc, run }) {
   run(process.execPath, ['--check', join(installed, 'lib/client.js')])
   const client = readFileSync(join(installed, 'lib/client.js'), 'utf8')
   if (!client.includes('__ModuleLoader__.load')) throw new Error('client bundle is not a module-loader factory')
-  if (!client.includes('会话契约') || !client.includes('Charter')) throw new Error('client bundle lost the bilingual tab label')
+  if (!client.includes('契约') || !client.includes('Charter')) throw new Error('client bundle lost the bilingual tab label')
   // The pure core entry has no Host peer imports, so an empty consumer can
   // load it. Root/Remote runtime imports are asserted structurally above
   // (export targets + files) and exercised by the workspace smoke scripts.
