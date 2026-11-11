@@ -2173,7 +2173,6 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
               <section className="charter-card charter-section" aria-labelledby="charter-dependency-title">
                 <div className="charter-cardhead">
                   <div className="charter-cardtitle">
-                    <span className="charter-kicker">{t('deps.kicker')}</span>
                     <h3 id="charter-dependency-title">{t('deps.title')}</h3>
                   </div>
                   <span className="charter-count">{dependencyPlan.length}</span>

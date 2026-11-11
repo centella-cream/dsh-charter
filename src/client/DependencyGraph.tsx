@@ -59,7 +59,7 @@ export function DependencyGraph({
 }: DependencyGraphProps): JSX.Element {
   const groupRef = useRef<HTMLDivElement | null>(null)
   const key = activeKey ?? focusId ?? layout.traversal[0]
-  const [inspector, setInspector] = useState<string | undefined>(key)
+  const [inspector, setInspector] = useState<string | undefined>(undefined)
   const [zoom, setZoom] = useState(1)
   const [dragError, setDragError] = useState<string | null>(null)
   const selectedNode = inspector === undefined ? undefined : layout.nodes.find(node => node.id === inspector)
@@ -160,11 +160,8 @@ export function DependencyGraph({
 
   return (
     <section className="charter-graph" aria-labelledby="charter-dependency-graph-title">
+      <h4 id="charter-dependency-graph-title" className="charter-sr-only">{t('deps.graphTitle')}</h4>
       <div className="charter-graph__toolbar">
-        <div className="charter-graph__toolbar-title">
-          <span className="charter-kicker">{t('deps.graphKicker')}</span>
-          <h4 id="charter-dependency-graph-title">{t('deps.graphTitle')}</h4>
-        </div>
         <label className="charter-graph__control">
           <span>{t('deps.graphFocus')}</span>
           <select
@@ -194,7 +191,6 @@ export function DependencyGraph({
       </div>
       {dragError !== null && <div className="charter-notice charter-notice--warning" role="alert">{dragError}</div>}
       {layout.edges.length === 0 && <p className="charter-hint charter-graph__hint">{t('deps.graphEmpty')}</p>}
-      <p className="charter-hint charter-graph__hint">{t('deps.graphHint')}</p>
       {layout.degraded.supersedesHidden && showSupersedes && <div className="charter-notice" role="status">{t('deps.graphDegradedSupersedes')}</div>}
       {layout.degraded.isolatedTooMany && <div className="charter-notice" role="status">{t('deps.graphIsolatedTooMany')}</div>}
       {layout.degraded.depthReduced && <div className="charter-notice" role="status">{t('deps.graphDegradedDepth')}</div>}
@@ -317,9 +313,6 @@ export function DependencyGraph({
                 />
               ))}
             </div>
-            <p id="charter-graph-keys" className="charter-hint">
-              {t('deps.graphKeys')}
-            </p>
           </div>
           <div className="charter-graph__footer">
             {(selectedNode?.lane === 'execution'
@@ -328,8 +321,13 @@ export function DependencyGraph({
                 {t('deps.locateInList')}
               </button>
             )}
-            <span role="status" className="charter-graph__live">{liveLabel}</span>
+            <span role="status" className="charter-sr-only">{liveLabel}</span>
           </div>
+          <details className="charter-graph__help">
+            <summary>{t('deps.help')}</summary>
+            <p>{t('deps.graphKeys')}</p>
+            <p>{t('deps.graphHint')}</p>
+          </details>
           {(selectedNode !== undefined || selectedEdge !== undefined) && (
             <aside className="charter-graph__inspector" aria-label={t('deps.inspectorTitle', { key: inspectorLabel })}>
               <div className="charter-graph__inspectorhead">

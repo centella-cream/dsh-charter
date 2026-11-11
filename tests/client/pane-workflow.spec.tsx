@@ -527,6 +527,9 @@ describe('dependency graph pane surface', () => {
     const tree = mount(src, draft)
     expect(tree.root.findAll(node => node.props['data-dependency-id'] === 'item-59')).toHaveLength(0)
 
+    const graphNode = tree.root.findAll(node => node.props['data-graph-key'] === 'item-59')[0]
+    expect(graphNode).toBeDefined()
+    act(() => { graphNode!.props.onClick() })
     act(() => { button(tree, 'deps.locateInList').props.onClick() })
     expect(tree.root.findAll(node => node.props['data-dependency-id'] === 'item-59')).toHaveLength(1)
   })
@@ -544,6 +547,9 @@ describe('dependency graph pane surface', () => {
     graphDraft.setSection('deliverables')
     const graphTree = mount(graphSource, graphDraft)
 
+    const graphNode = graphTree.root.findAll(node => node.props['data-graph-key'] === 'b')[0]
+    expect(graphNode).toBeDefined()
+    act(() => { graphNode!.props.onClick() })
     const graphSelect = graphTree.root.findAll(node =>
       node.type === 'select' && node.props['aria-label'] === 'deps.addRequires')[0]
     expect(graphSelect).toBeDefined()
