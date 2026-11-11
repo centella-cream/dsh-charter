@@ -730,7 +730,7 @@ S2 的"二次确认"、S3/S4 的 `previewDigest` 等价性是本提案最容易�
    `PlannedChangeSet.dependencyConflicts` + Host 预览透传 + wire 可选字段（老 Host 帧仍可解码）+
    Pane 冲突清单与两步确认 + 中英文案 + 15 条冲突测试。独立于图形视图，可先于其发布。
 5. **替代边**：v1 **一体实现**（§10.1 的 history 泳道 + 幽灵节点方案），不再退化为纯文本呈现。
-6. **bundle 预算口径**：统一按 **gzip**（`gzip -9 -c lib/client.js | wc -c`）计算 `<40KB`，raw bytes 只作为诊断；当前 0.2.2 实测 +15,171 B gzip，通过。
+6. **bundle 预算口径**：统一按 **gzip**（`gzip -9 -c lib/client.js | wc -c`）计算 `<40KB`，raw bytes 只作为诊断；当前 0.2.2 实测 +16,435 B gzip，通过。
 
    D11/D12、§3.3 接口、§3.4 节点与边集合、§3.5 语义与键位、§3.7 几何与视觉、§5.1 S11、§10.9 文案已同步。
 
@@ -900,60 +900,6 @@ col(n)      = base(n) + candRank(n)
 
 ### 10.9 i18n 最终文案（原 C7）
 
-| 键 | en | zh |
-| --- | --- | --- |
-> 下表由 [`src/client/locales.ts`](../../src/client/locales.ts) 的实际 `deps.*` 键生成（共 59 条，en/zh 成对）；实现以该文件为准，文档不再维护第二份键名。`deps.graphPosition` / `deps.edgeKicker` 已删除。
-
-| 键 | en | zh |
-| --- | --- | --- |
-| `deps.kicker` | Execution plan | 执行计划 |
-| `deps.title` | Dependencies and readiness | 依赖与就绪状态 |
-| `deps.requires` | Requires {keys} | 依赖 {keys} |
-| `deps.editAria` | Prerequisites for {key} | {key} 的前置交付物 |
-| `deps.status.ready` | ready | 可推进 |
-| `deps.status.waiting` | waiting | 等待前置 |
-| `deps.status.dependency-conflict` | dependency conflict | 依赖冲突 |
-| `deps.status.in-progress` | in progress | 进行中 |
-| `deps.status.blocked` | blocked | 阻塞 |
-| `deps.status.terminal` | terminal | 已结束 |
-| `deps.prerequisiteConflict` | prerequisite conflict | 前置冲突 |
-| `deps.conflict` | The staged dependency plan contains a cycle or invalid reference. Remove or change a prerequisite before Apply. | 暂存的依赖计划包含环或非法引用。请移除或修改前置条件后再 Apply。 |
-| `deps.graphKicker` | Dependency graph | 依赖图 |
-| `deps.graphTitle` | Dependency map | 依赖关系图 |
-| `deps.graphFocus` | Focus | 焦点 |
-| `deps.graphDepth` | Depth | 深度 |
-| `deps.depth1` | 1 hop | 1 跳 |
-| `deps.depth2` | 2 hops | 2 跳 |
-| `deps.showSupersedes` | Show replacements | 显示替代关系 |
-| `deps.zoomIn` | Zoom in | 放大 |
-| `deps.zoomOut` | Zoom out | 缩小 |
-| `deps.resetLayout` | Reset zoom | 重置缩放 |
-| `deps.hideGraph` | Hide graph | 隐藏图形 |
-| `deps.showGraph` | Show graph | 显示图形 |
-| `deps.graphAria` | Dependency graph | 依赖关系图 |
-| `deps.graphKeys` | Tab enters the graph once. Arrow keys move along dependencies; [ and ] visit every node and edge; Enter opens details; Esc closes details, then returns to the list. | Tab 进入图形区一次；方向键沿依赖移动；[ 和 ] 遍历所有节点与边；Enter 打开详情；Esc 关闭详情，再按回到列表。 |
-| `deps.historyKicker` | Replaced | 已替代 |
-| `deps.historyStatus` | Not in the execution order | 不在执行序 |
-| `deps.candidateKicker` | Candidate | 候选 |
-| `deps.candidateStatus` | Not in the execution order | 未进入执行序 |
-| `deps.historyAria` | Replaced item {text}; not in the execution order | 已替代条目 {text}；不在执行序 |
-| `deps.candidateAria` | Candidate {text}; not in the execution order | 候选提案 {text}；未进入执行序 |
-| `deps.edgeAria` | {to} depends on {from} | {to} 依赖 {from} |
-| `deps.edgeAriaAdded` | {to} depends on {from} (added in this draft) | {to} 依赖 {from}（本次新增） |
-| `deps.edgeAriaRemoved` | {to} depends on {from} (removed in this draft) | {to} 依赖 {from}（本次删除） |
-| `deps.proposedEdgeAria` | Candidate prerequisite {from} for {to}; Enter opens the proposal | {to} 的候选前置 {from}；回车查看提案 |
-| `deps.supersedesEdgeAria` | {from} is replaced by {to} | {from} 已被 {to} 替代 |
-| `deps.graphDegradedSupersedes` | The replacement history is hidden because this view is too dense. | 视图过密，已隐藏替代历史。 |
-| `deps.graphDegradedDepth` | Depth was reduced to one hop because this view is too dense. | 视图过密，深度已降为 1 跳。 |
-| `deps.graphTooDense` | This dependency view has {count} navigable items; use the list instead. | 依赖视图有 {count} 个可导航元素，请使用列表。 |
-| `deps.inspectorTitle` | Dependency details · {key} | 依赖详情 · {key} |
-| `deps.closeInspector` | Close details | 关闭详情 |
-| `deps.inspectorStatus` | Status | 状态 |
-| `deps.inspectorRequires` | Requires | 前置 |
-| `deps.addRequires` | Add a prerequisite | 添加前置交付物 |
-| `deps.removeRequires` | Remove {key} | 移除 {key} |
-| `deps.removeEdge` | Remove this dependency | 移除这条依赖 |
-| `deps.openProposal` | Open proposal | 打开提案 |
 > 下表由 [`src/client/locales.ts`](../../src/client/locales.ts) 的实际 `deps.*` 键生成（共 62 条，en/zh 成对）；实现以该文件为准，文档不再维护第二份键名。`deps.graphPosition` / `deps.edgeKicker` / `deps.requires` / `deps.editAria` 等死键已删除。
 
 | 键 | en | zh |
@@ -1033,7 +979,7 @@ col(n)      = base(n) + candRank(n)
 | 图形区高度 | 基础 `22.5em`，附加带按行数增高 | W0-2 在 200% 缩放下确认能同时显示 ≥2 列 + 候选带 + history 带 | 不满足则提到 `26em`；仍不满足则改为容器高度自适应 + 内部滚动 |
 | 最小缩放 | 0.75（§10.4 已定） | W0-2 在 0.75 + 200% 文本下检查可读性 | 不可读则把最小缩放提到 1（即禁用缩小，只留平移） |
 | 性能预算 | ego 布局 p95 `<8ms`、SVG mount→首帧 `<100ms`、hover `≥50fps` | W1/W2 实测 | 超预算按固定降级路径：关 history 泳道 → 锁深度 1 → 下调 D5 阈值 → 隐藏图形区 |
-| bundle delta | `<40KB` **gzip**（`gzip -9 -c lib/client.js \| wc -c`；raw 只作诊断） | W1/W2 构建前后同一压缩方法 | 超出则复核是否引入了非必要依赖（D6 要求零新依赖）。2026-11-11 实测 gzip 113,990 → 129,161 B（+15,171 B，通过）；raw 591,936 → 663,283 B（+71,347 B，仅诊断） |
+| bundle delta | `<40KB` **gzip**（`gzip -9 -c lib/client.js \| wc -c`；raw 只作诊断） | W1/W2 构建前后同一压缩方法 | 超出则复核是否引入了非必要依赖（D6 要求零新依赖）。2026-11-11 实测 gzip 113,990 → 130,425 B（+16,435 B，通过）；raw 591,936 → 669,821 B（+77,885 B，仅诊断） |
 
 ### 10.11 实测执行方案（A 组）
 
