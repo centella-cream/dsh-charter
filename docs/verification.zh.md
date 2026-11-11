@@ -42,7 +42,7 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 | 真实浏览器恢复 | 受保护的人工 evidence gate；未自动化 |
 | 真实模型 compaction | 2026-10-22 记录 PASS；仍是人工发布门禁 |
 | 0.2.2 依赖图源码 | 2026-11-11 PASS：`npm run check` 37 个文件 / 471 个测试；W0-0 原型 41/41；Web Pane 在 3 条 active + 4 条 pending 交付物的 Session 上渲染图形、候选泳道、inspector 和常驻语义列表；浏览器 console 无错误。W0-1/2/3 与真实 AT/人工门禁仍待完成。 |
-| 0.2.2 依赖图 bundle | 2026-11-11 以 `d362d6f` 为基线实测：`lib/client.js` raw 591,936 → 663,416 字节（+71,480 B），CSS raw 47,230 → 55,540 B（+8,310 B），client gzip 108.26 → 122.45 KiB（+14.19 KiB）。设计 `<40 KB` 预算按 gzip 通过、按 raw **超出**；预算单位仍需明确决定。 |
+| 0.2.2 依赖图 bundle | 2026-11-11 以 `d362d6f` 为基线实测：`lib/client.js` raw 591,936 → 663,283 字节（+71,347 B），CSS raw 47,230 → 55,540 B（+8,310 B），client gzip 108.26 → 122.36 KiB（+14.10 KiB）。设计 `<40 KB` 预算按 gzip 通过、按 raw **超出**；预算单位仍需明确决定。 |
 
 ## 2. 本地基线
 
