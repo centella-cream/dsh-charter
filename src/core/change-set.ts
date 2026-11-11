@@ -1,5 +1,6 @@
 import { sha256Json } from './digest.js'
 import { applyOps, type ApplyOpsInput } from './commands.js'
+import { dependencyConflictDiff, type DependencyConflictDiff } from './dependencies.js'
 import type { CharterEditRequest, CharterOp, CharterSnapshot } from './schemas.js'
 
 export interface ChangeSetSide {
@@ -18,6 +19,12 @@ export interface PlannedChangeSet {
   readonly summaryDigest: `sha256:${string}`
   readonly promptChanged: boolean
   readonly metadataOnly: boolean
+  /**
+   * Design §6.5: readiness conflicts this Change Set introduces or worsens.
+   * Deliberately NOT part of `summaryDigest` (which binds revisions, prompt
+   * digests and changes) so adding it cannot invalidate an existing preview.
+   */
+  readonly dependencyConflicts: DependencyConflictDiff
 }
 
 function utf8Bytes(value: string): number {
@@ -51,6 +58,7 @@ export function planChangeSet(input: ApplyOpsInput): PlannedChangeSet {
     || change.type === 'item.purged'
     || change.type === 'item.verification.changed')
     && !promptChanged
+  const dependencyConflicts = dependencyConflictDiff(input.snapshot.items, applied.snapshot.items)
   const summaryDigest = sha256Json({
     version: 1,
     baseRevision: input.snapshot.revision,
@@ -68,6 +76,7 @@ export function planChangeSet(input: ApplyOpsInput): PlannedChangeSet {
     summaryDigest,
     promptChanged,
     metadataOnly,
+    dependencyConflicts,
   }
 }
 

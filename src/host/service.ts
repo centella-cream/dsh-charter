@@ -1866,6 +1866,7 @@ export class CharterService extends Service {
         changes: [...planned.changes],
         promptChanged: planned.promptChanged,
         metadataOnly: planned.metadataOnly,
+        dependencyConflicts: planned.dependencyConflicts,
       }
     } catch (error) {
       return { ok: false, code: error instanceof CharterError ? error.code : 'INVALID_CHANGE_SET', message: describeError(error) }

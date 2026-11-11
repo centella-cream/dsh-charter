@@ -23,7 +23,7 @@ import type {
 } from './draft-store.js'
 import { CHARTER_LOCALE_NS, type CharterLocaleKey } from './locales.js'
 import { inspectUserText } from '../core/normalize.js'
-import { dependencyProjection } from '../core/dependencies.js'
+import { dependencyConflictDiff, dependencyProjection, type DependencyConflictDiff } from '../core/dependencies.js'
 import { draftAdmission } from './admission.js'
 import {
   bootstrapReplayPending,
@@ -212,6 +212,8 @@ function itemState(item: ProjectedItem): 'done' | 'warning' | 'ongoing' | 'idle'
   if (item.kind === 'deliverable' && item.progress === 'in-progress') return 'ongoing'
   return 'idle'
 }
+
+const EMPTY_CONFLICT_DIFF: DependencyConflictDiff = { added: [], worsened: [] }
 
 function shortText(text: string, length = 48): string {
   const normalized = text.replace(/\s+/gu, ' ').trim()
@@ -729,6 +731,9 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   const applyHintId = useId()
   const [confirmAbandon, setConfirmAbandon] = useState(false)
   const [confirmDiscardAll, setConfirmDiscardAll] = useState(false)
+  // §6.5: a Change Set that introduces or worsens a readiness conflict needs an
+  // explicit second confirmation; the flag never survives a change of the batch.
+  const [confirmConflictApply, setConfirmConflictApply] = useState(false)
   const [archivePreview, setArchivePreview] = useState<ArchivePreview | null>(null)
   const [archiveEntries, setArchiveEntries] = useState<readonly CharterArchiveEntry[]>([])
   const [archiveCacheProblem, setArchiveCacheProblem] = useState<string | null>(null)
@@ -864,6 +869,15 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   const preview = previewResult.text
   const previewInvalid = !previewResult.ok
   const planInvalid = dependencyConflict || previewInvalid
+  // Same before/after comparison the Host planner uses (§6.5), computed locally so
+  // the confirmation gate does not wait for a preview round-trip.
+  const conflictDiff = useMemo<DependencyConflictDiff>(
+    () => view === null
+      ? EMPTY_CONFLICT_DIFF
+      : dependencyConflictDiff(view.items, projectedItems as unknown as CharterItem[]),
+    [view, projectedItems],
+  )
+  const conflictTotal = conflictDiff.added.length + conflictDiff.worsened.length
   const formattedPreview = useMemo(() => formatCharterPreview(preview), [preview])
   const bootstrapPromptBytes = useMemo(() => {
     if (view === null || bootstrapPhase !== 'draft') return 0
@@ -1010,7 +1024,8 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
 
   useEffect(() => {
     setConfirmDiscardAll(false)
-  }, [view?.sessionId, view?.lifecycle, draftState.ops, draftState.editor, draftState.editorText, draftState.newInvariant, draftState.newDeliverable])
+    setConfirmConflictApply(false)
+  }, [view?.sessionId, view?.lifecycle, view?.revision, baseRevision, conflictTotal, draftState.ops, draftState.editor, draftState.editorText, draftState.newInvariant, draftState.newDeliverable])
 
   useEffect(() => {
     if (!maintenanceEnabled || (section !== 'context' && section !== 'recovery') || source.listArchives === undefined) return
@@ -1110,9 +1125,11 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                   : planInvalid
                     ? 'dependency-conflict'
                     : null
-  const applyHint = applyBlockReason === null
-    ? t('footer.applyHint')
-    : t(`apply.block.${applyBlockReason}` as never)
+  const applyHint = applyBlockReason !== null
+    ? t(`apply.block.${applyBlockReason}` as never)
+    : conflictTotal > 0
+      ? t(confirmConflictApply ? 'changeset.conflictConfirmHint' : 'changeset.conflictHint', { count: conflictTotal })
+      : t('footer.applyHint')
   const bootstrapHint = bootstrapReplay
     ? t('apply.block.retry')
     : bootstrapSaving
@@ -1187,6 +1204,11 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
     draft.openEditor(target, view)
   }
   const applyDraft = (): void => {
+    if (conflictTotal > 0 && !confirmConflictApply) {
+      setConfirmConflictApply(true)
+      return
+    }
+    setConfirmConflictApply(false)
     void draft.applyDraft(view).finally(() => statusRef.current?.focus())
   }
   const errorText = (code: string | undefined): string => {
@@ -1669,7 +1691,11 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                     >
                       {saving
                         ? t('footer.applying')
-                        : editReplay ? t('footer.retryApply') : t('footer.apply')}
+                        : editReplay
+                          ? t('footer.retryApply')
+                          : confirmConflictApply && conflictTotal > 0
+                            ? t('footer.applyConfirmConflicts', { count: conflictTotal })
+                            : t('footer.apply')}
                     </ActionButton>
                     {unknownReplay && (
                       <ActionButton variant="outline" onClick={abandonUnknown}>
@@ -1732,6 +1758,32 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                   })}</span>
                   {editor !== null && <span>{t('changeset.editorOpen')}</span>}
                 </div>
+                {conflictTotal > 0 && (
+                  <div className="charter-notice charter-notice--warning" role="status">
+                    <strong>{t('changeset.conflicts', { count: conflictTotal })}</strong>
+                    <ul className="charter-changeset__conflicts">
+                      {[
+                        ...conflictDiff.added.map(entry => ({ ...entry, kind: 'added' as const })),
+                        ...conflictDiff.worsened.map(entry => ({ ...entry, kind: 'worsened' as const })),
+                      ].map(entry => {
+                        const key = dependencyPlan.find(row => row.id === entry.itemId)?.localKey ?? entry.itemId
+                        const text = projectedItems.find(item => item.id === entry.itemId)?.text ?? entry.itemId
+                        return (
+                          <li key={entry.itemId}>
+                            <span className="charter-dependency__key">{key}</span>
+                            <span className="charter-changeset__conflicttext">{shortText(text, 40)}</span>
+                            <span>
+                              {t(entry.kind === 'added' ? 'changeset.conflictAdded' : 'changeset.conflictWorsened', {
+                                before: entry.beforeConflicts,
+                                after: entry.afterConflicts,
+                              })}
+                            </span>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  </div>
+                )}
               </section>
             )}
 

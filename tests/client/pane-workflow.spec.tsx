@@ -473,3 +473,102 @@ describe('rc.6 pane help and formatted preview', () => {
     expect(textOf(pre!)).toContain('"Keep the public API stable"')
   })
 })
+
+describe('§6.5 dependency conflict confirmation', () => {
+  function countingSource(initial: CharterView, onEdit: () => void): CharterSessionSource {
+    const base = source(initial) as unknown as Record<string, unknown>
+    return { ...base, edit: async () => { onEdit(); return { ok: true, revision: 1 } } } as unknown as CharterSessionSource
+  }
+
+  function deliverable(id: string, order: number, progress: string, requires?: readonly string[]): CharterItem {
+    return {
+      id, kind: 'deliverable', text: id, review: 'accepted', lifecycle: 'current',
+      verification: { state: 'unchecked' }, origin: 'user', order, createdRevision: 1, progress,
+      ...(requires === undefined ? {} : { requires: [...requires] }),
+    } as unknown as CharterItem
+  }
+
+  function mountWithStagedConflict(onEdit: () => void): ReactTestRenderer {
+    const ready = view({ revision: 0, items: [deliverable('item-a', 0, 'not-started')] })
+    const src = countingSource(ready, onEdit)
+    const draft = new CharterDraft(sessionId, () => src)
+    draft.bindLifecycle(lifecycle)
+    draft.stage(ready, {
+      type: 'item.add',
+      item: { clientRef: 'b', kind: 'deliverable', text: 'Release', order: 1, progress: 'in-progress', requires: ['item-a'] },
+    })
+    return mount(src, draft)
+  }
+
+  it('needs an explicit second click before applying a batch that introduces a conflict', async () => {
+    let edits = 0
+    const tree = mountWithStagedConflict(() => { edits += 1 })
+    // The Change Set panel names the affected deliverable before Apply is offered.
+    expect(textOf(tree.root)).toContain('changeset.conflicts')
+    expect(textOf(tree.root)).toContain('changeset.conflictAdded')
+
+    const apply = button(tree, 'footer.apply')
+    expect(apply.props.disabled).toBe(false)
+    await act(async () => { apply.props.onClick() })
+    expect(edits).toBe(0)
+    expect(textOf(tree.root)).toContain('changeset.conflictConfirmHint')
+
+    const confirm = button(tree, 'footer.applyConfirmConflicts')
+    await act(async () => { confirm.props.onClick() })
+    expect(edits).toBe(1)
+  })
+
+  it('applies in one click when the batch introduces no conflict', async () => {
+    let edits = 0
+    const ready = view({ revision: 0, items: [deliverable('item-a', 0, 'done')] })
+    const src = countingSource(ready, () => { edits += 1 })
+    const draft = new CharterDraft(sessionId, () => src)
+    draft.bindLifecycle(lifecycle)
+    draft.stage(ready, {
+      type: 'item.add',
+      item: { clientRef: 'b', kind: 'deliverable', text: 'Release', order: 1, progress: 'not-started', requires: ['item-a'] },
+    })
+    const tree = mount(src, draft)
+    expect(textOf(tree.root)).not.toContain('changeset.conflicts')
+    await act(async () => { button(tree, 'footer.apply').props.onClick() })
+    expect(edits).toBe(1)
+  })
+
+  it('drops the confirmation when the baseline is rebased', async () => {
+    let edits = 0
+    const ready = view({ revision: 0, items: [deliverable('item-a', 0, 'not-started')] })
+    const src = countingSource(ready, () => { edits += 1 })
+    const draft = new CharterDraft(sessionId, () => src)
+    draft.bindLifecycle(lifecycle)
+    draft.stage(ready, {
+      type: 'item.add',
+      item: { clientRef: 'b', kind: 'deliverable', text: 'Release', order: 1, progress: 'in-progress', requires: ['item-a'] },
+    })
+    const tree = mount(src, draft)
+    await act(async () => { button(tree, 'footer.apply').props.onClick() })
+    expect(textOf(tree.root)).toContain('footer.applyConfirmConflicts')
+
+    act(() => { draft.rebase(view({ revision: 2, items: ready.items })) })
+    expect(textOf(tree.root)).not.toContain('footer.applyConfirmConflicts')
+    expect(edits).toBe(0)
+  })
+
+  it('drops the confirmation when the staged batch changes', async () => {
+    let edits = 0
+    const ready = view({ revision: 0, items: [deliverable('item-a', 0, 'not-started')] })
+    const src = countingSource(ready, () => { edits += 1 })
+    const draft = new CharterDraft(sessionId, () => src)
+    draft.bindLifecycle(lifecycle)
+    draft.stage(ready, {
+      type: 'item.add',
+      item: { clientRef: 'b', kind: 'deliverable', text: 'Release', order: 1, progress: 'in-progress', requires: ['item-a'] },
+    })
+    const tree = mount(src, draft)
+    await act(async () => { button(tree, 'footer.apply').props.onClick() })
+    expect(textOf(tree.root)).toContain('footer.applyConfirmConflicts')
+    // Unstage everything: the confirmed state must not survive a changed batch.
+    act(() => { draft.discardStaged() })
+    expect(textOf(tree.root)).not.toContain('footer.applyConfirmConflicts')
+    expect(edits).toBe(0)
+  })
+})

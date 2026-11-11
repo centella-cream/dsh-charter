@@ -11,6 +11,7 @@ import {
   charterViewSchema,
   charterProposalQueryResultSchema,
   charterChangeQueryResultSchema,
+  charterChangeSetPreviewResultSchema,
   charterErrorCodeSchema,
 } from '../../src/remote/wire.js'
 import { RemoteError } from '@deepseek-ai/dsh-typert-protocol'
@@ -349,5 +350,40 @@ describe('charter Remote contract', () => {
     // Structural marker works across copies without instanceof.
     expect(classifyRemoteFailure({ isDSHRemoteError: true, code: 'remote-access/denied' }))
       .toEqual({ kind: 'known', code: 'remote-access/denied' })
+  })
+})
+
+describe('§6.5 preview wire compatibility', () => {
+  const base = {
+    ok: true as const,
+    previewDigest: 'sha256:' + 'a'.repeat(64),
+    before: { revision: 0, promptBytes: 10, items: 1, pendingItems: 0 },
+    after: { revision: 1, promptBytes: 12, items: 2, pendingItems: 0 },
+    changes: [],
+    promptChanged: true,
+    metadataOnly: false,
+  }
+
+  it('still decodes a preview frame from a Host that predates the conflict report', () => {
+    expect(charterChangeSetPreviewResultSchema.parse(base)).toMatchObject({ ok: true })
+  })
+
+  it('decodes the conflict report when the Host sends it', () => {
+    const decoded = charterChangeSetPreviewResultSchema.parse({
+      ...base,
+      dependencyConflicts: {
+        added: [{ itemId: 'item-b', before: 'absent', after: 'dependency-conflict', beforeConflicts: 0, afterConflicts: 1 }],
+        worsened: [],
+      },
+    })
+    if (!decoded.ok) throw new Error('decode failed')
+    expect(decoded.dependencyConflicts?.added).toHaveLength(1)
+  })
+
+  it('rejects an unknown conflict field instead of silently dropping it', () => {
+    expect(() => charterChangeSetPreviewResultSchema.parse({
+      ...base,
+      dependencyConflicts: { added: [], worsened: [], surprise: 1 },
+    })).toThrow()
   })
 })

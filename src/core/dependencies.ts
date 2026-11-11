@@ -143,3 +143,99 @@ export function dependencyProjection(items: readonly CharterItem[]): readonly De
     executionDisplay: executionDisplay(item, items),
   }))
 }
+
+/**
+ * Prerequisite ids that make `item` conflict right now: a cancelled prerequisite,
+ * or a prerequisite that is not `done` while the dependent already started.
+ * Mirrors `prerequisiteStatus` rules 1–2, but returns the causes so a Change Set
+ * can tell "new conflict" from "worsened conflict".
+ */
+export function conflictingPrerequisites(
+  item: DeliverableItem,
+  items: readonly CharterItem[],
+): readonly string[] {
+  const byId = new Map(items.map(candidate => [candidate.id, candidate]))
+  const causes: string[] = []
+  for (const id of item.requires ?? []) {
+    const prerequisite = byId.get(id)
+    if (prerequisite === undefined || prerequisite.kind !== 'deliverable') continue
+    if (prerequisite.progress === 'cancelled') {
+      causes.push(id)
+      continue
+    }
+    if (prerequisite.progress !== 'done' && (item.progress === 'in-progress' || item.progress === 'done')) {
+      causes.push(id)
+    }
+  }
+  return causes
+}
+
+export interface DependencyConflictRef {
+  readonly itemId: string
+  /** `absent` when the item was not an active deliverable before this Change Set. */
+  readonly before: PrerequisiteStatus | 'absent'
+  readonly after: PrerequisiteStatus
+  readonly beforeConflicts: number
+  readonly afterConflicts: number
+}
+
+export interface DependencyConflictDiff {
+  readonly added: readonly DependencyConflictRef[]
+  readonly worsened: readonly DependencyConflictRef[]
+}
+
+/**
+ * Design §6.5: a Change Set must prominently mark newly introduced or worsened
+ * readiness conflicts and require explicit user confirmation. This is the shared
+ * before/after comparison used by the planner (Host authority) and the Pane
+ * (immediate feedback), so both sides cannot drift.
+ *
+ * Structural illegality (cycles, dangling or inactive endpoints) is *not* part of
+ * this diff: `validateDependencyGraph` rejects those outright.
+ */
+export function dependencyConflictDiff(
+  before: readonly CharterItem[],
+  after: readonly CharterItem[],
+): DependencyConflictDiff {
+  const snapshot = (items: readonly CharterItem[]): Map<string, { status: PrerequisiteStatus; conflicts: number }> => {
+    const out = new Map<string, { status: PrerequisiteStatus; conflicts: number }>()
+    for (const item of standingDeliverables(items)) {
+      out.set(item.id, {
+        status: prerequisiteStatus(item, items),
+        conflicts: conflictingPrerequisites(item, items).length,
+      })
+    }
+    return out
+  }
+  const beforeState = snapshot(before)
+  const afterState = snapshot(after)
+  const added: DependencyConflictRef[] = []
+  const worsened: DependencyConflictRef[] = []
+  for (const [itemId, next] of afterState) {
+    if (next.status !== 'dependency-conflict') continue
+    const previous = beforeState.get(itemId)
+    if (previous === undefined || previous.status !== 'dependency-conflict') {
+      added.push({
+        itemId,
+        before: previous?.status ?? 'absent',
+        after: next.status,
+        beforeConflicts: previous?.conflicts ?? 0,
+        afterConflicts: next.conflicts,
+      })
+      continue
+    }
+    if (next.conflicts > previous.conflicts) {
+      worsened.push({
+        itemId,
+        before: previous.status,
+        after: next.status,
+        beforeConflicts: previous.conflicts,
+        afterConflicts: next.conflicts,
+      })
+    }
+  }
+  // Deterministic order independent of Map iteration and of item ids' insertion order.
+  const byItemId = (left: DependencyConflictRef, right: DependencyConflictRef): number =>
+    left.itemId < right.itemId ? -1 : left.itemId > right.itemId ? 1 : 0
+  return { added: added.sort(byItemId), worsened: worsened.sort(byItemId) }
+}

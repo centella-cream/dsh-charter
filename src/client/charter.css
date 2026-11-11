@@ -2225,6 +2225,11 @@
   font-size: 11px;
 }
 
+/* §6.5: conflicts a Change Set introduces or worsens, listed before Apply. */
+.charter-changeset__conflicts { display: grid; gap: 4px; margin: 6px 0 0; padding: 0; list-style: none; font-size: 12px; }
+.charter-changeset__conflicts li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: baseline; }
+.charter-changeset__conflicttext { min-width: 0; overflow-wrap: anywhere; }
+
 .charter-proposal-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .charter-proposal { display: grid; gap: 6px; padding: 8px 10px; border: 1px solid var(--charter-border-soft); border-radius: 7px; }
 .charter-proposal__text { margin: 0; overflow-wrap: anywhere; }

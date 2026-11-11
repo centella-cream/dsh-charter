@@ -402,6 +402,14 @@ export const charterValidatorRunResultSchema = z.discriminatedUnion('ok', [
   z.object({ ok: z.literal(false), code: charterErrorCodeSchema, message: z.string() }).strict(),
 ])
 
+const charterDependencyConflictRefSchema = z.object({
+  itemId: z.string(),
+  before: z.enum(['satisfied', 'waiting', 'dependency-conflict', 'absent']),
+  after: z.enum(['satisfied', 'waiting', 'dependency-conflict']),
+  beforeConflicts: z.number().int().nonnegative(),
+  afterConflicts: z.number().int().nonnegative(),
+}).strict()
+
 export const charterChangeSetPreviewResultSchema = z.discriminatedUnion('ok', [
   z.object({
     ok: z.literal(true),
@@ -411,6 +419,10 @@ export const charterChangeSetPreviewResultSchema = z.discriminatedUnion('ok', [
     changes: z.array(charterChangeSchema),
     promptChanged: z.boolean(),
     metadataOnly: z.boolean(),
+    dependencyConflicts: z.object({
+      added: z.array(charterDependencyConflictRefSchema),
+      worsened: z.array(charterDependencyConflictRefSchema),
+    }).strict().optional(),
   }).strict(),
   z.object({
     ok: z.literal(false),

@@ -405,6 +405,8 @@ export type CharterChangeSetPreviewResult =
       readonly changes: readonly import('../core/schemas.js').CharterChange[]
       readonly promptChanged: boolean
       readonly metadataOnly: boolean
+      /** Optional so a Host predating §6.5 still decodes; absent means "not reported". */
+      readonly dependencyConflicts?: import('../core/dependencies.js').DependencyConflictDiff
     }
   | {
       readonly ok: false
