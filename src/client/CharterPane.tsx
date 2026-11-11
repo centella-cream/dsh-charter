@@ -23,7 +23,9 @@ import type {
 } from './draft-store.js'
 import { CHARTER_LOCALE_NS, type CharterLocaleKey } from './locales.js'
 import { inspectUserText } from '../core/normalize.js'
-import { dependencyConflictDiff, dependencyProjection, type DependencyConflictDiff } from '../core/dependencies.js'
+import { dependencyConflictDiff, dependencyProjection, validateDependencyGraph, type DependencyConflictDiff } from '../core/dependencies.js'
+import { buildRelationGraph, defaultFocus as defaultGraphFocus, layoutRelationGraph, type GraphInputItem, type RelationGraphModel } from './relation-graph.js'
+import { DependencyGraph } from './DependencyGraph.js'
 import { draftAdmission } from './admission.js'
 import {
   bootstrapReplayPending,
@@ -734,6 +736,12 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   // §6.5: a Change Set that introduces or worsens a readiness conflict needs an
   // explicit second confirmation; the flag never survives a change of the batch.
   const [confirmConflictApply, setConfirmConflictApply] = useState(false)
+  const [dependencyGraphHidden, setDependencyGraphHidden] = useState(false)
+  const [dependencyGraphDepth, setDependencyGraphDepth] = useState<1 | 2>(1)
+  const [dependencyGraphSupersedes, setDependencyGraphSupersedes] = useState(true)
+  const [dependencyGraphFocusId, setDependencyGraphFocusId] = useState<string | undefined>(undefined)
+  const [dependencyGraphActiveKey, setDependencyGraphActiveKey] = useState<string | undefined>(undefined)
+  const [dependencyGraphProblem, setDependencyGraphProblem] = useState<string | null>(null)
   const [archivePreview, setArchivePreview] = useState<ArchivePreview | null>(null)
   const [archiveEntries, setArchiveEntries] = useState<readonly CharterArchiveEntry[]>([])
   const [archiveCacheProblem, setArchiveCacheProblem] = useState<string | null>(null)
@@ -878,6 +886,24 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
     [view, projectedItems],
   )
   const conflictTotal = conflictDiff.added.length + conflictDiff.worsened.length
+  const relationGraph = useMemo<RelationGraphModel | null>(() => {
+    if (view === null || !dependencyPlanResult.ok) return null
+    return buildRelationGraph({
+      committed: view.items as unknown as GraphInputItem[],
+      projected: projectedItems as unknown as GraphInputItem[],
+      ops,
+      showSupersedes: dependencyGraphSupersedes,
+    })
+  }, [view, projectedItems, ops, dependencyGraphSupersedes, dependencyPlanResult.ok])
+  const relationFocusId = relationGraph === null
+    ? undefined
+    : dependencyGraphFocusId !== undefined && relationGraph.nodes.some(node => node.id === dependencyGraphFocusId)
+      ? dependencyGraphFocusId
+      : defaultGraphFocus(relationGraph)
+  const relationLayout = useMemo(() => relationGraph === null
+    ? null
+    : layoutRelationGraph(relationGraph, { focusId: relationFocusId, depth: dependencyGraphDepth }), [relationGraph, relationFocusId, dependencyGraphDepth])
+  const relationGraphAvailable = relationGraph !== null && relationGraph.edges.length > 0
   const formattedPreview = useMemo(() => formatCharterPreview(preview), [preview])
   const bootstrapPromptBytes = useMemo(() => {
     if (view === null || bootstrapPhase !== 'draft') return 0
@@ -1023,8 +1049,15 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   }, [view?.sessionId, view?.lifecycle, draftState.attempt])
 
   useEffect(() => {
+    setDependencyGraphHidden(false)
+    setDependencyGraphFocusId(undefined)
+    setDependencyGraphActiveKey(undefined)
+  }, [view?.sessionId])
+
+  useEffect(() => {
     setConfirmDiscardAll(false)
     setConfirmConflictApply(false)
+    setDependencyGraphProblem(null)
   }, [view?.sessionId, view?.lifecycle, view?.revision, baseRevision, conflictTotal, draftState.ops, draftState.editor, draftState.editorText, draftState.newInvariant, draftState.newDeliverable])
 
   useEffect(() => {
@@ -1210,6 +1243,28 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
     }
     setConfirmConflictApply(false)
     void draft.applyDraft(view).finally(() => statusRef.current?.focus())
+  }
+  const stageGraphRequires = (targetId: string, nextRequires: readonly string[]): void => {
+    if (view === null || !editable) return
+    const candidateItems = projectedItems.map(item => item.id === targetId
+      ? { ...item, requires: [...nextRequires] }
+      : item)
+    try {
+      const projected = candidateItems as unknown as CharterItem[]
+      validateDependencyGraph(projected)
+      dependencyProjection(projected)
+    } catch {
+      setDependencyGraphProblem(t('deps.conflict'))
+      return
+    }
+    setDependencyGraphProblem(null)
+    draft.setDeliverableRequires(view, targetId, nextRequires)
+  }
+  const locateGraphNodeInList = (id: string): void => {
+    if (id === '') return
+    const row = document.querySelector<HTMLElement>(`[data-dependency-id="${CSS.escape(id)}"]`)
+    row?.focus()
+    row?.scrollIntoView({ block: 'nearest' })
   }
   const errorText = (code: string | undefined): string => {
     if (code === undefined) return t('recovery.exportFailed')
@@ -2050,7 +2105,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                       maxBytes={view.limits.maxItemBytes}
                       previousBytes={editor.kind === 'edit' ? normalizedBytes(editor.item.text) : undefined}
                       label={t('editor.invariantAria')}
-                      t={t}
+                      t={(key, values) => t(key as CharterLocaleKey, values)}
                     />
                   </div>
                 )}
@@ -2071,48 +2126,106 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                     <h3 id="charter-dependency-title">{t('deps.title')}</h3>
                   </div>
                   <span className="charter-count">{dependencyPlan.length}</span>
+                  {relationGraphAvailable && (
+                    <button
+                      type="button"
+                      className="charter-linkbutton"
+                      aria-pressed={!dependencyGraphHidden}
+                      onClick={() => setDependencyGraphHidden(value => !value)}
+                    >
+                      {dependencyGraphHidden ? t('deps.showGraph') : t('deps.hideGraph')}
+                    </button>
+                  )}
                 </div>
-                <ol className="charter-dependency-list">
-                  {dependencyPlan.map(row => {
-                    const item = view.items.find(candidate => candidate.id === row.id)
-                    return (
-                      <li key={row.id} className={`charter-dependency is-${row.executionDisplay}`}>
-                        <span className="charter-dependency__key">{row.localKey}</span>
-                        <span className="charter-dependency__text">{item?.text ?? row.id}</span>
-                        <span className="charter-dependency__status">{t(`deps.status.${row.executionDisplay}`)}</span>
-                        {row.prerequisiteStatus === 'dependency-conflict' && row.executionDisplay !== 'dependency-conflict' && (
-                          <span className="charter-dependency__status">{t('deps.prerequisiteConflict')}</span>
-                        )}
-                        {row.requires.length > 0 && (
-                          <span className="charter-dependency__requires">
-                            {t('deps.requires', { keys: row.requires.join(', ') })}
-                          </span>
-                        )}
-                        <select
-                          className="charter-dependency__select"
-                          multiple
-                          aria-label={t('deps.editAria', { key: row.localKey })}
-                          value={row.requiresIds}
-                          disabled={!editable || saving || unknownBlocked}
-                          onChange={event => draft.setDeliverableRequires(
-                            view,
-                            row.id,
-                            Array.from(event.target.selectedOptions, option => option.value),
-                          )}
-                        >
-                          {view.items.filter(candidate =>
-                            candidate.kind === 'deliverable'
-                            && candidate.review === 'accepted'
-                            && candidate.lifecycle === 'current'
-                            && candidate.id !== row.id,
-                          ).map(candidate => (
-                            <option key={candidate.id} value={candidate.id} title={candidate.text}>{shortText(candidate.text, 16)}</option>
-                          ))}
-                        </select>
-                      </li>
-                    )
-                  })}
-                </ol>
+                {dependencyGraphProblem !== null && (
+                  <div className="charter-notice charter-notice--warning" role="alert">{dependencyGraphProblem}</div>
+                )}
+                <div className={`charter-dependency-layout${dependencyGraphHidden ? ' is-graph-hidden' : ''}`}>
+                  {!dependencyGraphHidden && (
+                    <a className="charter-graph__skip" href="#charter-dependency-list">{t('deps.skipToList')}</a>
+                  )}
+                  {!dependencyGraphHidden && relationGraphAvailable && relationGraph !== null && relationLayout !== null && (
+                    <DependencyGraph
+                      layout={relationLayout}
+                      model={relationGraph}
+                      focusId={relationFocusId}
+                      activeKey={dependencyGraphActiveKey ?? relationFocusId}
+                      depth={dependencyGraphDepth}
+                      showSupersedes={dependencyGraphSupersedes}
+                      editable={editable}
+                      onFocus={id => {
+                        setDependencyGraphFocusId(id)
+                        setDependencyGraphActiveKey(id)
+                      }}
+                      onActiveKey={setDependencyGraphActiveKey}
+                      onDepth={setDependencyGraphDepth}
+                      onShowSupersedes={setDependencyGraphSupersedes}
+                      onStageRequires={stageGraphRequires}
+                      onLocateList={locateGraphNodeInList}
+                      onProposal={() => goSection('history')}
+                      t={(key, values) => t(key as CharterLocaleKey, values)}
+                    />
+                  )}
+                  <div className="charter-dependency-listwrap">
+                    <ol className="charter-dependency-list" id="charter-dependency-list">
+                      {dependencyPlan.map(row => {
+                        const item = view.items.find(candidate => candidate.id === row.id)
+                        return (
+                          <li
+                            key={row.id}
+                            className={`charter-dependency is-${row.executionDisplay}`}
+                            data-dependency-id={row.id}
+                            tabIndex={-1}
+                          >
+                            <span className="charter-dependency__key">{row.localKey}</span>
+                            <span className="charter-dependency__text">{item?.text ?? row.id}</span>
+                            <span className="charter-dependency__status">{t(`deps.status.${row.executionDisplay}`)}</span>
+                            {row.prerequisiteStatus === 'dependency-conflict' && row.executionDisplay !== 'dependency-conflict' && (
+                              <span className="charter-dependency__status">{t('deps.prerequisiteConflict')}</span>
+                            )}
+                            <button
+                              type="button"
+                              className="charter-linkbutton charter-dependency__locate"
+                              onClick={() => {
+                                setDependencyGraphHidden(false)
+                                setDependencyGraphFocusId(row.id)
+                                setDependencyGraphActiveKey(row.id)
+                              }}
+                            >
+                              {t('deps.locateInGraph')}
+                            </button>
+                            {row.requires.length > 0 && (
+                              <span className="charter-dependency__requires">
+                                {t('deps.requires', { keys: row.requires.join(', ') })}
+                              </span>
+                            )}
+                            <select
+                              className="charter-dependency__select"
+                              multiple
+                              aria-label={t('deps.editAria', { key: row.localKey })}
+                              value={row.requiresIds}
+                              disabled={!editable || saving || unknownBlocked}
+                              onChange={event => draft.setDeliverableRequires(
+                                view,
+                                row.id,
+                                Array.from(event.target.selectedOptions, option => option.value),
+                              )}
+                            >
+                              {view.items.filter(candidate =>
+                                candidate.kind === 'deliverable'
+                                && candidate.review === 'accepted'
+                                && candidate.lifecycle === 'current'
+                                && candidate.id !== row.id,
+                              ).map(candidate => (
+                                <option key={candidate.id} value={candidate.id} title={candidate.text}>{shortText(candidate.text, 16)}</option>
+                              ))}
+                            </select>
+                          </li>
+                        )
+                      })}
+                    </ol>
+                  </div>
+                </div>
               </section>
             )}
 

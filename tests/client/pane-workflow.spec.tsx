@@ -474,6 +474,54 @@ describe('rc.6 pane help and formatted preview', () => {
   })
 })
 
+describe('dependency graph pane surface', () => {
+  function graphDeliverable(id: string, order: number, progress: string, requires?: readonly string[]): CharterItem {
+    return {
+      id, kind: 'deliverable', text: `Task ${id}`, review: 'accepted', lifecycle: 'current',
+      verification: { state: 'unchecked' }, origin: 'user', order, createdRevision: 1, progress,
+      ...(requires === undefined ? {} : { requires: [...requires] }),
+    } as unknown as CharterItem
+  }
+
+  function mountGraph(): ReactTestRenderer {
+    const initial = view({
+      revision: 1,
+      items: [
+        graphDeliverable('a', 0, 'done'),
+        graphDeliverable('b', 1, 'in-progress', ['a']),
+      ],
+    })
+    const src = source(initial)
+    const draft = new CharterDraft(sessionId, () => src)
+    draft.bindLifecycle(lifecycle)
+    draft.setSection('deliverables')
+    return mount(src, draft)
+  }
+
+  it('renders the graph and the semantic list together, and can hide only the graph', () => {
+    const tree = mountGraph()
+    expect(textOf(tree.root)).toContain('deps.graphTitle')
+    expect(textOf(tree.root)).toContain('deps.title')
+    expect(tree.root.findAll(node => node.props['id'] === 'charter-dependency-list')).toHaveLength(1)
+    expect(tree.root.findAll(node => node.props['aria-label'] === 'deps.graphAria')).toHaveLength(1)
+    expect(textOf(tree.root)).toContain('deps.locateInGraph')
+
+    act(() => { button(tree, 'deps.hideGraph').props.onClick() })
+    expect(textOf(tree.root)).not.toContain('deps.graphTitle')
+    expect(tree.root.findAll(node => node.props['id'] === 'charter-dependency-list')).toHaveLength(1)
+  })
+
+  it('shows the graph only when at least one dependency edge exists', () => {
+    const isolated = view({ revision: 1, items: [graphDeliverable('a', 0, 'done')] })
+    const src = source(isolated)
+    const draft = new CharterDraft(sessionId, () => src)
+    draft.bindLifecycle(lifecycle)
+    draft.setSection('deliverables')
+    const tree = mount(src, draft)
+    expect(textOf(tree.root)).not.toContain('deps.graphTitle')
+  })
+})
+
 describe('§6.5 dependency conflict confirmation', () => {
   function countingSource(initial: CharterView, onEdit: () => void): CharterSessionSource {
     const base = source(initial) as unknown as Record<string, unknown>
