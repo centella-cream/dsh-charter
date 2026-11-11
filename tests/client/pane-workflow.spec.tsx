@@ -169,10 +169,12 @@ describe('0.2 workspace and dependency plan', () => {
     const tree = mount(src, draft)
     expect(textOf(tree.root)).toContain('deps.title')
     expect(textOf(tree.root)).toContain('D2')
-    const selects = tree.root.findAll(node => node.type === 'select' && String(node.props['aria-label']).includes('deps.editAria'))
-    expect(selects).toHaveLength(2)
-    expect(selects[1]?.props.value).toEqual(['item-a'])
-    expect(selects[0]?.props.multiple).toBe(true)
+    const editButtons = tree.root.findAll(node => node.type === 'button' && textOf(node) === 'deps.editRequires')
+    expect(editButtons).toHaveLength(2)
+    act(() => { editButtons[1]!.props.onClick() })
+    const checkboxes = tree.root.findAll(node => node.type === 'input' && node.props.type === 'checkbox')
+    expect(checkboxes.length).toBeGreaterThanOrEqual(2)
+    expect(checkboxes.some(node => node.props.checked === true)).toBe(true)
   })
 
   it('stages objective proposal acceptance from Review Center', () => {
@@ -557,14 +559,14 @@ describe('dependency graph pane surface', () => {
     listDraft.bindLifecycle(lifecycle)
     listDraft.setSection('deliverables')
     const listTree = mount(listSource, listDraft)
-    const listSelect = listTree.root.findAll(node => node.type === 'select' && node.props.multiple === true)
-      .find(node => Array.isArray(node.props.value) && (node.props.value as string[]).includes('a'))
-    expect(listSelect).toBeDefined()
-    act(() => {
-      listSelect!.props.onChange({
-        target: { selectedOptions: [{ value: 'a' }, { value: 'c' }] },
-      })
-    })
+    const bRow = listTree.root.findAll(node => node.props['data-dependency-id'] === 'b')[0]
+    const editButtons = bRow!.findAll(node => node.type === 'button' && textOf(node) === 'deps.editRequires')
+    expect(editButtons).toHaveLength(1)
+    act(() => { editButtons[0]!.props.onClick() })
+    const checkboxes = bRow!.findAll(node => node.type === 'input' && node.props.type === 'checkbox')
+    const unchecked = checkboxes.find(node => node.props.checked === false)
+    expect(unchecked).toBeDefined()
+    act(() => { unchecked!.props.onChange({ target: { checked: true } }) })
     expect(listDraft.getSnapshot().ops).toEqual(graphOps)
   })
 
@@ -583,14 +585,15 @@ describe('dependency graph pane surface', () => {
     expect(row?.props.tabIndex).toBe(-1)
   })
 
-  it('shows the graph only when at least one dependency edge exists', () => {
+  it('shows an isolated node and an empty hint when no dependency edge exists', () => {
     const isolated = view({ revision: 1, items: [graphDeliverable('a', 0, 'done')] })
     const src = source(isolated)
     const draft = new CharterDraft(sessionId, () => src)
     draft.bindLifecycle(lifecycle)
     draft.setSection('deliverables')
     const tree = mount(src, draft)
-    expect(textOf(tree.root)).not.toContain('deps.graphTitle')
+    expect(textOf(tree.root)).toContain('deps.graphTitle')
+    expect(textOf(tree.root)).toContain('deps.graphEmpty')
   })
 })
 

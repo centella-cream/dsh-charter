@@ -499,7 +499,10 @@ export function layoutRelationGraph(model: RelationGraphModel, options: LayoutOp
 
   let visible = [...model.nodes]
   let visibleEdges = [...model.edges]
-  if (focusId !== undefined) {
+  // A dependency-free Contract still has nodes worth showing; an ego crop
+  // around the default focus would leave a single node. Only crop when there
+  // are edges to define a meaningful neighbourhood.
+  if (focusId !== undefined && model.edges.length > 0) {
     const keep = new Set([focusId])
     let frontier = [focusId]
     for (let distance = 0; distance < depth; distance += 1) {

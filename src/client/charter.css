@@ -2523,3 +2523,83 @@
   .charter-graph__edge-line,
   .charter-graph__edge-removed { stroke: CanvasText; }
 }
+
+/* Compact semantic list that sits beside the dependency graph. */
+.charter-dependency {
+  display: block;
+  padding: 7px 9px;
+}
+
+.charter-dependency__row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: start;
+}
+
+.charter-dependency__main {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.charter-dependency__text {
+  display: -webkit-box;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.charter-dependency__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  color: var(--dsw-alias-label-tertiary, inherit);
+  font-size: 11px;
+}
+
+.charter-dependency__meta .charter-dependency__status.is-ready { color: var(--charter-success); }
+.charter-dependency__meta .charter-dependency__status.is-waiting { color: var(--charter-warn, inherit); }
+.charter-dependency__meta .charter-dependency__status.is-dependency-conflict { color: var(--charter-danger); }
+.charter-dependency__meta .charter-dependency__status.is-conflict { color: var(--charter-danger); }
+
+.charter-dependency__actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: end;
+  gap: 2px 6px;
+}
+
+.charter-dependency__editor {
+  display: grid;
+  max-height: 220px;
+  margin: 7px 0 0 24px;
+  padding: 7px 9px;
+  overflow: auto;
+  gap: 4px;
+  border: 1px solid var(--charter-border-soft);
+  border-radius: 6px;
+  background: var(--charter-surface-2);
+}
+
+.charter-dependency__editor legend {
+  padding: 0 4px;
+  color: var(--dsw-alias-label-tertiary, inherit);
+  font-size: 10px;
+}
+
+.charter-dependency__editor label {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+
+.charter-dependency__editor label span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
