@@ -5,7 +5,7 @@ English | [中文](CHANGELOG.zh.md)
 All notable changes to `dsh-charter` are recorded here. The project follows a pre-1.0 version line while the
 DSH plugin ABI is still moving.
 
-## 0.2.2 — 2026-11-11 (release candidate)
+## 0.2.2 — 2026-11-11
 
 Dependency-graph workspace view and explicit dependency-conflict confirmation. No record-schema, Host, Remote,
 or prompt-projection change.

@@ -4,7 +4,7 @@
 [![GitHub](https://img.shields.io/badge/GitHub-centella--cream%2Fdsh--charter-181717?logo=github)](https://github.com/centella-cream/dsh-charter)
 [![DSH](https://img.shields.io/badge/DSH-9%20verified%20versions-4b6bfb)](docs/design/compatibility.md)
 [![Node](https://img.shields.io/badge/node-%5E22.19%20%7C%7C%20%3E%3D24-339933)](package.json)
-[![Status: 0.2.2 candidate](https://img.shields.io/badge/status-0.2.2%20candidate-orange)](#status)
+[![Status: 0.2.2 stable](https://img.shields.io/badge/status-0.2.2-brightgreen)](#status)
 
 English | [中文](README.zh.md)
 
@@ -39,10 +39,10 @@ deliverables, evidence, and dependency relationships survive compaction and rema
 
 ## Status
 
-- **Release candidate:** `0.2.2` — dependency-graph workspace view, compact dependency list, and explicit
-  dependency-conflict confirmation. Local acceptance and promotion are still pending.
-- **Published release:** `0.2.1` — npm `latest` and `next`, GitHub Release `v0.2.1`.
-- **Previous release:** `0.2.0`.
+- **Published release:** `0.2.2` — npm `latest` and `next`, GitHub Release `v0.2.2`; dependency-graph workspace
+  view, compact dependency list, and explicit dependency-conflict confirmation.
+- **Previous release:** `0.2.1`.
+- **Earlier release:** `0.2.0`.
 - **Primary DSH baseline:** `0.2.2-rc.1`; nine declared DSH versions are source-matrix verified.
 - Versioning from `0.2.0` onward uses plain increments (`0.2.0`, `0.2.1`, …), never an `rc` suffix.
 
@@ -170,19 +170,17 @@ storage.
 
 ## Install
 
-The latest public release is `0.2.1`. The `0.2.2` candidate is installed from its local acceptance tarball
-until promotion:
+The latest public release is `0.2.2`. Install the published exact version for a reproducible profile:
 
 ```bash
-dsh plugin --profile web add ./dsh-charter-0.2.2.tgz
+dsh plugin --profile web add dsh-charter@0.2.2
 ```
 
-For a published exact version, install `0.2.1` for now (the same path applies to `0.2.2` after promotion):
+For air-gapped machines or exact-artifact verification, install the published tarball:
 
 ```bash
-dsh plugin --profile web add dsh-charter@0.2.1
-npm pack dsh-charter@0.2.1
-dsh plugin --profile web add ./dsh-charter-0.2.1.tgz
+npm pack dsh-charter@0.2.2
+dsh plugin --profile web add ./dsh-charter-0.2.2.tgz
 ```
 
 For Desktop, use **Desktop → Plugins → Install/Update**, or import the same local tarball if your Desktop build

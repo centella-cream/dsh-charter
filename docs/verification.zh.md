@@ -3,10 +3,10 @@
 [English](verification.md) | 中文
 
 > **状态：** Active — 当前操作记录。
-> **版本范围：** `0.2.2` 开发候选。
+> **版本范围：** `0.2.2`，2026-11-11 已发布。
 > **基准：** 2026-11-11
 
-验证日期：2026-11-11。当前源码版本：`0.2.2`（开发候选，尚未发布）。本文件是当前证据记录；历史逐提交的叙事保留在 Git 历史和 Changelog。临时目录、profile、
+验证日期：2026-11-11。当前源码版本：`0.2.2`（2026-11-11 已发布）。本文件是当前证据记录；历史逐提交的叙事保留在 Git 历史和 Changelog。临时目录、profile、
 tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 
 环境：macOS，Node `v22.23.1`，npm `12.0.2`，pnpm `12.3.4`。本地 DSH 开发基线：`0.2.2-rc.1`（当前 npm
@@ -16,11 +16,12 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 
 当前发布状态（2026-11-11）：
 
-- 已发布：`0.2.1`（npm `latest`/`next`；精确 SHA-256 `d4ae14e19b4d65264a53b57c0f9d3f93eb8303189e8daa3f3f35beb97104d498`）。GitHub Release `v0.2.1` 已公开且不可变。
-- `0.2.0`：上一公开版本；GitHub Release `v0.2.0` 保持不可变。
+- 已发布：`0.2.2`（npm `latest`/`next`；精确 SHA-256 `ccb094342ceda030b77c2c3555bc2838ee8a4f6ef2efe4f1ac80a9d39fca7875`）。GitHub Release `v0.2.2` 已公开且不可变。
+- `0.2.1`：上一公开版本；GitHub Release `v0.2.1` 保持不可变。
+- `0.2.0`：更早的公开版本；GitHub Release `v0.2.0` 保持不可变。
 - `0.1.0-rc.6`：更早的公开版本；使用 recovery tag `v0.1.0-rc.6-republished`。
 - 从 0.2.0 起版本号使用普通递增，不使用 `rc` 后缀。
-- 当前源码证据：0.2.2 最终候选树在源码提交 `f9d93c0` 上通过 37 个测试文件 / 475 个测试；九版本矩阵在该树上 475/475 通过（Node `v22.23.1` / pnpm `12.3.4`，证据 `.tmp/0.2.2-final-matrix2.json`）。
+- 当前源码证据：0.2.2 最终树在源码提交 `f9d93c0` 上通过 37 个测试文件 / 475 个测试；九版本矩阵在该树上 475/475 通过（Node `v22.23.1` / pnpm `12.3.4`，证据 `.tmp/0.2.2-final-matrix2.json`）。
 - 发布后诊断：真实模型 compaction PASS（session `session-da7e7b0d-f0b0-49a2-8391-148b4782892c`）；512 条性能于 2026-11-06 PASS（core read/planning p95，见下）。
 
 | 项目 | 结果 |
@@ -35,8 +36,9 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 | 真实 `TypertGatewayService` | 精确 artifact 在隔离的 DSH `0.2.1-rc.3` / `rc.4` 依赖图上通过 |
 | 兼容 sentinel | `0.1.7-rc.2`、`0.2.1-rc.2`、`0.2.1-rc.4`、`0.2.1-rc.5`、`0.2.2-rc.1` 通过 |
 | Fresh Web profile matrix (historical rc.6) | PASS：历史 rc.6 artifact 曾在 DSH `0.1.7-rc.2`、`0.2.0-rc.2`、`0.2.1-rc.2`、`0.2.1-rc.4`、`0.2.1-rc.5` 上安装并启动 |
-| Fresh Web 0.2.2 | 2026-11-05 PASS：全新 `DSH_HOME` + `dsh@0.2.2-rc.1 plugin --profile web add` 安装 `dsh-charter-0.2.0.tgz`（SHA-256 `fde5531d457effc713f4423f8b46c8f0e591770e59c55e19956f000c11bdeffc`）；Web 启动、页面 HTTP 200、charter bundle HTTP 200；boot graph 含 `dsh-charter`，页面 index 含 `dsh-charter/client.js` |
-| 0.2.2 精确 artifact smoke | 2026-11-11 PASS：`dsh-charter-0.2.2.tgz`（98 个文件，SHA-256 `032cb9048d5068f70243364f9ad60cdab6fef015e984d8bee2b1e8496fdc0651`）；package smoke 在空 consumer 中安装精确字节，packed recovery smoke 的 export/restore/两次重启/故障检查全部通过。 |
+| Fresh Web（历史 0.2.2 DSH / 0.2.0 插件） | 2026-11-05 PASS：全新 `DSH_HOME` + `dsh@0.2.2-rc.1 plugin --profile web add` 安装 `dsh-charter-0.2.0.tgz`（SHA-256 `fde5531d457effc713f4423f8b46c8f0e591770e59c55e19956f000c11bdeffc`）；Web 启动、页面 HTTP 200、charter bundle HTTP 200；boot graph 含 `dsh-charter`，页面 index 含 `dsh-charter/client.js` |
+| 0.2.2 promotion | 2026-11-11 PASS：候选 run `43024720739`（C `51789db`），checksum-only C+1 `d65a4d6`，promotion run `43026165062`；npm `latest`/`next` 均为 `0.2.2`，GitHub Release `v0.2.2` 已公开并带 tarball、`SHA256SUMS`、`release-evidence.json`。 |
+| 0.2.2 精确 artifact smoke | 2026-11-11 PASS：已发布 `dsh-charter-0.2.2.tgz`（98 个文件，SHA-256 `ccb094342ceda030b77c2c3555bc2838ee8a4f6ef2efe4f1ac80a9d39fca7875`）；package smoke 在空 consumer 中安装精确字节，packed recovery smoke 的 export/restore/两次重启/故障检查全部通过。 |
 | 九版本全量 rerun | tracked `compat-matrix --versions all --allow-new-release` 通过（每版本 475/475） |
 | 未跟踪 `0.2.2-alpha.2` probe | strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run；rc.6 明确不支持 |
 | 本地 Web + Desktop profile | 0.2.0 开发 artifact 已装入本地 web/desktop profile；Desktop app 为 `0.2.2-rc.1`，真实 Electron ABI/交互仍需人工门禁 |

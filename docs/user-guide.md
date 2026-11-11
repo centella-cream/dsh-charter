@@ -3,7 +3,7 @@
 English | [中文](user-guide.zh.md)
 
 > **Status:** Active — current operating record.
-> **Version scope:** `0.2.2` release candidate.
+> **Version scope:** `0.2.2` released 2026-11-11.
 > **Baseline:** 2026-11-11
 
 This guide is for installing and using the plugin. For design constraints see the
@@ -27,8 +27,8 @@ For a Web or Desktop profile the plugin registers:
 
 ## 2. Install
 
-> **Install channels.** The latest published release is `0.2.1` (npm `latest`/`next`). The `0.2.2` candidate is
-> installed from its local acceptance tarball until promotion.
+> **Install channels.** The latest published release is `0.2.2` (npm `latest`/`next`), with GitHub Release
+> `v0.2.2`.
 
 ### 2.1 Requirements
 
@@ -53,12 +53,11 @@ dependency is a local `file:` path. Prefer npm install in §2.3 when the registr
 ### 2.3 npm / Registry install (recommended) — Web profile by version or tag
 
 ```bash
-dsh plugin --profile web add dsh-charter@0.2.1   # latest published exact version
-dsh plugin --profile web add ./dsh-charter-0.2.2.tgz # local 0.2.2 candidate
+dsh plugin --profile web add dsh-charter@0.2.2   # latest published exact version
+dsh plugin --profile web add ./dsh-charter-0.2.2.tgz # published tarball fallback
 ```
 
-The latest published release is `0.2.1`. Use the exact `0.2.2` target after promotion; before that, use the
-candidate tarball from the release PR. npm `next`/`latest` move
+The latest published release is `0.2.2`. Use the exact `0.2.2` target. npm `next`/`latest` move
 together on a stable promotion (npm keeps a `latest` tag and the project chooses where it points; this is our policy,
 not an npm requirement). Use the offline tarball fallback only when the registry is unreachable or for
 candidate verification. Pin an explicit version for reproducible profiles.
@@ -68,7 +67,7 @@ dependency and bundle selection:
 
 ```json
 {
-  "dependencies": { "dsh-charter": "0.2.1" },
+  "dependencies": { "dsh-charter": "0.2.2" },
   "dsh": { "profile": { "bundles": ["...", "dsh-charter"] } }
 }
 ```

@@ -3,10 +3,10 @@
 English | [中文](verification.zh.md)
 
 > **Status:** Active — current operating record.
-> **Version scope:** `0.2.2` development candidate.
+> **Version scope:** `0.2.2` released 2026-11-11.
 > **Baseline:** 2026-11-11
 
-Verification date: 2026-11-11. Current source version: `0.2.2` (development candidate; not published). This is the current evidence record; historical per-commit narratives live in Git
+Verification date: 2026-11-11. Current source version: `0.2.2` (published 2026-11-11). This is the current evidence record; historical per-commit narratives live in Git
 history and the Changelog. Temporary directories, profiles, tarballs, and fetched HTML live under `.tmp/` and are
 excluded from the published package.
 
@@ -17,11 +17,12 @@ Environment: macOS, Node `v22.23.1`, npm `12.0.2`, pnpm `12.3.4`. Local DSH deve
 
 Current release state (2026-11-11):
 
-- Published: `0.2.1` (npm `latest`/`next`; exact SHA-256 `d4ae14e19b4d65264a53b57c0f9d3f93eb8303189e8daa3f3f35beb97104d498`). GitHub Release `v0.2.1` is public and immutable.
-- `0.2.0`: previous public release; GitHub Release `v0.2.0` remains immutable.
+- Published: `0.2.2` (npm `latest`/`next`; exact SHA-256 `ccb094342ceda030b77c2c3555bc2838ee8a4f6ef2efe4f1ac80a9d39fca7875`). GitHub Release `v0.2.2` is public and immutable.
+- `0.2.1`: previous public release; GitHub Release `v0.2.1` remains immutable.
+- `0.2.0`: earlier public release; GitHub Release `v0.2.0` remains immutable.
 - `0.1.0-rc.6`: earlier public release; recovery tag `v0.1.0-rc.6-republished`.
 - Versioning from 0.2.0 onward uses plain increments and never an `rc` suffix.
-- Current source evidence: 37 files / 475 tests on the final 0.2.2 candidate tree at `f9d93c0`; the nine-version matrix passes 475/475 on that tree (Node `v22.23.1` / pnpm `12.3.4`, evidence `.tmp/0.2.2-final-matrix2.json`).
+- Current source evidence: 37 files / 475 tests on the final 0.2.2 tree at `f9d93c0`; the nine-version matrix passes 475/475 on that tree (Node `v22.23.1` / pnpm `12.3.4`, evidence `.tmp/0.2.2-final-matrix2.json`).
 - Post-release diagnostics: real-model compaction PASS (session `session-da7e7b0d-f0b0-49a2-8391-148b4782892c`); 512-item performance PASS on 2026-11-06 (core read/planning p95, see below).
 
 | Item | Result |
@@ -35,10 +36,11 @@ Current release state (2026-11-11):
 | Packed-artifact recovery smoke | Pass: export, target removal, restore, receipt replay, two restarts, healthy-target refusal, packed fault subset |
 | Real `TypertGatewayService` | Pass on exact artifact with isolated DSH `0.2.1-rc.3` and `rc.4` graphs |
 | Compatibility sentinels | Pass on `0.1.7-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4`, `0.2.1-rc.5` |
-| 0.2.2 exact artifact smoke | PASS on 2026-11-11: `dsh-charter-0.2.2.tgz` (98 files, SHA-256 `032cb9048d5068f70243364f9ad60cdab6fef015e984d8bee2b1e8496fdc0651`); package smoke installed the exact bytes in an empty consumer and the packed recovery smoke passed all export/restore/two-restart/fault checks. |
+| 0.2.2 promotion | PASS on 2026-11-11: release candidate run `43024720739` (C `51789db`), checksum-only C+1 `d65a4d6`, promotion run `43026165062`; npm `latest`/`next` both `0.2.2`, GitHub Release `v0.2.2` public with tarball `SHA256SUMS` and `release-evidence.json`. |
+| 0.2.2 exact artifact smoke | PASS on 2026-11-11: published `dsh-charter-0.2.2.tgz` (98 files, SHA-256 `ccb094342ceda030b77c2c3555bc2838ee8a4f6ef2efe4f1ac80a9d39fca7875`); package smoke installed the exact bytes in an empty consumer and the packed recovery smoke passed all export/restore/two-restart/fault checks. |
 | Nine-version full rerun | Pass via tracked `compat-matrix --versions all --allow-new-release` (475/475 each) |
 | Fresh Web profile matrix (historical rc.6) | PASS: local rc.6 artifact (pre-withdrawal) installed and served on DSH `0.1.7-rc.2`, `0.2.0-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4`, `0.2.1-rc.5` |
-| Fresh Web profile 0.2.2 | PASS on 2026-11-05: fresh `DSH_HOME` + `dsh@0.2.2-rc.1 plugin --profile web add` of `dsh-charter-0.2.0.tgz` (SHA-256 `fde5531d457effc713f4423f8b46c8f0e591770e59c55e19956f000c11bdeffc`); Web boot, page HTTP 200, charter bundle HTTP 200; boot graph contains `dsh-charter` and the page index contains `dsh-charter/client.js` |
+| Fresh Web profile (historical 0.2.2 DSH / 0.2.0 plugin) | PASS on 2026-11-05: fresh `DSH_HOME` + `dsh@0.2.2-rc.1 plugin --profile web add` of `dsh-charter-0.2.0.tgz` (SHA-256 `fde5531d457effc713f4423f8b46c8f0e591770e59c55e19956f000c11bdeffc`); Web boot, page HTTP 200, charter bundle HTTP 200; boot graph contains `dsh-charter` and the page index contains `dsh-charter/client.js` |
 | Untracked `0.2.2-alpha.2` / `0.2.2-alpha.3` probes | strict-peer install fails because these alpha lines require a Cordis 4.0.6 alpha graph; the 0.2.2-rc.1 line pins Cordis 4.1.0; no tests run; explicitly unsupported. |
 | 0.2.1 real Web Pane | PASS on 2026-11-06: local Web profile installed the `0.2.1` candidate artifact; Pane reports `v0.2.1`, diagnostics/recovery cache and the editable message proposal render, and the browser console is clean. |
 | 0.2.1 local human acceptance | PASS on 2026-11-06: user completed local acceptance of the 0.2.1 UI/interaction batch. |

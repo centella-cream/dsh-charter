@@ -3,7 +3,7 @@
 [English](user-guide.md) | 中文
 
 > **状态：** Active — 当前操作记录。
-> **版本范围：** `0.2.2` 发布候选。
+> **版本范围：** `0.2.2`，2026-11-11 已发布。
 > **基准：** 2026-11-11
 
 本文面向安装和使用插件的用户。设计约束见[设计规格](design/charter-design-v1.zh.md)，版本差异见
@@ -26,8 +26,7 @@ dsh --profile web --dump-config | grep -n "charter" || true
 
 ## 2. 安装
 
-> **安装渠道。** 最新已发布版本是 `0.2.1`（npm `latest`/`next`）。`0.2.2` 候选在 promotion 前从本地验收
-> tarball 安装。
+> **安装渠道。** 最新已发布版本是 `0.2.2`（npm `latest`/`next`），GitHub Release `v0.2.2`。
 
 ### 2.1 环境要求
 
@@ -51,12 +50,11 @@ Desktop 若支持本地插件导入，可在 Plugins 页面安装同一个 tarba
 ### 2.3 npm / Registry 安装（推荐）— Web profile 按版本或 tag
 
 ```bash
-dsh plugin --profile web add dsh-charter@0.2.1   # 最新已发布精确版本
-dsh plugin --profile web add ./dsh-charter-0.2.2.tgz # 本地 0.2.2 候选
+dsh plugin --profile web add dsh-charter@0.2.2   # 最新已发布精确版本
+dsh plugin --profile web add ./dsh-charter-0.2.2.tgz # 已发布 tarball 回退
 ```
 
-最新公开版本是 `0.2.1`。`0.2.2` promotion 后使用精确的 `0.2.2`；在此之前使用 release PR 提供的候选
-tarball。stable promotion 会同时移动 npm `next`/`latest`（npm 保留 `latest` tag，
+最新公开版本是 `0.2.2`。请使用精确的 `0.2.2`。stable promotion 会同时移动 npm `next`/`latest`（npm 保留 `latest` tag，
 由项目决定其指向；这是我们的策略，不是 npm 的强制要求）。只有 registry 不可达或候选验证时才使用离线 tarball 回退。固定明确版本
 可以让 profile 可复现。
 
@@ -65,7 +63,7 @@ tarball。stable promotion 会同时移动 npm `next`/`latest`（npm 保留 `lat
 
 ```json
 {
-  "dependencies": { "dsh-charter": "0.2.1" },
+  "dependencies": { "dsh-charter": "0.2.2" },
   "dsh": { "profile": { "bundles": ["...", "dsh-charter"] } }
 }
 ```
