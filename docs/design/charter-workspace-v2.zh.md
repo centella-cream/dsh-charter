@@ -25,6 +25,8 @@
   proposedRequires/evidence；bootstrap active item dedupe；来源派生的 origin。
 - Evidence Integrity/Fact Validity：registered validator、owner-only、文件大小/总字节/总时长/并发边界、
   timeout/权限/不可读→unknown、正文变更→stale、结果不进 standing prompt；v1 verification→v2 validity 映射。
+- Change Set 的 §6.5 依赖冲突确认：`dependencyConflictDiff` 标出新增/加重的 conflict，Pane 列出受影响交付物并要求
+  两步确认；wire 上为 optional 字段，不影响既有 preview/summary digest。
 - source registry 按 source kind/projectionVersion 复算 message/compaction/agent-tool projection；Review/query 面
   使用同一投影上下文并展示 batch integrity；未知投影返回 unsupported，缺 digest 返回 missing，不把“有 digest”当作
   intact。message selection 以 trim 后正文为 canonicalization 基准；agent source 不绑定会在 accept 时剥离的
@@ -505,6 +507,18 @@ UI 组合规则固定为：`done/cancelled → terminal`，但仍单独显示 pr
 
 结构非法会使整个 Change Set 失败。`dependency-conflict` 反映用户记录的实际状态，不自动回写 progress，也不把记录判为
 损坏；Change Set 必须醒目标出新增或加重的 conflict，并要求用户确认。`charter_propose` 不能确认或直接制造这类冲突。
+
+**实现状态（2026-11-10）**：上面这条确认要求此前只在 `charter_propose` 侧生效，Pane 的 Change Set 并没有标注
+新增/加重的 conflict，Apply 一次点击就会提交。现已补齐：
+
+- `dependencyConflictDiff(before, after)`（`src/core/dependencies.ts`）按 §6.5 的 1–2 条规则比较**冲突前置的数量**，
+  输出 `added`（原本不是 conflict，现在成为 conflict；新条目记 `before: 'absent'`）与 `worsened`（两侧都是 conflict，
+  但冲突前置数增加）。只比较 active dependency graph（`accepted + current`），因此 pending/superseded 条目不误报。
+- `planChangeSet` 输出 `PlannedChangeSet.dependencyConflicts`，Host `previewChangeSet` 透传，wire 上是 **optional**
+  字段：老 Host 的帧仍能解码，新字段也不参与 `summaryDigest` / `changeSetPreviewDigest` 的输入，既有 digest 不变。
+- Pane 用同一个纯函数在本地算出冲突（不等预览往返），在 Change Set 面板列出受影响交付物（`D<n>` + 摘要 +
+  冲突前置数变化），Apply 变为**两步确认**：第一次点击只把按钮改成"仍要应用（N 处冲突）"，第二次才提交；
+  暂存批次一变（含 unstage）确认态即失效，`unknown outcome` 与写锁期间无法用 `Esc` 绕过。
 首版不允许 inactive prerequisite，避免 prompt 中出现无法用局部标签引用的历史节点，也避免 restore 后恢复出悬空关系。
 
 ### 6.6 `appliesTo` 实验

@@ -9,6 +9,7 @@ Every design/plan/review document starts with a status block using exactly these
 
 | Status | Meaning |
 | --- | --- |
+| `Proposed` | A design proposal that is **not implemented and not authoritative**. It records an option under consideration; it never describes existing behaviour and must not be cited as the current contract. Entering scope requires a roadmap decision first. |
 | `Active` | Current authority or current operating guide; kept up to date. |
 | `Implemented — pending release acceptance` | Source implementation exists and passes source gates, but the release/manual gates are not complete. |
 | `Historical` | Frozen record of a completed or abandoned decision; read-only and not current guidance. |
@@ -50,6 +51,7 @@ same commit. Do not delete a historical decision just because it is inactive; mo
 | --- | --- | --- | --- |
 | [design/charter-design-v1.md](design/charter-design-v1.md) | Active | 0.1 core; invariants apply to 0.2 | Core Charter invariants and v1 product baseline. |
 | [design/charter-workspace-v2.zh.md](design/charter-workspace-v2.zh.md) | Implemented — pending release acceptance | 0.2.0 | Workspace, proposal timeline, dependencies; topic-scoped. |
+| [design/charter-dependency-graph-v1.zh.md](design/charter-dependency-graph-v1.zh.md) | Proposed | 0.2.2 (pending roadmap entry) | Client-side dependency graph view. Not implemented, not authoritative. §10 specifies how every remaining item is resolved: decisions, fallback values + measurement rules, i18n copy, and the doc-sync text. |
 | [design/version-roadmap.md](design/version-roadmap.md) | Active | whole line | Scope/version authority; Chinese is normative. |
 | [design/compatibility.md](design/compatibility.md) | Active | declared DSH versions | Compatibility claims and matrix. |
 | [history/2026-10-19-charter-design-v1-review.md](history/2026-10-19-charter-design-v1-review.md) | Historical | 0.1 | Frozen v1 design review. |

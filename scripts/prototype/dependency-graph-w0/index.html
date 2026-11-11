@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>W0 原型 — 依赖关系图形视图（W0-1/2/3 浏览器实测）</title>
+<style>
+  /* 设计稿 §3.7 的 token 与几何；全部 em，不用 px 盒（D19） */
+  :root {
+    --charter-border: rgba(127,127,127,.22);
+    --charter-border-soft: rgba(127,127,127,.14);
+    --charter-surface: rgba(127,127,127,.055);
+    --charter-surface-2: rgba(127,127,127,.085);
+    --charter-brand: #3978d4;
+    --charter-danger: #d14343;
+    --charter-warn: #b7791f;
+    --charter-success: #2f8a5b;
+    --label-2: #777; --label-3: #999;
+  }
+  * { box-sizing: border-box }
+  body { margin: 0; padding: 1.5rem; font: 13px/1.5 -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; color: #222; background: #fff }
+  h1 { font-size: 1.15rem; margin: 0 0 .25rem }
+  h2 { font-size: .95rem; margin: 2rem 0 .5rem; padding-bottom: .25rem; border-bottom: 1px solid var(--charter-border-soft) }
+  p.note { color: var(--label-2); margin: .25rem 0 .75rem; max-width: 95ch }
+  code { background: #f4f4f4; padding: 0 3px; border-radius: 3px }
+  .bar { display: flex; flex-wrap: wrap; gap: .375rem; align-items: center; margin-bottom: .75rem }
+  .bar button { min-height: 28px; padding: 2px 10px; border: 1px solid var(--charter-border); border-radius: 6px; background: var(--charter-surface-2); font: inherit; cursor: pointer }
+  .bar button[aria-pressed="true"] { border-color: var(--charter-brand); background: #fff; box-shadow: inset 0 0 0 1px var(--charter-brand); font-weight: 600 }
+  pre.report { margin: .75rem 0 0; padding: .625rem .75rem; border: 1px solid var(--charter-border-soft); border-radius: 7px; background: #fafafa; font: 11.5px/1.6 ui-monospace, Menlo, monospace; white-space: pre-wrap; max-height: 24rem; overflow: auto }
+  .card { border: 1px solid var(--charter-border-soft); border-radius: 10px; padding: .75rem; background: #fff }
+  .twocol { display: grid; gap: .75rem; grid-template-columns: minmax(0,1fr) minmax(20em, 24em) }
+
+  /* 依赖列表行：复刻现有 charter-dependency 结构 */
+  .dep-list { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none }
+  .dep { display: grid; grid-template-columns: auto minmax(0,1fr) auto; gap: 8px; align-items: baseline; padding: 8px 10px; border: 1px solid var(--charter-border-soft); border-radius: 7px }
+  .dep.is-dependency-conflict { border-color: var(--charter-danger) }
+  .dep__key { color: var(--charter-brand); font-size: 11px; font-weight: 700 }
+  .dep__text { min-width: 0; overflow-wrap: anywhere }
+  .dep__status { color: var(--label-3); font-size: 11px }
+  .dep__requires { grid-column: 2 / -1; color: var(--label-3); font-size: 11px }
+  .dep__select { box-sizing: border-box; grid-column: 2 / -1; width: 100%; min-width: 0; min-height: 44px; padding: 2px 6px; overflow: hidden; border: 1px solid var(--charter-border-soft); border-radius: 6px; background: var(--charter-surface-2); color: inherit; font: inherit; font-size: 12px }
+
+  /* 图形区 */
+  .graphwrap { position: relative; height: 22.5em; overflow: auto; border: 1px solid var(--charter-border-soft); border-radius: 8px; background: var(--charter-surface) }
+  .graphtransform { position: relative; transform-origin: 0 0 }  /* 单一 transform：SVG 与标签层同步（D19） */
+  .graphwrap svg { position: absolute; left: 0; top: 0; overflow: visible }
+  .nlabel { position: absolute; display: flex; flex-direction: column; gap: .125em; padding: .375em .625em; border: 1px solid var(--charter-border-soft); border-radius: 7px; background: #fff }
+  .nlabel .k { color: var(--charter-brand); font-size: .6875em; font-weight: 700 }
+  .nlabel .t { font-size: .78em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; overflow-wrap: anywhere }
+  .nlabel .s { font-size: .6875em; color: var(--label-3) }
+  .nlabel[data-state="ready"] { box-shadow: inset 3px 0 0 var(--charter-success) }
+  .nlabel[data-state="waiting"] { box-shadow: inset 3px 0 0 var(--charter-border) }
+  .nlabel[data-state="in-progress"] { box-shadow: inset 3px 0 0 var(--charter-brand) }
+  .nlabel[data-state="blocked"] { box-shadow: inset 3px 0 0 var(--charter-warn) }
+  .nlabel[data-state="dependency-conflict"] { border-color: var(--charter-danger); box-shadow: inset 3px 0 0 var(--charter-danger) }
+  .nlabel[data-lane="candidate"] { border-style: dashed; background: var(--charter-surface-2) }
+  /* history 泳道（幽灵节点）：点线 + tertiary 文本；不用低不透明度，避免与 staged-removed 混淆 */
+  .nlabel[data-lane="history"] { border-style: dotted; color: var(--charter-label-tertiary, #6b7280) }
+  .nlabel[data-lane="history"] .k { color: inherit }
+  .nlabel[data-staged="staged-added"] { outline: 1px solid color-mix(in srgb, var(--charter-brand) 45%, transparent) }
+  .nlabel[data-staged="staged-removed"] { opacity: .4; text-decoration: line-through }
+  .nlabel[data-staged="staged-changed"] { border-style: dashed }
+  .nlabel.is-current { outline: 2px solid var(--charter-brand); outline-offset: 2px }
+  .edge { fill: none; stroke: var(--charter-border); stroke-width: 1.5 }
+  .edge[data-kind="proposed"] { stroke-dasharray: 4 3 }
+  .edge[data-kind="supersedes"] { stroke-dasharray: 1 3 }
+  .edge[data-state="staged-added"] { stroke: var(--charter-brand) }
+  .edge[data-state="staged-removed"] { stroke: var(--charter-danger); stroke-dasharray: 4 3 }
+  .edge-hit { fill: none; stroke: transparent; stroke-width: 44 }
+  .edge.is-current { stroke: var(--charter-brand); stroke-width: 3 }
+  .skip { display: inline-block; margin-bottom: .5rem; padding: 4px 10px; border: 1px solid var(--charter-border); border-radius: 6px; background: #fff; color: inherit; font: inherit }
+  .sr-live { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap }
+  .keyhelp { font-size: 11px; color: var(--label-2); margin: .25rem 0 0 }
+  .legend { display: flex; flex-wrap: wrap; gap: .5rem; font-size: 11px; color: var(--label-2); margin-top: .375rem }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important } }
+  @media (forced-colors: active) {
+    .nlabel { border: 1px solid CanvasText }
+    .nlabel[data-state="dependency-conflict"] { border: 3px double CanvasText }
+    .nlabel[data-lane="candidate"] { border-style: dashed }
+    .nlabel[data-lane="history"] { border-style: dotted }
+    .nlabel.is-current { outline: 2px solid Highlight }
+    .edge { stroke: CanvasText }
+  }
+  #probe { position: absolute; left: -99999px; top: 0; visibility: hidden }
+</style>
+</head>
+<body>
+<h1>W0 原型：依赖关系图形视图的浏览器实测</h1>
+<p class="note">
+对应 <code>docs/design/charter-dependency-graph-v1.zh.md</code> §3.10 的 W0-1 / W0-2 / W0-3。
+纯函数契约（几何不变式、零重叠、确定性、键盘目标解析、D5 降级、D10/D13/D18）由
+<code>verify.mjs</code> 在 Node 侧验收；本页只负责<strong>必须真实浏览器才能测</strong>的部分。
+每节末尾输出 <code>[PASS]/[FAIL]</code> 自检报告，同时写入 <code>window.__W0__</code>（可直接在控制台复制）。
+</p>
+
+<h2>W0-1 · 两栏布局在 860–1200px 下是否可用</h2>
+<p class="note">列表行使用现有真实结构（长摘要 + 状态 + <code>requires</code> + multiple select）。
+判定条件：列表无横向溢出、无溢出行、列表列 ≥ 20em、select ≥ 44px、图形列 ≥ 20em。据此输出建议断点。</p>
+<div class="bar" id="w1bar"></div>
+<div id="w1host"></div>
+<pre class="report" id="w1report">运行中…</pre>
+
+<h2>W0-2 · 200% 文本缩放下 em 几何 / 2 行夹取 / 单一 transform</h2>
+<p class="note">缩放通过放大图形区根字号模拟（几何全为 em）。判定条件：
+① 纯函数 <code>labelLines</code> 与真实渲染行数一致（校准 <code>LINE_CAPACITY</code>）；
+② 标签不溢出节点盒；③ SVG 节点框与 HTML 标签层偏差 ≤1.5px；④ 渲染后节点不重叠；⑤ 节点高 ≥44px。</p>
+<div class="bar" id="w2bar"></div>
+<div class="card"><div id="w2host"></div></div>
+<pre class="report" id="w2report">运行中…</pre>
+
+<h2>W0-3 · 复合控件键盘模型</h2>
+<p class="note">判定条件：① 图形区内 Tab 停靠数 = 1；② 从 skip 链接到语义列表 ≤2 次 Tab；
+③ 图内恒有且仅有 1 个 <code>tabindex=0</code>（roving）；④ <code>[</code>/<code>]</code> 遍历覆盖全部可导航元素；
+⑤ <code>←/→</code> 只沿 requires；⑥ <code>Esc</code> 焦点回到 skip 链接；⑦ SVG 内元素能否获得 DOM 焦点（浏览器差异点）。</p>
+<div class="bar" id="w3bar"></div>
+<div class="card" id="w3card"></div>
+<pre class="report" id="w3report">运行中…</pre>
+
+<h2>人工验证清单（机器测不了）</h2>
+<pre class="report" id="manual">1. 真实浏览器文本缩放：Cmd/Ctrl + 连按到 200%，检查节点盒与文本同比放大、无溢出、边与标签仍对齐。
+   （本页的"文本缩放"按钮是放大根字号的等价模拟，不能替代真实缩放：真实缩放还会影响 px 边框与 min-height:44px。）
+2. forced colors（Windows 高对比度 / macOS 增强对比度）：状态是否仍可区分（边框线型 + 图标 + 文本，不靠色相）。
+3. prefers-reduced-motion：开启系统"减少动态效果"后高亮过渡是否消失。
+4. 屏幕阅读器（VoiceOver 或 NVDA）：进入图形区是否只播报一次组名；方向键移动是否播报
+   "D2 · Build，前置 2/3，等待前置"；候选节点是否播报"候选提案 · … · 未进入执行序"；Esc 是否回到 skip 链接。
+5. 触屏：节点与边的命中区是否 ≥44×44 CSS px（含不可见 hit 线）。
+6. 200% 缩放 + 窄容器组合下，图形区是否仍可通过滚动/平移看到全部内容。</pre>
+
+<div id="probe"></div>
+<script type="module" src="./w0-page.js"></script>
+</body>
+</html>
