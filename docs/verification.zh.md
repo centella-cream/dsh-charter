@@ -42,7 +42,7 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 | 真实浏览器恢复 | 受保护的人工 evidence gate；未自动化 |
 | 真实模型 compaction | 2026-10-22 记录 PASS；仍是人工发布门禁 |
 | 0.2.2 依赖图源码 | 2026-11-11 PASS：`npm run check` 37 个文件 / 475 个测试；W0-0 原型 41/41（旧契约；无边孤立节点网格例外由 `tests/client/relation-graph.spec.ts` 的产品测试覆盖）；Web Pane 在 3 条 active + 4 条 pending 交付物的 Session 上渲染图形、候选泳道、inspector 和常驻语义列表；浏览器 console 无错误。UI 自测（2026-11-11）：三节点孤立图 + 空提示、紧凑列表、添加依赖/隐藏/显示、本地 key 前置摘要均正常，无 console 错误。W0-1/2/3 与真实 AT/人工门禁仍待完成。 |
-| 0.2.2 依赖图 bundle | 2026-11-11 以 `d362d6f` 为基线，按统一预算方法 `gzip -9 -c lib/client.js | wc -c` 实测：113,990 → 130,476 B（+16,486 B），`<40 KB` gzip 预算通过。raw 仅作诊断：`lib/client.js` 591,936 → 669,947 字节（+78,011 B），CSS output 47,230 → 55,540 B（+8,310 B）；raw 不作为预算口径。 |
+| 0.2.2 依赖图 bundle | 2026-11-11 以 `d362d6f` 为基线，按统一预算方法 `gzip -9 -c lib/client.js | wc -c` 实测：113,990 → 130,493 B（+16,503 B），`<40 KB` gzip 预算通过。raw 仅作诊断：`lib/client.js` 591,936 → 670,208 字节（+78,272 B），CSS output 47,230 → 55,540 B（+8,310 B）；raw 不作为预算口径。 |
 
 ## 2. 本地基线
 
