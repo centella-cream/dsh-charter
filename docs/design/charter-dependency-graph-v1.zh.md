@@ -204,7 +204,7 @@
 | # | 决策 | 理由 |
 | --- | --- | --- |
 | D1 | 版本归属 **`0.2.2`（已确认，纯客户端）**；roadmap 写入前不启动 W1 及之后的实现 | 零 schema/Host/Remote 变更，可独立回滚；W0 原型不受此限（不进主分支） |
-| D2 | **只做局部 ego 图**（深度 1，可切 2），**不做全局图** | 512 上限下全局图不可读；ego 图覆盖真实审阅问题；同时消掉最大的性能与无障碍风险面 |
+| D2 | **有边时只做局部 ego 图**（深度 1，可切 2），**不做全局图**；无边契约使用有界孤立节点网格（≤20 节点、最多 3 列）作为明确例外，边一出现立即回到 ego 视图 | 512 上限下全局图不可读；无边网格只解决“没有图可看”，节点数与列数都被硬限死，不是全图模式 |
 | D3 | **不做力导向模式** | 分层已表达执行序；力导向不增加审阅信息，只增加实现与无障碍成本 |
 | D4 | 图只 **stage** ops，Apply 是唯一提交点；与列表路径产生逐字段相同的 op 与 `previewDigest` | 保持 Change Set 原子性、幂等 receipt 与 unknown-outcome 语义不变 |
 | D5 | **图形区是复合控件**：容器是唯一 Tab 停靠点，内部节点/边用 **roving tabindex**，方向键遍历，前置 skip 链接；**可导航元素 > 60 时先把深度锁到 1，仍超则隐藏图形区**（列表照常） | 60 个 Tab 停靠本身就是 tab 陷阱；复合控件把"跳过图"变成 1 次 Tab，阈值退化为方向键遍历疲劳的保护（§3.5） |
@@ -525,7 +525,7 @@ locales（中英）、客户端测试。
 
 ### 3.9 新增 i18n 键（中英成对，D16）
 
-键名与**最终中英文案**见 §10.9（59 个实际 `deps.*` 键，含拖拽非法落点原因、窗口化定位、候选环提示、替代关系等）。
+键名与**最终中英文案**见 §10.9（62 个实际 `deps.*` 键，含拖拽非法落点原因、窗口化定位、候选环提示、替代关系等）。
 文案以 §10.9 为准，本节不再重复列举，避免两处漂移。
 
 ### 3.10 W0 原型门禁与交付拆分
@@ -544,7 +544,7 @@ python3 -m http.server 8124 --directory scripts/prototype/dependency-graph-w0
 
 | 原型 | 要回答的问题 | 方法 | 通过标准 | 状态 |
 | --- | --- | --- | --- | --- |
-| **W0-0** 引擎契约 | 几何是否零重叠、布局是否确定性、三态差集与"提升"是否正确、键盘目标解析是否符合复合控件合同、history 泳道与替代边是否符合 §10.1、D5/D10/D12/D13/D18 是否成立 | 纯函数在 Node 下直接跑（`verify.mjs`，无需浏览器） | 41 项全绿（见下） | **已通过** |
+| **W0-0** 引擎契约 | 几何是否零重叠、布局是否确定性、三态差集与"提升"是否正确、键盘目标解析是否符合复合控件合同、history 泳道与替代边是否符合 §10.1、D5/D10/D12/D13/D18 是否成立 | 纯函数在 Node 下直接跑（`verify.mjs`，无需浏览器） | 41 项全绿（见下）；**该原型早于“无边孤立节点网格”例外，当前产品例外由 `tests/client/relation-graph.spec.ts` 单独覆盖** | **已通过（旧契约）** |
 | **W0-1** 两栏可用性 | 图形区 + 常驻列表在 860/900/1000/1100/1200px 下是否可用；断点定在哪 | 用现有真实行结构（长摘要 + 状态 + `requires` + multiple select）逐档自动测量 | 列表无横向溢出、无溢出行、列表列 ≥20em、select ≥44px、图形列 ≥20em；据此**写定**断点 | 原型就绪，**待浏览器实测** |
 | **W0-2** 200% 文本 + HTML 标签层 | em 几何 + 2 行夹取 + 单一 transform 是否不溢出、不错位；`LINE_CAPACITY=11` 是否与真实渲染行数一致 | 100%/150%/200% 三档，自动比对纯函数行数 vs 实测行数、标签溢出、SVG↔标签层偏差、渲染后重叠、触控高度 | 五项全部零偏差；行数不一致则校准 `LINE_CAPACITY` 并重跑 W0-0 零重叠 | 原型就绪，**待浏览器实测** |
 | **W0-3** 复合控件 DOM 合同 | 图形区是否只占 1 个 Tab 停靠；roving tabindex 是否恒为 1；SVG `<g>` 能否获得 DOM 焦点；Esc 出口是否落到 skip 链接 | 自动统计 Tab 停靠数、模拟按键、检查焦点落点 | Tab 停靠 =1；skip→列表 ≤2 次 Tab；roving 恒为 1；SVG 焦点可用（否则改 SVG `<a>`/`foreignObject`，键位语义不变） | 原型就绪，**待浏览器实测** |
@@ -575,7 +575,7 @@ python3 -m http.server 8124 --directory scripts/prototype/dependency-graph-w0
   链式替代 `item-a1 → item-a0 → item-a` 的两个幽灵与最近执行节点**同列**；替代成环 + 悬空引用不崩溃、输出确定、
   零重叠；`showSupersedes: false` 时模型不含 history 节点与 `supersedes` 边（10 → 5 可导航）；只有 `supersedes` 边时
   D12 仍启用图形区；`←/→` 在非 `requires` 边与幽灵节点上一律返回 `null`；替代场景 `traversal` 10 = 节点 5 + 边 5；
-- D2 规模控制：70 节点长链下 ego depth1 只剩 3 节点 / 5 可导航；未给 `focusId` 时也按 D18 裁剪，不存在全图模式。
+- D2 规模控制：有边时 70 节点长链下 ego depth1 只剩 3 节点 / 5 可导航；未给 `focusId` 时也按 D18 裁剪。无边契约的例外是 ≤20 节点、≤3 列的孤立节点网格；出现任意边后不再使用该例外，也不存在无界全图模式。
 
 **不在 W0-0 范围**（必须真实浏览器/AT，见 W0-3 与 W0-人工）：Tab 停靠数的真实计数、roving tabindex 的
 DOM 行为、SVG 元素可聚焦性、200% 文本缩放下的实际溢出、两层实际对齐、屏幕阅读器播报、forced colors、
@@ -682,7 +682,7 @@ S2 的"二次确认"、S3/S4 的 `previewDigest` 等价性是本提案最容易�
   对 `item-b` 执行 `deliverable.progress → in-progress`。按 §6.5 规则 2 应判定 `dependency-conflict`，
   而 `planChangeSet` 输出无任何 conflict 信号，Apply 无需额外确认即成功。
 - **修复范围（已完成）**：core 侧 planner 输出 before/after 的 conflict 差集（新增/加重）；client 侧在 Change Set
-  面板醒目标注 + Apply 前显式两步确认；core / wire / DOM 测试共 15 条；图形语义/几何/界面测试另计，当前 `npm run check` 为 37 文件 / **471** 通过。
+  面板醒目标注 + Apply 前显式两步确认；core / wire / DOM 测试共 15 条；图形语义/几何/界面测试另计，当前 `npm run check` 为 37 文件 / **475** 通过。
 - **版本归属**：`0.2.2` 必修，不与图形视图绑定发布（roadmap 写入见 §10.13-G1）。
 - **修复方案与实现差异**：见 §10.14（其中记录了最终字段形状与方案的三处差别）。
 
@@ -954,12 +954,67 @@ col(n)      = base(n) + candRank(n)
 | `deps.removeRequires` | Remove {key} | 移除 {key} |
 | `deps.removeEdge` | Remove this dependency | 移除这条依赖 |
 | `deps.openProposal` | Open proposal | 打开提案 |
+> 下表由 [`src/client/locales.ts`](../../src/client/locales.ts) 的实际 `deps.*` 键生成（共 62 条，en/zh 成对）；实现以该文件为准，文档不再维护第二份键名。`deps.graphPosition` / `deps.edgeKicker` / `deps.requires` / `deps.editAria` 等死键已删除。
+
+| 键 | en | zh |
+| --- | --- | --- |
+| `deps.kicker` | Execution plan | 执行计划 |
+| `deps.title` | Dependencies and readiness | 依赖与就绪状态 |
+| `deps.status.ready` | ready | 可推进 |
+| `deps.status.waiting` | waiting | 等待前置 |
+| `deps.status.dependency-conflict` | dependency conflict | 依赖冲突 |
+| `deps.status.in-progress` | in progress | 进行中 |
+| `deps.status.blocked` | blocked | 阻塞 |
+| `deps.status.terminal` | terminal | 已结束 |
+| `deps.prerequisiteConflict` | prerequisite conflict | 前置冲突 |
+| `deps.conflict` | The staged dependency plan contains a cycle or invalid reference. Remove or change a prerequisite before Apply. | 暂存的依赖计划包含环或非法引用。请移除或修改前置条件后再 Apply。 |
+| `deps.graphKicker` | Dependency graph | 依赖图 |
+| `deps.graphTitle` | Dependency map | 依赖关系图 |
+| `deps.graphFocus` | Focus | 焦点 |
+| `deps.graphDepth` | Depth | 深度 |
+| `deps.depth1` | 1 hop | 1 跳 |
+| `deps.depth2` | 2 hops | 2 跳 |
+| `deps.showSupersedes` | Show replacements | 显示替代关系 |
+| `deps.zoomIn` | Zoom in | 放大 |
+| `deps.zoomOut` | Zoom out | 缩小 |
+| `deps.resetLayout` | Reset zoom | 重置缩放 |
+| `deps.hideGraph` | Hide graph | 隐藏图形 |
+| `deps.showGraph` | Show graph | 显示图形 |
+| `deps.graphAria` | Dependency graph | 依赖关系图 |
+| `deps.graphKeys` | Tab enters the graph once. Arrow keys move along dependencies; [ and ] visit every node and edge; Enter opens details; Esc closes details, then returns to the list. | Tab 进入图形区一次；方向键沿依赖移动；[ 和 ] 遍历所有节点与边；Enter 打开详情；Esc 关闭详情，再按回到列表。 |
+| `deps.historyKicker` | Replaced | 已替代 |
+| `deps.historyStatus` | Not in the execution order | 不在执行序 |
+| `deps.candidateKicker` | Candidate | 候选 |
+| `deps.candidateStatus` | Not in the execution order | 未进入执行序 |
+| `deps.historyAria` | Replaced item {text}; not in the execution order | 已替代条目 {text}；不在执行序 |
+| `deps.candidateAria` | Candidate {text}; not in the execution order | 候选提案 {text}；未进入执行序 |
+| `deps.edgeAria` | {to} depends on {from} | {to} 依赖 {from} |
+| `deps.edgeAriaAdded` | {to} depends on {from} (added in this draft) | {to} 依赖 {from}（本次新增） |
+| `deps.edgeAriaRemoved` | {to} depends on {from} (removed in this draft) | {to} 依赖 {from}（本次删除） |
+| `deps.proposedEdgeAria` | Candidate prerequisite {from} for {to}; Enter opens the proposal | {to} 的候选前置 {from}；回车查看提案 |
+| `deps.supersedesEdgeAria` | {from} is replaced by {to} | {from} 已被 {to} 替代 |
+| `deps.graphDegradedSupersedes` | The replacement history is hidden because this view is too dense. | 视图过密，已隐藏替代历史。 |
+| `deps.graphDegradedDepth` | Depth was reduced to one hop because this view is too dense. | 视图过密，深度已降为 1 跳。 |
+| `deps.graphTooDense` | This dependency view has {count} navigable items; use the list instead. | 依赖视图有 {count} 个可导航元素，请使用列表。 |
+| `deps.inspectorTitle` | Dependency details · {key} | 依赖详情 · {key} |
+| `deps.closeInspector` | Close details | 关闭详情 |
+| `deps.inspectorStatus` | Status | 状态 |
+| `deps.inspectorRequires` | Requires | 前置 |
+| `deps.addRequires` | Add a prerequisite | 添加前置交付物 |
+| `deps.removeRequires` | Remove {key} | 移除 {key} |
+| `deps.removeEdge` | Remove this dependency | 移除这条依赖 |
+| `deps.openProposal` | Open proposal | 打开提案 |
 | `deps.skipToList` | Skip to the dependency list | 跳到依赖列表 |
 | `deps.showMore` | Show {count} more dependency rows | 再显示 {count} 行依赖 |
 | `deps.rowPosition` | Dependency {index} of {total} | 第 {index} 条依赖，共 {total} 条 |
 | `deps.locateInList` | Locate in the list | 在列表中定位 |
 | `deps.locateInGraph` | Locate in graph | 在图中定位 |
 | `deps.graphHint` | The graph never changes state by itself; edits are staged into the Change Set and Apply remains the only commit. | 图不会自动修改状态；编辑只会暂存到 Change Set，Apply 仍是唯一提交点。 |
+| `deps.graphEmpty` | No dependencies yet. Drag one node onto another, or open a list row to add a prerequisite. | 还没有依赖关系。可以把一个节点拖到另一个节点上，或在列表行中打开前置编辑。 |
+| `deps.graphIsolatedTooMany` | No dependencies yet. The isolated-node preview is hidden for this many rows; use the list. | 还没有依赖关系。当前交付物过多，孤立节点预览已隐藏，请使用列表。 |
+| `deps.requiresSummary` | Prerequisites: {keys} | 前置：{keys} |
+| `deps.noRequires` | No prerequisites | 无前置 |
+| `deps.editRequires` | Edit prerequisites | 编辑前置 |
 | `deps.stagedAdded` | staged addition | 暂存新增 |
 | `deps.dropInvalidSelf` | A deliverable cannot depend on itself. | 交付物不能依赖自身。 |
 | `deps.dropInvalidDuplicate` | This prerequisite is already present. | 这个前置交付物已经存在。 |
