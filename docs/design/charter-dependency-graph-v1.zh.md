@@ -214,7 +214,7 @@
 | D9 | pending 的 `proposedRequires` 画成**虚线候选边、只读**（不接受 Delete），但**可被方向键到达**，激活后跳到对应提案 | §6.4 规则 6：候选 relation 只能随提案接受生效；只读但可导航，避免"鼠标可点、键盘不可达"的不对称 |
 | D10 | 图上只有 **deliverable** 节点；pending deliverable 进**独立候选泳道**，**不分配 rank / `D<n>` / `executionDisplay`** | §6.4 规则 1；§8.2：`D<n>` 是 prompt 局部 key，给 pending 编号会伪造执行序 |
 | D11 | **v1 画 `supersedes` 边**：独立 `history` 泳道 + 只读**幽灵节点**（点线、无 `D<n>`、无 rank、不可编辑但可被 `[`/`]` 与 `Enter` 到达）；本次 staged 的替代两端仍留在执行泳道，不生成幽灵节点。推导规则见 §10.1 | 替代是既有产品能力，只做文本呈现会让图形视图成为半成品；幽灵节点在**独立泳道**里，因此不破坏"rank = 执行序"的执行泳道语义 |
-| D12 | 图形区**启用条件**：存在 ≥1 条 `requires` 边（含 staged 三态）**或** ≥1 条候选边 **或** ≥1 条 `supersedes` 边；都不满足则隐藏图形区、只显示列表并说明原因（`deps.graphEmpty`） | 只按 committed `requires` 判定会与 D9 的候选边、D11 的替代边冲突 |
+| D12 | 图形区**启用条件**：存在 ≥1 个可展示节点（active deliverable 或候选/历史节点）即启用；没有节点才隐藏并只显示列表。没有依赖边时仍展示孤立节点和 `deps.graphEmpty` 提示 | 无依赖是常见状态；隐藏整个图形区会让主视觉退化成纯文本列表，不符合形态 A |
 | D13 | staging 三态可视化：`staged-added` 实线 + "新增"角标 + brand 外描边；`staged-removed` 虚线 + 删除线 + 40% 不透明；`committed` 常规实线。三态**都带文本角标**，不只靠颜色 | §5.7 非颜色依赖 |
 | D14 | inspector 内容：局部 key 或"候选提案"、正文（可展开全文）、progress、`executionDisplay` + `prerequisiteStatus`、requires 列表（可增删，与列表 select 等价）、依赖方列表、来源批次与 integrity、"在列表中定位"。**inspector 随图形区隐藏，且不承担任何独有能力** | 触屏与键盘的等价路径；同时保证 D17 成立 |
 | D15 | 图形视图**显示**冲突状态，但**不承担** §6.5 的"Change Set 标注新增/加重 conflict + 二次确认" | 那是 §8 的独立正确性缺口 |
@@ -511,7 +511,7 @@ LINE_CAPACITY = floor((NODE_W − 2 × padding) / 摘要字号)   （由几何�
 **动效**：只用 `--charter-duration` / `--charter-ease` 做高亮与 inspector 过渡；无布局动画；
 `prefers-reduced-motion` 下全部关闭。
 
-**三态文案**：无边（D12 隐藏图形区并说明）；有边但 ego 为空（"该交付物暂无前置与依赖"）；
+**三态文案**：没有可展示节点（D12 隐藏图形区并说明）；有节点但无边（显示孤立节点 + `deps.graphEmpty`）；有边但 ego 为空（"该交付物暂无前置与依赖"）；
 D5 第一级（"关系过密（N 个可导航元素），已隐藏替代关系"）；D5 第三级（"关系过密（N 个可导航元素），已隐藏图形，
 请使用列表"）。
 
