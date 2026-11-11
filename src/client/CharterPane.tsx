@@ -855,6 +855,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
     }
   }, [projectedItems])
   const dependencyPlan = dependencyPlanResult.plan
+  const dependencyByItemId = useMemo(() => new Map(dependencyPlan.map(row => [row.id, row])), [dependencyPlan])
   const dependencyConflict = !dependencyPlanResult.ok
   const currentDeliverables = activeItems(deliverables)
   const historyDeliverables = deliverables.filter(item => item.lifecycle !== 'current' || item.review === 'rejected')
@@ -896,9 +897,9 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
       committed: view.items as unknown as GraphInputItem[],
       projected: projectedItems as unknown as GraphInputItem[],
       ops,
-      showSupersedes: dependencyGraphSupersedes,
+      showSupersedes: true,
     })
-  }, [view, projectedItems, ops, dependencyGraphSupersedes, dependencyPlanResult.ok])
+  }, [view, projectedItems, ops, dependencyPlanResult.ok])
   const relationFocusId = relationGraph === null
     ? undefined
     : dependencyGraphFocusId !== undefined && relationGraph.nodes.some(node => node.id === dependencyGraphFocusId)
@@ -906,7 +907,11 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
       : defaultGraphFocus(relationGraph)
   const relationLayout = useMemo(() => relationGraph === null
     ? null
-    : layoutRelationGraph(relationGraph, { focusId: relationFocusId, depth: dependencyGraphDepth }), [relationGraph, relationFocusId, dependencyGraphDepth])
+    : layoutRelationGraph(relationGraph, {
+      focusId: relationFocusId,
+      depth: dependencyGraphDepth,
+      supersedesHidden: !dependencyGraphSupersedes,
+    }), [relationGraph, relationFocusId, dependencyGraphDepth, dependencyGraphSupersedes])
   const relationGraphAvailable = relationGraph !== null && relationGraph.nodes.length > 0
   const formattedPreview = useMemo(() => formatCharterPreview(preview), [preview])
   const bootstrapPromptBytes = useMemo(() => {
@@ -2187,7 +2192,8 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                   <div className="charter-notice charter-notice--warning" role="alert">{dependencyGraphProblem}</div>
                 )}
                 <div className={`charter-dependency-layout${dependencyGraphHidden ? ' is-graph-hidden' : ''}`}>
-                  {!dependencyGraphHidden && relationGraphAvailable && (
+                  {!dependencyGraphHidden && relationGraphAvailable && relationLayout !== null
+                    && !relationLayout.degraded.hidden && !relationLayout.degraded.isolatedTooMany && (
                     <a className="charter-graph__skip" href="#charter-dependency-list">{t('deps.skipToList')}</a>
                   )}
                   {!dependencyGraphHidden && relationGraphAvailable && relationGraph !== null && relationLayout !== null && (
@@ -2241,7 +2247,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                                     {row.requires.length > 0
                                       ? t('deps.requiresSummary', {
                                         keys: row.requires
-                                          .map(requireId => dependencyPlan.find(plan => plan.id === requireId)?.localKey ?? requireId)
+                                          .map(requireId => dependencyByItemId.get(requireId)?.localKey ?? requireId)
                                           .join(', '),
                                       })
                                       : t('deps.noRequires')}
@@ -2281,7 +2287,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                                     && candidate.lifecycle === 'current'
                                     && candidate.id !== row.id)
                                   .map(candidate => {
-                                    const candidateKey = dependencyPlan.find(plan => plan.id === candidate.id)?.localKey ?? ''
+                                    const candidateKey = dependencyByItemId.get(candidate.id)?.localKey ?? ''
                                     return (
                                       <label key={candidate.id}>
                                         <input

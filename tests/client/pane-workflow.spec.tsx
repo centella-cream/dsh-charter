@@ -570,6 +570,17 @@ describe('dependency graph pane surface', () => {
     expect(listDraft.getSnapshot().ops).toEqual(graphOps)
   })
 
+  it('uses the isolated-specific explanation when the graph is hidden for many unlinked rows', () => {
+    const items = Array.from({ length: 21 }, (_, index) => graphDeliverable(`iso-${index}`, index, 'not-started'))
+    const src = source(view({ revision: 1, items }))
+    const draft = new CharterDraft(sessionId, () => src)
+    draft.bindLifecycle(lifecycle)
+    draft.setSection('deliverables')
+    const tree = mount(src, draft)
+    expect(textOf(tree.root)).toContain('deps.graphIsolatedTooMany')
+    expect(textOf(tree.root)).not.toContain('deps.graphTooDense')
+  })
+
   it('marks proposal rows as focusable for graph-to-proposal navigation', () => {
     const pending = {
       id: 'pending-a', kind: 'deliverable', text: 'Pending A', review: 'pending', lifecycle: 'current',

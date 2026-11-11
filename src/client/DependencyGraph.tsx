@@ -195,9 +195,10 @@ export function DependencyGraph({
       {dragError !== null && <div className="charter-notice charter-notice--warning" role="alert">{dragError}</div>}
       {layout.edges.length === 0 && <p className="charter-hint charter-graph__hint">{t('deps.graphEmpty')}</p>}
       <p className="charter-hint charter-graph__hint">{t('deps.graphHint')}</p>
-      {layout.degraded.supersedesHidden && <div className="charter-notice" role="status">{t('deps.graphDegradedSupersedes')}</div>}
+      {layout.degraded.supersedesHidden && showSupersedes && <div className="charter-notice" role="status">{t('deps.graphDegradedSupersedes')}</div>}
+      {layout.degraded.isolatedTooMany && <div className="charter-notice" role="status">{t('deps.graphIsolatedTooMany')}</div>}
       {layout.degraded.depthReduced && <div className="charter-notice" role="status">{t('deps.graphDegradedDepth')}</div>}
-      {layout.degraded.hidden && (
+      {layout.degraded.hidden && !layout.degraded.isolatedTooMany && (
         <div className="charter-notice charter-notice--warning" role="status">
           {t('deps.graphTooDense', { count: layout.navigables })}
         </div>

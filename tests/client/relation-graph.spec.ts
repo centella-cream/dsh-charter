@@ -3,6 +3,7 @@ import type { GraphInputItem } from '../../src/client/relation-graph.js'
 import {
   buildRelationGraph,
   defaultFocus,
+  GRAPH,
   graphNavigationTarget,
   graphOverlaps,
   layoutRelationGraph,
@@ -133,6 +134,41 @@ describe('relation graph projection', () => {
     expect(model.nodes.find(node => node.id === 'p2')?.groupRank).toBe(0)
     expect(model.nodes.find(node => node.id === 'p3')?.groupRank).toBe(1)
     expect(model.nodes.find(node => node.id === 'p1')?.candidateCycle).toBe(true)
+  })
+
+  it('lays isolated contracts out as a bounded grid instead of one column', () => {
+    const isolated = Array.from({ length: 12 }, (_, index) => deliverable(`iso-${index}`, index, 'not-started'))
+    const model = buildRelationGraph({ committed: isolated, projected: isolated })
+    const layout = layoutRelationGraph(model, { depth: 1 })
+    expect(layout.nodes).toHaveLength(12)
+    expect(layout.width).toBeGreaterThan(GRAPH.nodeWidthEm)
+    expect(new Set(layout.nodes.map(node => node.x)).size).toBeGreaterThan(1)
+    expect(layout.degraded.isolatedTooMany).toBe(false)
+  })
+
+  it('hides an oversized isolated preview with the isolated reason', () => {
+    const isolated = Array.from({ length: 21 }, (_, index) => deliverable(`iso-${index}`, index, 'not-started'))
+    const model = buildRelationGraph({ committed: isolated, projected: isolated })
+    const layout = layoutRelationGraph(model, { depth: 1 })
+    expect(layout.degraded.hidden).toBe(true)
+    expect(layout.degraded.isolatedTooMany).toBe(true)
+    expect(layout.nodes).toHaveLength(0)
+  })
+
+  it('does not expand the whole model when supersedes are hidden from an ego view', () => {
+    const old: GraphInputItem = {
+      ...deliverable('old-0', 99, 'cancelled'),
+      lifecycle: 'superseded',
+      supersededBy: 'item-0',
+    }
+    const items: GraphInputItem[] = [old, ...Array.from({ length: 30 }, (_, index) => ({
+      ...deliverable(`item-${index}`, index, 'done'),
+      ...(index === 0 ? { supersedes: 'old-0' } : {}),
+    }))]
+    const model = buildRelationGraph({ committed: items, projected: items, showSupersedes: true })
+    const layout = layoutRelationGraph(model, { focusId: 'item-0', depth: 1, supersedesHidden: true })
+    expect(layout.nodes.length).toBeLessThan(30)
+    expect(layout.degraded.isolatedTooMany).toBe(false)
   })
 
   it('keeps requires and supersedes edges with the same endpoints distinct', () => {

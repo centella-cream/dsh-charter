@@ -25,6 +25,7 @@ export const GRAPH = {
   candidateGapEm: 2.5,
   historyGapEm: 2.5,
   navigationLimit: 60,
+  isolatedNodeLimit: 20,
   touchTargetPx: 44,
 } as const
 
@@ -113,6 +114,7 @@ export interface GraphLayout {
     readonly supersedesHidden: boolean
     readonly depthReduced: boolean
     readonly hidden: boolean
+    readonly isolatedTooMany: boolean
   }
 }
 
@@ -499,6 +501,64 @@ export function layoutRelationGraph(model: RelationGraphModel, options: LayoutOp
 
   let visible = [...model.nodes]
   let visibleEdges = [...model.edges]
+
+  // A dependency-free Contract gets a compact grid, not a single column of
+  // unconnected boxes. This is an explicit, bounded exception to the ego view;
+  // once any edge exists the ordinary ego crop below applies again.
+  if (model.edges.length === 0) {
+    if (visible.length > GRAPH.isolatedNodeLimit) {
+      return {
+        nodes: [],
+        edges: [],
+        width: 0,
+        height: 0,
+        traversal: [],
+        navigables: visible.length,
+        focusId,
+        depth,
+        degraded: {
+          supersedesHidden: options.supersedesHidden === true,
+          depthReduced: false,
+          hidden: true,
+          isolatedTooMany: true,
+        },
+      }
+    }
+    const ordered = visible.slice().sort((a, b) => {
+      const lane = (value: RelationNode): number => value.lane === 'execution' ? 0 : value.lane === 'candidate' ? 1 : 2
+      return (lane(a) - lane(b)) || (a.order - b.order) || a.id.localeCompare(b.id)
+    })
+    const columns = Math.min(3, Math.max(2, Math.ceil(Math.sqrt(Math.max(ordered.length, 1)))))
+    const placed: PlacedNode[] = ordered.map((node, index) => {
+      const lines = labelLines(node.text)
+      return {
+        ...node,
+        col: index % columns,
+        x: (index % columns) * GRAPH.rankPitchEm,
+        y: Math.floor(index / columns) * GRAPH.rowPitchEm,
+        w: GRAPH.nodeWidthEm,
+        h: GRAPH.nodeHeightEm[lines],
+        labelLines: lines,
+      }
+    })
+    return {
+      nodes: placed,
+      edges: [],
+      width: Math.max(0, ...placed.map(node => node.x + node.w)),
+      height: Math.max(0, ...placed.map(node => node.y + node.h)),
+      traversal: placed.map(node => node.id),
+      navigables: placed.length,
+      focusId,
+      depth,
+      degraded: {
+        supersedesHidden: options.supersedesHidden === true,
+        depthReduced: false,
+        hidden: false,
+        isolatedTooMany: false,
+      },
+    }
+  }
+
   // A dependency-free Contract still has nodes worth showing; an ego crop
   // around the default focus would leave a single node. Only crop when there
   // are edges to define a meaningful neighbourhood.
@@ -549,7 +609,7 @@ export function layoutRelationGraph(model: RelationGraphModel, options: LayoutOp
       navigables,
       focusId,
       depth,
-      degraded: { supersedesHidden: options.supersedesHidden === true, depthReduced: false, hidden: true },
+      degraded: { supersedesHidden: options.supersedesHidden === true, depthReduced: false, hidden: true, isolatedTooMany: false },
     }
   }
 
@@ -712,7 +772,7 @@ export function layoutRelationGraph(model: RelationGraphModel, options: LayoutOp
     navigables,
     focusId,
     depth,
-    degraded: { supersedesHidden: options.supersedesHidden === true, depthReduced: false, hidden: false },
+    degraded: { supersedesHidden: options.supersedesHidden === true, depthReduced: false, hidden: false, isolatedTooMany: false },
   }
 }
 
