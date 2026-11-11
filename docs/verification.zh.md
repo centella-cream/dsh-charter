@@ -36,6 +36,7 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 | 兼容 sentinel | `0.1.7-rc.2`、`0.2.1-rc.2`、`0.2.1-rc.4`、`0.2.1-rc.5`、`0.2.2-rc.1` 通过 |
 | Fresh Web profile matrix (historical rc.6) | PASS：历史 rc.6 artifact 曾在 DSH `0.1.7-rc.2`、`0.2.0-rc.2`、`0.2.1-rc.2`、`0.2.1-rc.4`、`0.2.1-rc.5` 上安装并启动 |
 | Fresh Web 0.2.2 | 2026-11-05 PASS：全新 `DSH_HOME` + `dsh@0.2.2-rc.1 plugin --profile web add` 安装 `dsh-charter-0.2.0.tgz`（SHA-256 `fde5531d457effc713f4423f8b46c8f0e591770e59c55e19956f000c11bdeffc`）；Web 启动、页面 HTTP 200、charter bundle HTTP 200；boot graph 含 `dsh-charter`，页面 index 含 `dsh-charter/client.js` |
+| 0.2.2 精确 artifact smoke | 2026-11-11 PASS：`dsh-charter-0.2.2.tgz`（98 个文件，SHA-256 `cf5c0e4f6340a5daacafb26092ad6458a46fb8011075bb7d3ce8944e8580ee5d`）；package smoke 在空 consumer 中安装精确字节，packed recovery smoke 的 export/restore/两次重启/故障检查全部通过。 |
 | 九版本全量 rerun | tracked `compat-matrix --versions all --allow-new-release` 通过（每版本 475/475） |
 | 未跟踪 `0.2.2-alpha.2` probe | strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run；rc.6 明确不支持 |
 | 本地 Web + Desktop profile | 0.2.0 开发 artifact 已装入本地 web/desktop profile；Desktop app 为 `0.2.2-rc.1`，真实 Electron ABI/交互仍需人工门禁 |

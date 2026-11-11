@@ -35,6 +35,7 @@ Current release state (2026-11-11):
 | Packed-artifact recovery smoke | Pass: export, target removal, restore, receipt replay, two restarts, healthy-target refusal, packed fault subset |
 | Real `TypertGatewayService` | Pass on exact artifact with isolated DSH `0.2.1-rc.3` and `rc.4` graphs |
 | Compatibility sentinels | Pass on `0.1.7-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4`, `0.2.1-rc.5` |
+| 0.2.2 exact artifact smoke | PASS on 2026-11-11: `dsh-charter-0.2.2.tgz` (98 files, SHA-256 `cf5c0e4f6340a5daacafb26092ad6458a46fb8011075bb7d3ce8944e8580ee5d`); package smoke installed the exact bytes in an empty consumer and the packed recovery smoke passed all export/restore/two-restart/fault checks. |
 | Nine-version full rerun | Pass via tracked `compat-matrix --versions all --allow-new-release` (475/475 each) |
 | Fresh Web profile matrix (historical rc.6) | PASS: local rc.6 artifact (pre-withdrawal) installed and served on DSH `0.1.7-rc.2`, `0.2.0-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4`, `0.2.1-rc.5` |
 | Fresh Web profile 0.2.2 | PASS on 2026-11-05: fresh `DSH_HOME` + `dsh@0.2.2-rc.1 plugin --profile web add` of `dsh-charter-0.2.0.tgz` (SHA-256 `fde5531d457effc713f4423f8b46c8f0e591770e59c55e19956f000c11bdeffc`); Web boot, page HTTP 200, charter bundle HTTP 200; boot graph contains `dsh-charter` and the page index contains `dsh-charter/client.js` |
