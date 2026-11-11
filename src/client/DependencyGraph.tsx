@@ -22,7 +22,8 @@ export interface DependencyGraphProps {
 
 function nodeName(node: PlacedNode, t: DependencyGraphProps['t']): string {
   if (node.lane === 'execution') {
-    return `${node.localKey ?? ''} ${node.text} ${node.executionDisplay ?? ''}`.trim()
+    const status = t(`deps.status.${node.executionDisplay ?? 'ready'}`)
+    return `${node.localKey ?? ''} ${node.text} ${status}`.trim()
   }
   if (node.lane === 'history') return t('deps.historyAria', { text: node.text })
   return t('deps.candidateAria', { text: node.text })
@@ -62,6 +63,14 @@ export function DependencyGraph({
   const [zoom, setZoom] = useState(1)
   const selectedNode = inspector === undefined ? undefined : layout.nodes.find(node => node.id === inspector)
   const selectedEdge = inspector === undefined ? undefined : layout.edges.find(edge => edge.key === inspector)
+  const activeNode = key === undefined ? undefined : layout.nodes.find(node => node.id === key)
+  const activeEdge = key === undefined ? undefined : layout.edges.find(edge => edge.key === key)
+  const inspectorLabel = selectedNode === undefined
+    ? selectedEdge === undefined ? '' : edgeName(selectedEdge, model, t)
+    : selectedNode.localKey ?? selectedNode.text
+  const liveLabel = activeNode === undefined
+    ? activeEdge === undefined ? '' : edgeName(activeEdge, model, t)
+    : nodeName(activeNode, t)
 
   useEffect(() => {
     if (key === undefined) return
@@ -83,10 +92,12 @@ export function DependencyGraph({
   const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>): void => {
     if (event.target !== event.currentTarget && (event.key === 'Enter' || event.key === ' ')) return
     if (event.key === 'Escape') {
+      event.preventDefault()
+      event.stopPropagation()
       if (inspector !== undefined) {
-        event.preventDefault()
-        event.stopPropagation()
         setInspector(undefined)
+      } else {
+        document.querySelector<HTMLElement>('.charter-graph__skip')?.focus()
       }
       return
     }
@@ -132,7 +143,6 @@ export function DependencyGraph({
   }
 
   const projectedRequires = (id: string): readonly string[] => {
-    void layout.nodes.find(candidate => candidate.id === id)
     // Use the full semantic model, not the ego-cropped layout: a node at the
     // depth boundary must still keep its prerequisites outside this view.
     return [...new Set(model.edges
@@ -270,6 +280,8 @@ export function DependencyGraph({
                     {node.lane === 'execution'
                       ? `${t(`deps.status.${node.executionDisplay ?? 'ready'}`)}${node.prerequisiteStatus === 'dependency-conflict' && node.executionDisplay !== 'dependency-conflict' ? ` · ${t('deps.prerequisiteConflict')}` : ''}`
                       : node.lane === 'history' ? t('deps.historyStatus') : t('deps.candidateStatus')}
+                    {node.state === 'staged-added' ? ` · ${t('deps.stagedAdded')}` : node.state === 'staged-removed' ? ` · ${t('deps.stagedRemoved')}` : ''}
+                    {node.candidateCycle === true ? ` · ${t('deps.candidateCycle')}` : ''}
                   </span>
                 </button>
               ))}
@@ -295,15 +307,18 @@ export function DependencyGraph({
             </p>
           </div>
           <div className="charter-graph__footer">
-            <button type="button" className="charter-linkbutton" onClick={() => onLocateList(inspector ?? focusId ?? '')}>
-              {t('deps.locateInList')}
-            </button>
-            <span role="status" className="charter-graph__live">{key === undefined ? '' : t('deps.graphPosition', { key: key.startsWith('e:') ? t('deps.edgeKicker') : key })}</span>
+            {(selectedNode?.lane === 'execution'
+              || (selectedEdge !== undefined && model.nodes.find(node => node.id === selectedEdge.to)?.lane === 'execution')) && (
+              <button type="button" className="charter-linkbutton" onClick={() => onLocateList(selectedNode?.id ?? selectedEdge?.to ?? '')}>
+                {t('deps.locateInList')}
+              </button>
+            )}
+            <span role="status" className="charter-graph__live">{liveLabel}</span>
           </div>
           {(selectedNode !== undefined || selectedEdge !== undefined) && (
-            <aside className="charter-graph__inspector" aria-label={t('deps.inspectorTitle')}>
+            <aside className="charter-graph__inspector" aria-label={t('deps.inspectorTitle', { key: inspectorLabel })}>
               <div className="charter-graph__inspectorhead">
-                <h4>{t('deps.inspectorTitle')}</h4>
+                <h4>{t('deps.inspectorTitle', { key: inspectorLabel })}</h4>
                 <button type="button" className="charter-linkbutton" onClick={() => setInspector(undefined)}>{t('deps.closeInspector')}</button>
               </div>
               {selectedNode !== undefined && (

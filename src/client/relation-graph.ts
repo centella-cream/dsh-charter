@@ -64,6 +64,7 @@ export interface RelationNode {
   readonly executionDisplay: string | undefined
   readonly prerequisiteStatus: string | undefined
   readonly state: NodeState
+  readonly candidateCycle?: boolean
 }
 
 export interface RelationEdge {
@@ -302,6 +303,58 @@ export function buildRelationGraph(input: BuildRelationGraphInput): RelationGrap
     })
   }
 
+  // Candidate columns are lane-local: active prerequisites decide the base
+  // column and pending prerequisites stack to the right. Cycles are tolerated
+  // (acceptance still rejects them) and surfaced on the nodes.
+  const pendingIds = new Set(projectedPending.keys())
+  const cycleIds = new Set<string>()
+  const visitState = new Map<string, 0 | 1 | 2>()
+  const stack: string[] = []
+  const visit = (id: string): void => {
+    const state = visitState.get(id) ?? 0
+    if (state === 2) return
+    if (state === 1) {
+      const index = stack.indexOf(id)
+      if (index >= 0) for (const member of stack.slice(index)) cycleIds.add(member)
+      return
+    }
+    visitState.set(id, 1)
+    stack.push(id)
+    for (const target of proposedOf(projectedPending.get(id) ?? { id, kind: 'deliverable', text: '', review: 'pending', lifecycle: 'current' })) {
+      if (pendingIds.has(target)) visit(target)
+    }
+    stack.pop()
+    visitState.set(id, 2)
+  }
+  for (const id of pendingIds) visit(id)
+  const candidateRankCache = new Map<string, number>()
+  const candidateRank = (id: string): number => {
+    if (cycleIds.has(id)) return 0
+    const cached = candidateRankCache.get(id)
+    if (cached !== undefined) return cached
+    if (!pendingIds.has(id)) return 0
+    const item = projectedPending.get(id)
+    if (item === undefined) return 0
+    const activeBase = Math.max(0, ...proposedOf(item)
+      .map(target => projectedTopology.byId.get(target)?.rank)
+      .filter((rank): rank is number => rank !== undefined))
+    const pendingPredecessors = proposedOf(item).filter(target => pendingIds.has(target))
+    const rank = activeBase + (pendingPredecessors.length === 0
+      ? 0
+      : 1 + Math.max(...pendingPredecessors.map(candidateRank)))
+    candidateRankCache.set(id, rank)
+    return rank
+  }
+  for (let index = 0; index < nodes.length; index += 1) {
+    const node = nodes[index]
+    if (node?.lane !== 'candidate' || !pendingIds.has(node.id)) continue
+    nodes[index] = {
+      ...node,
+      groupRank: candidateRank(node.id),
+      candidateCycle: cycleIds.has(node.id) || proposedOf(projectedPending.get(node.id) ?? { id: node.id, kind: 'deliverable', text: '', review: 'pending', lifecycle: 'current' }).some(target => pendingIds.has(target) && cycleIds.has(target)),
+    }
+  }
+
   const edges: RelationEdge[] = []
   const committedPairs = new Set<string>()
   for (const item of committedActive) for (const from of requiresOf(item)) committedPairs.add(`${from}→${item.id}`)
@@ -320,7 +373,6 @@ export function buildRelationGraph(input: BuildRelationGraphInput): RelationGrap
       focusable: true,
     })
   }
-
   for (const item of projectedPending.values()) {
     for (const from of proposedOf(item)) {
       edges.push({
@@ -399,10 +451,6 @@ export function buildRelationGraph(input: BuildRelationGraphInput): RelationGrap
     })
   }
 
-  for (const edge of edges) {
-    if (edge.kind !== 'proposed') continue
-    edge as { focusable: boolean }
-  }
   return {
     nodes,
     edges,
@@ -625,7 +673,7 @@ export function layoutRelationGraph(model: RelationGraphModel, options: LayoutOp
       const middle = (x1 + x2) / 2
       return {
         ...edge,
-        key: `e:${edge.from}→${edge.to}`,
+        key: `e:${edge.kind}:${edge.from}→${edge.to}`,
         path: `M ${x1} ${y1} C ${middle} ${y1}, ${middle} ${y2}, ${x2} ${y2}`,
         labelAt: { x: middle, y: (y1 + y2) / 2 - 0.4 },
       }

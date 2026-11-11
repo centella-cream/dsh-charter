@@ -2424,7 +2424,8 @@
 .charter-graph__node.is-candidate,
 .charter-graph__node.is-history { border-style: dashed; border-left-style: dashed; }
 .charter-graph__node.is-staged-added { box-shadow: 0 0 0 2px color-mix(in srgb, var(--charter-brand) 30%, transparent); }
-.charter-graph__node.is-staged-removed { opacity: 0.55; text-decoration: line-through; }
+.charter-graph__node.is-staged-changed { border-style: double; }
+.charter-graph__node.is-staged-removed { opacity: 0.55; text-decoration: line-through; border-style: dotted; }
 .charter-graph__node:focus-visible { outline: 2px solid var(--charter-brand); outline-offset: 2px; }
 .charter-graph__node[aria-current="true"] { background: color-mix(in srgb, var(--charter-brand) 8%, var(--charter-surface)); }
 
@@ -2503,3 +2504,20 @@
 .charter-linkbutton:focus-visible { outline: 2px solid var(--charter-brand); outline-offset: 1px; }
 
 .charter-dependency__locate { justify-self: start; }
+
+
+@media (forced-colors: active) {
+  .charter-graph__node {
+    border: 1px solid CanvasText;
+    color: CanvasText;
+    background: Canvas;
+  }
+  .charter-graph__node.is-candidate,
+  .charter-graph__node.is-history { border-style: dashed; }
+  .charter-graph__node.is-staged-changed { border-style: double; }
+  .charter-graph__node.is-staged-removed { border-style: dotted; }
+  .charter-graph__node:focus-visible,
+  .charter-graph__edgehit:focus-visible { outline: 2px solid Highlight; }
+  .charter-graph__edge-line,
+  .charter-graph__edge-removed { stroke: CanvasText; }
+}

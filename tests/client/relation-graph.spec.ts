@@ -123,6 +123,31 @@ describe('relation graph projection', () => {
     expect(layout.width).toBeGreaterThan(0)
   })
 
+  it('places pending-to-pending candidates in ranked columns and marks cycles', () => {
+    const pending = (id: string, proposedRequires: readonly string[], order: number): GraphInputItem => ({
+      id, kind: 'deliverable', text: id, review: 'pending', lifecycle: 'current', progress: 'not-started', proposedRequires, order,
+    } as GraphInputItem)
+    const items = [deliverable('a', 0, 'done'), pending('p1', ['p2'], 1), pending('p2', ['p1'], 2), pending('p3', ['p2'], 3)]
+    const model = buildRelationGraph({ committed: items, projected: items })
+    expect(model.nodes.find(node => node.id === 'p1')?.groupRank).toBe(0)
+    expect(model.nodes.find(node => node.id === 'p2')?.groupRank).toBe(0)
+    expect(model.nodes.find(node => node.id === 'p3')?.groupRank).toBe(1)
+    expect(model.nodes.find(node => node.id === 'p1')?.candidateCycle).toBe(true)
+  })
+
+  it('keeps requires and supersedes edges with the same endpoints distinct', () => {
+    const before: readonly GraphInputItem[] = [deliverable('a', 0, 'done'), deliverable('b', 1, 'not-started', ['a'])]
+    const after: readonly GraphInputItem[] = [
+      { ...deliverable('a', 0, 'done'), lifecycle: 'superseded', supersededBy: 'b' },
+      { ...deliverable('b', 1, 'not-started', ['a']), supersedes: 'a' },
+    ]
+    const model = buildRelationGraph({ committed: before, projected: after, showSupersedes: true })
+    const keys = layoutRelationGraph(model, { focusId: 'b', depth: 2 }).edges.map(edge => edge.key)
+    expect(new Set(keys).size).toBe(keys.length)
+    expect(keys).toContain('e:requires:a→b')
+    expect(keys).toContain('e:supersedes:a→b')
+  })
+
   it('hides history first when the navigation budget is exceeded', () => {
     const history = deliverable('old', 9, 'cancelled', [], { lifecycle: 'superseded', supersededBy: 'a' })
     const model = buildRelationGraph({

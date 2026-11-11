@@ -742,6 +742,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   const [dependencyGraphFocusId, setDependencyGraphFocusId] = useState<string | undefined>(undefined)
   const [dependencyGraphActiveKey, setDependencyGraphActiveKey] = useState<string | undefined>(undefined)
   const [dependencyGraphProblem, setDependencyGraphProblem] = useState<string | null>(null)
+  const [dependencyVisibleCount, setDependencyVisibleCount] = useState(50)
   const [archivePreview, setArchivePreview] = useState<ArchivePreview | null>(null)
   const [archiveEntries, setArchiveEntries] = useState<readonly CharterArchiveEntry[]>([])
   const [archiveCacheProblem, setArchiveCacheProblem] = useState<string | null>(null)
@@ -2168,7 +2169,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                   )}
                   <div className="charter-dependency-listwrap">
                     <ol className="charter-dependency-list" id="charter-dependency-list">
-                      {dependencyPlan.map(row => {
+                      {dependencyPlan.slice(0, dependencyVisibleCount).map(row => {
                         const item = view.items.find(candidate => candidate.id === row.id)
                         return (
                           <li
@@ -2224,6 +2225,15 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                         )
                       })}
                     </ol>
+                    {dependencyPlan.length > dependencyVisibleCount && (
+                      <button
+                        type="button"
+                        className="charter-linkbutton"
+                        onClick={() => setDependencyVisibleCount(count => count + 50)}
+                      >
+                        {t('deps.showMore', { count: Math.min(50, dependencyPlan.length - dependencyVisibleCount) })}
+                      </button>
+                    )}
                   </div>
                 </div>
               </section>
