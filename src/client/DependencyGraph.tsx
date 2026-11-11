@@ -61,6 +61,7 @@ export function DependencyGraph({
   const key = activeKey ?? focusId ?? layout.traversal[0]
   const [inspector, setInspector] = useState<string | undefined>(key)
   const [zoom, setZoom] = useState(1)
+  const [dragError, setDragError] = useState<string | null>(null)
   const selectedNode = inspector === undefined ? undefined : layout.nodes.find(node => node.id === inspector)
   const selectedEdge = inspector === undefined ? undefined : layout.edges.find(edge => edge.key === inspector)
   const activeNode = key === undefined ? undefined : layout.nodes.find(node => node.id === key)
@@ -131,7 +132,7 @@ export function DependencyGraph({
     }
     const edge = layout.edges.find(candidate => candidate.key === targetKey)
     if (edge?.kind === 'proposed') {
-      onProposal(edge.to)
+      onProposal(edge.targetProposalId ?? edge.to)
       return
     }
     setInspector(targetKey)
@@ -191,6 +192,8 @@ export function DependencyGraph({
           <button type="button" aria-label={t('deps.zoomIn')} onClick={() => setZoom(value => Math.min(2, Math.round((value + 0.25) * 100) / 100))}>+</button>
         </div>
       </div>
+      {dragError !== null && <div className="charter-notice charter-notice--warning" role="alert">{dragError}</div>}
+      <p className="charter-hint charter-graph__hint">{t('deps.graphHint')}</p>
       {layout.degraded.supersedesHidden && <div className="charter-notice" role="status">{t('deps.graphDegradedSupersedes')}</div>}
       {layout.degraded.depthReduced && <div className="charter-notice" role="status">{t('deps.graphDegradedDepth')}</div>}
       {layout.degraded.hidden && (
@@ -255,6 +258,7 @@ export function DependencyGraph({
                   draggable={editable && node.lane === 'execution'}
                   onDragStart={event => {
                     if (!editable || node.lane !== 'execution') return
+                    setDragError(null)
                     event.dataTransfer.setData('text/plain', node.id)
                     event.dataTransfer.effectAllowed = 'link'
                   }}
@@ -267,7 +271,16 @@ export function DependencyGraph({
                     if (!editable || node.lane !== 'execution') return
                     event.preventDefault()
                     const source = event.dataTransfer.getData('text/plain')
-                    if (source !== '') addRequires(node, source)
+                    if (source === '') return
+                    if (source === node.id) {
+                      setDragError(t('deps.dropInvalidSelf'))
+                      return
+                    }
+                    if (projectedRequires(node.id).includes(source)) {
+                      setDragError(t('deps.dropInvalidDuplicate'))
+                      return
+                    }
+                    addRequires(node, source)
                   }}
                   onFocus={() => onActiveKey(node.id)}
                   onClick={() => handleActivate(node.id)}
@@ -354,7 +367,7 @@ export function DependencyGraph({
                     </button>
                   )}
                   {selectedEdge.kind === 'proposed' && (
-                    <button type="button" className="charter-linkbutton" onClick={() => onProposal(selectedEdge.to)}>{t('deps.openProposal')}</button>
+                    <button type="button" className="charter-linkbutton" onClick={() => onProposal(selectedEdge.targetProposalId ?? selectedEdge.to)}>{t('deps.openProposal')}</button>
                   )}
                 </>
               )}

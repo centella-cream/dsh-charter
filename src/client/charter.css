@@ -2332,6 +2332,8 @@
 
 .charter-graph__check { cursor: pointer; }
 
+.charter-graph__hint { margin: 0 0 6px; font-size: 10px; }
+
 .charter-graph__viewport {
   box-sizing: border-box;
   width: 100%;

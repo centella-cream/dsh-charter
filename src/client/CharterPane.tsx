@@ -743,6 +743,8 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   const [dependencyGraphActiveKey, setDependencyGraphActiveKey] = useState<string | undefined>(undefined)
   const [dependencyGraphProblem, setDependencyGraphProblem] = useState<string | null>(null)
   const [dependencyVisibleCount, setDependencyVisibleCount] = useState(50)
+  const [pendingListFocusId, setPendingListFocusId] = useState<string | null>(null)
+  const [pendingProposalFocusId, setPendingProposalFocusId] = useState<string | null>(null)
   const [archivePreview, setArchivePreview] = useState<ArchivePreview | null>(null)
   const [archiveEntries, setArchiveEntries] = useState<readonly CharterArchiveEntry[]>([])
   const [archiveCacheProblem, setArchiveCacheProblem] = useState<string | null>(null)
@@ -1053,6 +1055,9 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
     setDependencyGraphHidden(false)
     setDependencyGraphFocusId(undefined)
     setDependencyGraphActiveKey(undefined)
+    setDependencyVisibleCount(50)
+    setPendingListFocusId(null)
+    setPendingProposalFocusId(null)
   }, [view?.sessionId])
 
   useEffect(() => {
@@ -1095,6 +1100,43 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
     return () => { active = false }
   }, [section, source, view?.sessionId])
 
+
+  useEffect(() => {
+    if (pendingListFocusId === null) return
+    if (typeof document === 'undefined') {
+      setPendingListFocusId(null)
+      return
+    }
+    const row = document.querySelector<HTMLElement>(`[data-dependency-id="${CSS.escape(pendingListFocusId)}"]`)
+    if (row !== null) {
+      row.focus()
+      row.scrollIntoView({ block: 'nearest' })
+    }
+    setPendingListFocusId(null)
+  }, [pendingListFocusId, dependencyVisibleCount, dependencyPlan.length, section])
+
+  useEffect(() => {
+    if (pendingProposalFocusId === null || section !== 'history') return
+    const index = pendingItemProposals.findIndex(item => item.id === pendingProposalFocusId)
+    if (index < 0) {
+      setPendingProposalFocusId(null)
+      return
+    }
+    if (index >= reviewLimit) {
+      setReviewLimit(index + 1)
+      return
+    }
+    if (typeof document === 'undefined') {
+      setPendingProposalFocusId(null)
+      return
+    }
+    const row = document.querySelector<HTMLElement>(`[data-proposal-id="${CSS.escape(pendingProposalFocusId)}"]`)
+    if (row !== null) {
+      row.focus()
+      row.scrollIntoView({ block: 'nearest' })
+    }
+    setPendingProposalFocusId(null)
+  }, [pendingProposalFocusId, section, reviewLimit, pendingItemProposals])
 
   if (state.status === 'connecting' && view === null) {
     return (
@@ -1263,9 +1305,10 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   }
   const locateGraphNodeInList = (id: string): void => {
     if (id === '') return
-    const row = document.querySelector<HTMLElement>(`[data-dependency-id="${CSS.escape(id)}"]`)
-    row?.focus()
-    row?.scrollIntoView({ block: 'nearest' })
+    const index = dependencyPlan.findIndex(row => row.id === id)
+    if (index < 0) return
+    setDependencyVisibleCount(count => Math.max(count, index + 1))
+    setPendingListFocusId(id)
   }
   const errorText = (code: string | undefined): string => {
     if (code === undefined) return t('recovery.exportFailed')
@@ -2163,13 +2206,13 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                       onShowSupersedes={setDependencyGraphSupersedes}
                       onStageRequires={stageGraphRequires}
                       onLocateList={locateGraphNodeInList}
-                      onProposal={() => goSection('history')}
+                      onProposal={id => { setPendingProposalFocusId(id); goSection('history') }}
                       t={(key, values) => t(key as CharterLocaleKey, values)}
                     />
                   )}
                   <div className="charter-dependency-listwrap">
                     <ol className="charter-dependency-list" id="charter-dependency-list">
-                      {dependencyPlan.slice(0, dependencyVisibleCount).map(row => {
+                      {dependencyPlan.slice(0, dependencyVisibleCount).map((row, rowIndex) => {
                         const item = view.items.find(candidate => candidate.id === row.id)
                         return (
                           <li
@@ -2178,6 +2221,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                             data-dependency-id={row.id}
                             tabIndex={-1}
                           >
+                            <span className="charter-sr-only">{t('deps.rowPosition', { index: rowIndex + 1, total: dependencyPlan.length })}</span>
                             <span className="charter-dependency__key">{row.localKey}</span>
                             <span className="charter-dependency__text">{item?.text ?? row.id}</span>
                             <span className="charter-dependency__status">{t(`deps.status.${row.executionDisplay}`)}</span>
@@ -2524,7 +2568,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                   {pendingItemProposals.slice(0, reviewLimit).map(item => {
                     const batch = batchByItem.get(item.id)
                     return (
-                      <li key={item.id} className="charter-proposal">
+                      <li key={item.id} className="charter-proposal" data-proposal-id={item.id}>
                         <p className="charter-proposal__text">{item.text}</p>
                         <span className="charter-proposal__meta">
                           {item.kind === 'invariant' ? t('invariants.kicker') : t('deliverables.kicker')}

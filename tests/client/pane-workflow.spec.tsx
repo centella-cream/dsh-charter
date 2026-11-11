@@ -511,6 +511,24 @@ describe('dependency graph pane surface', () => {
     expect(tree.root.findAll(node => node.props['id'] === 'charter-dependency-list')).toHaveLength(1)
   })
 
+  it('expands the windowed dependency list before locating a graph node', () => {
+    const items = Array.from({ length: 60 }, (_, index) => graphDeliverable(
+      `item-${index}`,
+      index,
+      index === 59 ? 'in-progress' : 'not-started',
+      index === 0 ? [] : [`item-${index - 1}`],
+    ))
+    const src = source(view({ revision: 1, items }))
+    const draft = new CharterDraft(sessionId, () => src)
+    draft.bindLifecycle(lifecycle)
+    draft.setSection('deliverables')
+    const tree = mount(src, draft)
+    expect(tree.root.findAll(node => node.props['data-dependency-id'] === 'item-59')).toHaveLength(0)
+
+    act(() => { button(tree, 'deps.locateInList').props.onClick() })
+    expect(tree.root.findAll(node => node.props['data-dependency-id'] === 'item-59')).toHaveLength(1)
+  })
+
   it('shows the graph only when at least one dependency edge exists', () => {
     const isolated = view({ revision: 1, items: [graphDeliverable('a', 0, 'done')] })
     const src = source(isolated)
