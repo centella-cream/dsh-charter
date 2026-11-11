@@ -528,7 +528,7 @@ export function layoutRelationGraph(model: RelationGraphModel, options: LayoutOp
       const lane = (value: RelationNode): number => value.lane === 'execution' ? 0 : value.lane === 'candidate' ? 1 : 2
       return (lane(a) - lane(b)) || (a.order - b.order) || a.id.localeCompare(b.id)
     })
-    const columns = Math.min(3, Math.max(2, Math.ceil(Math.sqrt(Math.max(ordered.length, 1)))))
+    const columns = Math.min(3, Math.max(1, ordered.length))
     const placed: PlacedNode[] = ordered.map((node, index) => {
       const lines = labelLines(node.text)
       return {
