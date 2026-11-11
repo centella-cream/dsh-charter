@@ -2568,7 +2568,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                   {pendingItemProposals.slice(0, reviewLimit).map(item => {
                     const batch = batchByItem.get(item.id)
                     return (
-                      <li key={item.id} className="charter-proposal" data-proposal-id={item.id}>
+                      <li key={item.id} className="charter-proposal" data-proposal-id={item.id} tabIndex={-1}>
                         <p className="charter-proposal__text">{item.text}</p>
                         <span className="charter-proposal__meta">
                           {item.kind === 'invariant' ? t('invariants.kicker') : t('deliverables.kicker')}

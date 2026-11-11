@@ -529,6 +529,60 @@ describe('dependency graph pane surface', () => {
     expect(tree.root.findAll(node => node.props['data-dependency-id'] === 'item-59')).toHaveLength(1)
   })
 
+  it('stages the same requires op from the graph inspector and the list select', () => {
+    const items = [
+      graphDeliverable('a', 0, 'not-started'),
+      graphDeliverable('b', 1, 'not-started', ['a']),
+      graphDeliverable('c', 2, 'not-started'),
+    ]
+    const initial = view({ revision: 1, items })
+    const graphSource = source(initial)
+    const graphDraft = new CharterDraft(sessionId, () => graphSource)
+    graphDraft.bindLifecycle(lifecycle)
+    graphDraft.setSection('deliverables')
+    const graphTree = mount(graphSource, graphDraft)
+
+    const graphSelect = graphTree.root.findAll(node =>
+      node.type === 'select' && node.props['aria-label'] === 'deps.addRequires')[0]
+    expect(graphSelect).toBeDefined()
+    act(() => {
+      graphSelect!.props.onChange({ target: { value: 'c' }, currentTarget: { value: '' } })
+    })
+    const graphOps = graphDraft.getSnapshot().ops
+    expect(graphOps).toHaveLength(1)
+    expect(graphOps[0]).toMatchObject({ type: 'deliverable.requires', itemId: 'b', requires: ['a', 'c'] })
+
+    const listSource = source(initial)
+    const listDraft = new CharterDraft(sessionId, () => listSource)
+    listDraft.bindLifecycle(lifecycle)
+    listDraft.setSection('deliverables')
+    const listTree = mount(listSource, listDraft)
+    const listSelect = listTree.root.findAll(node => node.type === 'select' && node.props.multiple === true)
+      .find(node => Array.isArray(node.props.value) && (node.props.value as string[]).includes('a'))
+    expect(listSelect).toBeDefined()
+    act(() => {
+      listSelect!.props.onChange({
+        target: { selectedOptions: [{ value: 'a' }, { value: 'c' }] },
+      })
+    })
+    expect(listDraft.getSnapshot().ops).toEqual(graphOps)
+  })
+
+  it('marks proposal rows as focusable for graph-to-proposal navigation', () => {
+    const pending = {
+      id: 'pending-a', kind: 'deliverable', text: 'Pending A', review: 'pending', lifecycle: 'current',
+      verification: { state: 'unchecked' }, origin: 'user', order: 0, createdRevision: 1, progress: 'not-started',
+    } as unknown as CharterItem
+    const initial = view({ revision: 1, items: [pending] })
+    const src = source(initial)
+    const draft = new CharterDraft(sessionId, () => src)
+    draft.bindLifecycle(lifecycle)
+    draft.setSection('history')
+    const tree = mount(src, draft)
+    const row = tree.root.findAll(node => node.props['data-proposal-id'] === 'pending-a')[0]
+    expect(row?.props.tabIndex).toBe(-1)
+  })
+
   it('shows the graph only when at least one dependency edge exists', () => {
     const isolated = view({ revision: 1, items: [graphDeliverable('a', 0, 'done')] })
     const src = source(isolated)
