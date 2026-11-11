@@ -525,7 +525,7 @@ locales（中英）、客户端测试。
 
 ### 3.9 新增 i18n 键（中英成对，D16）
 
-键名与**最终中英文案**见 §10.9（62 个实际 `deps.*` 键，含拖拽非法落点原因、窗口化定位、候选环提示、替代关系等）。
+键名与**最终中英文案**见 §10.9（61 个实际 `deps.*` 键，含拖拽非法落点原因、窗口化定位、候选环提示、替代关系等）。
 文案以 §10.9 为准，本节不再重复列举，避免两处漂移。
 
 ### 3.10 W0 原型门禁与交付拆分
@@ -730,7 +730,7 @@ S2 的"二次确认"、S3/S4 的 `previewDigest` 等价性是本提案最容易�
    `PlannedChangeSet.dependencyConflicts` + Host 预览透传 + wire 可选字段（老 Host 帧仍可解码）+
    Pane 冲突清单与两步确认 + 中英文案 + 15 条冲突测试。独立于图形视图，可先于其发布。
 5. **替代边**：v1 **一体实现**（§10.1 的 history 泳道 + 幽灵节点方案），不再退化为纯文本呈现。
-6. **bundle 预算口径**：统一按 **gzip**（`gzip -9 -c lib/client.js | wc -c`）计算 `<40KB`，raw bytes 只作为诊断；当前 0.2.2 实测 +16,435 B gzip，通过。
+6. **bundle 预算口径**：统一按 **gzip**（`gzip -9 -c lib/client.js | wc -c`）计算 `<40KB`，raw bytes 只作为诊断；当前 0.2.2 实测 +16,486 B gzip，通过。
 
    D11/D12、§3.3 接口、§3.4 节点与边集合、§3.5 语义与键位、§3.7 几何与视觉、§5.1 S11、§10.9 文案已同步。
 
@@ -900,11 +900,10 @@ col(n)      = base(n) + candRank(n)
 
 ### 10.9 i18n 最终文案（原 C7）
 
-> 下表由 [`src/client/locales.ts`](../../src/client/locales.ts) 的实际 `deps.*` 键生成（共 62 条，en/zh 成对）；实现以该文件为准，文档不再维护第二份键名。`deps.graphPosition` / `deps.edgeKicker` / `deps.requires` / `deps.editAria` 等死键已删除。
+> 下表由 [`src/client/locales.ts`](../../src/client/locales.ts) 的实际 `deps.*` 键生成（共 61 条，en/zh 成对）；实现以该文件为准，文档不再维护第二份键名。`deps.graphPosition` / `deps.edgeKicker` / `deps.requires` / `deps.editAria` / `deps.kicker` / `deps.graphKicker` 等死键已删除。
 
 | 键 | en | zh |
 | --- | --- | --- |
-| `deps.kicker` | Execution plan | 执行计划 |
 | `deps.title` | Dependencies and readiness | 依赖与就绪状态 |
 | `deps.status.ready` | ready | 可推进 |
 | `deps.status.waiting` | waiting | 等待前置 |
@@ -914,7 +913,6 @@ col(n)      = base(n) + candRank(n)
 | `deps.status.terminal` | terminal | 已结束 |
 | `deps.prerequisiteConflict` | prerequisite conflict | 前置冲突 |
 | `deps.conflict` | The staged dependency plan contains a cycle or invalid reference. Remove or change a prerequisite before Apply. | 暂存的依赖计划包含环或非法引用。请移除或修改前置条件后再 Apply。 |
-| `deps.graphKicker` | Dependency graph | 依赖图 |
 | `deps.graphTitle` | Dependency map | 依赖关系图 |
 | `deps.graphFocus` | Focus | 焦点 |
 | `deps.graphDepth` | Depth | 深度 |
@@ -956,6 +954,7 @@ col(n)      = base(n) + candRank(n)
 | `deps.locateInList` | Locate in the list | 在列表中定位 |
 | `deps.locateInGraph` | Locate in graph | 在图中定位 |
 | `deps.graphHint` | The graph never changes state by itself; edits are staged into the Change Set and Apply remains the only commit. | 图不会自动修改状态；编辑只会暂存到 Change Set，Apply 仍是唯一提交点。 |
+| `deps.help` | Keys and notes | 键位与说明 |
 | `deps.graphEmpty` | No dependencies yet. Drag one node onto another, or open a list row to add a prerequisite. | 还没有依赖关系。可以把一个节点拖到另一个节点上，或在列表行中打开前置编辑。 |
 | `deps.graphIsolatedTooMany` | No dependencies yet. The isolated-node preview is hidden for this many rows; use the list. | 还没有依赖关系。当前交付物过多，孤立节点预览已隐藏，请使用列表。 |
 | `deps.requiresSummary` | Prerequisites: {keys} | 前置：{keys} |
@@ -979,7 +978,7 @@ col(n)      = base(n) + candRank(n)
 | 图形区高度 | 基础 `22.5em`，附加带按行数增高 | W0-2 在 200% 缩放下确认能同时显示 ≥2 列 + 候选带 + history 带 | 不满足则提到 `26em`；仍不满足则改为容器高度自适应 + 内部滚动 |
 | 最小缩放 | 0.75（§10.4 已定） | W0-2 在 0.75 + 200% 文本下检查可读性 | 不可读则把最小缩放提到 1（即禁用缩小，只留平移） |
 | 性能预算 | ego 布局 p95 `<8ms`、SVG mount→首帧 `<100ms`、hover `≥50fps` | W1/W2 实测 | 超预算按固定降级路径：关 history 泳道 → 锁深度 1 → 下调 D5 阈值 → 隐藏图形区 |
-| bundle delta | `<40KB` **gzip**（`gzip -9 -c lib/client.js \| wc -c`；raw 只作诊断） | W1/W2 构建前后同一压缩方法 | 超出则复核是否引入了非必要依赖（D6 要求零新依赖）。2026-11-11 实测 gzip 113,990 → 130,425 B（+16,435 B，通过）；raw 591,936 → 669,821 B（+77,885 B，仅诊断） |
+| bundle delta | `<40KB` **gzip**（`gzip -9 -c lib/client.js \| wc -c`；raw 只作诊断） | W1/W2 构建前后同一压缩方法 | 超出则复核是否引入了非必要依赖（D6 要求零新依赖）。2026-11-11 实测 gzip 113,990 → 130,476 B（+16,486 B，通过）；raw 591,936 → 669,947 B（+78,011 B，仅诊断） |
 
 ### 10.11 实测执行方案（A 组）
 
