@@ -41,6 +41,7 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 | 本地 Web + Desktop profile | 0.2.0 开发 artifact 已装入本地 web/desktop profile；Desktop app 为 `0.2.2-rc.1`，真实 Electron ABI/交互仍需人工门禁 |
 | 真实浏览器恢复 | 受保护的人工 evidence gate；未自动化 |
 | 真实模型 compaction | 2026-10-22 记录 PASS；仍是人工发布门禁 |
+| 0.2.2 依赖图源码 | 2026-11-11 PASS：`npm run check` 37 个文件 / 466 个测试；W0-0 原型 41/41；Web Pane 在 3 条 active + 4 条 pending 交付物的 Session 上渲染图形、候选泳道、inspector 和常驻语义列表；浏览器 console 无错误。W0-1/2/3 与真实 AT/人工门禁仍待完成。 |
 
 ## 2. 本地基线
 

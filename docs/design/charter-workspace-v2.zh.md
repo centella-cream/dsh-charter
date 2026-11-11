@@ -27,6 +27,8 @@
   timeout/权限/不可读→unknown、正文变更→stale、结果不进 standing prompt；v1 verification→v2 validity 映射。
 - Change Set 的 §6.5 依赖冲突确认：`dependencyConflictDiff` 标出新增/加重的 conflict，Pane 列出受影响交付物并要求
   两步确认；wire 上为 optional 字段，不影响既有 preview/summary digest。
+- 依赖关系图形区：Workspace 执行依赖卡片内的客户端透镜，语义列表始终常驻且为权威操作面；图形区不提供列表
+  之外的独有能力，编辑仍只产生 Change Set ops。实现与 W0 门禁见依赖图设计文档。
 - source registry 按 source kind/projectionVersion 复算 message/compaction/agent-tool projection；Review/query 面
   使用同一投影上下文并展示 batch integrity；未知投影返回 unsupported，缺 digest 返回 missing，不把“有 digest”当作
   intact。message selection 以 trim 后正文为 canonicalization 基准；agent source 不绑定会在 accept 时剥离的

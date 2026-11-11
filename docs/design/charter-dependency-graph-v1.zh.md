@@ -1,10 +1,9 @@
 # `dsh-charter` 依赖关系图形化视图设计（提案）
 
-> **状态：** `Proposed` —— **未实现、非权威**。本文只记录一个待决方案，不描述任何已具备的能力，
-> 不得被当作当前契约引用。进入实施前必须先由[版本路线](version-roadmap.zh.md)批准范围
-> （[charter-workspace-v2.zh.md](charter-workspace-v2.zh.md) §1.1 的既定规则）。
-> **版本范围：** `0.2.2`（**已确认**，纯客户端）。roadmap 尚未写入该范围，**写入前不启动 W1 及之后的实现**
-> （§9）。
+> **状态：** `Implemented — pending release acceptance`——源码已实现并通过 source gates；真实浏览器/AT
+> 与 W0-1/2/3 人工门禁仍待完成，本文不描述已发布行为。进入发布前仍以[版本路线](version-roadmap.zh.md)为准
+> （[charter-workspace-v2.zh.md](charter-workspace-v2.zh.md) §1.1）。
+> **版本范围：** `0.2.2`（已确认，纯客户端）。源码实现已完成；发布前仍需完成真实浏览器/AT 门禁（§3.10）。
 > **形态：** **A —— 图形增强，语义列表常驻且为权威操作面**（已确认，§0.2）。
 > **基准：** 2026-11-09，基于已发布 `0.2.1` 之后的开发树。
 > **权威边界：** 版本范围由[版本路线](version-roadmap.zh.md)决定；不变量由 [v1 核心设计](charter-design-v1.zh.md)
@@ -660,7 +659,7 @@ S2 的"二次确认"、S3/S4 的 `previewDigest` 等价性是本提案最容易�
   并说明对里程碑与 feature-freeze 的影响（**实施前必须完成**）。
 - [charter-workspace-v2.zh.md](charter-workspace-v2.zh.md)：§5.3 补图形区的信息架构，§5.7 补复合控件的
   语义与键盘合同条目（引用本文 §3.5）。**不改动 §5.7 现有 canvas 条款**（§1.3.1）。
-- [docs/README.md](../README.md)：实施后把本文状态从 `Proposed` 改为 `Implemented — pending release acceptance`。
+- [docs/README.md](../README.md)：本文状态已更新为 `Implemented — pending release acceptance`；发布前仍需补齐真实浏览器/AT 证据。
 - [user-guide.zh.md](../user-guide.zh.md) / [user-guide.md](../user-guide.md)：图形区使用说明，
   以及"图不会自动改状态"的说明。
 
@@ -683,7 +682,7 @@ S2 的"二次确认"、S3/S4 的 `previewDigest` 等价性是本提案最容易�
   对 `item-b` 执行 `deliverable.progress → in-progress`。按 §6.5 规则 2 应判定 `dependency-conflict`，
   而 `planChangeSet` 输出无任何 conflict 信号，Apply 无需额外确认即成功。
 - **修复范围（已完成）**：core 侧 planner 输出 before/after 的 conflict 差集（新增/加重）；client 侧在 Change Set
-  面板醒目标注 + Apply 前显式两步确认；core / wire / DOM 测试共 15 条（`npm run check`：36 文件 / **456** 通过）。
+  面板醒目标注 + Apply 前显式两步确认；core / wire / DOM 测试共 15 条；图形语义/几何/界面测试另计，当前 `npm run check` 为 37 文件 / **466** 通过。
 - **版本归属**：`0.2.2` 必修，不与图形视图绑定发布（roadmap 写入见 §10.13-G1）。
 - **修复方案与实现差异**：见 §10.14（其中记录了最终字段形状与方案的三处差别）。
 
@@ -729,7 +728,7 @@ S2 的"二次确认"、S3/S4 的 `previewDigest` 等价性是本提案最容易�
 
 4. **§6.5 conflict 确认缺口**：**修**。已按 §10.14 落地为产品代码——core `dependencyConflictDiff` +
    `PlannedChangeSet.dependencyConflicts` + Host 预览透传 + wire 可选字段（老 Host 帧仍可解码）+
-   Pane 冲突清单与两步确认 + 中英文案 + 15 条新测试。独立于图形视图，可先于其发布。
+   Pane 冲突清单与两步确认 + 中英文案 + 15 条冲突测试。独立于图形视图，可先于其发布。
 5. **替代边**：v1 **一体实现**（§10.1 的 history 泳道 + 幽灵节点方案），不再退化为纯文本呈现。
    D11/D12、§3.3 接口、§3.4 节点与边集合、§3.5 语义与键位、§3.7 几何与视觉、§5.1 S11、§10.9 文案已同步。
 
