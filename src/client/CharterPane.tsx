@@ -2175,17 +2175,19 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                   <div className="charter-cardtitle">
                     <h3 id="charter-dependency-title">{t('deps.title')}</h3>
                   </div>
-                  <span className="charter-count">{dependencyPlan.length}</span>
-                  {relationGraphAvailable && (
-                    <button
-                      type="button"
-                      className="charter-linkbutton"
-                      aria-pressed={!dependencyGraphHidden}
-                      onClick={() => setDependencyGraphHidden(value => !value)}
-                    >
-                      {dependencyGraphHidden ? t('deps.showGraph') : t('deps.hideGraph')}
-                    </button>
-                  )}
+                  <div className="charter-cardtools">
+                    <span className="charter-count">{dependencyPlan.length}</span>
+                    {relationGraphAvailable && (
+                      <button
+                        type="button"
+                        className="charter-linkbutton"
+                        aria-pressed={!dependencyGraphHidden}
+                        onClick={() => setDependencyGraphHidden(value => !value)}
+                      >
+                        {dependencyGraphHidden ? t('deps.showGraph') : t('deps.hideGraph')}
+                      </button>
+                    )}
+                  </div>
                 </div>
                 {dependencyGraphProblem !== null && (
                   <div className="charter-notice charter-notice--warning" role="alert">{dependencyGraphProblem}</div>

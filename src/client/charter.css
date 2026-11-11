@@ -2297,9 +2297,13 @@
 .charter-graph__toolbar {
   display: flex;
   flex-wrap: wrap;
-  align-items: end;
-  gap: 8px 12px;
-  margin-bottom: 8px;
+  align-items: center;
+  gap: 10px 16px;
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--charter-border-soft);
+  border-radius: 6px;
+  background: var(--charter-surface);
 }
 
 .charter-graph__toolbar-title { margin-right: auto; }
@@ -2310,14 +2314,16 @@
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   color: var(--dsw-alias-label-tertiary, inherit);
   font-size: 11px;
 }
 
 .charter-graph__control select {
   box-sizing: border-box;
-  max-width: 14em;
+  min-width: 10em;
+  max-width: 20em;
+  padding: 0 8px;
   min-height: 44px;
   border: 1px solid var(--charter-border-soft);
   border-radius: 5px;
@@ -2372,6 +2378,7 @@
   position: relative;
   min-width: 0;
   min-height: 0;
+  margin: 0 auto;
   font-size: 1rem;
 }
 
