@@ -322,7 +322,7 @@ pending 节点迁入执行拓扑并获得 `D<n>` 与 rank。（这是可视化�
 - invariant 不进图（D10）；`appliesTo` 不在范围。
 
 **候选泳道的位置语义**：不代表执行序。布局上放在执行拓扑**下方独立带**，按其候选边指向的 active 节点的
-最大 rank 分组，组内按 canonical order（`compareOrderedItems`）；无候选边指向 active 的 pending 放最右组。
+最大 rank 分组；候选列按 §10.2 的 `base + candRank` 计算，只指向 pending 的候选链依次右移，成环时标记 `candidateCycle`。
 视觉为虚线边框 + `--charter-surface-2` 底 + "候选"角标；accessible name 为
 `候选提案 · <正文摘要> · 未进入执行序`。
 
@@ -682,7 +682,7 @@ S2 的"二次确认"、S3/S4 的 `previewDigest` 等价性是本提案最容易�
   对 `item-b` 执行 `deliverable.progress → in-progress`。按 §6.5 规则 2 应判定 `dependency-conflict`，
   而 `planChangeSet` 输出无任何 conflict 信号，Apply 无需额外确认即成功。
 - **修复范围（已完成）**：core 侧 planner 输出 before/after 的 conflict 差集（新增/加重）；client 侧在 Change Set
-  面板醒目标注 + Apply 前显式两步确认；core / wire / DOM 测试共 15 条；图形语义/几何/界面测试另计，当前 `npm run check` 为 37 文件 / **468** 通过。
+  面板醒目标注 + Apply 前显式两步确认；core / wire / DOM 测试共 15 条；图形语义/几何/界面测试另计，当前 `npm run check` 为 37 文件 / **469** 通过。
 - **版本归属**：`0.2.2` 必修，不与图形视图绑定发布（roadmap 写入见 §10.13-G1）。
 - **修复方案与实现差异**：见 §10.14（其中记录了最终字段形状与方案的三处差别）。
 
@@ -955,7 +955,7 @@ col(n)      = base(n) + candRank(n)
 | 图形区高度 | 基础 `22.5em`，附加带按行数增高 | W0-2 在 200% 缩放下确认能同时显示 ≥2 列 + 候选带 + history 带 | 不满足则提到 `26em`；仍不满足则改为容器高度自适应 + 内部滚动 |
 | 最小缩放 | 0.75（§10.4 已定） | W0-2 在 0.75 + 200% 文本下检查可读性 | 不可读则把最小缩放提到 1（即禁用缩小，只留平移） |
 | 性能预算 | ego 布局 p95 `<8ms`、SVG mount→首帧 `<100ms`、hover `≥50fps` | W1/W2 实测 | 超预算按固定降级路径：关 history 泳道 → 锁深度 1 → 下调 D5 阈值 → 隐藏图形区 |
-| bundle delta | `<40KB` | W1 构建前后 `lib/client.js` 字节差 | 超出则复核是否引入了非必要依赖（D6 要求零新依赖）。2026-11-11 实测 raw +68,370 B / gzip +13.48 KiB，预算单位待明确（见 verification） |
+| bundle delta | `<40KB` | W1 构建前后 `lib/client.js` 字节差 | 超出则复核是否引入了非必要依赖（D6 要求零新依赖）。2026-11-11 实测 raw +71,480 B / gzip +14.19 KiB，预算单位待明确（见 verification） |
 
 ### 10.11 实测执行方案（A 组）
 
