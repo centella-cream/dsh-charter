@@ -3,10 +3,10 @@
 [English](verification.md) | 中文
 
 > **状态：** Active — 当前操作记录。
-> **版本范围：** 当前开发线。
-> **基准：** 2026-11-06
+> **版本范围：** `0.2.2` 开发候选。
+> **基准：** 2026-11-11
 
-验证日期：2026-11-06。当前源码版本：`0.2.1`（发布候选，尚未发布）。本文件是当前证据记录；历史逐提交的叙事保留在 Git 历史和 Changelog。临时目录、profile、
+验证日期：2026-11-11。当前源码版本：`0.2.2`（开发候选，尚未发布）。本文件是当前证据记录；历史逐提交的叙事保留在 Git 历史和 Changelog。临时目录、profile、
 tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 
 环境：macOS，Node `v22.23.1`，npm `12.0.2`，pnpm `12.3.4`。本地 DSH 开发基线：`0.2.2-rc.1`（当前 npm
@@ -14,19 +14,19 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 
 ## 1. 当前结论
 
-当前发布状态（2026-11-06）：
+当前发布状态（2026-11-11）：
 
 - 已发布：`0.2.1`（npm `latest`/`next`；精确 SHA-256 `d4ae14e19b4d65264a53b57c0f9d3f93eb8303189e8daa3f3f35beb97104d498`）。GitHub Release `v0.2.1` 已公开且不可变。
 - `0.2.0`：上一公开版本；GitHub Release `v0.2.0` 保持不可变。
 - `0.1.0-rc.6`：更早的公开版本；使用 recovery tag `v0.1.0-rc.6-republished`。
 - 从 0.2.0 起版本号使用普通递增，不使用 `rc` 后缀。
-- 当前源码证据：0.2.1 候选树在源码提交 `071a4ba065345b0d029c8d500149261e27bdd061` 上通过 36 个测试文件 / 441 个测试，九版本矩阵 441/441 通过。
+- 当前源码证据：0.2.2 最终候选树在源码提交 `f9d93c0` 上通过 37 个测试文件 / 475 个测试；九版本矩阵在该树上 475/475 通过（Node `v22.23.1` / pnpm `12.3.4`，证据 `.tmp/0.2.2-final-matrix2.json`）。
 - 发布后诊断：真实模型 compaction PASS（session `session-da7e7b0d-f0b0-49a2-8391-148b4782892c`）；512 条性能于 2026-11-06 PASS（core read/planning p95，见下）。
 
 | 项目 | 结果 |
 | --- | --- |
 | TypeScript 严格检查 | 当前树通过 |
-| Vitest | 36 个测试文件 / 441 个测试通过（`npm test`，先 build） |
+| Vitest | 37 个测试文件 / 475 个测试通过（`npm test`，先 build） |
 | Host ESM 构建 + 浏览器 factory bundle | 通过 |
 | Remote 契约与 client smoke | 通过 |
 | 普通 package smoke | 通过 |
@@ -36,13 +36,13 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 | 兼容 sentinel | `0.1.7-rc.2`、`0.2.1-rc.2`、`0.2.1-rc.4`、`0.2.1-rc.5`、`0.2.2-rc.1` 通过 |
 | Fresh Web profile matrix (historical rc.6) | PASS：历史 rc.6 artifact 曾在 DSH `0.1.7-rc.2`、`0.2.0-rc.2`、`0.2.1-rc.2`、`0.2.1-rc.4`、`0.2.1-rc.5` 上安装并启动 |
 | Fresh Web 0.2.2 | 2026-11-05 PASS：全新 `DSH_HOME` + `dsh@0.2.2-rc.1 plugin --profile web add` 安装 `dsh-charter-0.2.0.tgz`（SHA-256 `fde5531d457effc713f4423f8b46c8f0e591770e59c55e19956f000c11bdeffc`）；Web 启动、页面 HTTP 200、charter bundle HTTP 200；boot graph 含 `dsh-charter`，页面 index 含 `dsh-charter/client.js` |
-| 九版本全量 rerun | tracked `compat-matrix --versions all --allow-new-release` 通过（每版本 441/441） |
+| 九版本全量 rerun | tracked `compat-matrix --versions all --allow-new-release` 通过（每版本 475/475） |
 | 未跟踪 `0.2.2-alpha.2` probe | strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run；rc.6 明确不支持 |
 | 本地 Web + Desktop profile | 0.2.0 开发 artifact 已装入本地 web/desktop profile；Desktop app 为 `0.2.2-rc.1`，真实 Electron ABI/交互仍需人工门禁 |
 | 真实浏览器恢复 | 受保护的人工 evidence gate；未自动化 |
 | 真实模型 compaction | 2026-10-22 记录 PASS；仍是人工发布门禁 |
 | 0.2.2 依赖图源码 | 2026-11-11 PASS：`npm run check` 37 个文件 / 475 个测试；W0-0 原型 41/41（旧契约；无边孤立节点网格例外由 `tests/client/relation-graph.spec.ts` 的产品测试覆盖）；Web Pane 在 3 条 active + 4 条 pending 交付物的 Session 上渲染图形、候选泳道、inspector 和常驻语义列表；浏览器 console 无错误。UI 自测（2026-11-11）：三节点孤立图 + 空提示、紧凑列表、添加依赖/隐藏/显示、本地 key 前置摘要均正常，无 console 错误。W0-1/2/3 与真实 AT/人工门禁仍待完成。 |
-| 0.2.2 依赖图 bundle | 2026-11-11 以 `d362d6f` 为基线，按统一预算方法 `gzip -9 -c lib/client.js | wc -c` 实测：113,990 → 130,493 B（+16,503 B），`<40 KB` gzip 预算通过。raw 仅作诊断：`lib/client.js` 591,936 → 670,208 字节（+78,272 B），CSS output 47,230 → 55,540 B（+8,310 B）；raw 不作为预算口径。 |
+| 0.2.2 依赖图 bundle | 2026-11-11 以 `d362d6f` 为基线，按统一预算方法 `gzip -9 -c lib/client.js | wc -c` 实测：113,990 → 130,474 B（+16,484 B），`<40 KB` gzip 预算通过。raw 仅作诊断：`lib/client.js` 591,936 → 670,173 字节（+78,237 B），CSS output 47,230 → 55,540 B（+8,310 B）；raw 不作为预算口径。 |
 
 ## 2. 本地基线
 
@@ -72,19 +72,19 @@ CI（`.github/workflows/ci.yml`）在 Node `22.19.0` / `24` 上运行 `npm run c
 
 | DSH 版本 | 证据 |
 | --- | --- |
-| `0.1.7-rc.2` | 441/441 tracked matrix PASS |
-| `0.2.0-rc.1` | 441/441 tracked matrix PASS |
-| `0.2.0-rc.2` | 441/441 tracked matrix PASS |
-| `0.2.1-rc.1` | 441/441 tracked matrix PASS |
-| `0.2.1-rc.2` | 441/441 tracked matrix PASS |
-| `0.2.1-rc.3` | 441/441 tracked matrix PASS |
-| `0.2.1-rc.4` | 441/441 tracked matrix PASS |
-| `0.2.1-rc.5` | 441/441 tracked matrix PASS |
-| `0.2.2-rc.1` | 441/441 tracked matrix PASS |
+| `0.1.7-rc.2` | 475/475 tracked matrix PASS |
+| `0.2.0-rc.1` | 475/475 tracked matrix PASS |
+| `0.2.0-rc.2` | 475/475 tracked matrix PASS |
+| `0.2.1-rc.1` | 475/475 tracked matrix PASS |
+| `0.2.1-rc.2` | 475/475 tracked matrix PASS |
+| `0.2.1-rc.3` | 475/475 tracked matrix PASS |
+| `0.2.1-rc.4` | 475/475 tracked matrix PASS |
+| `0.2.1-rc.5` | 475/475 tracked matrix PASS |
+| `0.2.2-rc.1` | 475/475 tracked matrix PASS |
 
-0.2.1 候选树在源码提交 `071a4ba065345b0d029c8d500149261e27bdd061` 上于 2026-11-06 通过
-`compat-matrix --versions all --allow-new-release`：每个声明版本均通过 typecheck、build 和 441/441 测试；本地证据为
-`.tmp/0.2.1-matrix.json`。安装使用 pnpm strict peer、精确工具版本、单一 zod 4.6.7 图、完整 `pnpm list --depth Infinity` 图校验，并记录 lockfile SHA-256。未跟踪 `0.2.2-alpha.2` 已 probe：strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run，rc.6 明确不支持。
+0.2.2 候选树在源码提交 `f9d93c031eabfe5e44cf17e302729eb7093d7e94` 上于 2026-11-11 通过
+`compat-matrix --versions all --allow-new-release`（Node `v22.23.1` / pnpm `12.3.4`）：每个声明版本均通过
+typecheck、build 和 475/475 测试；本地证据为 `.tmp/0.2.2-final-matrix2.json`。安装使用 pnpm strict peer、精确工具版本、单一 zod 4.6.7 图、完整 `pnpm list --depth Infinity` 图校验，并记录 lockfile SHA-256。未跟踪 `0.2.2-alpha.2` 已 probe：strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run，rc.6 明确不支持。
 
 ## 4. 测试覆盖
 

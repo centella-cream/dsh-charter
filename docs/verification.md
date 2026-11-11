@@ -3,10 +3,10 @@
 English | [中文](verification.zh.md)
 
 > **Status:** Active — current operating record.
-> **Version scope:** current development line.
-> **Baseline:** 2026-11-06
+> **Version scope:** `0.2.2` development candidate.
+> **Baseline:** 2026-11-11
 
-Verification date: 2026-11-06. Current source version: `0.2.1` (release candidate; not published). This is the current evidence record; historical per-commit narratives live in Git
+Verification date: 2026-11-11. Current source version: `0.2.2` (development candidate; not published). This is the current evidence record; historical per-commit narratives live in Git
 history and the Changelog. Temporary directories, profiles, tarballs, and fetched HTML live under `.tmp/` and are
 excluded from the published package.
 
@@ -15,19 +15,19 @@ Environment: macOS, Node `v22.23.1`, npm `12.0.2`, pnpm `12.3.4`. Local DSH deve
 
 ## 1. Current conclusion
 
-Current release state (2026-11-06):
+Current release state (2026-11-11):
 
 - Published: `0.2.1` (npm `latest`/`next`; exact SHA-256 `d4ae14e19b4d65264a53b57c0f9d3f93eb8303189e8daa3f3f35beb97104d498`). GitHub Release `v0.2.1` is public and immutable.
 - `0.2.0`: previous public release; GitHub Release `v0.2.0` remains immutable.
 - `0.1.0-rc.6`: earlier public release; recovery tag `v0.1.0-rc.6-republished`.
 - Versioning from 0.2.0 onward uses plain increments and never an `rc` suffix.
-- Current source evidence: 36 files / 441 tests and the nine-version matrix pass 441/441 on the 0.2.1 candidate tree at `071a4ba065345b0d029c8d500149261e27bdd061`.
+- Current source evidence: 37 files / 475 tests on the final 0.2.2 candidate tree at `f9d93c0`; the nine-version matrix passes 475/475 on that tree (Node `v22.23.1` / pnpm `12.3.4`, evidence `.tmp/0.2.2-final-matrix2.json`).
 - Post-release diagnostics: real-model compaction PASS (session `session-da7e7b0d-f0b0-49a2-8391-148b4782892c`); 512-item performance PASS on 2026-11-06 (core read/planning p95, see below).
 
 | Item | Result |
 | --- | --- |
 | Strict TypeScript check | Pass on the current tree |
-| Vitest | 36 files / 441 tests pass (`npm test`, which builds first) |
+| Vitest | 37 files / 475 tests pass (`npm test`, which builds first) |
 | Host ESM build + browser factory bundle | Pass |
 | Remote contract and client smoke | Pass |
 | Normal package smoke | Pass |
@@ -35,7 +35,7 @@ Current release state (2026-11-06):
 | Packed-artifact recovery smoke | Pass: export, target removal, restore, receipt replay, two restarts, healthy-target refusal, packed fault subset |
 | Real `TypertGatewayService` | Pass on exact artifact with isolated DSH `0.2.1-rc.3` and `rc.4` graphs |
 | Compatibility sentinels | Pass on `0.1.7-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4`, `0.2.1-rc.5` |
-| Nine-version full rerun | Pass via tracked `compat-matrix --versions all --allow-new-release` (441/441 each) |
+| Nine-version full rerun | Pass via tracked `compat-matrix --versions all --allow-new-release` (475/475 each) |
 | Fresh Web profile matrix (historical rc.6) | PASS: local rc.6 artifact (pre-withdrawal) installed and served on DSH `0.1.7-rc.2`, `0.2.0-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4`, `0.2.1-rc.5` |
 | Fresh Web profile 0.2.2 | PASS on 2026-11-05: fresh `DSH_HOME` + `dsh@0.2.2-rc.1 plugin --profile web add` of `dsh-charter-0.2.0.tgz` (SHA-256 `fde5531d457effc713f4423f8b46c8f0e591770e59c55e19956f000c11bdeffc`); Web boot, page HTTP 200, charter bundle HTTP 200; boot graph contains `dsh-charter` and the page index contains `dsh-charter/client.js` |
 | Untracked `0.2.2-alpha.2` / `0.2.2-alpha.3` probes | strict-peer install fails because these alpha lines require a Cordis 4.0.6 alpha graph; the 0.2.2-rc.1 line pins Cordis 4.1.0; no tests run; explicitly unsupported. |
@@ -43,7 +43,7 @@ Current release state (2026-11-06):
 | 0.2.1 local human acceptance | PASS on 2026-11-06: user completed local acceptance of the 0.2.1 UI/interaction batch. |
 | 0.2.1 Desktop ABI | PASS on 2026-11-06: Desktop profile installed the exact candidate, the Electron process was restarted, and the Pane/tab ABI was confirmed. |
 | 0.2.2 dependency graph source | PASS on 2026-11-11: `npm run check` 37 files / 475 tests; W0-0 prototype 41/41 (pre-isolated-grid contract; product isolated-grid tests are in `tests/client/relation-graph.spec.ts`); Web Pane rendered the graph, candidate lane, inspector, and always-present semantic list for a session with 3 active + 4 pending deliverables; browser console clean. UI self-check on 2026-11-11: isolated three-node graph + empty hint, compact list, add-edge/hide/show, and local-key prerequisite summary all rendered without console errors. W0-1/2/3 and real AT/manual gates remain pending. |
-| 0.2.2 dependency graph bundle | Measured on 2026-11-11 against `d362d6f` with the standardized budget method `gzip -9 -c lib/client.js | wc -c`: 113,990 → 130,493 B (+16,503 B), so the `<40 KB` gzip budget passes. Raw diagnostic: `lib/client.js` 591,936 → 670,208 B (+78,272 B); raw CSS output 47,230 → 55,540 B (+8,310 B). Raw bytes are not the budget channel. |
+| 0.2.2 dependency graph bundle | Measured on 2026-11-11 against `d362d6f` with the standardized budget method `gzip -9 -c lib/client.js | wc -c`: 113,990 → 130,474 B (+16,484 B), so the `<40 KB` gzip budget passes. Raw diagnostic: `lib/client.js` 591,936 → 670,173 B (+78,237 B); raw CSS output 47,230 → 55,540 B (+8,310 B). Raw bytes are not the budget channel. |
 | Real-model compaction | PASS on 2026-11-06 for `session-da7e7b0d-f0b0-49a2-8391-148b4782892c`: latest compaction seq 32610–32614, post-compaction snapshot seq 32623, `charter_read` call/result seq 32631/32632; injected, digest match, injection-after-compaction, survival, authenticated standing read, and no-checkpoint-leak all pass. |
 | 512-item performance | PASS on 2026-11-06, local Node `22.23.1`: 512 pending items, 300 warm-ups then 30 samples; full pagination query p95 5.2 ms and 5-op Change Set planning p95 0.6 ms against the 100 ms budget. This measures the pure core read/planning path, not UI/network. |
 | Real browser diagnostics | Local manual checks recorded; not a release gate |
@@ -58,7 +58,7 @@ The `main` tree has passed source-level acceptance for the implemented workspace
 - three-area Pane information architecture and dependency editor;
 - proposal-batch provenance, objective-proposal lifecycle, summary/item/proposal/change query endpoints, `watchSummary`, and pending-only `charter_propose`;
 - `npm run check`: 36 files / 441 tests;
-- nine-version DSH matrix: 441/441 on every declared version;
+- nine-version DSH matrix: 475/475 on every declared version;
 - normal package smoke: `dsh-charter-0.2.0.tgz` installs and its client factory bundle loads.
 
 This is source acceptance, not a release acceptance: real Desktop/browser diagnostics, real-model compaction, performance,
@@ -92,19 +92,20 @@ The tracked runner creates isolated pnpm projects with strict peers and runs typ
 
 | DSH version | Evidence |
 | --- | --- |
-| `0.1.7-rc.2` | 441/441 tracked matrix PASS |
-| `0.2.0-rc.1` | 441/441 tracked matrix PASS |
-| `0.2.0-rc.2` | 441/441 tracked matrix PASS |
-| `0.2.1-rc.1` | 441/441 tracked matrix PASS |
-| `0.2.1-rc.2` | 441/441 tracked matrix PASS |
-| `0.2.1-rc.3` | 441/441 tracked matrix PASS |
-| `0.2.1-rc.4` | 441/441 tracked matrix PASS |
-| `0.2.1-rc.5` | 441/441 tracked matrix PASS |
-| `0.2.2-rc.1` | 441/441 tracked matrix PASS |
+| `0.1.7-rc.2` | 475/475 tracked matrix PASS |
+| `0.2.0-rc.1` | 475/475 tracked matrix PASS |
+| `0.2.0-rc.2` | 475/475 tracked matrix PASS |
+| `0.2.1-rc.1` | 475/475 tracked matrix PASS |
+| `0.2.1-rc.2` | 475/475 tracked matrix PASS |
+| `0.2.1-rc.3` | 475/475 tracked matrix PASS |
+| `0.2.1-rc.4` | 475/475 tracked matrix PASS |
+| `0.2.1-rc.5` | 475/475 tracked matrix PASS |
+| `0.2.2-rc.1` | 475/475 tracked matrix PASS |
 
-The 0.2.1 candidate tree at source commit `071a4ba065345b0d029c8d500149261e27bdd061` passed
-`compat-matrix --versions all --allow-new-release` on 2026-11-06: every declared version passed typecheck, build,
-and 441/441 tests. The local evidence file is `.tmp/0.2.1-matrix.json`. Installs use pnpm strict peer resolution, exact tool pins, a single zod 4.6.7 graph, full `pnpm list --depth Infinity` graph validation, and recorded lockfile SHA-256 values. The untracked `0.2.2-alpha.2` probe is recorded as unsupported: strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run.
+The 0.2.2 candidate tree at source commit `f9d93c031eabfe5e44cf17e302729eb7093d7e94` passed
+`compat-matrix --versions all --allow-new-release` on 2026-11-11 with Node `v22.23.1` / pnpm `12.3.4`: every
+declared version passed typecheck, build, and 475/475 tests. The local evidence file is
+`.tmp/0.2.2-final-matrix2.json`. Installs use pnpm strict peer resolution, exact tool pins, a single zod 4.6.7 graph, full `pnpm list --depth Infinity` graph validation, and recorded lockfile SHA-256 values. The untracked `0.2.2-alpha.2` probe is recorded as unsupported: strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run.
 
 ## 4. What the tests cover
 

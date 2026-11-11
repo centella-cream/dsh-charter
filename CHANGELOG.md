@@ -5,6 +5,37 @@ English | [中文](CHANGELOG.zh.md)
 All notable changes to `dsh-charter` are recorded here. The project follows a pre-1.0 version line while the
 DSH plugin ABI is still moving.
 
+## 0.2.2 — 2026-11-11 (release candidate)
+
+Dependency-graph workspace view and explicit dependency-conflict confirmation. No record-schema, Host, Remote,
+or prompt-projection change.
+
+### Added
+
+- Dependency graph in Workspace: a local ego view with execution, candidate, and replacement-history lanes,
+  synchronized with the semantic dependency list.
+- Isolated contracts render a bounded grid of execution nodes with an explicit "add a prerequisite" hint.
+- Graph and candidate-history keyboard traversal: one Tab stop, arrow keys, `[`/`]`, Enter, Escape, and a skip
+  link to the semantic list.
+- Two-step Apply confirmation when a Change Set adds or worsens a dependency conflict; the affected deliverables
+  are listed in the Change Set panel.
+- Compact per-row prerequisite editor and 50-row windowing for the dependency list.
+
+### Changed
+
+- The dependency list is a compact summary plus a checkbox editor instead of a native multi-select; row counts
+  expose "item i of N" to assistive technology.
+- Graph edits and list edits produce identical `deliverable.requires` operations.
+- Dense views degrade in order: hide replacement history, reduce depth, then hide the graph with an explicit
+  reason.
+
+### Fixed
+
+- Graph-to-list and graph-to-proposal focus paths expand the visible window before moving focus.
+- Local prerequisite labels are shown instead of internal item ids.
+- Dependency graph edge keys include the relation kind, so requires and supersedes records with the same
+  endpoints cannot collide.
+
 ## 0.2.1 — 2026-11-06
 
 Post-`0.2.0` UI, diagnostics, and recovery-cache patch. No record-schema bump; existing `0.2.0` records remain

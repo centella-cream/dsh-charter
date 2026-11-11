@@ -3,8 +3,8 @@
 [English](user-guide.md) | 中文
 
 > **状态：** Active — 当前操作记录。
-> **版本范围：** 当前开发线。
-> **基准：** 2026-11-03
+> **版本范围：** `0.2.2` 发布候选。
+> **基准：** 2026-11-11
 
 本文面向安装和使用插件的用户。设计约束见[设计规格](design/charter-design-v1.zh.md)，版本差异见
 [兼容矩阵](design/compatibility.zh.md)。
@@ -12,7 +12,7 @@
 ## 1. 安装前检查
 
 ```bash
-dsh --version                  # 需要 >= 0.1.7-rc.2；推荐 0.2.0-rc.1+
+dsh --version                  # 需要兼容矩阵中的版本；推荐 0.2.2-rc.1
 node --version                 # ^22.19.0 || >=24.0.0
 dsh --profile web --dump-config | grep -n "charter" || true
 ```
@@ -26,22 +26,22 @@ dsh --profile web --dump-config | grep -n "charter" || true
 
 ## 2. 安装
 
-> **安装渠道。** 最新已发布版本 是 `0.2.0`（npm `latest`/`next`），已正式验收。GitHub Release 使用
-> recovery tag `v0.2.0-republished`；0.2.0 的规范 GitHub tag/release 待恢复。普通使用请安装 rc.6。
+> **安装渠道。** 最新已发布版本是 `0.2.1`（npm `latest`/`next`）。`0.2.2` 候选在 promotion 前从本地验收
+> tarball 安装。
 
 ### 2.1 环境要求
 
 - DSH：只支持[兼容矩阵](design/compatibility.zh.md)中列出的版本（`0.1.7-rc.2`、`0.2.0-rc.1`/`rc.2`、
   `0.2.1-rc.1`/`rc.2`/`rc.3`/`rc.4`/`0.2.0`、`0.2.2-rc.1`）。在扩展矩阵前不声明支持更新的 stable/release 版本；完整 per-Peer Remote
-  资源授权要求 `0.2.1+`。DSH `0.2.1-0.2.0` 由已发布 rc.6 产物支持；已发布 0.2.0 产物未声明该版本。
+  资源授权要求 `0.2.1+`。
 - Node.js **`^22.19.0 || >=24.0.0`**。
 - Web 或 Desktop profile。
 
 ### 2.2 离线 / 本地 tarball 回退
 
 ```bash
-npm pack dsh-charter@0.2.0
-dsh plugin --profile web add ./dsh-charter-0.2.0.tgz
+npm pack dsh-charter@0.2.1
+dsh plugin --profile web add ./dsh-charter-0.2.1.tgz
 ```
 
 Desktop 若支持本地插件导入，可在 Plugins 页面安装同一个 tarball；否则通过 Desktop profile 自己的包管理器
@@ -51,12 +51,12 @@ Desktop 若支持本地插件导入，可在 Plugins 页面安装同一个 tarba
 ### 2.3 npm / Registry 安装（推荐）— Web profile 按版本或 tag
 
 ```bash
-dsh plugin --profile web add dsh-charter@0.2.0   # 最新已发布版本：可复现
-dsh plugin --profile web add dsh-charter@next          # 当前指向 0.2.0
+dsh plugin --profile web add dsh-charter@0.2.1   # 最新已发布精确版本
+dsh plugin --profile web add ./dsh-charter-0.2.2.tgz # 本地 0.2.2 候选
 ```
 
-受保护的 `0.2.0` promotion 完成前，npm 最新公开版本仍是 `0.1.0-rc.6`；完成后使用精确的 `0.2.0`。在此之前
-请使用 release PR 提供的候选 tarball。stable promotion 会同时移动 npm `next`/`latest`（npm 保留 `latest` tag，
+最新公开版本是 `0.2.1`。`0.2.2` promotion 后使用精确的 `0.2.2`；在此之前使用 release PR 提供的候选
+tarball。stable promotion 会同时移动 npm `next`/`latest`（npm 保留 `latest` tag，
 由项目决定其指向；这是我们的策略，不是 npm 的强制要求）。只有 registry 不可达或候选验证时才使用离线 tarball 回退。固定明确版本
 可以让 profile 可复现。
 
@@ -65,7 +65,7 @@ dsh plugin --profile web add dsh-charter@next          # 当前指向 0.2.0
 
 ```json
 {
-  "dependencies": { "dsh-charter": "0.2.0" },
+  "dependencies": { "dsh-charter": "0.2.1" },
   "dsh": { "profile": { "bundles": ["...", "dsh-charter"] } }
 }
 ```
@@ -193,6 +193,27 @@ standing 会话契约，也不应作为常规工作流。
 Web 进程可以只读显示另一个进程中 live 的 Session 的已存会话契约。编辑和历史草案抽取要求 Session 在当前
 进程 live；Session 重连后标签页升级为可编辑。因此 `charter.bootstrap` 返回 `not-live`，而不是读取另一个
 进程的事件日志。
+
+### 3.7 依赖关系图
+
+Workspace 的依赖卡片包含两个同步部分：
+
+- 图形区：执行车道、候选车道和替代历史车道；
+- 紧凑语义列表：始终存在的权威编辑面。
+
+图是透镜，不是第二份存储。图上的添加/删除前置与列表一样只 stage 同一个 `deliverable.requires` Change Set
+op；**Apply** 仍是唯一提交点。
+
+键盘与降级：
+
+- `Tab` 只进入图形区一次；`↑/↓/←/→` 沿依赖关系移动，`[`/`]` 遍历所有可见节点与边；`Enter` 打开详情，
+  `Esc` 关闭详情或回到列表。
+- skip link 可直接把焦点送到语义列表。
+- 没有依赖边时显示有界孤立节点网格和“添加前置”提示。
+- 孤立节点或可导航图元素过多时隐藏图形区，列表保持完整。
+
+Change Set 引入或加重依赖冲突时，Review/Apply 会列出受影响交付物并要求二次确认；图形只显示同一冲突
+状态，不会自动修改 progress 或 lifecycle。
 
 ## 4. 配置
 

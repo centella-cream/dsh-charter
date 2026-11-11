@@ -4,7 +4,7 @@
 [![GitHub](https://img.shields.io/badge/GitHub-centella--cream%2Fdsh--charter-181717?logo=github)](https://github.com/centella-cream/dsh-charter)
 [![DSH](https://img.shields.io/badge/DSH-9%20verified%20versions-4b6bfb)](docs/design/compatibility.md)
 [![Node](https://img.shields.io/badge/node-%5E22.19%20%7C%7C%20%3E%3D24-339933)](package.json)
-[![Status: 0.2.1 stable](https://img.shields.io/badge/status-0.2.1-brightgreen)](#status)
+[![Status: 0.2.2 candidate](https://img.shields.io/badge/status-0.2.2%20candidate-orange)](#status)
 
 English | [中文](README.zh.md)
 
@@ -14,9 +14,9 @@ English | [中文](README.zh.md)
 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). Goals, hard constraints,
 deliverables, evidence, and dependency relationships survive compaction and remain visible and editable.
 
-![Charter tab in the current 0.2.1 build](docs/assets/charter-pane.zh.png)
+![Charter tab in the current 0.2.2 build](docs/assets/charter-pane.zh.png)
 
-> The current **0.2.1** Pane in a local Web profile. UI strings follow the active DSH language; this image uses
+> The current **0.2.2** Pane in a local Web profile. UI strings follow the active DSH language; this image uses
 > demo values so no private Session content is published.
 
 ## Contents
@@ -39,20 +39,31 @@ deliverables, evidence, and dependency relationships survive compaction and rema
 
 ## Status
 
-- **Published release:** `0.2.1` — npm `latest` and `next`, GitHub Release `v0.2.1`; post-`0.2.0` UI,
-  diagnostics, and recovery-cache patch.
+- **Release candidate:** `0.2.2` — dependency-graph workspace view, compact dependency list, and explicit
+  dependency-conflict confirmation. Local acceptance and promotion are still pending.
+- **Published release:** `0.2.1` — npm `latest` and `next`, GitHub Release `v0.2.1`.
 - **Previous release:** `0.2.0`.
 - **Primary DSH baseline:** `0.2.2-rc.1`; nine declared DSH versions are source-matrix verified.
 - Versioning from `0.2.0` onward uses plain increments (`0.2.0`, `0.2.1`, …), never an `rc` suffix.
 
+### 0.2.2 highlights
+
+- **Dependency graph view:** Workspace renders a local ego graph of deliverables plus a compact, always-present
+  semantic list. Execution, candidate, and replacement lanes are distinct; isolated contracts use a bounded grid.
+- **Graph and list are one editing surface:** both stage the same `deliverable.requires` Change Set ops; Apply
+  remains the only commit point.
+- **Explicit dependency conflicts:** a Change Set that adds or worsens a dependency conflict lists the affected
+  deliverables and requires a second confirmation before Apply.
+- **Compact prerequisite editor:** the list shows a two-line summary and opens a checkbox editor for one row at a
+  time, avoiding hundreds of native multi-select options.
+- **Keyboard and degraded states:** the graph is one Tab stop with arrow/`[`/`]` traversal, a skip link to the
+  list, and explicit dense/isolated fallbacks.
+
 ### 0.2.1 highlights
 
-- Message proposals now prefill an **editable body** from the selected user message; the old character-range
-  inputs are gone.
-- Diagnostics separates fact validation from evidence integrity, and both forms explain the target and check
-  being run.
-- Recovery restores from a Host-maintained cache (five per Session, 25 per profile) without requiring a
-  downloaded file; export stays a separate operation for analysis and backup.
+- Message proposals prefill an **editable body** from the selected user message.
+- Diagnostics separates fact validation from evidence integrity.
+- Recovery restores from a bounded Host cache (five per Session, 25 per profile).
 - The Pane header and form typography follow the lighter `dsh-context` hierarchy.
 
 ## Why
@@ -103,13 +114,18 @@ Migration (D2) ───────┴──> Release (D3)
 - **Derived readiness.** Readiness is computed from acceptance, lifecycle, prerequisite readiness, and progress:
   `ready`, `waiting`, `blocked`, `dependency-conflict`, `in-progress`, or `terminal`. No stale duplicate status
   is stored.
-- **Visible and editable.** Workspace shows a dependency plan with prerequisite selectors and status. An invalid
-  graph is surfaced instead of breaking the Pane, and Apply is disabled while the plan is inconsistent.
+- **Visible and editable.** Workspace shows the dependency graph and a compact semantic list with prerequisite
+  editing and readiness status. An invalid graph is surfaced instead of breaking the Pane, and Apply is disabled
+  while the plan is inconsistent.
 - **Lifecycle-safe.** Archive, restore, supersede, fork, and proposal acceptance validate or remap the graph.
   `proposedRequires` lets a pending deliverable reference candidates that become formal requirements on
   acceptance.
 - **Bounded.** The relation set stays inside the same record and prompt budgets; there is no second graph
   authority.
+
+- **Graph lens.** The graph is a local, ego-scoped view with a candidate lane and replacement-history lane. It
+  never becomes a second authority: graph edits stage the same Change Set ops as the list. With no dependency
+  edges, a bounded isolated-node grid plus an explicit “add a prerequisite” hint keeps the graph discoverable.
 
 Dependencies are a user-authored **execution constraint**, not an enforced sandbox or permission system.
 
@@ -154,15 +170,17 @@ storage.
 
 ## Install
 
-The latest public release is `0.2.1`. Install the published exact version for a reproducible profile:
+The latest public release is `0.2.1`. The `0.2.2` candidate is installed from its local acceptance tarball
+until promotion:
+
+```bash
+dsh plugin --profile web add ./dsh-charter-0.2.2.tgz
+```
+
+For a published exact version, install `0.2.1` for now (the same path applies to `0.2.2` after promotion):
 
 ```bash
 dsh plugin --profile web add dsh-charter@0.2.1
-```
-
-For air-gapped machines or exact-artifact verification, install the published tarball:
-
-```bash
 npm pack dsh-charter@0.2.1
 dsh plugin --profile web add ./dsh-charter-0.2.1.tgz
 ```

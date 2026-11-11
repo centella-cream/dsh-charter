@@ -4,7 +4,7 @@
 [![GitHub](https://img.shields.io/badge/GitHub-centella--cream%2Fdsh--charter-181717?logo=github)](https://github.com/centella-cream/dsh-charter)
 [![DSH](https://img.shields.io/badge/DSH-9%20verified%20versions-4b6bfb)](docs/design/compatibility.zh.md)
 [![Node](https://img.shields.io/badge/node-%5E22.19%20%7C%7C%20%3E%3D24-339933)](package.json)
-[![Status: 0.2.1 stable](https://img.shields.io/badge/status-0.2.1-brightgreen)](#状态)
+[![Status: 0.2.2 candidate](https://img.shields.io/badge/status-0.2.2%20candidate-orange)](#状态)
 
 [English](README.md) | 中文
 
@@ -13,9 +13,9 @@
 `dsh-charter` 是 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的持久化、用户所有的
 会话契约插件。目标、硬约束、交付物、证据和依赖关系在上下文压缩后仍然保留，并且始终可查看、可编辑。
 
-![当前 0.2.1 构建中的会话契约页](docs/assets/charter-pane.zh.png)
+![当前 0.2.2 构建中的会话契约页](docs/assets/charter-pane.zh.png)
 
-> 这是本地 Web profile 中当前 **0.2.1** Pane 的界面。UI 文案跟随 DSH 当前语言；截图使用演示数据，不发布
+> 这是本地 Web profile 中当前 **0.2.2** Pane 的界面。UI 文案跟随 DSH 当前语言；截图使用演示数据，不发布
 > 任何私人 Session 内容。
 
 ## 目录
@@ -38,18 +38,28 @@
 
 ## 状态
 
-- **已发布版本：**`0.2.1` — npm `latest` 和 `next`，GitHub Release `v0.2.1`；`0.2.0` 之后的 UI、诊断和
-  恢复缓存补丁。
+- **发布候选：**`0.2.2` — 依赖关系图形视图、紧凑依赖列表、依赖冲突二次确认；本地验收和 promotion 尚未完成。
+- **已发布版本：**`0.2.1` — npm `latest` 和 `next`，GitHub Release `v0.2.1`。
 - **上一版本：**`0.2.0`。
 - **主要 DSH 基线：**`0.2.2-rc.1`；九个声明版本通过源码矩阵验证。
 - 从 `0.2.0` 起版本号使用普通递增（`0.2.0`、`0.2.1`…），不再使用 `rc` 后缀。
 
+### 0.2.2 重点变化
+
+- **依赖关系图形视图：**Workspace 以局部 ego 图展示交付物前置关系，并保留紧凑语义列表；执行、候选和替代历史
+  车道分开；无依赖边时显示有界孤立节点网格。
+- **图与列表共用一个编辑面：**两侧都写同一组 `deliverable.requires` Change Set ops，Apply 仍是唯一提交点。
+- **显式依赖冲突：**引入或加重依赖冲突的 Change Set 会列出受影响交付物，并要求二次确认后再 Apply。
+- **紧凑前置编辑：**列表显示两行摘要，点“编辑前置”才展开一行的 checkbox 编辑器，避免一次渲染数百个
+  native multi-select 选项。
+- **键盘与降级状态：**图形区只占一个 Tab 停靠点，方向键/`[`/`]` 遍历，skip link 跳到列表；图形过密或
+  无依赖时有明确降级和空状态。
+
 ### 0.2.1 重点变化
 
-- 消息提案会从所选用户消息预填**可编辑正文**；原来的字符范围输入已移除。
-- 诊断区把事实有效性验证和证据完整性拆开，两处都说明验证对象和检查内容。
-- 恢复改为从 Host 维护的缓存选择快照（每 Session 5 份、整个 profile 25 份），不再要求先下载文件；
-  导出仍是独立的分析与备份操作。
+- 消息提案会从所选用户消息预填**可编辑正文**。
+- 诊断区把事实有效性验证和证据完整性拆开。
+- 恢复改为从 Host 维护的缓存选择快照（每 Session 5 份、整个 profile 25 份）。
 - Pane 页头和表单排版对齐更轻量的 `dsh-context` 层级。
 
 ## 为什么需要
@@ -91,7 +101,7 @@ deliverable 的**前置约束**，而这些关系会进入存储契约、校验�
   在前、依赖在后的顺序渲染，模型因此知道哪些承诺可以执行、必须先完成什么。
 - **派生 readiness。**readiness 由 acceptance、lifecycle、前置 readiness 和 progress 派生：`ready`、
   `waiting`、`blocked`、`dependency-conflict`、`in-progress` 或 `terminal`，不保存容易过期的重复状态。
-- **可见、可编辑。**Workspace 展示依赖计划和前置选择器；非法图会显示冲突提示而不是拖垮 Pane，图不一致
+- **可见、可编辑。**Workspace 同时展示依赖图和紧凑语义列表，支持前置编辑与就绪状态；非法图会显示冲突提示而不是拖垮 Pane，图不一致
   时禁用 Apply。
 - **生命周期安全。**archive、restore、supersede、fork 和 proposal acceptance 都会校验或重映射关系；
   `proposedRequires` 让 pending deliverable 引用候选前置条件，接受时解析为正式 requires。
@@ -139,15 +149,16 @@ compaction summary 返回只读草案，不写 storage。
 
 ## 安装
 
-当前公开版本是 `0.2.1`。可复现 profile 请安装已发布的精确版本：
+当前公开版本是 `0.2.1`。`0.2.2` 候选在 promotion 前从本地验收 tarball 安装：
+
+```bash
+dsh plugin --profile web add ./dsh-charter-0.2.2.tgz
+```
+
+已发布精确版本目前安装 `0.2.1`（promotion 后同一路径改为 `0.2.2`）：
 
 ```bash
 dsh plugin --profile web add dsh-charter@0.2.1
-```
-
-离线机器或需要精确验证 artifact 时，安装已发布 tarball：
-
-```bash
 npm pack dsh-charter@0.2.1
 dsh plugin --profile web add ./dsh-charter-0.2.1.tgz
 ```

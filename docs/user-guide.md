@@ -3,8 +3,8 @@
 English | [中文](user-guide.zh.md)
 
 > **Status:** Active — current operating record.
-> **Version scope:** current development line.
-> **Baseline:** 2026-11-03
+> **Version scope:** `0.2.2` release candidate.
+> **Baseline:** 2026-11-11
 
 This guide is for installing and using the plugin. For design constraints see the
 [design specification](design/charter-design-v1.md); for version differences see the
@@ -13,7 +13,7 @@ This guide is for installing and using the plugin. For design constraints see th
 ## 1. Before installing
 
 ```bash
-dsh --version                  # >= 0.1.7-rc.2; 0.2.0-rc.1+ recommended
+dsh --version                  # a compatibility-matrix version; 0.2.2-rc.1 recommended
 node --version                 # ^22.19.0 || >=24.0.0
 dsh --profile web --dump-config | grep -n "charter" || true
 ```
@@ -27,24 +27,23 @@ For a Web or Desktop profile the plugin registers:
 
 ## 2. Install
 
-> **Install channels.** The latest published release is `0.2.0` (npm `latest`/`next`), formally accepted. Its GitHub Release uses
-> recovery tag `v0.2.0-republished`; the canonical 0.2.0 tag/release remains pending restoration. Install the
-> published rc.6 exact version for normal use.
+> **Install channels.** The latest published release is `0.2.1` (npm `latest`/`next`). The `0.2.2` candidate is
+> installed from its local acceptance tarball until promotion.
 
 ### 2.1 Requirements
 
 - DSH: only the versions listed in the [compatibility matrix](design/compatibility.md) are supported
   (`0.1.7-rc.2`, `0.2.0-rc.1`/`rc.2`, `0.2.1-rc.1`/`rc.2`/`rc.3`/`rc.4`/`0.2.0`, `0.2.2-rc.1`); newer stable/release versions are not
-  claimed until the matrix is extended. `0.2.1+` is required for per-Peer Remote resource authorization. DSH
-`0.2.1-0.2.0` is supported by the published rc.6 artifact; the 0.2.0 artifact does not declare it.
+  claimed until the matrix is extended. `0.2.1+` is required for per-Peer Remote resource authorization.
+
 - Node.js **`^22.19.0 || >=24.0.0`**.
 - A Web or Desktop profile.
 
 ### 2.2 Offline / local tarball fallback
 
 ```bash
-npm pack dsh-charter@0.2.0
-dsh plugin --profile web add ./dsh-charter-0.2.0.tgz
+npm pack dsh-charter@0.2.1
+dsh plugin --profile web add ./dsh-charter-0.2.1.tgz
 ```
 
 For Desktop, use the Plugins page if local import is available; otherwise install the tarball through the Desktop
@@ -54,12 +53,12 @@ dependency is a local `file:` path. Prefer npm install in §2.3 when the registr
 ### 2.3 npm / Registry install (recommended) — Web profile by version or tag
 
 ```bash
-dsh plugin --profile web add dsh-charter@0.2.0   # exact 0.2.0 release target
-dsh plugin --profile web add dsh-charter@next          # currently 0.1.0-rc.6 until promotion
+dsh plugin --profile web add dsh-charter@0.2.1   # latest published exact version
+dsh plugin --profile web add ./dsh-charter-0.2.2.tgz # local 0.2.2 candidate
 ```
 
-The latest published release remains `0.1.0-rc.6` until the protected `0.2.0` promotion completes. Use the exact
-`0.2.0` target after promotion; before that, use the candidate tarball from the release PR. npm `next`/`latest` move
+The latest published release is `0.2.1`. Use the exact `0.2.2` target after promotion; before that, use the
+candidate tarball from the release PR. npm `next`/`latest` move
 together on a stable promotion (npm keeps a `latest` tag and the project chooses where it points; this is our policy,
 not an npm requirement). Use the offline tarball fallback only when the registry is unreachable or for
 candidate verification. Pin an explicit version for reproducible profiles.
@@ -69,7 +68,7 @@ dependency and bundle selection:
 
 ```json
 {
-  "dependencies": { "dsh-charter": "0.2.0" },
+  "dependencies": { "dsh-charter": "0.2.1" },
   "dsh": { "profile": { "bundles": ["...", "dsh-charter"] } }
 }
 ```
@@ -211,6 +210,28 @@ A Web process can show the stored charter of a Session that is live in another p
 Editing and history-draft extraction require the Session to be live in the current process; reconnecting the
 Session upgrades the tab to editable. `charter.bootstrap` therefore returns `not-live` rather than reading
 another process's event log.
+
+### 3.7 Dependency graph
+
+The Workspace dependency card has two synchronized parts:
+
+- a graph area showing execution, candidate, and replacement-history lanes;
+- a compact semantic list that remains the authoritative editing surface.
+
+The graph is a lens, not a second store. Adding or removing a prerequisite in the graph stages the same
+`deliverable.requires` Change Set operation as the list; **Apply** remains the only commit point.
+
+Keyboard and fallback behavior:
+
+- `Tab` enters the graph once; `↑/↓/←/→` move through dependency relations and `[`/`]` walk every visible node
+  and edge; `Enter` opens details and `Esc` closes details or returns toward the list.
+- The skip link moves focus directly to the semantic list.
+- With no dependency edges, a bounded grid of isolated nodes is shown with an “add a prerequisite” hint.
+- If there are too many isolated nodes or navigable graph elements, the graph is hidden and the list remains.
+
+When a Change Set introduces or worsens a dependency conflict, Review/Apply lists the affected deliverables and
+requires a second confirmation before Apply. The graph displays the same conflict state; it does not auto-change
+progress or lifecycle.
 
 ## 4. Configuration
 
