@@ -109,8 +109,9 @@ and the remaining full-design gates must be recorded separately before declaring
 - Final-build matrix (2026-11-13): from the installed `w6-final` artifact (client `986f8403…`), Review Center was
   recaptured at 320/375/560/850/1440 × dark/light × zh/en (20 images) plus Diagnostics at 850/1440; every capture
   had `documentElement.scrollWidth == clientWidth`, three `charter-tabs__tab` entries, and a mounted Pane. Evidence:
-  `.tmp/gui-acceptance/2026-11-13/matrix-final/`. This replaces the pre-W6 matrix for the Review/Diagnostics
-  subset; Empty/Applied/Dirty/Conflict six-state matrix and the frozen-mockup side-by-side are still missing.
+  `.tmp/gui-acceptance/2026-11-13/matrix-final/`. This replaces the pre-W6 matrix for the Review/Diagnostics subset; final-build dirty and graph states were also
+  captured at 1440 from synthetic staged rows. Empty/Applied/Conflict states and the frozen-mockup side-by-side
+  are still missing.
 
 - Ten-version source matrix (2026-11-12): all declared DSH versions `0.1.7-rc.2` … `0.2.2-rc.2` pass
   typecheck, build, and tests; run with `--allow-new-release` because rc.2 is inside the pnpm 24-hour
