@@ -43,7 +43,7 @@ deliverables, evidence, and dependency relationships survive compaction and rema
   view, compact dependency list, and explicit dependency-conflict confirmation.
 - **Previous release:** `0.2.1`.
 - **Earlier release:** `0.2.0`.
-- **Primary DSH baseline:** `0.2.2-rc.1`; nine declared DSH versions are source-matrix verified.
+- **Primary DSH baseline:** `0.2.2-rc.2`; ten declared DSH versions are source-matrix verified.
 - Versioning from `0.2.0` onward uses plain increments (`0.2.0`, `0.2.1`, …), never an `rc` suffix.
 
 ### 0.2.2 highlights
@@ -268,8 +268,13 @@ The only model-visible capacity is `maxPromptBytes`; `maxItems` and `maxPendingI
 | `0.1.7-rc.2` | Supported (minimum) |
 | `0.2.0-rc.1` / `0.2.0-rc.2` | Supported |
 | `0.2.1-rc.1` / `0.2.1-rc.2` / `0.2.1-rc.3` / `0.2.1-rc.4` / `0.2.1-rc.5` | Supported |
-| `0.2.2-rc.1` | Supported (primary baseline) |
+| `0.2.2-rc.1` / `0.2.2-rc.2` | Supported (primary baseline: `0.2.2-rc.2`) |
 | `0.3.x` | Not declared until verified |
+
+`engines.dsh` uses a bounded 0.2-line range (`0.1.7-rc.2 || >=0.2.0-rc.1 <0.3.0-0`), evaluated with
+prereleases by DSH's gate, so future 0.2.x prerelease updates do not require a plugin rebuild; the exact
+`dshReleases`/peer list above remains the matrix-verified support set. Please report any 0.2.x update that
+actually breaks the Pane.
 
 "Supported" means typecheck, build, tests, and Remote/client smoke for that version, plus the profile gates
 recorded in the [compatibility matrix](docs/design/compatibility.md). `0.1.7` and `0.2.0` have no per-Peer Remote

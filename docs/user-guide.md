@@ -13,7 +13,7 @@ This guide is for installing and using the plugin. For design constraints see th
 ## 1. Before installing
 
 ```bash
-dsh --version                  # a compatibility-matrix version; 0.2.2-rc.1 recommended
+dsh --version                  # a compatibility-matrix version; 0.2.2-rc.2 recommended
 node --version                 # ^22.19.0 || >=24.0.0
 dsh --profile web --dump-config | grep -n "charter" || true
 ```
@@ -33,7 +33,7 @@ For a Web or Desktop profile the plugin registers:
 ### 2.1 Requirements
 
 - DSH: only the versions listed in the [compatibility matrix](design/compatibility.md) are supported
-  (`0.1.7-rc.2`, `0.2.0-rc.1`/`rc.2`, `0.2.1-rc.1`/`rc.2`/`rc.3`/`rc.4`/`0.2.0`, `0.2.2-rc.1`); newer stable/release versions are not
+  (`0.1.7-rc.2`, `0.2.0-rc.1`/`rc.2`, `0.2.1-rc.1`/`rc.2`/`rc.3`/`rc.4`/`0.2.0`, `0.2.2-rc.1`/`0.2.2-rc.2`); newer stable/release versions are not
   claimed until the matrix is extended. `0.2.1+` is required for per-Peer Remote resource authorization.
 
 - Node.js **`^22.19.0 || >=24.0.0`**.

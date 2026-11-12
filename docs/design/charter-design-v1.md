@@ -13,7 +13,7 @@ English | [中文](charter-design-v1.zh.md)
 > session, and deterministically rebuild them from an independent authoritative record before every model
 > request. Compaction may rewrite history summaries; it is never a writer or recovery source for the charter.
 
-Research baseline: 2026-10-20. Target contract baseline: DSH `0.2.2-rc.1`; minimum supported version:
+Research baseline: 2026-10-20. Target contract baseline: DSH `0.2.2-rc.2`; minimum supported version:
 `0.1.7-rc.2`.
 
 Related documents:
@@ -584,7 +584,7 @@ Current evidence:
 
 - The Vitest suite across core, host, client, and verification-helper test files (current counts and commands are
   in the verification record, which is the source of truth);
-- Typecheck, build, and tests pass on all nine declared DSH versions (`0.1.7-rc.2` through `0.2.2-rc.1`);
+- Typecheck, build, and tests pass on all ten declared DSH versions (`0.1.7-rc.2` through `0.2.2-rc.2`);
 - Fresh Web profile install/startup passed on `0.1.7-rc.2`, `0.2.0-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4`, `0.2.1-rc.5`, and `0.2.2-rc.1`;
 - Real Web UI verified on `0.2.0-rc.2`: stable-order tab placement (with `dsh-context` installed), localization,
   objective/invariant editing, preview, Apply, and reload persistence. The current rc.6 source adds

@@ -28,7 +28,8 @@
 | `0.2.1-rc.3` | 支持 | typecheck、build、Vitest 套件、remote/client smoke（完整九版本矩阵） |
 | `0.2.1-rc.4` | 支持 | 同上 |
 | `0.2.1-rc.5` | 支持 | 同上 |
-| `0.2.2-rc.1` | 支持（主开发基线） | 同上 + typecheck/build/Vitest/remote/client smoke + 真实 Web profile 安装/启动、boot graph、bundle HTTP |
+| `0.2.2-rc.1` | 支持（上一基线） | 同上 + typecheck/build/Vitest/remote/client smoke + 真实 Web profile 安装/启动、boot graph、bundle HTTP |
+| `0.2.2-rc.2` | 支持（主开发基线） | typecheck/build/Vitest/remote/client smoke + 十版本源码矩阵 |
 | `0.1.5-rc.1` / `0.1.5-rc.2` / `0.1.5-rc.3` | 不支持 | 契约差异过大，见第 4 节 |
 | `0.1.6-alpha.x` | 不支持 | 与 0.1.5 同代，未逐一验证 |
 | `0.2.2-alpha.2` / `0.2.2-alpha.3` | 不支持 | strict-peer 安装失败：这些 alpha 版本要求 Cordis 4.0.6 alpha 图；0.2.2-rc.1 线固定 Cordis 4.1.0，不进入测试 |
@@ -37,11 +38,25 @@
 `package.json` 的 DSH peer 范围与 `engines.dsh` 就是已验证的九个精确版本：
 
 ```text
-0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2 || 0.2.1-rc.3 || 0.2.1-rc.4 || 0.2.1-rc.5 || 0.2.2-rc.1
+engines.dsh:
+  0.1.7-rc.2 || >=0.2.0-rc.1 <0.3.0-0
+
+已验证的 peer ranges / dsh.compatibility.dshReleases:
+  0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2 || 0.2.1-rc.3 || 0.2.1-rc.4 || 0.2.1-rc.5 || 0.2.2-rc.1 || 0.2.2-rc.2
 ```
 
-使用精确版本是刻意的：宽范围会声明尚未测试的 DSH prerelease。只有在跑过该版本的版本矩阵之后才扩展这个
-列表，并保持 peer ranges 与 `engines.dsh` 一致。`0.1.7-rc.1` 不在范围内；最低支持版本是 `0.1.7-rc.2`。
+Token 兼容（0.3.0）：Pane 使用 35 个静态宿主设计 token 和 1 个运行时变量
+`--dsh-content-font-size`。`scripts/verify/token-coverage.mjs` 逐版本检查每个静态 token 是否由
+`@deepseek-ai/dsh-client-ui-theme` 定义（2026-11-12 审计：全部存在）；运行时变量带 CSS fallback。当前不需要
+按版本兼容块；新增宿主 token 必须更新 `scripts/verify/token-coverage.inventory.json` 并通过
+`npm run check` 中的 gate。
+
+`engines.dsh` 故意使用有界的 0.2 线范围：DSH 兼容 gate 会以 `includePrerelease` 求值，且存在 `engines.dsh`
+时不再用 peer ranges 做准入判断。因此新的 0.2.x prerelease（例如 `0.2.2-rc.1 → 0.2.2-rc.2` 的 Desktop
+更新）无需插件重新发版即可安装。精确的 `dsh.compatibility.dshReleases` 与 peer 列表仍是**矩阵已验证支持集**；
+新版本仍会由 `compat-matrix --discover` 探测，通过后才加入该列表。范围通过不等于矩阵证据：若后续 0.2.x 确实
+改动了插件使用的 surface，需在新插件版本中修复或收窄范围。`0.3.x` 由 `<0.3.0-0` 上界刻意排除。`0.1.7-rc.1`
+不在范围内；最低支持版本是 `0.1.7-rc.2`。
 
 ## 2. 版本差异
 

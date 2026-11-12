@@ -28,21 +28,37 @@ This document answers three questions:
 | `0.2.1-rc.3` | Supported | typecheck, build, Vitest suite, remote/client smoke (full nine-version matrix) |
 | `0.2.1-rc.4` | Supported | same |
 | `0.2.1-rc.5` | Supported | same |
-| `0.2.2-rc.1` | Supported (primary development baseline) | same + real Web profile install/startup, boot graph, bundle HTTP |
+| `0.2.2-rc.1` | Supported (previous baseline) | same + real Web profile install/startup, boot graph, bundle HTTP |
+| `0.2.2-rc.2` | Supported (primary development baseline) | typecheck, build, Vitest suite, remote/client smoke, ten-version source matrix |
 | `0.1.5-rc.1` / `0.1.5-rc.2` / `0.1.5-rc.3` | Not supported | contract differences too large; see section 4 |
 | `0.1.6-alpha.x` | Not supported | same generation as 0.1.5; not individually verified |
 | `0.2.2-alpha.2` / `0.2.2-alpha.3` | Not supported | strict-peer install fails because these alpha lines require a Cordis 4.0.6 alpha graph; the 0.2.2-rc.1 line pins Cordis 4.1.0. No tests run. |
 | `0.3.x` | Not declared | major upgrade requires re-verification |
 
-The DSH peer ranges and `engines.dsh` in `package.json` are exactly the nine verified versions:
+The DSH peer ranges and `engines.dsh` in `package.json` are exactly the ten verified versions:
 
 ```text
-0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2 || 0.2.1-rc.3 || 0.2.1-rc.4 || 0.2.1-rc.5 || 0.2.2-rc.1
+engines.dsh:
+  0.1.7-rc.2 || >=0.2.0-rc.1 <0.3.0-0
+
+verified peer ranges / dsh.compatibility.dshReleases:
+  0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2 || 0.2.1-rc.3 || 0.2.1-rc.4 || 0.2.1-rc.5 || 0.2.2-rc.1 || 0.2.2-rc.2
 ```
 
-Exact versions are intentional: a broad range would claim DSH prereleases that the project has not tested.
-Extend the list only after running the version matrix for the new version, and keep the peer ranges and
-`engines.dsh` in sync. `0.1.7-rc.1` is excluded; the minimum is `0.1.7-rc.2`.
+Token compatibility (0.3.0): the Pane consumes 35 static host design tokens plus one runtime
+`--dsh-content-font-size` variable. The audit in `scripts/verify/token-coverage.mjs` checks that every static
+token is defined by `@deepseek-ai/dsh-client-ui-theme` for every version above (2026-11-12: all present); the
+runtime variable has a CSS fallback. No per-version fallback block is needed today; adding a host token requires
+updating `scripts/verify/token-coverage.inventory.json` and passing the gate in `npm run check`.
+
+`engines.dsh` intentionally uses a bounded 0.2-line range: DSH's compatibility gate evaluates it with
+`includePrerelease`, and when `engines.dsh` is present, peer ranges are ignored for admission. This means a new
+0.2.x prerelease (for example the `0.2.2-rc.1 → 0.2.2-rc.2` Desktop update) installs without a plugin rebuild.
+The exact `dsh.compatibility.dshReleases` and peer list remain the **matrix-verified support set**; new versions
+are still probed with `compat-matrix --discover` and added to that list after passing. A range pass is not a
+substitute for matrix evidence: if a later 0.2.x release actually changes a surface the plugin uses, fix forward
+or narrow the range in a new plugin release. `0.3.x` is deliberately excluded by the `<0.3.0-0` upper bound.
+`0.1.7-rc.1` is excluded; the minimum is `0.1.7-rc.2`.
 
 ## 2. Version differences
 
