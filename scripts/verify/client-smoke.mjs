@@ -5,6 +5,15 @@ if (/\bBuffer\b/u.test(bundleSource)) {
   throw new Error('client bundle references Node-only Buffer')
 }
 
+// HMR contract: the bundle must upsert its tagged style element, not insert a
+// second copy and not leave stale CSS when the factory re-materializes.
+if (!bundleSource.includes('existing.textContent = __charterCss')) {
+  throw new Error('client bundle does not refresh an existing tagged style element on HMR')
+}
+if (!bundleSource.includes('style[data-plugin-css="dsh-charter/charter.css"]')) {
+  throw new Error('client bundle is missing the owned style selector used by client HMR cleanup')
+}
+
 /**
  * Verify the browser entry is a self-contained factory-form bundle:
  * it registers exactly one module with the Web module loader, synchronously

@@ -7,8 +7,9 @@ import { readFile, rm, writeFile } from 'node:fs/promises'
  * would fail outright.
  *
  * Remove that import and inject the stylesheet from inside the module factory.
- * The tagged <style> element is inserted once at materialization, so repeated
- * loads (including HMR) do not duplicate it.
+ * The tagged <style> element is upserted at materialization: repeated loads
+ * (including HMR) update its textContent in place, so stale CSS cannot survive
+ * and duplicate tags are never created.
  */
 const jsPath = 'lib/client.js'
 const cssPath = 'lib/client.css'
@@ -31,12 +32,19 @@ if (!js.includes(factoryMarker)) {
 const injection = `${factoryMarker}
     const __charterCss = ${JSON.stringify(css)};
     const __charterStyleSelector = 'style[data-plugin-css=${JSON.stringify(styleId)}]';
-    if (typeof document !== 'undefined' && document.querySelector(__charterStyleSelector) === null) {
-      const style = document.createElement('style');
-      style.dataset.plugin = ${JSON.stringify(plugin)};
-      style.dataset.pluginCss = ${JSON.stringify(styleId)};
-      style.textContent = __charterCss;
-      document.head.appendChild(style);
+    if (typeof document !== 'undefined') {
+      const existing = document.querySelector(__charterStyleSelector);
+      if (existing !== null) {
+        // HMR normally removes owned styles before materialization; updating an
+        // existing tag keeps CSS fresh if a host-side reload reuses the document.
+        existing.textContent = __charterCss;
+      } else {
+        const style = document.createElement('style');
+        style.dataset.plugin = ${JSON.stringify(plugin)};
+        style.dataset.pluginCss = ${JSON.stringify(styleId)};
+        style.textContent = __charterCss;
+        document.head.appendChild(style);
+      }
     }`
 
 const withoutImport = js.replace(importPattern, '')
