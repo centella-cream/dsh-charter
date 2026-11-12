@@ -5,6 +5,20 @@ English | [中文](CHANGELOG.zh.md)
 All notable changes to `dsh-charter` are recorded here. The project follows a pre-1.0 version line while the
 DSH plugin ABI is still moving.
 
+## Unreleased — 0.3.0 (development candidate)
+
+### Changed
+
+- GUI redesign across Workspace, Review Center, and Diagnostics: flat section layout, reduced microcopy and
+  badges, single progress control per deliverable row, complete Change Set rail/sheet, and page-level Pane split.
+- Token coverage audit and CI gate for all declared DSH theme versions.
+
+### Compatibility
+
+- Added DSH `0.2.2-rc.2` support and a bounded `engines.dsh` 0.2-line range (`0.1.7-rc.2 || >=0.2.0-rc.1 <0.3.0-0`)
+  so future 0.2.x prerelease updates install without a plugin rebuild. The exact `dshReleases`/peer list remains
+  the ten-version matrix-verified support set.
+
 ## 0.2.2 — 2026-11-11
 
 Dependency-graph workspace view and explicit dependency-conflict confirmation. No record-schema, Host, Remote,

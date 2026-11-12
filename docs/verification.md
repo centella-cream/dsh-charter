@@ -11,7 +11,7 @@ history and the Changelog. Temporary directories, profiles, tarballs, and fetche
 excluded from the published package.
 
 Environment: macOS, Node `v22.23.1`, npm `12.0.2`, pnpm `12.3.4`. Local DSH development baseline:
-`0.2.2-rc.1` (the current npm `next`).
+`0.2.2-rc.2` (the current npm `next`).
 
 ## 1. Current conclusion
 
@@ -69,10 +69,51 @@ The `main` tree has passed source-level acceptance for the implemented workspace
 This is source acceptance, not a release acceptance: real Desktop/browser diagnostics, real-model compaction, performance,
 and the remaining full-design gates must be recorded separately before declaring `0.2.0` stable. The Pane uses `watchSummary` plus paged queries with a full-watch compatibility fallback; the network layer still fetches all pages, so the 512-item performance gate remains separate.
 
+## 1.2 0.3.0 GUI development candidate (unreleased, local acceptance pending)
+
+- Branch `feat/0.3.0-gui`, HEAD `433bdce` plus uncommitted work; **not pushed/merged/tagged/published**. No
+  `0.3.0` availability claim.
+- Source gates (2026-11-12): `npm run check` = 39 files / **490 tests** PASS (typecheck, build, remote/client
+  smoke, Vitest, token gate); `npm run verify:ui-metrics -- --gate=css|ia` PASS.
+- Metric record (W1/W2/W4): CSS gate — `font-size` values 6, font weights 3, literal colors 0, non-token
+  radius 0, non-token shadow 0, padding 12, gap 8, `!important` 0; IA gate — objective rendered 1, legacy
+  overview/stat/budget 0, `goSection` scroll/focus yes, action bar dirty-only yes; final gate PASS. The
+  isolated profile and CDP matrix were captured under the installed livery layer (`body[data-dsh-livery]`
+  present), dark and light; no second livery preset was available for a broader spot check. Record:
+  `.tmp/gui-acceptance/2026-11-12/livery-spotcheck.md`.
+- Token coverage audit (W0): 35 static host vars used by `charter.css` are defined in
+  `@deepseek-ai/dsh-client-ui-theme` for **all 10 declared DSH versions**; `--dsh-content-font-size` has a
+  `14px` fallback; the compat block is intentionally empty. Gate: `npm run verify:tokens`.
+- Real-browser evidence (CDP-injected new bundle into the installed Web Host; explicitly **not** the same as an
+  installed artifact unless stated): multi-width 320/375/560/850/1440, dark/light, forced-colors,
+  reduced-motion, page-scale 2x; AX tree named region/no nested `main`/no unnamed buttons/named dialog; real
+  host scroll/focus routing and narrow-sheet Escape/focus restore.
+- Isolated-profile evidence: a WIP artifact of the current tree was installed into
+  `DSH_HOME=/tmp/dsh-w4-home` and its `lib/client.js` hash matched the repo build; the dev tarball named
+  `dsh-charter-0.2.2.tgz` was **deleted** after review because it collided with the published immutable 0.2.2
+  artifact/digest. Future dev packs must bump the version (e.g. `0.3.0`) before packing.
+- Local acceptance deployment (2026-11-12): dev candidate `0.3.0` (unreleased) packed as
+  `dist/dsh-charter-0.3.0-rc2-range-final.tgz` (SHA-256 `31c4c61d…`), installed into the local `web` and
+  `desktop` profiles; it declares `0.2.2-rc.2` in `engines.dsh`, every DSH peer range, `dshReleases`, the token
+  inventory, and tests. Desktop requires an app restart to load it.
+- Ten-version source matrix (2026-11-12): all declared DSH versions `0.1.7-rc.2` … `0.2.2-rc.2` pass
+  typecheck, build, and tests; run with `--allow-new-release` because rc.2 is inside the pnpm 24-hour
+  `minimumReleaseAge` window. The tracked rc.2 compatibility lockfile was generated and added. Evidence:
+  `.tmp/compat-matrix-0.3.0.json`.
+- Compatibility-range strategy: `engines.dsh` is now `0.1.7-rc.2 || >=0.2.0-rc.1 <0.3.0-0`. DSH evaluates that
+  range with `includePrerelease` and ignores peers when `engines.dsh` is present, so future 0.2.x prereleases
+  install without a plugin rebuild; `0.3.x` is excluded. The exact peer/`dshReleases` list remains the verified
+  ten-version matrix; new versions are probed with `compat-matrix --discover` before being added to it.
+- Pane page split (2026-11-12): `CharterPane.tsx` 3459 → 1842 lines; new `WorkspacePage`, `ReviewCenterPage`,
+  `DiagnosticsPage` and generated `pane-scope.ts`; shared `pane-format`/`pane-ui`; real-browser v0.3.0 three-area
+  route check; 490 tests and final gate PASS.
+- Still manual/blocked before release: fresh-profile Host+Session Pane, Desktop window, real screen reader,
+  true 200% text-layout audit, zh/en switch, livery spot-check record, and all human acceptance (W1–W5).
+
 ## 2. Local baseline
 
 ```bash
-npm run check                 # typecheck + build + remote/client smoke + Vitest
+npm run check                 # typecheck + build + remote/client smoke + Vitest + token gate
 npm run smoke:package         # normal pack + consumer install
 npm run smoke:package -- --artifact <tgz> --sha256 SHA256SUMS
 node scripts/verify/recovery-smoke.mjs --artifact <tgz> --sha256 SHA256SUMS

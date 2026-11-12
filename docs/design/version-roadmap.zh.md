@@ -1,10 +1,10 @@
-# `dsh-charter` 版本路线：0.1 稳定化与 0.2 产品升级
+# `dsh-charter` 版本路线：0.1 稳定化、0.2 产品升级与 0.3 GUI 重构
 
 [English](version-roadmap.md) | 中文
 
 > **状态：** Active — 版本与范围权威。
-> **版本范围：** 0.1 历史与当前 0.2 开发线。
-> **基准：** 2026-11-11；`0.2.1` 已发布；`0.2.2` 为依赖图与 §6.5 冲突确认补丁的候选线（普通递增，不使用 `rc` 后缀）。
+> **版本范围：** 0.1 历史、已发布的 0.2 线与 0.3 GUI 重构开发线。
+> **基准：** 2026-11-12；`0.2.2` 已发布；`0.3.0` 为全栏目 GUI 全面重构开发线（进行中，未发布；普通递增，不使用 `rc` 后缀）。
 > **权威：** 中文版本为 scope 的 normative。
 > **替代/被替代：** 无 / 无
 
@@ -22,7 +22,8 @@
   → 0.1.1（仅在 stable 后确有兼容补丁时）
   → 0.2.0 开发线 → 0.2.0
   → 0.2.1：0.2.0 之后的 UI、诊断与恢复缓存补丁
-  → 0.2.2：依赖关系图形视图 + §6.5 冲突确认（纯客户端补丁线）
+  → 0.2.2：依赖关系图形视图 + §6.5 冲突确认（纯客户端补丁线，已发布）
+  → 0.3.0：全栏目 GUI 全面重构（纯客户端，进行中，未发布）
 ```
 
 **`0.1.0-rc.5`** 已发布到 npm，是最新发布版本；其规范 GitHub tag/release 待恢复。**`0.1.0-rc.6`** 在验收前
@@ -34,14 +35,21 @@ rc.5 修复了与产品承诺冲突的审阅正确性问题：此前历史草案
 
 `0.2.0` 不作为零散功能的收纳版本。它是一轮完整的契约工作流升级，同时包含现有能力改进、新功能、信息架构与交互重构、数据模型演进以及查询/客户端架构调整。
 
+`0.3.0` 是当前开发线：把 Workspace、Review Center、Diagnostics & Maintenance 所有栏目统一迁移到同一设计
+系统与交互合同，并完成真实路由、Change Set 合同与 Pane/store 收口。范围与验收由
+[charter-gui-v1.zh.md](charter-gui-v1.zh.md)（`Active`）持有；`0.3.0` 未实现完成、未发布，人工验收通过前
+不得推送开发分支、不 tag/publish、不得声称可用。
+
 ## 2. 当前发布状态
 
+- `0.2.2` 已于 2026-11-11 发布到 npm（`latest`/`next`）和 GitHub Release `v0.2.2`；tag、资产和 npm 字节不可变。
 - `0.2.1` 已发布到 npm（`latest`/`next`）和 GitHub Release `v0.2.1`；tag、资产和 npm 字节不可变。
-- `0.2.2` 为当前候选线：依赖关系图形视图（纯客户端，不改 record/Remote/prompt）与 §6.5 冲突确认。
-- `0.2.0` 是上一公开版本。
+- `0.2.0` 是更早的公开版本。
 - `0.2.1` 是 `0.2.0` 之后的兼容补丁：可编辑消息提案、更清晰的诊断/排版、owner-only 有界恢复缓存。不改变
   `recordSchemaVersion` 2 或模型工具面；`dsh_charter_archives_v1` 是有界派生物缓存，不是第二正本。
-- `0.1.0-rc.6` 仍是上一个公开版本。历史 rc tag/release 不可变。
+- `0.3.0` 为当前开发线（全栏目 GUI 全面重构）：未实现完成、未发布；本地分支 `feat/0.3.0-gui` 不推送，
+  人工验收前不合并 `main`、不 tag/release/publish，不声称可用。
+- `0.1.0-rc.6` 仍是更早的公开版本。历史 rc tag/release 不可变。
 
 ## 3. 为什么是 rc.5
 
@@ -147,7 +155,7 @@ rc.5 定位为 **审阅正确性、交互安全与稳定版证据收敛**。不�
 
 rc.4 已把 `0.2.1-rc.3` 和 `rc.4` 加入 `engines.dsh` 与 peer ranges。rc.5 补齐遗漏的 `dsh.compatibility.dshReleases`，提交可重复的版本矩阵 runner，并重新验证当时声明的七版本证据。
 
-最低版 `0.1.7-rc.2`、旧 resource 边界 `0.2.0-rc.2`、当前推荐版 `0.2.2-rc.1` 必须完成完整矩阵；其余已支持版本至少运行 typecheck、build、tests 和 smoke。
+最低版 `0.1.7-rc.2`、旧 resource 边界 `0.2.0-rc.2`、当前推荐版 `0.2.2-rc.2` 必须完成完整矩阵；其余已支持版本至少运行 typecheck、build、tests 和 smoke。
 
 未经验证不再扩大范围。若上游新版本破坏公开契约，应记录未支持，而不是在 rc.5 维护第二套实现。
 
@@ -440,6 +448,17 @@ inspector、中英 locales、客户端测试，以及 Change Set 的新增/加�
 ranges/`dshReleases`。对里程碑的影响：不新增人工门禁类别，但新增客户端布局/渲染性能与图形区无障碍证据；
 沿用 §5.7 与既有 W0/W2 验收方式。W0/真实浏览器门禁未通过则本范围整体退出 0.2.2，不拆分半成品进版本。
 
+### 14.2 `0.3.0` 新增范围：全栏目 GUI 全面重构（已决策，开发中）
+
+范围：Workspace、Review Center、Diagnostics & Maintenance 所有栏目统一迁移到同一设计系统与交互合同；
+设计 token 化、真实路由/滚动/焦点、Change Set v2 最小合同与完整 rail/sheet、Pane/store 拆分、DOM/浏览器
+可访问性与截图证据。纯客户端：不改 record schema、迁移、Host service、Remote/wire、prompt 投影、模型能力、
+`engines.dsh`/peer ranges/`dshReleases`。
+
+权威与状态：设计与执行细节由 [charter-gui-v1.zh.md](charter-gui-v1.zh.md) 持有（`Active`）；当前仅 W0 启动，
+代码未完成。人工验收前置约束：开发分支 `feat/0.3.0-gui` 不推送、不合并 `main`、不 tag/release/publish，
+不得声称 `0.3.0` 可用或已发布。退出条件：GUI 方案 §8 证据与人工验收；W0–W5 完成后才进入发布流程。
+
 ## 14. 0.2.0 非目标
 
 - 不增加 decision/environment 等新 item kind。
@@ -507,3 +526,4 @@ ranges/`dshReleases`。对里程碑的影响：不新增人工门禁类别，但
 | `0.1.1` | stable 后兼容 bug/security/DSH/a11y patch | 新持久状态、新 API、新工作流 |
 | `0.2.0` | 四个产品支柱、record v2、查询面、三中心 UI、架构重构 | 通用记忆、执行策略、任意 validator、无必要的新 domain |
 | `0.2.2` | 客户端依赖关系图形视图、§6.5 conflict 确认、预览 optional 字段 | 新 record schema/domain、新 Remote 方法、模型可见能力变更、图形独有能力 |
+| `0.3.0` | 全栏目 GUI 全面重构：设计系统、IA/路由、Change Set 合同、Pane/store 拆分、a11y/截图证据 | 新 record schema/domain、新 Remote/模型能力、兼容声明变更、人工验收前推送/合并/tag/publish/宣称可用 |

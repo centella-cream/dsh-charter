@@ -16,7 +16,7 @@ silently truncated; the browser bundle stays a single self-contained factory; th
 ## Version line — read these before assuming a version or scope
 
 - `docs/design/version-roadmap.md` (Chinese `version-roadmap.zh.md` is normative when details differ) owns the
-  version line and scope boundaries. Current development line: `0.2.0` on `feat/0.2.0-workspace`. The 0.1
+  version line and scope boundaries. Current development line: `0.3.0` on `feat/0.3.0-gui` (local, unreleased). The 0.1
   release history remains immutable.
 - **Versioning from `0.2.0` onward:** never use an `rc` suffix. Use plain increments such as `0.2.0`, `0.2.1`,
   `0.2.2`; no `0.2.0-rc.1`, no `0.2.1-rc.1`. Internal design-stage labels may use alpha/beta only if they are
@@ -45,8 +45,9 @@ silently truncated; the browser bundle stays a single self-contained factory; th
 Read [docs/README.md](docs/README.md) before adding, renaming, or retiring a design, plan, review, or release note.
 
 - **Status is mandatory.** Every design/plan/review starts with the standard status block: `Status`, `Version
-  scope`, `Baseline`, `Authority`, and `Supersedes / Superseded by`. Use only `Active`,
-  `Implemented — pending release acceptance`, `Historical`, `Superseded`, or `Archived (local)`.
+  scope`, `Baseline`, `Authority`, and `Supersedes / Superseded by`. Use only `Proposed`, `Active`,
+  `Implemented — pending release acceptance`, `Historical`, `Superseded`, `Archived (local)`, or
+  `Development candidate`; [docs/README.md](docs/README.md) owns the definitions.
 - **Naming is stable and descriptive.** Active product design is `docs/design/<product>-v<major>.md`; a
   Chinese-only topic design is `docs/design/<topic>-v<major>.zh.md`; release notes are
   `docs/release-notes/<semver>.md`. Do not create ambiguous `*-plan.md`/`*-review.md` files under
@@ -200,7 +201,7 @@ version that is not yet tracked**. This is a release requirement, not optional e
 ## Pre-ship checklist
 
 - [ ] Scope matches the version boundary in `docs/design/version-roadmap.md`; active docs carry current status headers.
-- [ ] `npm ci && npm run check` passes on the final tree (typecheck, build, remote/client smoke, Vitest).
+- [ ] `npm ci && npm run check` passes on the final tree (typecheck, build, remote/client smoke, Vitest, token coverage gate).
 - [ ] Compatibility regression covers every declared DSH version **and** the current untracked npm `latest`/`next`
       versions; evidence records Node/npm and every resolved DSH package; a failing minimum/current version blocks push.
 - [ ] `npm pack` was run once; `SHA256SUMS` matches the artifact; exact-artifact and packed recovery smokes pass
@@ -223,7 +224,7 @@ version that is not yet tracked**. This is a release requirement, not optional e
 
 ```bash
 npm ci
-npm run check                                 # typecheck + build + remote/client smoke + Vitest
+npm run check                                 # typecheck + build + remote/client smoke + Vitest + token gate
 npm run smoke:package                         # packs, verifies tarball, consumer install
 npm run smoke:package -- --artifact dist/dsh-charter-<version>.tgz --sha256 SHA256SUMS  # exact bytes, no rebuild
 node scripts/verify/recovery-smoke.mjs --artifact dist/dsh-charter-<version>.tgz --sha256 SHA256SUMS

@@ -9,7 +9,7 @@
 验证日期：2026-11-11。当前源码版本：`0.2.2`（2026-11-11 已发布）。本文件是当前证据记录；历史逐提交的叙事保留在 Git 历史和 Changelog。临时目录、profile、
 tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 
-环境：macOS，Node `v22.23.1`，npm `12.0.2`，pnpm `12.3.4`。本地 DSH 开发基线：`0.2.2-rc.1`（当前 npm
+环境：macOS，Node `v22.23.1`，npm `12.0.2`，pnpm `12.3.4`。本地 DSH 开发基线：`0.2.2-rc.2`（当前 npm
 `next`）。
 
 ## 1. 当前结论
@@ -49,10 +49,45 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 | 0.2.2 依赖图源码 | 2026-11-11 PASS：`npm run check` 37 个文件 / 475 个测试；W0-0 原型 41/41（旧契约；无边孤立节点网格例外由 `tests/client/relation-graph.spec.ts` 的产品测试覆盖）；Web Pane 在 3 条 active + 4 条 pending 交付物的 Session 上渲染图形、候选泳道、inspector 和常驻语义列表；浏览器 console 无错误。UI 自测（2026-11-11）：三节点孤立图 + 空提示、紧凑列表、添加依赖/隐藏/显示、本地 key 前置摘要均正常，无 console 错误。W0-1/2/3 与真实 AT/人工门禁仍待完成。 |
 | 0.2.2 依赖图 bundle | 2026-11-11 以 `d362d6f` 为基线，按统一预算方法 `gzip -9 -c lib/client.js | wc -c` 实测：113,990 → 130,474 B（+16,484 B），`<40 KB` gzip 预算通过。raw 仅作诊断：`lib/client.js` 591,936 → 670,173 字节（+78,237 B），CSS output 47,230 → 55,540 B（+8,310 B）；raw 不作为预算口径。 |
 
+## 1.2 0.3.0 GUI 开发候选（未发布，待本地人工验收）
+
+- 分支 `feat/0.3.0-gui`，HEAD `433bdce` + 未提交改动；**未推送/未合并/未 tag/未发布**，无 0.3.0 可用性声明。
+- 源码门禁（2026-11-12）：`npm run check` = 39 文件 / **490 测试** PASS（typecheck、build、remote/client
+  smoke、Vitest、token gate）；`npm run verify:ui-metrics -- --gate=css|ia` PASS。
+- 度量记录（W1/W2/W4）：CSS gate — 字号档 6、字重 3、颜色字面量 0、非 token 圆角 0、非 token shadow 0、
+  padding 12、gap 8、`!important` 0；IA gate — objective 渲染 1、旧 overview/stat/budget 0、`goSection` 滚动/聚焦
+  yes、操作条仅 dirty yes；final gate PASS。隔离 profile 与 CDP 矩阵均在已安装 livery 层
+  （`body[data-dsh-livery]` 存在）下采集暗/亮两套；没有第二个 livery preset 可做更广抽查。记录：
+  `.tmp/gui-acceptance/2026-11-12/livery-spotcheck.md`。
+- Token 覆盖审计（W0）：`charter.css` 使用的 35 个静态 host token 在全部 10 个声明 DSH 版本的
+  `@deepseek-ai/dsh-client-ui-theme` 中均有定义；`--dsh-content-font-size` 带 `14px` fallback；兼容块有意为空。
+  门禁：`npm run verify:tokens`。
+- 真实浏览器证据（把新 bundle 通过 CDP 注入已安装 Web Host；除特别说明外**不等于**已安装 artifact）：
+  320/375/560/850/1440 多宽度、明/暗、forced-colors、reduced-motion、page-scale 2x；AX tree 命名 region、
+  无嵌套 `main`、无空名按钮、命名 dialog；真实宿主滚动/焦点路由与窄屏 sheet Escape/focus restore。
+- 隔离 profile 证据：当前树的 WIP artifact 曾安装到 `DSH_HOME=/tmp/dsh-w4-home`，安装后 `lib/client.js`
+  hash 与仓库 build 一致；该开发包曾命名为 `dsh-charter-0.2.2.tgz`，因与已发布不可变 0.2.2 的
+  artifact/digest 冲突，**审查后已删除**。今后 dev pack 必须先 bump 版本（如 `0.3.0`）再打包。
+- 本地验收部署（2026-11-12）：开发候选 `0.3.0`（未发布）打包为
+  `dist/dsh-charter-0.3.0-rc2-range-final.tgz`（SHA-256 `31c4c61d…`），已安装到本地 `web` 与 `desktop`
+  profile；其 `engines.dsh`、全部 DSH peer 范围、`dshReleases`、token inventory 与测试均声明支持 `0.2.2-rc.2`。
+  Desktop 需重启 app 后加载。
+- 十版本源码矩阵（2026-11-12）：全部声明版本 `0.1.7-rc.2` … `0.2.2-rc.2` 通过 typecheck、build 与测试；
+  因 rc.2 仍在 pnpm 24 小时 `minimumReleaseAge` 窗口内，矩阵以 `--allow-new-release` 运行；已生成并跟踪 rc.2
+  的兼容 lockfile。证据：`.tmp/compat-matrix-0.3.0.json`。
+- 兼容范围策略：`engines.dsh` 现为 `0.1.7-rc.2 || >=0.2.0-rc.1 <0.3.0-0`。DSH 以 `includePrerelease` 求值，
+  且存在 `engines.dsh` 时忽略 peers 做准入，因此未来 0.2.x prerelease 无需插件重新发版即可安装；`0.3.x` 被排除。
+  精确的 peer/`dshReleases` 列表仍是十版本矩阵已验证支持集；新版本先由 `compat-matrix --discover` 探测再加入。
+- Pane 页面级拆分（2026-11-12）：`CharterPane.tsx` 3459 → 1842 行；新增 `WorkspacePage`/`ReviewCenterPage`/
+  `DiagnosticsPage` 与生成的 `pane-scope.ts`；共享 `pane-format`/`pane-ui`；真实浏览器 v0.3.0 三区域路由验证；
+  490 测试 + final gate PASS。
+- 发布前仍需人工/环境证据：fresh-profile Host+Session Pane、Desktop 窗口、真实 screen reader、真实 200%
+  文本布局、zh/en 切换、livery 抽查记录，以及 W1–W5 全部人工验收。
+
 ## 2. 本地基线
 
 ```bash
-npm run check
+npm run check                 # typecheck + build + remote/client smoke + Vitest + token gate
 npm run smoke:package
 npm run smoke:package -- --artifact <tgz> --sha256 SHA256SUMS
 node scripts/verify/recovery-smoke.mjs --artifact <tgz> --sha256 SHA256SUMS

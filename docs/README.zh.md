@@ -8,6 +8,7 @@
 
 | 状态 | 含义 |
 | --- | --- |
+| `Proposed` | 设计提案：**未实现、非权威**；记录待选项，不得作为当前行为引用。进入版本范围前需先修订版本路线。 |
 | `Active` | 当前权威或当前操作指南，持续维护。 |
 | `Implemented — pending release acceptance` | 源码实现已存在并通过源码门禁，但发布/人工门禁尚未完成。 |
 | `Historical` | 已完成或已放弃决策的冻结记录；只读，不作为当前指导。 |
@@ -48,6 +49,8 @@
 | --- | --- | --- | --- |
 | [design/charter-design-v1.md](design/charter-design-v1.md) | Active | 0.1 核心；不变量适用于 0.2 | Charter 核心不变量与 v1 产品基线。 |
 | [design/charter-workspace-v2.zh.md](design/charter-workspace-v2.zh.md) | Implemented — pending release acceptance | 0.2.0 | 工作区、提案时间线、依赖；专题范围。 |
+| [design/charter-dependency-graph-v1.zh.md](design/charter-dependency-graph-v1.zh.md) | Active | 0.2.2 | 客户端依赖关系图形视图；源码已在 0.2.2 落地，真实浏览器/AT 与 W0-1/2/3 门禁证据仍待完成。 |
+| [design/charter-gui-v1.zh.md](design/charter-gui-v1.zh.md) | Active | 0.3.0（开发中，未发布） | 全栏目 GUI 全面重构：设计系统、IA/路由、Change Set 合同、Pane/store 拆分、证据门禁；人工验收前不推送/合并/发布/宣称可用。 |
 | [design/version-roadmap.md](design/version-roadmap.md) | Active | 全版本线 | 范围与版本权威；中文为 normative。 |
 | [design/compatibility.md](design/compatibility.md) | Active | 已声明 DSH 版本 | 兼容声明与矩阵。 |
 | [history/2026-10-19-charter-design-v1-review.md](history/2026-10-19-charter-design-v1-review.md) | Historical | 0.1 | 冻结的 v1 设计评审。 |

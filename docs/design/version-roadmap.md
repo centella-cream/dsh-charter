@@ -1,12 +1,13 @@
-# `dsh-charter` Version Roadmap: 0.1 Stabilization and the 0.2 Product Upgrade
+# `dsh-charter` Version Roadmap: 0.1 Stabilization, 0.2 Product Upgrade, and 0.3 GUI Refactor
 
 English | [中文](version-roadmap.zh.md)
 
 > This English file is a non-normative summary. The Chinese roadmap is normative when details differ.
 >
 > **Status:** Active — version and scope authority.
-> **Version scope:** 0.1 history and current 0.2 development line.
-> **Baseline:** 2026-11-06; current line `0.2.1` is a post-`0.2.0` release candidate (plain increments, no `rc`).
+> **Version scope:** 0.1 history, the published 0.2 line, and the 0.3 GUI refactor development line.
+> **Baseline:** 2026-11-12; `0.2.2` is published; `0.3.0` is the all-section GUI refactor line (in progress,
+> unreleased; plain increments, no `rc` suffix).
 > **Authority:** Chinese [version-roadmap.zh.md](version-roadmap.zh.md) is normative for scope.
 > **Supersedes / Superseded by:** none / none
 
@@ -24,6 +25,8 @@ The release path is:
   → 0.1.1 only if stable needs a compatible patch
   → 0.2.0 development → 0.2.0
   → 0.2.1 post-0.2.0 UI/diagnostics/recovery-cache patch
+  → 0.2.2 dependency graph + §6.5 confirmation (client-only patch, published)
+  → 0.3.0 all-section GUI refactor (client-only, in progress, unreleased)
 ```
 
 **`0.1.0-rc.6`** is published and formally accepted; its GitHub Release uses recovery tag `v0.1.0-rc.6-republished`. **`0.1.0-rc.5`** is the previous accepted release and its canonical GitHub tag/release is pending restoration. `0.1.1-rc.1` remains a post-stable patch spelling, not another rc.6.
@@ -34,15 +37,16 @@ rc.5 fixed the correctness defect inside the promised 0.1 workflow: previously e
 
 `0.2.0` is not a bucket for isolated improvements. It is a complete Charter workflow upgrade spanning existing-feature improvements, new capabilities, information architecture and interaction redesign, data-model evolution, query APIs, and client architecture.
 
+`0.3.0` is the current development line: it unifies the GUI of Workspace, Review Center, and Diagnostics & Maintenance under one design system and interaction contract, and completes real routing, the Change Set contract, and the Pane/store split. The scope and acceptance plan live in [charter-gui-v1.zh.md](charter-gui-v1.zh.md) (`Active`). It is not implemented or released; until human acceptance passes, the development branch is not pushed, `main` is not merged, nothing is tagged/released/published, and no availability claim may be made.
+
 ## 2. Current Release State
 
-- `0.2.1` is published on npm (`latest`/`next`) and as GitHub Release `v0.2.1`; its tag, assets, and npm bytes
-  are immutable.
-- `0.2.0` is the previous public release.
-- `0.2.1` is a compatible post-`0.2.0` patch: editable message proposals, clearer diagnostics/typography, and an
-  owner-only bounded recovery cache. It does not change `recordSchemaVersion` 2 or the model tool surface; the
-  `dsh_charter_archives_v1` domain is a bounded derivative cache, not a second authority.
-- `0.1.0-rc.6` remains the previous public release. Historical rc tags and releases are immutable.
+- `0.2.2` was published on 2026-11-11 to npm (`latest`/`next`) and as GitHub Release `v0.2.2`; its tag, assets, and npm bytes are immutable.
+- `0.2.1` is published on npm (`latest`/`next`) and as GitHub Release `v0.2.1`; its tag, assets, and npm bytes are immutable.
+- `0.2.0` is an earlier public release.
+- `0.2.1` is a compatible post-`0.2.0` patch: editable message proposals, clearer diagnostics/typography, and an owner-only bounded recovery cache. It does not change `recordSchemaVersion` 2 or the model tool surface; the `dsh_charter_archives_v1` domain is a bounded derivative cache, not a second authority.
+- `0.3.0` is the current development line (all-section GUI refactor): not implemented, not released. The local `feat/0.3.0-gui` branch is not pushed; before human acceptance `main` is not merged and nothing is tagged/released/published or described as available.
+- `0.1.0-rc.6` remains an earlier public release. Historical rc tags and releases are immutable.
 
 ## 3. Why rc.5
 
@@ -298,3 +302,17 @@ Alpha milestones may change the schema, but every change must ship fixture migra
 | `0.1.0` | rc.5 stabilization | New features |
 | `0.1.1` | Compatible stable bug/security/DSH/accessibility patches | New persistent state, API, or workflow |
 | `0.2.0` | Four product pillars, record v2, query plane, three-area UI, architecture refactor | General memory, execution policy, arbitrary validators, unnecessary domain migration |
+| `0.2.2` | Client-side dependency graph, §6.5 conflict confirmation, optional preview fields | New record schema/domain, new Remote methods, model-visible capability changes, graph-only capabilities |
+| `0.3.0` | All-section GUI refactor: design system, IA/routing, Change Set contract, Pane/store split, a11y/screenshot evidence | New record schema/domain, new Remote/model capability, compatibility declaration changes, pushing/merging/tagging/publishing or availability claims before human acceptance |
+
+## 16. `0.3.0` GUI Refactor (in development)
+
+The 0.3.0 line unifies the GUI of all Pane areas (Workspace, Review Center, Diagnostics & Maintenance) under one
+design system and interaction contract: token-based styling, real scroll/focus routing, the workspace-v2 Change Set
+contract, the Pane/store split, and DOM/browser accessibility and screenshot evidence. It is client-only: no record
+schema, migration, Host service, Remote/wire, prompt projection, model capability, or compatibility declaration
+changes.
+
+Authority: [charter-gui-v1.zh.md](charter-gui-v1.zh.md) (`Active`). Status: W0 started; not implemented and not
+released. Until human acceptance passes, the local `feat/0.3.0-gui` branch is not pushed, `main` is not merged, and
+nothing may be tagged/released/published or described as available.

@@ -4,6 +4,20 @@
 
 记录 `dsh-charter` 的重要变更。DSH 插件 ABI 仍在演进，项目保持 pre-1.0 版本线。
 
+## 未发布 — 0.3.0（开发候选）
+
+### 变更
+
+- Workspace、审阅中心、诊断与维护全栏目 GUI 重构：平铺 section、减少小字/角标、交付物行单一进度控件、
+  Change Set 完整 rail/sheet、页面级 Pane 拆分。
+- 全部声明 DSH 版本的主题 token 覆盖审计与门禁。
+
+### 兼容性
+
+- 新增 DSH `0.2.2-rc.2` 支持，并将 `engines.dsh` 改为有界 0.2 线范围
+  （`0.1.7-rc.2 || >=0.2.0-rc.1 <0.3.0-0`）：未来 0.2.x prerelease 更新无需插件重新发版；精确的
+  `dshReleases`/peer 列表仍是十版本矩阵已验证支持集。
+
 ## 0.2.2 — 2026-11-11
 
 依赖关系图形视图与显式依赖冲突确认。不改变 record schema、Host、Remote 或 prompt 投影。
