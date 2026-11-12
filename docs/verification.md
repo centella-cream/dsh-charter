@@ -71,8 +71,8 @@ and the remaining full-design gates must be recorded separately before declaring
 
 ## 1.2 0.3.0 GUI development candidate (unreleased, local acceptance pending)
 
-- Branch `feat/0.3.0-gui`, HEAD `433bdce` plus uncommitted work; **not pushed/merged/tagged/published**. No
-  `0.3.0` availability claim.
+- Branch `feat/0.3.0-gui`; W6 commit series `f3ac8f2`…`840d202` is committed and the worktree is clean at audit
+  time. **Not pushed/merged/tagged/published**; no `0.3.0` availability claim.
 - Source gates (2026-11-12): `npm run check` = 39 files / **490 tests** PASS (typecheck, build, remote/client
   smoke, Vitest, token gate); `npm run verify:ui-metrics -- --gate=css|ia` PASS.
 - Metric record (W1/W2/W4): CSS gate — `font-size` values 6, font weights 3, literal colors 0, non-token

@@ -51,7 +51,7 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 
 ## 1.2 0.3.0 GUI 开发候选（未发布，待本地人工验收）
 
-- 分支 `feat/0.3.0-gui`，HEAD `433bdce` + 未提交改动；**未推送/未合并/未 tag/未发布**，无 0.3.0 可用性声明。
+- 分支 `feat/0.3.0-gui`；W6 提交序列 `f3ac8f2`…`840d202` 已提交，审计时工作树干净。**未推送/未合并/未 tag/未发布**，无 0.3.0 可用性声明。
 - 源码门禁（2026-11-12）：`npm run check` = 39 文件 / **490 测试** PASS（typecheck、build、remote/client
   smoke、Vitest、token gate）；`npm run verify:ui-metrics -- --gate=css|ia` PASS。
 - 度量记录（W1/W2/W4）：CSS gate — 字号档 6、字重 3、颜色字面量 0、非 token 圆角 0、非 token shadow 0、
