@@ -13,6 +13,7 @@
 import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { existsSync, readFileSync } from 'node:fs'
 import { spawn } from 'node:child_process'
+import semver from 'semver'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { createHash } from 'node:crypto'
@@ -46,8 +47,17 @@ const actualPeers = peers.map(([name]) => name).sort()
 if (JSON.stringify(actualPeers) !== JSON.stringify(EXPECTED_DSH_PEERS)) {
   throw new Error(`DSH peer set changed: ${actualPeers.join(', ')}`)
 }
-if (PACKAGE.engines?.dsh !== declaredRange) {
-  throw new Error('engines.dsh disagrees with dsh.compatibility.dshReleases')
+const engineRange = PACKAGE.engines?.dsh
+if (typeof engineRange !== 'string' || engineRange.trim() === '') {
+  throw new Error('engines.dsh is missing')
+}
+for (const version of DECLARED) {
+  if (!semver.satisfies(version, engineRange, { includePrerelease: true })) {
+    throw new Error(`engines.dsh ${engineRange} does not admit declared version ${version}`)
+  }
+}
+if (semver.satisfies('0.3.0-rc.1', engineRange, { includePrerelease: true })) {
+  throw new Error('engines.dsh must not admit 0.3 prereleases')
 }
 const SENTINELS = {
   minimum: DECLARED[0],
@@ -151,6 +161,10 @@ async function prepareProject(version, workRoot, allowNewRelease) {
     if (name.startsWith('@deepseek-ai/')) delete pkg.devDependencies[name]
   }
   pkg.devDependencies = { ...pkg.devDependencies, ...dshPackages, ...tools }
+  // semver is only used by this runner outside the isolated graph; the tracked
+  // per-version lockfiles intentionally do not include it.
+  delete pkg.devDependencies.semver
+  delete pkg.devDependencies['@types/semver']
   delete pkg.overrides
   delete pkg.pnpm
   await writeFile(join(dir, 'package.json'), JSON.stringify(pkg, null, 2) + '\n')

@@ -178,7 +178,7 @@ jobs:
           node scripts/verify/profile-smoke.mjs \
             --artifact "candidate/$(basename candidate/*.tgz)" \
             --sha256 candidate/SHA256SUMS \
-            --dsh-version 0.2.2-rc.1 \
+            --dsh-version 0.2.2-rc.2 \
             --port 19601 2>&1 | tee -a profile-smoke.log
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: ${{ always() }}

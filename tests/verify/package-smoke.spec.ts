@@ -28,7 +28,7 @@ afterAll(() => {
 
 
 describe('published DSH compatibility metadata', () => {
-  const expected = [
+  const verified = [
     '0.1.7-rc.2',
     '0.2.0-rc.1',
     '0.2.0-rc.2',
@@ -38,20 +38,28 @@ describe('published DSH compatibility metadata', () => {
     '0.2.1-rc.4',
     '0.2.1-rc.5',
     '0.2.2-rc.1',
+    '0.2.2-rc.2',
   ].join(' || ')
+  // DSH's compatibility gate evaluates `engines.dsh` with includePrerelease and,
+  // when present, ignores peer ranges for admission. The bounded 0.2-line range
+  // keeps future 0.2.x prereleases installable without a plugin rebuild; the
+  // exact `dshReleases`/peer list remains the verified matrix.
+  const engines = '0.1.7-rc.2 || >=0.2.0-rc.1 <0.3.0-0'
 
-  it('keeps engines.dsh and every DSH peer range in sync with the verified matrix', () => {
+  it('keeps the 0.2-line engines range and every DSH peer range in sync with the verified matrix', () => {
     const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')) as {
       engines: Record<string, string>
       peerDependencies: Record<string, string>
       dsh?: { compatibility?: { dshReleases?: Record<string, string> } }
     }
-    expect(pkg.engines.dsh).toBe(expected)
+    expect(pkg.engines.dsh).toBe(engines)
+    expect(engines).toContain('>=0.2.0-rc.1')
+    expect(engines).toContain('<0.3.0-0')
     const peers = Object.entries(pkg.peerDependencies).filter(([name]) => name.startsWith('@deepseek-ai/dsh-'))
     expect(peers.length).toBeGreaterThan(0)
-    for (const [name, range] of peers) expect(range, name).toBe(expected)
+    for (const [name, range] of peers) expect(range, name).toBe(verified)
     const releases = pkg.dsh?.compatibility?.dshReleases ?? {}
-    expect(Object.keys(releases).sort()).toEqual(expected.split(' || ').sort())
+    expect(Object.keys(releases).sort()).toEqual(verified.split(' || ').sort())
     for (const [version, status] of Object.entries(releases)) expect(status, version).toBe('compatible')
   })
 })
