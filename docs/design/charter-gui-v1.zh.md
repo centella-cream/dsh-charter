@@ -538,7 +538,7 @@ canonical diff、reconcile 状态）。若 D0 选择改为内联卡片，则必�
 - 所有新文案进 `locales.ts` 的同一命名空间，中英同步；禁止硬编码中文。
 - rail、inspector、图形工具条与节点脚注不得出现原始枚举/op 类型串（如 `in-progress`、`accept`、
   `verification.set`），一律走 `t()`；现有 `progress.*`、`changeset.op.*` key 复用。
-- 页面头只保留一句副标题；slogan/免责声明移入空态或帮助 popover，降低首屏噪声。
+- 页面头保留版本 chip、revision 与预算 meter；slogan/免责声明移入空态或帮助 popover，降低首屏噪声。
 - 计数、revision、字节数使用 `Intl` 或现有格式化函数，保持 `tabular-nums`。
 
 ### 5.7 依赖关系图视觉规格（冻结，稿：mockup-graph.html）
