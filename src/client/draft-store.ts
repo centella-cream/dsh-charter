@@ -32,6 +32,7 @@ export type CharterSection =
   | 'history'
   | 'context'
   | 'recovery'
+  | 'diagnostics'
 
 export type DraftEditor =
   | { readonly kind: 'objective' }

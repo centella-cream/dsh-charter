@@ -18,8 +18,10 @@ export interface ChangeSetPanelProps {
   /** Ops are rendered in draft order; each row can be unstaged independently. */
   readonly ops: readonly CharterOp[]
   readonly stagedOps: number
-  readonly promptDelta: string
-  readonly itemsDelta: string
+  readonly promptBefore: string
+  readonly promptAfter: string
+  readonly itemsBefore: number
+  readonly itemsAfter: number
   readonly editorOpen: boolean
   readonly conflicts: readonly ChangeSetConflictRow[]
   readonly diffContext: ChangeSetDiffContext
@@ -33,8 +35,10 @@ export function ChangeSetPanel({
   headingId,
   ops,
   stagedOps,
-  promptDelta,
-  itemsDelta,
+  promptBefore,
+  promptAfter,
+  itemsBefore,
+  itemsAfter,
   editorOpen,
   conflicts,
   diffContext,
@@ -51,12 +55,18 @@ export function ChangeSetPanel({
         </div>
         <span className="charter-count">{stagedOps}</span>
       </div>
-      <div className="charter-changeset__body">
-        <span>{t('changeset.ops', { count: stagedOps })}</span>
-        <span>{promptDelta}</span>
-        <span>{itemsDelta}</span>
-        {editorOpen && <span>{t('changeset.editorOpen')}</span>}
-      </div>
+      <dl className="charter-changeset__summary">
+        <dt>{t('changeset.promptShort')}</dt>
+        <dd>{promptBefore} → {promptAfter}</dd>
+        <dt>{t('changeset.itemsShort')}</dt>
+        <dd>{itemsBefore} → {itemsAfter}</dd>
+        {editorOpen && (
+          <>
+            <dt>{t('changeset.editorOpen')}</dt>
+            <dd>—</dd>
+          </>
+        )}
+      </dl>
       {ops.length > 0 && (
         <div className="charter-changeset__ops">
           {groupChangeSetOps(ops).map(group => (

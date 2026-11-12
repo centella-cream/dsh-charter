@@ -9,7 +9,7 @@ import {
 describe('section routing (W5 Pane split)', () => {
   it('keeps a stable anchor for every section', () => {
     expect(Object.keys(SECTION_ANCHOR).sort()).toEqual([
-      'context', 'deliverables', 'history', 'invariants', 'objective', 'overview', 'recovery',
+      'context', 'deliverables', 'diagnostics', 'history', 'invariants', 'objective', 'overview', 'recovery',
     ])
     expect(sectionAnchor('objective')).toBe('charter-objective')
     expect(sectionAnchor('history')).toBe('charter-review-pending')

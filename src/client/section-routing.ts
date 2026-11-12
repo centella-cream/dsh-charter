@@ -13,6 +13,7 @@ export const SECTION_ANCHOR: Record<CharterSection, string> = {
   history: 'charter-review-pending',
   context: 'charter-context-preview',
   recovery: 'charter-recovery',
+  diagnostics: 'charter-diagnostics-top',
 }
 
 export function sectionAnchor(section: CharterSection): string {

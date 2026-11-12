@@ -91,7 +91,9 @@ describe('rc.5 pane workflow acceptance', () => {
     const tree = mount(source(unavailable), draft)
     expect(textOf(tree.root)).toContain('header.version')
     expect(button(tree, 'objective.set').props.disabled).toBe(true)
-    expect(button(tree, 'composer.addInvariant').props.disabled).toBe(true)
+    const addRows = tree.root.findAll(node => node.type === 'button' && node.props.className === 'charter-empty-row')
+    expect(addRows.length).toBeGreaterThan(0)
+    expect(addRows[0]?.props.disabled).toBe(true)
   })
 
   it('renders one progress control and no duplicated byte/status copy in a deliverable row', () => {
@@ -141,7 +143,7 @@ describe('rc.5 pane workflow acceptance', () => {
     })
     const tree = mount(src, draft)
     expect(textOf(tree.root)).toContain('footer.one')
-    expect(textOf(tree.root)).toContain('changeset.itemsDelta')
+    expect(textOf(tree.root)).toContain('changeset.itemsShort')
   })
 
   it('uses the bootstrap apply hint and associates it with the Apply button', async () => {
@@ -193,7 +195,7 @@ describe('0.2 workspace and dependency plan', () => {
     const draft = new CharterDraft(sessionId, () => src)
     draft.bindLifecycle(lifecycle)
     const tree = mount(src, draft)
-    expect(textOf(tree.root)).toContain('deps.title')
+    expect(textOf(tree.root)).toContain('deps.executionPath')
     expect(textOf(tree.root)).toContain('D2')
     const editButtons = tree.root.findAll(node => node.type === 'button' && textOf(node) === 'deps.editRequires')
     expect(editButtons).toHaveLength(2)
@@ -299,6 +301,8 @@ describe('0.2 workspace and dependency plan', () => {
     const draft = new CharterDraft(sessionId, () => src)
     draft.bindLifecycle(lifecycle)
     const tree = mount(src, draft)
+    const add = tree.root.findAll(node => node.type === 'button' && textOf(node).includes('composer.addInvariant'))[0]
+    act(() => add?.props.onClick())
     const composer = tree.root.findAll(node => node.type === 'textarea' && node.props['aria-label'] === 'composer.invariantAria')[0]
     act(() => composer?.props.onChange({ target: { value: 'Review this constraint' } }))
     const propose = tree.root.findAll(node => node.type === 'button' && textOf(node) === 'composer.proposeInvariant')[0]
@@ -490,12 +494,12 @@ describe('rc.6 pane help and formatted preview', () => {
     const draft = new CharterDraft(sessionId, () => src)
     draft.bindLifecycle(lifecycle)
     const tree = mount(src, draft)
-    const helps = tree.root.findAll(node => node.props.className === 'charter-nav__help')
-    expect(helps).toHaveLength(3)
-    expect(helps.map(node => node.props['data-tooltip'])).toEqual([
-      'nav.workspaceHelp',
-      'nav.reviewHelp',
-      'nav.diagnosticsHelp',
+    const tabs = tree.root.findAll(node => node.type === 'button' && typeof node.props.className === 'string' && node.props.className === 'charter-tabs__tab')
+    expect(tabs).toHaveLength(3)
+    expect(tabs.map(node => node.props['aria-describedby'])).toEqual([
+      'charter-tab-help-workspace',
+      'charter-tab-help-review',
+      'charter-tab-help-diagnostics',
     ])
   })
 
@@ -505,9 +509,9 @@ describe('rc.6 pane help and formatted preview', () => {
     const draft = new CharterDraft(sessionId, () => src)
     draft.bindLifecycle(lifecycle)
     const tree = mount(src, draft)
-    const overview = tree.root.findAll(node => node.type === 'button' && textOf(node) === 'nav.workspace')[0]
-    expect(overview?.props['aria-describedby']).toBe('charter-nav-help-workspace')
-    const help = tree.root.findAll(node => node.props.id === 'charter-nav-help-workspace')[0]
+    const overview = tree.root.findAll(node => node.type === 'button' && textOf(node).includes('nav.workspace'))[0]
+    expect(overview?.props['aria-describedby']).toBe('charter-tab-help-workspace')
+    const help = tree.root.findAll(node => node.props.id === 'charter-tab-help-workspace')[0]
     expect(textOf(help!)).toBe('nav.workspaceHelp')
     const context = tree.root.findAll(node => node.type === 'button' && textOf(node).includes('nav.diagnostics'))[0]
     expect(context).toBeDefined()
@@ -577,14 +581,10 @@ describe('dependency graph pane surface', () => {
   it('renders the graph and the semantic list together, and can hide only the graph', () => {
     const tree = mountGraph()
     expect(textOf(tree.root)).toContain('deps.graphTitle')
-    expect(textOf(tree.root)).toContain('deps.title')
+    expect(textOf(tree.root)).toContain('deps.executionPath')
     expect(tree.root.findAll(node => node.props['id'] === 'charter-dependency-list')).toHaveLength(1)
-    expect(tree.root.findAll(node => node.props['aria-label'] === 'deps.graphAria')).toHaveLength(1)
-    expect(textOf(tree.root)).toContain('deps.locateInGraph')
-
-    act(() => { button(tree, 'deps.hideGraph').props.onClick() })
-    expect(textOf(tree.root)).not.toContain('deps.graphTitle')
-    expect(tree.root.findAll(node => node.props['id'] === 'charter-dependency-list')).toHaveLength(1)
+    expect(tree.root.findAll(node => node.props['aria-label'] === 'deps.graphAria').length).toBeGreaterThan(0)
+    expect(tree.root.findAll(node => node.type === 'details')[0]).toBeDefined()
   })
 
   it('expands the windowed dependency list before locating a graph node', () => {

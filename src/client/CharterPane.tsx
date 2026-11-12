@@ -18,6 +18,7 @@ import type {
   DraftEditor,
 } from './draft-store.js'
 import { CHARTER_LOCALE_NS } from './locales.js'
+import { CHARTER_VERSION } from '../version.js'
 import { dependencyConflictDiff, dependencyProjection, validateDependencyGraph, type DependencyConflictDiff } from '../core/dependencies.js'
 import { buildRelationGraph, defaultFocus as defaultGraphFocus, layoutRelationGraph, type GraphInputItem, type RelationGraphModel } from './relation-graph.js'
 import { ChangeSetPanel } from './ChangeSetPanel.js'
@@ -47,7 +48,6 @@ import {
   type ProjectedItem,
 } from './preview.js'
 import { firstDraftTextIssue, type BootstrapPlan } from './bootstrap-plan.js'
-import { CHARTER_VERSION } from '../version.js'
 import './charter.css'
 import {
   countLabel,
@@ -98,18 +98,9 @@ const EMPTY_PLAN: BootstrapPlan = {
 function CharterMark() {
   return (
     <span className="charter-mark" aria-hidden="true">
-      <svg viewBox="0 0 48 48" focusable="false">
-        <defs>
-          <linearGradient id="charter-mark-gradient" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="#4b6bfb" />
-            <stop offset="1" stopColor="#2ec4b6" />
-          </linearGradient>
-        </defs>
-        <rect width="48" height="48" rx="13" fill="url(#charter-mark-gradient)" />
-        <path d="M15 10h12l7 7v18a3 3 0 0 1-3 3H15a3 3 0 0 1-3-3V13a3 3 0 0 1 3-3Z" fill="#fff" opacity=".96" />
-        <path d="M27 10v7h7" fill="none" stroke="#4b6bfb" strokeWidth="2" strokeLinejoin="round" />
-        <path d="M18 24h11M18 29h8" fill="none" stroke="#4b6bfb" strokeWidth="2" strokeLinecap="round" />
-        <path d="m18 35 2.6 2.6L28 30" fill="none" stroke="#2ec4b6" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 2h8a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z" />
+        <path d="M5.5 5.5h5M5.5 8h5M5.5 10.5h3" />
       </svg>
     </span>
   )
@@ -123,6 +114,8 @@ function ItemRow({
   onEdit,
   onSupersede,
   onQueue,
+  localKey,
+  byteCount,
   t,
 }: {
   readonly item: ProjectedItem
@@ -132,6 +125,8 @@ function ItemRow({
   readonly onEdit: (item: ProjectedItem) => void
   readonly onSupersede: (item: ProjectedItem) => void
   readonly onQueue: (op: CharterOp) => void
+  readonly localKey: string | undefined
+  readonly byteCount: string | undefined
   readonly t: CharterText
 }) {
   const [confirmPurge, setConfirmPurge] = useState(false)
@@ -183,7 +178,29 @@ function ItemRow({
         <StateMark state={itemState(item)} />
         <div className="charter-item__copy">
           <span className="charter-item__text">{item.text}</span>
-          <div className="charter-item__meta">
+          <div className="charter-item__sub">
+      {item.kind === 'deliverable' && item.review === 'accepted' && current && !item.staged && (
+        <label className="charter-progress">
+          <select
+            value={item.progress}
+            disabled={!editable}
+            aria-label={`${t('progress.label')}: ${shortText(item.text)}`}
+            onChange={event => {
+              onQueue({
+                type: 'deliverable.progress',
+                itemId: item.id,
+                progress: event.target.value as DeliverableProgress,
+              })
+              focusRow()
+            }}
+          >
+            {(['not-started', 'in-progress', 'blocked', 'done', 'cancelled'] as const).map(value => (
+              <option key={value} value={value}>{progressLabel(value, t)}</option>
+            ))}
+          </select>
+        </label>
+      )}
+
             {item.staged && <StatusTag tone="info">{t('tag.staged')}</StatusTag>}
             {item.review === 'pending' && <StatusTag tone="warning">{t('tag.proposal')}</StatusTag>}
             {item.review === 'rejected' && <StatusTag tone="danger">{t('tag.rejected')}</StatusTag>}
@@ -218,27 +235,10 @@ function ItemRow({
           {terminalHead && <span className="charter-item__hint">{t('item.purgeDetaches')}</span>}
         </div>
         <div className="charter-item__side">
-      {item.kind === 'deliverable' && item.review === 'accepted' && current && !item.staged && (
-        <label className="charter-progress">
-          <select
-            value={item.progress}
-            disabled={!editable}
-            aria-label={`${t('progress.label')}: ${shortText(item.text)}`}
-            onChange={event => {
-              onQueue({
-                type: 'deliverable.progress',
-                itemId: item.id,
-                progress: event.target.value as DeliverableProgress,
-              })
-              focusRow()
-            }}
-          >
-            {(['not-started', 'in-progress', 'blocked', 'done', 'cancelled'] as const).map(value => (
-              <option key={value} value={value}>{progressLabel(value, t)}</option>
-            ))}
-          </select>
-        </label>
-      )}
+        <span className="charter-item__meta">
+          {localKey !== undefined && <span>{localKey}</span>}
+          {byteCount !== undefined && <span>{byteCount}</span>}
+        </span>
       <div className="charter-item__actions">
         {item.staged && unstageTarget !== null && (
           <ActionButton
@@ -760,7 +760,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   }, [view?.sessionId, view?.lifecycle, view?.revision, baseRevision, conflictTotal, draftState.ops, draftState.editor, draftState.editorText, draftState.newInvariant, draftState.newDeliverable])
 
   useEffect(() => {
-    if (!maintenanceEnabled || (section !== 'context' && section !== 'recovery') || source.listArchives === undefined) return
+    if (!maintenanceEnabled || (section !== 'context' && section !== 'recovery' && section !== 'diagnostics') || source.listArchives === undefined) return
     let active = true
     setArchiveCacheProblem(null)
     void source.listArchives().then(result => {
@@ -1019,7 +1019,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
 
   const area = section === 'history'
     ? 'review'
-    : section === 'context' || section === 'recovery'
+    : section === 'context' || section === 'recovery' || section === 'diagnostics'
       ? 'diagnostics'
       : 'workspace'
   const goSection = (next: CharterSection): void => {
@@ -1352,6 +1352,8 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
             onEdit={value => openEditor({ kind: 'edit', item: value as unknown as CharterItem })}
             onSupersede={value => openEditor({ kind: 'supersede', item: value as unknown as CharterItem })}
             onQueue={queue}
+            localKey={dependencyByItemId.get(item.id)?.localKey}
+            byteCount={formatBytes(t, utf8Bytes(item.text))}
             t={t}
           />
         ))}
@@ -1422,6 +1424,7 @@ activeDeliverables,
   pendingDeliverables,
   pendingInvariants,
   planInvalid,
+  projectedItems,
   projectedObjective,
   relationFocusId,
   relationGraph,
@@ -1546,83 +1549,7 @@ activeDeliverables,
 
   return (
     <section className="charter-root" data-dsh-part="charter-pane" aria-label={t('header.title')}>
-      <div className="charter-shell">
-        <header className="charter-pagehead">
-          <div className="charter-heading">
-            <CharterMark />
-            <div className="charter-heading__copy">
-              <h2 ref={headingRef} tabIndex={-1}>{t('header.title')}</h2>
-            </div>
-          </div>
-          <div className="charter-headside">
-            <div className="charter-chips">
-              <StatusTag tone="info">{t('header.version', { version: CHARTER_VERSION })}</StatusTag>
-            </div>
-            {hasLocalWork && (
-              <button
-                type="button"
-                ref={changeSetSheet.triggerRef}
-                className="charter-changeset-trigger"
-                aria-haspopup="dialog"
-                aria-controls="charter-changeset-sheet"
-                onClick={() => changeSetSheet.setOpen(true)}
-              >
-                {t('changeset.open')}
-                <span className="charter-count">{localWork.stagedOps}</span>
-              </button>
-            )}
-            <div
-              className={`charter-meter${contextOver ? ' is-over' : budgetPercent >= 80 ? ' is-warn' : ''}`}
-              role="meter"
-              aria-valuemin={0}
-              aria-valuemax={view.limits.maxPromptBytes}
-              aria-valuenow={Math.min(previewBytes, view.limits.maxPromptBytes)}
-              aria-valuetext={t('stats.budget', {
-                used: formatBytes(t, previewBytes),
-                limit: formatBytes(t, view.limits.maxPromptBytes),
-              })}
-            >
-              <span>
-                {t('stats.budget', {
-                  used: formatBytes(t, previewBytes),
-                  limit: formatBytes(t, view.limits.maxPromptBytes),
-                })}
-              </span>
-              <span className="charter-meter__track" aria-hidden="true">
-                <span className="charter-meter__fill" style={{ width: `${budgetPercent}%` }} />
-              </span>
-            </div>
-            {message !== null && !showActionBar && (
-              <span
-                className="charter-savestate"
-                role={feedback?.kind === 'error' || feedback?.kind === 'connection' ? 'alert' : 'status'}
-              >
-                {message}
-              </span>
-            )}
-          </div>
-        </header>
-
-        {paneNotice !== null && (
-          <div className={`charter-notice${paneNotice.tone === 'danger'
-            ? ' charter-notice--danger'
-            : paneNotice.tone === 'warning' ? ' charter-notice--warning' : ''}`}>
-            <span role={paneNotice.role}>{paneNotice.text}</span>
-            {paneNotice.hint !== undefined && <span className="charter-hint">{paneNotice.hint}</span>}
-            {paneNotice.detail !== undefined && <ErrorDetails detail={paneNotice.detail} t={t} />}
-            {paneNotice.blockedText !== undefined && <span>{paneNotice.blockedText}</span>}
-            {paneNotice.action === 'retry' && (
-              <ActionButton variant="outline" onClick={source.retry}>{t('button.retry')}</ActionButton>
-            )}
-            {paneNotice.action === 'rebase' && (
-              <ActionButton variant="outline" onClick={() => draft.rebase(view)}>
-                {t('conflict.rebase', { revision: view.revision })}
-              </ActionButton>
-            )}
-          </div>
-        )}
-
-        {showActionBar && (
+      <div className="charter-shell">{showActionBar && (
         <div className="charter-actionbar" role="group" aria-label={t('changeset.title')}>
           <div
             ref={statusRef}
@@ -1738,13 +1665,92 @@ activeDeliverables,
         </div>
         )}
 
-        <div className="charter-body">
-          <SectionNav t={t} area={area} totalPending={totalPending} onNavigate={goSection} />
 
-          <div className="charter-content" id={area === 'workspace' ? 'charter-workspace-top' : area === 'review' ? 'charter-review-pending' : 'charter-diagnostics-top'}>
+        <div className={`charter-layout${hasLocalWork ? ' is-rail' : ''}`}>
+          <div className="charter-doc">
+            <header className="charter-pagehead">
+            <CharterMark />
+            <h2 ref={headingRef} tabIndex={-1}>{t('header.title')}</h2>
+            <div className="charter-headmeta">
+              <span className="charter-version"><StatusTag tone="info">{t('header.version', { version: CHARTER_VERSION })}</StatusTag></span>
+              <span className="charter-rev">{t('stats.revision', { revision: view.revision })}</span>
+              <div
+                className={`charter-meter${contextOver ? ' is-over' : budgetPercent >= 80 ? ' is-warn' : ''}`}
+                role="meter"
+                aria-valuemin={0}
+                aria-valuemax={view.limits.maxPromptBytes}
+                aria-valuenow={Math.min(previewBytes, view.limits.maxPromptBytes)}
+                aria-valuetext={t('stats.budget', {
+                  used: formatBytes(t, previewBytes),
+                  limit: formatBytes(t, view.limits.maxPromptBytes),
+                })}
+              >
+                <span className="charter-meter__track" aria-hidden="true">
+                  <span className="charter-meter__fill" style={{ width: `${budgetPercent}%` }} />
+                </span>
+                <span className="charter-meter__text">
+                  {ops.length > 0
+                    ? t('stats.budgetDelta', {
+                        before: formatBytes(t, utf8Bytes(view.promptText)),
+                        after: formatBytes(t, previewBytes),
+                        limit: formatBytes(t, view.limits.maxPromptBytes),
+                      })
+                    : t('stats.budget', {
+                        used: formatBytes(t, previewBytes),
+                        limit: formatBytes(t, view.limits.maxPromptBytes),
+                      })}
+                </span>
+              </div>
+              {hasLocalWork && (
+                <button
+                  type="button"
+                  ref={changeSetSheet.triggerRef}
+                  className="charter-changeset-trigger"
+                  aria-haspopup="dialog"
+                  aria-controls="charter-changeset-sheet"
+                  onClick={() => changeSetSheet.setOpen(true)}
+                >
+                  {t('changeset.open')}
+                </button>
+              )}
+              {message !== null && !showActionBar && (
+                <span
+                  className="charter-headmessage"
+                  role={feedback?.kind === 'error' || feedback?.kind === 'connection' ? 'alert' : 'status'}
+                >
+                  {message}
+                </span>
+              )}
+            </div>
+          </header>
+            <div className="charter-headrule" />
+            <SectionNav t={t} area={area} totalPending={totalPending} onNavigate={goSection} />
+            {paneNotice !== null && (
+          <div className={`charter-notice${paneNotice.tone === 'danger'
+            ? ' charter-notice--danger'
+            : paneNotice.tone === 'warning' ? ' charter-notice--warning' : ''}`}>
+            <span role={paneNotice.role}>{paneNotice.text}</span>
+            {paneNotice.hint !== undefined && <span className="charter-hint">{paneNotice.hint}</span>}
+            {paneNotice.detail !== undefined && <ErrorDetails detail={paneNotice.detail} t={t} />}
+            {paneNotice.blockedText !== undefined && <span>{paneNotice.blockedText}</span>}
+            {paneNotice.action === 'retry' && (
+              <ActionButton variant="outline" onClick={source.retry}>{t('button.retry')}</ActionButton>
+            )}
+            {paneNotice.action === 'rebase' && (
+              <ActionButton variant="outline" onClick={() => draft.rebase(view)}>
+                {t('conflict.rebase', { revision: view.revision })}
+              </ActionButton>
+            )}
+          </div>
+        )}
+
+
+            <div className="charter-content" id={area === 'workspace' ? 'charter-workspace-top' : area === 'review' ? 'charter-review-pending' : 'charter-diagnostics-top'}>
             {area === 'workspace' && <WorkspacePage scope={paneScope} />}
             {area === 'review' && <ReviewCenterPage scope={paneScope} />}
             {area === 'diagnostics' && <DiagnosticsPage scope={paneScope} />}
+          </div>
+
           </div>
           {hasLocalWork && (
             <aside
@@ -1758,14 +1764,10 @@ activeDeliverables,
                 headingId="charter-changeset-title"
                 ops={ops}
                 stagedOps={localWork.stagedOps}
-                promptDelta={t('changeset.promptDelta', {
-                  before: formatBytes(t, utf8Bytes(view.promptText)),
-                  after: formatBytes(t, previewBytes),
-                })}
-                itemsDelta={t('changeset.itemsDelta', {
-                  before: view.items.length,
-                  after: projectedItems.length,
-                })}
+                promptBefore={formatBytes(t, utf8Bytes(view.promptText))}
+                promptAfter={formatBytes(t, previewBytes)}
+                itemsBefore={view.items.length}
+                itemsAfter={projectedItems.length}
                 editorOpen={editor !== null}
                 conflicts={changeSetConflicts}
                 diffContext={{
@@ -1802,14 +1804,10 @@ activeDeliverables,
                 headingId="charter-changeset-sheet-title"
                 ops={ops}
                 stagedOps={localWork.stagedOps}
-                promptDelta={t('changeset.promptDelta', {
-                  before: formatBytes(t, utf8Bytes(view.promptText)),
-                  after: formatBytes(t, previewBytes),
-                })}
-                itemsDelta={t('changeset.itemsDelta', {
-                  before: view.items.length,
-                  after: projectedItems.length,
-                })}
+                promptBefore={formatBytes(t, utf8Bytes(view.promptText))}
+                promptAfter={formatBytes(t, previewBytes)}
+                itemsBefore={view.items.length}
+                itemsAfter={projectedItems.length}
                 editorOpen={editor !== null}
                 conflicts={changeSetConflicts}
                 diffContext={{

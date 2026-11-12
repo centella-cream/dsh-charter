@@ -64,9 +64,7 @@ export function ReviewCenterPage({ scope }: { readonly scope: PaneScope }): Reac
   } = scope
   return (
     <>
-    {area === 'review' && (<header className="charter-areahead">
-                <h2>{t('review.heading')}</h2>
-              </header>)}
+
 
     {area === 'review' && source.proposeMessage !== undefined && (<section className="charter-card charter-section charter-messageproposal" aria-labelledby="charter-message-proposal-title" style={{ order: PAGE_ORDER.review.messageProposal }}>
                 <div className="charter-cardhead">

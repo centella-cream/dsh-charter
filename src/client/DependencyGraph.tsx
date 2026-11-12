@@ -20,6 +20,9 @@ export interface DependencyGraphProps {
   readonly t: (key: string, values?: Record<string, string | number>) => string
 }
 
+const PX_PER_EM = 18.4
+const PX_PER_EM_Y = 22
+
 function nodeName(node: PlacedNode, t: DependencyGraphProps['t']): string {
   if (node.lane === 'execution') {
     const status = t(`deps.status.${node.executionDisplay ?? 'ready'}`)
@@ -53,9 +56,34 @@ function edgeClass(edge: PlacedEdge): string {
   return `charter-graph__edge is-${edge.kind} is-${edge.state}`
 }
 
+type ChipTone = 'neutral' | 'business' | 'success' | 'warn' | 'danger' | 'outline'
+
+function nodeChip(node: PlacedNode): { readonly tone: ChipTone; readonly labelKey: string } {
+  if (node.lane === 'candidate') return { tone: 'outline', labelKey: 'deps.candidateKicker' }
+  if (node.lane === 'history') return { tone: 'neutral', labelKey: 'deps.historyKicker' }
+  switch (node.executionDisplay) {
+    case 'done': return { tone: 'success', labelKey: 'deps.status.done' }
+    case 'in-progress': return { tone: 'business', labelKey: 'deps.status.in-progress' }
+    case 'blocked': return { tone: 'warn', labelKey: 'deps.status.blocked' }
+    case 'dependency-conflict': return { tone: 'danger', labelKey: 'deps.status.dependency-conflict' }
+    default: return { tone: 'neutral', labelKey: `deps.status.${node.executionDisplay ?? 'ready'}` }
+  }
+}
+
+function nodeFoot(node: PlacedNode, model: RelationGraphModel, t: DependencyGraphProps['t']): string {
+  if (node.lane === 'candidate') return t('deps.candidateStatus')
+  if (node.lane === 'history') return t('deps.historyStatus')
+  const requires = [...new Set(model.edges
+    .filter(edge => edge.kind === 'requires' && edge.to === node.id && edge.state !== 'staged-removed')
+    .map(edge => model.nodes.find(candidate => candidate.id === edge.from)?.localKey ?? edge.from))]
+  const staged = node.state === 'staged-added' || model.edges.some(edge => edge.kind === 'requires' && edge.to === node.id && edge.state === 'staged-added')
+  const base = requires.length === 0 ? t('deps.noRequires') : t('deps.requiresSummary', { keys: requires.join(', ') })
+  return staged ? `${base} · ${t('deps.stagedAdded')}` : base
+}
+
 export function DependencyGraph({
-  layout, model, focusId, activeKey, depth, showSupersedes, editable,
-  onFocus, onActiveKey, onDepth, onShowSupersedes, onStageRequires, onLocateList, onProposal, t,
+  layout, model, focusId, activeKey, showSupersedes, editable,
+  onFocus, onActiveKey, onShowSupersedes, onStageRequires, onLocateList, onProposal, t,
 }: DependencyGraphProps): JSX.Element {
   const groupRef = useRef<HTMLDivElement | null>(null)
   const key = activeKey ?? focusId ?? layout.traversal[0]
@@ -162,31 +190,30 @@ export function DependencyGraph({
     <section className="charter-graph" aria-labelledby="charter-dependency-graph-title">
       <h4 id="charter-dependency-graph-title" className="charter-sr-only">{t('deps.graphTitle')}</h4>
       <div className="charter-graph__toolbar">
-        <label className="charter-graph__control">
-          <span>{t('deps.graphFocus')}</span>
-          <select
-            aria-label={t('deps.graphFocus')}
-            value={focusId ?? ''}
-            onChange={event => { onFocus(event.target.value); onActiveKey(event.target.value) }}
-          >
-            {executionNodes.map(node => (
-              <option key={node.id} value={node.id}>{node.localKey} · {node.text}</option>
-            ))}
-          </select>
-        </label>
-        <div className="charter-graph__control">
-          <span>{t('deps.graphDepth')}</span>
-          <button type="button" aria-pressed={depth === 1} onClick={() => onDepth(1)}>{t('deps.depth1')}</button>
-          <button type="button" aria-pressed={depth === 2} onClick={() => onDepth(2)}>{t('deps.depth2')}</button>
-        </div>
-        <label className="charter-graph__control charter-graph__check">
-          <input type="checkbox" checked={showSupersedes} onChange={event => onShowSupersedes(event.target.checked)} />
-          <span>{t('deps.showSupersedes')}</span>
-        </label>
-        <div className="charter-graph__control">
-          <button type="button" aria-label={t('deps.zoomOut')} onClick={() => setZoom(value => Math.max(0.75, Math.round((value - 0.25) * 100) / 100))}>−</button>
-          <button type="button" aria-label={t('deps.resetLayout')} onClick={() => setZoom(1)}>{Math.round(zoom * 100)}%</button>
-          <button type="button" aria-label={t('deps.zoomIn')} onClick={() => setZoom(value => Math.min(2, Math.round((value + 0.25) * 100) / 100))}>+</button>
+        <span className="charter-graph__title">{t('deps.graphTitle')}</span>
+        <div className="charter-graph__tools">
+          <label className="charter-graph__control">
+            <span>{t('deps.graphFocus')}</span>
+            <select
+              className="charter-graph__select"
+              aria-label={t('deps.graphFocus')}
+              value={focusId ?? ''}
+              onChange={event => { onFocus(event.target.value); onActiveKey(event.target.value) }}
+            >
+              {executionNodes.map(node => (
+                <option key={node.id} value={node.id}>{node.localKey} · {node.text}</option>
+              ))}
+            </select>
+          </label>
+          <label className="charter-graph__check">
+            <input type="checkbox" checked={showSupersedes} onChange={event => onShowSupersedes(event.target.checked)} />
+            <span>{t('deps.historyToggle')}</span>
+          </label>
+          <span className="charter-graph__zoom">
+            <button type="button" aria-label={t('deps.zoomOut')} onClick={() => setZoom(value => Math.max(0.75, Math.round((value - 0.25) * 100) / 100))}>−</button>
+            <button type="button" aria-label={t('deps.resetLayout')} onClick={() => setZoom(1)}>{Math.round(zoom * 100)}%</button>
+            <button type="button" aria-label={t('deps.zoomIn')} onClick={() => setZoom(value => Math.min(2, Math.round((value + 0.25) * 100) / 100))}>+</button>
+          </span>
         </div>
       </div>
       {dragError !== null && <div className="charter-notice charter-notice--warning" role="alert">{dragError}</div>}
@@ -217,9 +244,11 @@ export function DependencyGraph({
           >
             <div
               className="charter-graph__canvas"
+              role="img"
+              aria-label={t('deps.graphAria')}
               style={{
-                width: `${Math.max(layout.width, 1)}em`,
-                height: `${Math.max(layout.height, 1)}em`,
+                width: `${Math.max(layout.width, 1) * PX_PER_EM + 16}px`,
+                height: `${Math.max(layout.height * PX_PER_EM_Y + 24, 360)}px`,
                 transform: `scale(${zoom})`,
                 transformOrigin: 'top left',
               }}
@@ -248,10 +277,10 @@ export function DependencyGraph({
                   aria-label={nodeName(node, t)}
                   aria-current={node.id === focusId ? 'true' : undefined}
                   style={{
-                    left: `${node.x}em`,
-                    top: `${node.y}em`,
-                    width: `${node.w}em`,
-                    height: `max(${node.h}em, ${GRAPH.touchTargetPx}px)`,
+                    left: `${node.x * PX_PER_EM}px`,
+                    top: `${node.y * PX_PER_EM_Y}px`,
+                    width: '184px',
+                    minHeight: `${GRAPH.touchTargetPx}px`,
                   }}
                   draggable={editable && node.lane === 'execution'}
                   onDragStart={event => {
@@ -283,15 +312,17 @@ export function DependencyGraph({
                   onFocus={() => onActiveKey(node.id)}
                   onClick={() => handleActivate(node.id)}
                 >
-                  <span className="charter-graph__nodekey">
-                    {node.lane === 'execution' ? node.localKey : node.lane === 'history' ? t('deps.historyKicker') : t('deps.candidateKicker')}
+                  <span className="charter-graph__nodehead">
+                    <span className="charter-graph__nodekey">
+                      {node.lane === 'execution' ? node.localKey : node.lane === 'history' ? t('deps.historyKicker') : t('deps.candidateKicker')}
+                    </span>
+                    <span className={`charter-tag charter-tag--${nodeChip(node).tone}`}>
+                      {t(nodeChip(node).labelKey as never)}
+                    </span>
                   </span>
-                  <span className="charter-graph__nodetext">{node.text}</span>
-                  <span className="charter-graph__nodestatus">
-                    {node.lane === 'execution'
-                      ? `${t(`deps.status.${node.executionDisplay ?? 'ready'}`)}${node.prerequisiteStatus === 'dependency-conflict' && node.executionDisplay !== 'dependency-conflict' ? ` · ${t('deps.prerequisiteConflict')}` : ''}`
-                      : node.lane === 'history' ? t('deps.historyStatus') : t('deps.candidateStatus')}
-                    {node.state === 'staged-added' ? ` · ${t('deps.stagedAdded')}` : node.state === 'staged-removed' ? ` · ${t('deps.stagedRemoved')}` : ''}
+                  <span className="charter-graph__nodetext" title={node.text}>{node.text}</span>
+                  <span className="charter-graph__nodefoot">
+                    {nodeFoot(node, model, t)}
                     {node.candidateCycle === true ? ` · ${t('deps.candidateCycle')}` : ''}
                   </span>
                 </button>
@@ -306,13 +337,18 @@ export function DependencyGraph({
                   aria-label={edgeName(edge, model, t)}
                   title={edgeName(edge, model, t)}
                   style={{
-                    left: `${edge.labelAt.x}em`,
-                    top: `${edge.labelAt.y}em`,
+                    left: `${edge.labelAt.x * PX_PER_EM}px`,
+                    top: `${edge.labelAt.y * PX_PER_EM_Y}px`,
                   }}
                   onClick={() => handleActivate(edge.key)}
                 />
               ))}
             </div>
+          </div>
+          <div className="charter-graph__legend">
+            <span><i className="charter-graph__swatch charter-graph__swatch--committed" aria-hidden="true" />{t('deps.legendCommitted')}</span>
+            <span><i className="charter-graph__swatch charter-graph__swatch--staged" aria-hidden="true" />{t('deps.legendStaged')}</span>
+            <span><i className="charter-graph__swatch charter-graph__swatch--proposed" aria-hidden="true" />{t('deps.legendProposed')}</span>
           </div>
           <div className="charter-graph__footer">
             {(selectedNode?.lane === 'execution'
@@ -323,52 +359,71 @@ export function DependencyGraph({
             )}
             <span role="status" className="charter-sr-only">{liveLabel}</span>
           </div>
-          <details className="charter-graph__help">
-            <summary>{t('deps.help')}</summary>
-            <p>{t('deps.graphKeys')}</p>
-            <p>{t('deps.graphHint')}</p>
-          </details>
+          <p className="charter-graph__note">{t('deps.graphNote')}</p>
           {(selectedNode !== undefined || selectedEdge !== undefined) && (
             <aside className="charter-graph__inspector" aria-label={t('deps.inspectorTitle', { key: inspectorLabel })}>
-              <div className="charter-graph__inspectorhead">
-                <h4>{t('deps.inspectorTitle', { key: inspectorLabel })}</h4>
-                <button type="button" className="charter-linkbutton" onClick={() => setInspector(undefined)}>{t('deps.closeInspector')}</button>
-              </div>
               {selectedNode !== undefined && (
                 <>
-                  <p className="charter-graph__inspectortext">{selectedNode.text}</p>
-                  <dl className="charter-graph__inspectormeta">
-                    <div><dt>{t('deps.inspectorStatus')}</dt><dd>{selectedNode.executionDisplay === undefined ? (selectedNode.lane === 'history' ? t('deps.historyStatus') : t('deps.candidateStatus')) : t(`deps.status.${selectedNode.executionDisplay}`)}</dd></div>
-                    {selectedNode.lane === 'execution' && <div><dt>{t('deps.inspectorRequires')}</dt><dd>{projectedRequires(selectedNode.id).map(id => model.nodes.find(node => node.id === id)?.localKey ?? id).join(', ') || '—'}</dd></div>}
-                  </dl>
-                  {selectedNode.lane === 'execution' && editable && (
-                    <div className="charter-graph__inspectoractions">
+                  <div className="charter-graph__inspectormain">
+                    <span className="charter-graph__nodekey">{selectedNode.localKey ?? (selectedNode.lane === 'history' ? t('deps.historyKicker') : t('deps.candidateKicker'))}</span>
+                    <b className="charter-graph__inspectortext">{selectedNode.text}</b>
+                    <span className={`charter-tag charter-tag--${nodeChip(selectedNode).tone}`}>
+                      {t(nodeChip(selectedNode).labelKey as never)}
+                    </span>
+                  </div>
+                  <div className="charter-graph__inspectorrels">
+                    {selectedNode.lane === 'execution' && (
+                      <>
+                        <span className="charter-graph__inspectorlabel">{t('deps.inspectorRequires')}</span>
+                        {projectedRequires(selectedNode.id).length === 0
+                          ? <span className="charter-graph__inspectormuted">{t('deps.noRequires')}</span>
+                          : projectedRequires(selectedNode.id).map(id => {
+                              const label = model.nodes.find(node => node.id === id)?.localKey ?? id
+                              return (
+                                <button key={id} type="button" className="charter-tag charter-tag--outline" onClick={() => removeRequires(selectedNode, id)} disabled={!editable}>
+                                  {t('deps.removeRequires', { key: label })}
+                                </button>
+                              )
+                            })}
+                      </>
+                    )}
+                    {selectedNode.state !== 'unchanged' && (
+                      <span className="charter-tag charter-tag--business">
+                        {selectedNode.state === 'staged-added' ? t('deps.stagedAdded') : selectedNode.state === 'staged-removed' ? t('deps.stagedRemoved') : t('deps.stagedChanged')}
+                      </span>
+                    )}
+                  </div>
+                  <div className="charter-graph__inspectoractions">
+                    <button type="button" className="charter-quietlink" onClick={() => onLocateList(selectedNode.id)}>{t('deps.locateInList')}</button>
+                    {selectedNode.lane === 'execution' && editable && (
                       <select aria-label={t('deps.addRequires')} defaultValue="" onChange={event => { addRequires(selectedNode, event.target.value); event.currentTarget.value = '' }}>
                         <option value="">{t('deps.addRequires')}</option>
                         {availableNodes.filter(node => node.id !== selectedNode.id && !projectedRequires(selectedNode.id).includes(node.id)).map(node => (
                           <option key={node.id} value={node.id}>{node.localKey} · {node.text}</option>
                         ))}
                       </select>
-                      {projectedRequires(selectedNode.id).map(id => (
-                        <button key={id} type="button" className="charter-linkbutton" onClick={() => removeRequires(selectedNode, id)}>
-                          {t('deps.removeRequires', { key: model.nodes.find(node => node.id === id)?.localKey ?? id })}
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                    )}
+                    <button type="button" className="charter-quietlink" onClick={() => setInspector(undefined)}>{t('deps.closeInspector')}</button>
+                  </div>
                 </>
               )}
               {selectedEdge !== undefined && (
                 <>
-                  <p className="charter-graph__inspectortext">{edgeName(selectedEdge, model, t)}</p>
-                  {selectedEdge.kind === 'requires' && selectedEdge.editable && editable && (
-                    <button type="button" className="charter-linkbutton" onClick={() => onStageRequires(selectedEdge.to, projectedRequires(selectedEdge.to).filter(id => id !== selectedEdge.from))}>
-                      {t('deps.removeEdge')}
-                    </button>
-                  )}
-                  {selectedEdge.kind === 'proposed' && (
-                    <button type="button" className="charter-linkbutton" onClick={() => onProposal(selectedEdge.targetProposalId ?? selectedEdge.to)}>{t('deps.openProposal')}</button>
-                  )}
+                  <div className="charter-graph__inspectormain">
+                    <b className="charter-graph__inspectortext">{edgeName(selectedEdge, model, t)}</b>
+                  </div>
+                  <div className="charter-graph__inspectoractions">
+                    <button type="button" className="charter-quietlink" onClick={() => onLocateList(selectedEdge.to)}>{t('deps.locateInList')}</button>
+                    {selectedEdge.kind === 'requires' && selectedEdge.editable && editable && (
+                      <button type="button" className="charter-quietlink" onClick={() => onStageRequires(selectedEdge.to, projectedRequires(selectedEdge.to).filter(id => id !== selectedEdge.from))}>
+                        {t('deps.removeEdge')}
+                      </button>
+                    )}
+                    {selectedEdge.kind === 'proposed' && (
+                      <button type="button" className="charter-quietlink" onClick={() => onProposal(selectedEdge.targetProposalId ?? selectedEdge.to)}>{t('deps.openProposal')}</button>
+                    )}
+                    <button type="button" className="charter-quietlink" onClick={() => setInspector(undefined)}>{t('deps.closeInspector')}</button>
+                  </div>
                 </>
               )}
             </aside>

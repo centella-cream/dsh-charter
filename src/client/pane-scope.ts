@@ -39,6 +39,7 @@ export interface PaneScope {
   readonly pendingDeliverables: import("./preview.js").ProjectedItem[]
   readonly pendingInvariants: import("./preview.js").ProjectedItem[]
   readonly planInvalid: boolean
+  readonly projectedItems: readonly import("./preview.js").ProjectedItem[]
   readonly projectedObjective: { original: { text: string; setAtRevision: number; }; current: { text: string; setAtRevision: number; reason?: string | undefined; }; } | null
   readonly relationFocusId: string | undefined
   readonly relationGraph: import("./relation-graph.js").RelationGraphModel | null
