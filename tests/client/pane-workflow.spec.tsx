@@ -6,6 +6,7 @@ import type { CharterView } from '../../src/host/types.js'
 import type { CharterItem } from '../../src/core/schemas.js'
 import { CharterDraft } from '../../src/client/draft-store.js'
 import { CharterPane } from '../../src/client/CharterPane.js'
+import { PAGE_ORDER } from '../../src/client/page-order.js'
 
 const sessionId = SessionId('pane-workflow-session')
 const lifecycle = JSON.stringify({ createdAt: 1_700_000_000_000, cwd: '/work', parentSession: null })
@@ -93,7 +94,31 @@ describe('rc.5 pane workflow acceptance', () => {
     expect(button(tree, 'composer.addInvariant').props.disabled).toBe(true)
   })
 
-  it('marks projected Overview counts with After Apply', () => {
+  it('renders one progress control and no duplicated byte/status copy in a deliverable row', () => {
+    const item = {
+      id: 'deliverable-1',
+      clientRef: 'deliverable-1',
+      kind: 'deliverable',
+      text: 'Ship the redesign',
+      order: 0,
+      review: 'accepted',
+      lifecycle: 'current',
+      verification: { state: 'unchecked' },
+      progress: 'not-started',
+      origin: 'user',
+      createdRevision: 0,
+    } as unknown as CharterItem
+    const src = source(view({ items: [item] }))
+    const draft = new CharterDraft(sessionId, () => src)
+    draft.bindLifecycle(lifecycle)
+    const tree = mount(src, draft)
+    const progressSelects = tree.root.findAll(node => node.type === 'select' && String(node.props['aria-label'] ?? '').startsWith('progress.label'))
+    expect(progressSelects).toHaveLength(1)
+    expect(tree.root.findAll(node => typeof node.props.className === 'string' && node.props.className.includes('charter-item__bytes'))).toHaveLength(0)
+    expect((textOf(tree.root).match(/progress\.not-started/g) ?? []).length).toBe(1)
+  })
+
+  it('shows projected counts in the dirty action bar and Change Set panel', () => {
     const committed = {
       id: 'host-invariant',
       clientRef: 'host-invariant',
@@ -115,7 +140,8 @@ describe('rc.5 pane workflow acceptance', () => {
       item: { clientRef: 'staged', kind: 'invariant', text: 'Staged invariant', order: 1 },
     })
     const tree = mount(src, draft)
-    expect(textOf(tree.root)).toContain('overview.afterApply')
+    expect(textOf(tree.root)).toContain('footer.one')
+    expect(textOf(tree.root)).toContain('changeset.itemsDelta')
   })
 
   it('uses the bootstrap apply hint and associates it with the Apply button', async () => {
@@ -380,6 +406,58 @@ describe('0.2 workspace and dependency plan', () => {
 })
 
 describe('rc.5 pane workflow Apply/objective acceptance', () => {
+  it('renders the Change Set region and opens/closes the narrow sheet', async () => {
+    const ready = view({ revision: 0 })
+    const src = source(ready)
+    const draft = new CharterDraft(sessionId, () => src)
+    draft.bindLifecycle(lifecycle)
+    draft.stage(ready, {
+      type: 'item.add',
+      item: { clientRef: 'staged', kind: 'invariant', text: 'Staged invariant', order: 0 },
+    })
+    const tree = mount(src, draft)
+    expect(tree.root.findAll(node => node.props?.role === 'complementary')).toHaveLength(1)
+    expect(textOf(tree.root)).toContain('changeset.title')
+    const trigger = tree.root.findAll(node => node.type === 'button' && textOf(node).includes('changeset.open'))[0]
+    if (trigger === undefined) throw new Error('no Change Set trigger')
+    await act(async () => { trigger.props.onClick() })
+    expect(tree.root.findAll(node => node.props?.role === 'dialog')).toHaveLength(1)
+    const close = tree.root.findAll(node => node.type === 'button' && textOf(node).includes('changeset.close'))[0]
+    if (close === undefined) throw new Error('no Change Set close button')
+    await act(async () => { close.props.onClick() })
+    expect(tree.root.findAll(node => node.props?.role === 'dialog')).toHaveLength(0)
+  })
+
+  it('lists staged operations and unstages one from the Change Set panel', () => {
+    const ready = view({ revision: 0 })
+    const src = source(ready)
+    const draft = new CharterDraft(sessionId, () => src)
+    draft.bindLifecycle(lifecycle)
+    draft.stage(ready, {
+      type: 'item.add',
+      item: { clientRef: 'staged', kind: 'invariant', text: 'Staged invariant', order: 0 },
+    })
+    const tree = mount(src, draft)
+    expect(textOf(tree.root)).toContain('changeset.op.item')
+    const unstage = tree.root.findAll(node => node.type === 'button' && textOf(node) === 'changeset.unstage')[0]
+    if (unstage === undefined) throw new Error('no per-op unstage button')
+    act(() => unstage.props.onClick())
+    expect(tree.root.findAll(node => node.type === 'button' && textOf(node) === 'changeset.unstage')).toHaveLength(0)
+    expect(textOf(tree.root)).not.toContain('changeset.title')
+  })
+
+  it('uses the shared page-order constants for workspace sections', () => {
+    const src = source(view())
+    const draft = new CharterDraft(sessionId, () => src)
+    draft.bindLifecycle(lifecycle)
+    const tree = mount(src, draft)
+    const orderOf = (id: string): number | undefined => tree.root
+      .findAll(node => node.type === 'section' && node.props.id === id)[0]?.props.style?.order
+    expect(orderOf('charter-objective')).toBe(PAGE_ORDER.workspace.objective)
+    expect(orderOf('charter-invariants')).toBe(PAGE_ORDER.workspace.invariants)
+    expect(orderOf('charter-deliverables')).toBe(PAGE_ORDER.workspace.deliverables)
+  })
+
   it('shows and clears the objective staged tag', () => {
     const ready = view({ revision: 0 })
     const src = source(ready)
@@ -394,18 +472,14 @@ describe('rc.5 pane workflow Apply/objective acceptance', () => {
     expect(tree.root.findAll(node => node.type === 'button' && textOf(node) === 'discard.unstageObjective')).toHaveLength(0)
   })
 
-  it('shows no-changes as the Apply reason and links it to the disabled Apply button', () => {
+  it('keeps the action bar out of a clean Pane instead of showing a disabled Apply', () => {
     const ready = view({ revision: 0 })
     const src = source(ready)
     const draft = new CharterDraft(sessionId, () => src)
     draft.bindLifecycle(lifecycle)
     const tree = mount(src, draft)
-    expect(textOf(tree.root)).toContain('apply.block.no-changes')
-    const apply = button(tree, 'footer.apply')
-    expect(apply.props.disabled).toBe(true)
-    const describedBy = apply.props['aria-describedby'] as string | undefined
-    expect(describedBy).toBeDefined()
-    expect(tree.root.findAll(node => node.props.id === describedBy && textOf(node).includes('apply.block.no-changes'))).toHaveLength(1)
+    expect(textOf(tree.root)).not.toContain('footer.apply')
+    expect(tree.root.findAll(node => node.type === 'button' && textOf(node) === 'footer.apply')).toHaveLength(0)
   })
 })
 

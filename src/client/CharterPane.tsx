@@ -1,31 +1,30 @@
-import { Fragment, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent, type ReactNode } from 'react'
+import { useEffect, useId, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import type {
   PropsLocale,
   PropsRuntime,
-  TranslateNS,
 } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
-import type { CharterErrorCode } from '../core/errors.js'
 import type {
   CharterItem,
   CharterOp,
   DeliverableProgress,
 } from '../core/schemas.js'
-import type { CharterArchiveEntry, CharterView } from '../host/types.js'
+import type { CharterArchiveEntry } from '../host/types.js'
 import type { CharterSource } from './store.js'
 import type {
-  BootstrapProblem,
   CharterDraft,
   CharterSection,
   DraftEditor,
-  DraftFeedback,
 } from './draft-store.js'
-import { CHARTER_LOCALE_NS, type CharterLocaleKey } from './locales.js'
-import { inspectUserText } from '../core/normalize.js'
+import { CHARTER_LOCALE_NS } from './locales.js'
 import { dependencyConflictDiff, dependencyProjection, validateDependencyGraph, type DependencyConflictDiff } from '../core/dependencies.js'
 import { buildRelationGraph, defaultFocus as defaultGraphFocus, layoutRelationGraph, type GraphInputItem, type RelationGraphModel } from './relation-graph.js'
-import { DependencyGraph } from './DependencyGraph.js'
+import { ChangeSetPanel } from './ChangeSetPanel.js'
+import { buildChangeSetConflicts } from './change-set-model.js'
+import { focusSectionHeading, scrollToSectionAnchor } from './section-routing.js'
+import { useChangeSetSheet } from './use-change-set-sheet.js'
+import { SectionNav } from './SectionNav.js'
 import { draftAdmission } from './admission.js'
 import {
   bootstrapReplayPending,
@@ -50,8 +49,28 @@ import {
 import { firstDraftTextIssue, type BootstrapPlan } from './bootstrap-plan.js'
 import { CHARTER_VERSION } from '../version.js'
 import './charter.css'
-
-type CharterText = TranslateNS<typeof CHARTER_LOCALE_NS>
+import {
+  countLabel,
+  feedbackDetail,
+  feedbackText,
+  formatCharterPreview,
+  progressLabel,
+  errorLabel,
+  formatBytes,
+  normalizedBytes,
+  normalizedNonEmpty,
+  shortText,
+  statusMessage,
+  itemState,
+  type CharterText,
+  EMPTY_CONFLICT_DIFF,
+} from './pane-format.js'
+import { ActionButton, ErrorDetails, StateMark, StatusTag } from './pane-ui.js'
+import type { ArchivePreview } from './pane-format.js'
+import type { PaneScope } from './pane-scope.js'
+import { WorkspacePage } from './WorkspacePage.js'
+import { ReviewCenterPage } from './ReviewCenterPage.js'
+import { DiagnosticsPage } from './DiagnosticsPage.js'
 
 export interface CharterPaneInjected {
   readonly source: CharterSource
@@ -75,189 +94,6 @@ const EMPTY_PLAN: BootstrapPlan = {
   exactRenders: 0,
 }
 
-function formatBytes(t: CharterText, bytes: number): string {
-  return bytes < 1_024
-    ? t('unit.bytes', { value: bytes })
-    : t('unit.kib', { value: (bytes / 1_024).toFixed(bytes < 10_240 ? 1 : 0) })
-}
-
-/** Pretty-print the JSON body of the rendered prompt for reading; exact bytes remain available. */
-function formatCharterPreview(preview: string): string | null {
-  const start = preview.indexOf('{')
-  if (start < 0) return null
-  try {
-    return preview.slice(0, start) + JSON.stringify(JSON.parse(preview.slice(start)), null, 2)
-  } catch {
-    return null
-  }
-}
-
-function progressLabel(progress: DeliverableProgress | undefined, t: CharterText): string {
-  return t(`progress.${progress ?? 'not-started'}`)
-}
-
-function errorLabel(code: CharterErrorCode | string, t: CharterText): string {
-  const key = `error.${code}`
-  const text = t(key as never)
-  return text === key ? t('error.unexpected') : text
-}
-
-function textIssueMessage(issue: 'empty' | 'control' | 'surrogate', t: CharterText): string {
-  if (issue === 'control') return t('editor.issue.control')
-  if (issue === 'surrogate') return t('editor.issue.surrogate')
-  return t('editor.issue.empty')
-}
-
-function countLabel(
-  t: CharterText,
-  count: number,
-  one: CharterLocaleKey,
-  other: CharterLocaleKey,
-): string {
-  return t(count === 1 ? one : other, { count })
-}
-
-/** Resolve a stable feedback descriptor against the current locale. */
-function feedbackText(feedback: DraftFeedback | null, t: CharterText): string | null {
-  if (feedback === null) return null
-  switch (feedback.kind) {
-    case 'saved': return t('footer.saved', { revision: feedback.revision })
-    case 'replayed': return t('footer.replayed')
-    case 'bootstrapSaved':
-      return t('footer.bootstrapSaved', {
-        revision: feedback.revision,
-        active: feedback.active,
-        pending: feedback.pending,
-      })
-    case 'error': return errorLabel(feedback.code, t)
-    case 'connection': return t('error.connection')
-    case 'scope': return t('error.draftScope')
-    case 'editorBudget': return t('budget.editorOver', { limit: formatBytes(t, feedback.limit) })
-    case 'itemBudget': return t('budget.itemOver', { limit: formatBytes(t, feedback.limit) })
-    case 'editorUnchanged':
-      return feedback.target === 'objective' ? t('editor.unchangedObjective') : t('editor.unchangedItem')
-    case 'editorInvalid': return textIssueMessage(feedback.issue, t)
-    case 'discarded': return t('footer.discarded')
-  }
-}
-
-function feedbackDetail(feedback: DraftFeedback | null): string | undefined {
-  return feedback?.kind === 'error' ? feedback.detail : undefined
-}
-
-function ErrorDetails({ detail, t }: { readonly detail: string | undefined; readonly t: CharterText }): ReactNode {
-  if (detail === undefined || detail.trim().length === 0) return null
-  return (
-    <details className="charter-error-details">
-      <summary>{t('error.details')}</summary>
-      <pre>{detail}</pre>
-    </details>
-  )
-}
-
-function bootstrapProblemText(problem: BootstrapProblem | null, t: CharterText): string | null {
-  if (problem === null) return null
-  switch (problem.kind) {
-    case 'stale': return t('bootstrap.stale')
-    case 'request-failed': return t('bootstrap.requestFailed')
-    case 'unavailable': return t('bootstrap.unavailable')
-    case 'save-failed':
-      return problem.code === undefined ? t('bootstrap.saveFailed') : errorLabel(problem.code, t)
-  }
-}
-
-/** One exhaustive switch over the Host-derived record state. */
-function statusMessage(view: CharterView, t: CharterText): string | null {
-  if (view.status === 'ready') return null
-  const state = view.recordState
-  switch (state?.kind) {
-    case 'absent-unconfirmed':
-      return t('status.absent')
-    case 'invalid':
-      return state.reason === 'future-schema'
-        ? t('status.futureSchema')
-        : state.reason === 'schema' ? t('status.invalidSchema') : t('status.invalidConsistency')
-    case 'lifecycle-mismatch':
-      return t('status.lifecycle')
-    case 'write-uncertain':
-      return t('status.writeUncertain')
-    case 'unknown':
-      return state.reason === 'initializing'
-        ? t('status.initializing')
-        : state.reason === 'legacy-host' ? t('status.legacyHost') : t('status.storage')
-    case 'healthy':
-      return view.status === 'initializing' ? t('status.initializing') : t('status.unavailable')
-    default:
-      return view.status === 'initializing' ? t('status.initializing') : t('status.unavailable')
-  }
-}
-
-interface ArchivePreview {
-  readonly fileName: string
-  readonly archive?: CharterRecordArchive
-  readonly errorKey?: string
-  readonly errorParams?: Readonly<Record<string, string>>
-  readonly health?: 'healthy' | 'schema-invalid' | 'consistency-invalid' | 'lifecycle-mismatch'
-  readonly revision?: number | null
-  readonly lifecycle?: string | null
-  readonly digest?: string
-  readonly exportedAt?: number
-  readonly sourceSession?: string
-  readonly payloadDigestOk?: boolean
-  readonly recordDigestOk?: boolean
-}
-
-function itemState(item: ProjectedItem): 'done' | 'warning' | 'ongoing' | 'idle' {
-  if (item.lifecycle === 'archived' || item.lifecycle === 'superseded') return 'idle'
-  if (item.review === 'pending') return 'warning'
-  if (item.kind === 'deliverable' && item.progress === 'done') return 'done'
-  if (item.kind === 'deliverable' && item.progress === 'in-progress') return 'ongoing'
-  return 'idle'
-}
-
-const EMPTY_CONFLICT_DIFF: DependencyConflictDiff = { added: [], worsened: [] }
-
-function shortText(text: string, length = 48): string {
-  const normalized = text.replace(/\s+/gu, ' ').trim()
-  return normalized.length <= length ? normalized : `${normalized.slice(0, length)}...`
-}
-
-/** Render the lifecycle fingerprint as a compact, stable date label for the UI. */
-function lifecycleLabel(value: string | null | undefined): string {
-  if (!value) return '-'
-  try {
-    const parsed = JSON.parse(value) as { createdAt?: unknown }
-    if (typeof parsed.createdAt === 'number' && Number.isFinite(parsed.createdAt)) {
-      const date = new Date(parsed.createdAt)
-      if (!Number.isNaN(date.getTime())) return date.toISOString().slice(0, 10)
-    }
-  } catch {
-    // Non-fingerprint legacy value: fall through to a short text label.
-  }
-  return shortText(value, 24)
-}
-
-/** Render an archive timestamp without ever throwing on hostile values. */
-function formatTimestamp(value: number | undefined): string {
-  if (value === undefined || !Number.isFinite(value)) return '-'
-  try {
-    const date = new Date(value)
-    if (Number.isNaN(date.getTime())) return '-'
-    return date.toISOString().slice(0, 19).replace('T', ' ')
-  } catch {
-    return '-'
-  }
-}
-
-/** Localized health label for an archive preview. */
-function archiveHealthLabel(
-  health: 'healthy' | 'schema-invalid' | 'consistency-invalid' | 'lifecycle-mismatch',
-  t: CharterText,
-): string {
-  if (health === 'healthy') return t('recovery.healthy')
-  if (health === 'lifecycle-mismatch') return t('recovery.mismatch')
-  return t('recovery.invalid')
-}
 
 function CharterMark() {
   return (
@@ -276,158 +112,6 @@ function CharterMark() {
         <path d="m18 35 2.6 2.6L28 30" fill="none" stroke="#2ec4b6" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     </span>
-  )
-}
-
-function ActionButton({
-  children,
-  onClick,
-  disabled = false,
-  variant = 'ghost',
-  ariaLabel,
-  ariaDescribedBy,
-  title,
-  busy,
-  className,
-}: {
-  readonly children: ReactNode
-  readonly onClick?: () => void
-  readonly disabled?: boolean
-  readonly variant?: 'primary' | 'outline' | 'ghost'
-  readonly ariaLabel?: string
-  readonly ariaDescribedBy?: string
-  readonly title?: string
-  readonly busy?: boolean
-  readonly className?: string
-}) {
-  return (
-    <button
-      type="button"
-      className={`charter-button charter-button--${variant}${className === undefined ? '' : ` ${className}`}`}
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={ariaLabel}
-      aria-describedby={ariaDescribedBy}
-      title={title}
-      aria-busy={busy === true ? true : undefined}
-    >
-      {children}
-    </button>
-  )
-}
-
-function StateMark({ state }: { readonly state: ReturnType<typeof itemState> | 'error' }) {
-  return <span className={`charter-state-mark charter-state-mark--${state}`} aria-hidden="true" />
-}
-
-function StatusTag({
-  children,
-  tone = 'quiet',
-  title,
-}: {
-  readonly children: ReactNode
-  readonly tone?: 'quiet' | 'info' | 'success' | 'warning' | 'danger'
-  readonly title?: string
-}) {
-  return <span className={`charter-tag charter-tag--${tone}`} title={title}>{children}</span>
-}
-
-/** Byte budget of the value the Host will store (normalized, not raw input). */
-function normalizedBytes(value: string): number {
-  return utf8Bytes(inspectUserText(value).value)
-}
-
-function normalizedNonEmpty(value: string): boolean {
-  return inspectUserText(value).value.length > 0
-}
-
-function TextEditor({
-  value,
-  onChange,
-  reason,
-  onReasonChange,
-  showReason,
-  onSave,
-  onCancel,
-  maxBytes,
-  previousBytes,
-  label,
-  t,
-}: {
-  readonly value: string
-  readonly onChange: (value: string) => void
-  readonly reason?: string
-  readonly onReasonChange?: (value: string) => void
-  readonly showReason?: boolean
-  readonly onSave: () => void
-  readonly onCancel: () => void
-  readonly maxBytes: number
-  readonly previousBytes?: number | undefined
-  readonly label?: string | undefined
-  readonly t: CharterText
-}) {
-  const budgetId = useId()
-  const bytes = normalizedBytes(value)
-  const shrinking = previousBytes !== undefined && bytes < previousBytes
-  const over = bytes > maxBytes && !shrinking
-  const overButShrinking = bytes > maxBytes && shrinking
-  const save = (): void => {
-    if (!over && normalizedNonEmpty(value)) onSave()
-  }
-  const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>): void => {
-    if (event.key === 'Escape') onCancel()
-    if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
-      event.preventDefault()
-      save()
-    }
-  }
-  const onReasonKeyDown = (event: KeyboardEvent<HTMLInputElement>): void => {
-    if (event.key === 'Escape') onCancel()
-    if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
-      event.preventDefault()
-      save()
-    }
-  }
-  return (
-    <>
-      <textarea
-        autoFocus
-        className="charter-editor__input"
-        value={value}
-        aria-label={label ?? t('editor.charterTextAria')}
-        aria-invalid={over}
-        aria-describedby={budgetId}
-        onChange={event => onChange(event.target.value)}
-        onKeyDown={onKeyDown}
-      />
-      {showReason === true && (
-        <label className="charter-editor__reasonfield">
-          <span>{t('editor.reasonLabel')}</span>
-          <input
-            className="charter-editor__reason"
-            value={reason ?? ''}
-            placeholder={t('editor.reasonPlaceholder')}
-            aria-label={t('editor.reasonLabel')}
-            onChange={event => onReasonChange?.(event.target.value)}
-            onKeyDown={onReasonKeyDown}
-          />
-        </label>
-      )}
-      <div className="charter-editor__actions">
-        <span id={budgetId} className={over ? 'charter-budget is-over' : 'charter-budget'}>
-          {overButShrinking
-            ? t('budget.shrinking')
-            : over
-              ? t('budget.editorOver', { limit: formatBytes(t, maxBytes) })
-              : `${formatBytes(t, bytes)} / ${formatBytes(t, maxBytes)}`}
-        </span>
-        <ActionButton variant="outline" disabled={over || !normalizedNonEmpty(value)} onClick={save}>
-          {t('editor.stage')}
-        </ActionButton>
-        <ActionButton onClick={onCancel}>{t('editor.cancel')}</ActionButton>
-      </div>
-      <span className="charter-editor__hint">{t('editor.hint')}</span>
-    </>
   )
 }
 
@@ -503,7 +187,6 @@ function ItemRow({
             {item.staged && <StatusTag tone="info">{t('tag.staged')}</StatusTag>}
             {item.review === 'pending' && <StatusTag tone="warning">{t('tag.proposal')}</StatusTag>}
             {item.review === 'rejected' && <StatusTag tone="danger">{t('tag.rejected')}</StatusTag>}
-            {item.kind === 'deliverable' && <StatusTag>{progressLabel(item.progress, t)}</StatusTag>}
             {item.lifecycle === 'archived' && <StatusTag>{t('tag.archived')}</StatusTag>}
             {item.lifecycle === 'superseded' && <StatusTag>{t('tag.superseded')}</StatusTag>}
             {item.supersedes !== undefined && <StatusTag>{t('tag.replacement')}</StatusTag>}
@@ -528,14 +211,34 @@ function ItemRow({
               </StatusTag>
             )}
             {successor !== undefined && <StatusTag>{t('tag.replacedBy', { text: shortText(successor.text) })}</StatusTag>}
-            <span className="charter-item__bytes">{formatBytes(t, utf8Bytes(item.text))}</span>
           </div>
           {item.supersedes !== undefined && (
             <span className="charter-item__hint">{t('item.replacementHint')}</span>
           )}
           {terminalHead && <span className="charter-item__hint">{t('item.purgeDetaches')}</span>}
         </div>
-      </div>
+        <div className="charter-item__side">
+      {item.kind === 'deliverable' && item.review === 'accepted' && current && !item.staged && (
+        <label className="charter-progress">
+          <select
+            value={item.progress}
+            disabled={!editable}
+            aria-label={`${t('progress.label')}: ${shortText(item.text)}`}
+            onChange={event => {
+              onQueue({
+                type: 'deliverable.progress',
+                itemId: item.id,
+                progress: event.target.value as DeliverableProgress,
+              })
+              focusRow()
+            }}
+          >
+            {(['not-started', 'in-progress', 'blocked', 'done', 'cancelled'] as const).map(value => (
+              <option key={value} value={value}>{progressLabel(value, t)}</option>
+            ))}
+          </select>
+        </label>
+      )}
       <div className="charter-item__actions">
         {item.staged && unstageTarget !== null && (
           <ActionButton
@@ -579,8 +282,8 @@ function ItemRow({
               claimed because the widget does not implement menu-button arrow
               navigation or roving focus.
             */}
-            <summary className="charter-button charter-button--ghost" aria-label={menuLabel}>
-              {t('item.actions')}
+            <summary className="charter-item__menu-trigger" aria-label={menuLabel}>
+              <span aria-hidden="true">⋯</span>
             </summary>
             <div className="charter-item__menulist">
               {current && item.review === 'accepted' && (
@@ -663,28 +366,8 @@ function ItemRow({
           </details>
         )}
       </div>
-      {item.kind === 'deliverable' && item.review === 'accepted' && current && !item.staged && (
-        <label className="charter-progress">
-          <span>{t('progress.label')}</span>
-          <select
-            value={item.progress}
-            disabled={!editable}
-            aria-label={`${t('progress.label')}: ${shortText(item.text)}`}
-            onChange={event => {
-              onQueue({
-                type: 'deliverable.progress',
-                itemId: item.id,
-                progress: event.target.value as DeliverableProgress,
-              })
-              focusRow()
-            }}
-          >
-            {(['not-started', 'in-progress', 'blocked', 'done', 'cancelled'] as const).map(value => (
-              <option key={value} value={value}>{progressLabel(value, t)}</option>
-            ))}
-          </select>
-        </label>
-      )}
+        </div>
+      </div>
     </article>
   )
 }
@@ -757,6 +440,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   const [exportProblem, setExportProblem] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
   const [proposalReasons, setProposalReasons] = useState<Record<string, string>>({})
+  const changeSetSheet = useChangeSetSheet()
   const archiveGenerationRef = useRef(0)
   const exportEpochRef = useRef(0)
   const exportInFlightRef = useRef(false)
@@ -765,6 +449,8 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
   const messageMenuRef = useRef<HTMLDivElement | null>(null)
   const triggerRef = useRef<HTMLElement | null>(null)
   const statusRef = useRef<HTMLDivElement | null>(null)
+  const headingRef = useRef<HTMLHeadingElement | null>(null)
+  const pendingNavRef = useRef<CharterSection | null>(null)
 
   useEffect(() => () => {
     archiveGenerationRef.current += 1
@@ -948,7 +634,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
       setConfirmDiscardAll(true)
       return
     }
-    if (draft.discardAllLocalWork()) statusRef.current?.focus()
+    if (draft.discardAllLocalWork()) focusStatus()
     setConfirmDiscardAll(false)
   }
 
@@ -1145,23 +831,46 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
     setPendingProposalFocusId(null)
   }, [pendingProposalFocusId, section, reviewLimit, pendingItemProposals])
 
+  // 0.3.0 W2: section state is a real route. Scroll the host scrollBody to the
+  // target anchor and move focus to its heading after the area commits. This
+  // hook must stay before the early returns so the hook order is stable.
+  useEffect(() => {
+    const next = pendingNavRef.current
+    if (next === null) return
+    pendingNavRef.current = null
+    if (typeof document === 'undefined') return
+    const run = (): void => {
+      const target = scrollToSectionAnchor(next, document)
+      focusSectionHeading(target, headingRef.current)
+    }
+    if (typeof requestAnimationFrame === 'function') {
+      const frame = requestAnimationFrame(run)
+      return () => cancelAnimationFrame(frame)
+    }
+    const timer = setTimeout(run, 0)
+    return () => clearTimeout(timer)
+  }, [section])
+
   if (state.status === 'connecting' && view === null) {
     return (
-      <main className="charter-root charter-centered">
-        <StateMark state="ongoing" />
-        <span>{t('status.loading')}</span>
-      </main>
+      <section className="charter-root charter-skeleton-root" aria-label={t('header.title')} aria-busy="true">
+        <div className="charter-skeleton" role="status" aria-label={t('status.loading')}>
+          <span className="charter-skeleton__row charter-skeleton__row--title" />
+          <span className="charter-skeleton__row" />
+          <span className="charter-skeleton__row charter-skeleton__row--short" />
+        </div>
+      </section>
     )
   }
   if (view === null) {
     return (
-      <main className="charter-root charter-centered">
+      <section className="charter-root charter-centered" aria-label={t('header.title')}>
         <StateMark state="error" />
         <span>{t('error.connection')}</span>
         {state.errorKind !== undefined && <span>{t(`error.connectionKind.${state.errorKind}` as never)}</span>}
         <ErrorDetails detail={state.error ?? undefined} t={t} />
         <ActionButton variant="outline" onClick={source.retry}>{t('button.retry')}</ActionButton>
-      </main>
+      </section>
     )
   }
 
@@ -1221,6 +930,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
         ? t('bootstrap.applyHint')
         : t('apply.block.bootstrap-blocked')
   const footerHint = (bootstrapPhase === 'draft' || bootstrapReplay) ? bootstrapHint : applyHint
+  const showActionBar = hasLocalWork || bootstrapPhase === 'draft' || bootstrapReplay || unknownReplay || saving
   const canRebaseNow = rebaseAvailable(draftState)
   const budgetPercent = Math.min(100, Math.round((previewBytes / view.limits.maxPromptBytes) * 100))
   const message = feedbackText(feedback, t)
@@ -1266,12 +976,58 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                     }
                   : null
 
+  // 0.3.0 W3: one prioritized notice instead of up to seven stacked banners.
+  const paneNotice: {
+    readonly tone: 'neutral' | 'warning' | 'danger'
+    readonly role: 'status' | 'alert'
+    readonly text: string
+    readonly hint?: string
+    readonly detail?: string
+    readonly action?: 'retry' | 'rebase'
+    readonly blockedText?: string
+  } | null = disconnected
+    ? {
+        tone: 'danger', role: 'alert', text: t('error.connection'),
+        ...(state.errorKind !== undefined ? { hint: t(`error.kind.${state.errorKind}` as never) } : {}),
+        ...(state.error !== null ? { detail: state.error } : {}),
+        action: 'retry',
+      }
+    : revisionConflict
+      ? {
+          tone: 'warning', role: 'alert',
+          text: t('notice.conflict', { from: baseRevision ?? 0, to: view.revision }),
+          ...(canRebaseNow ? { action: 'rebase' as const } : { blockedText: t('conflict.rebaseBlocked') }),
+        }
+      : budgetNotice !== null
+        ? {
+            tone: budgetNotice.tone === 'danger' ? 'danger' : 'warning',
+            role: 'alert',
+            text: budgetNotice.text,
+          }
+        : editReplay || bootstrapReplay
+          ? { tone: 'warning', role: 'alert', text: t('footer.replayPending') }
+          : oldLifecycleUnknown
+            ? { tone: 'warning', role: 'alert', text: t('footer.lifecyclePending') }
+            : notice !== null
+              ? {
+                  tone: 'warning', role: 'status', text: notice,
+                  ...(view.message !== undefined && view.message !== notice ? { detail: view.message } : {}),
+                }
+              : state.status === 'connecting'
+                ? { tone: 'neutral', role: 'status', text: t('status.reconnecting') }
+                : null
+
   const area = section === 'history'
     ? 'review'
     : section === 'context' || section === 'recovery'
       ? 'diagnostics'
       : 'workspace'
-  const goSection = (next: CharterSection): void => draft.setSection(next)
+  const goSection = (next: CharterSection): void => {
+    pendingNavRef.current = next
+    draft.setSection(next)
+  }
+
+
   const selectedMessage = messageCandidates.find(message => message.seq === messageSeq)
   const messageBytes = normalizedBytes(messageDraft)
   const messageOverBudget = messageBytes > view.limits.maxItemBytes
@@ -1286,13 +1042,16 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
     triggerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
     draft.openEditor(target, view)
   }
+  const focusStatus = (): void => {
+    (statusRef.current ?? headingRef.current)?.focus()
+  }
   const applyDraft = (): void => {
     if (conflictTotal > 0 && !confirmConflictApply) {
       setConfirmConflictApply(true)
       return
     }
     setConfirmConflictApply(false)
-    void draft.applyDraft(view).finally(() => statusRef.current?.focus())
+    void draft.applyDraft(view).finally(focusStatus)
   }
   const stageGraphRequires = (targetId: string, nextRequires: readonly string[]): void => {
     if (view === null || !editable) return
@@ -1540,13 +1299,35 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
     }
     draft.abandonUnknown()
     setConfirmAbandon(false)
-    statusRef.current?.focus()
+    focusStatus()
   }
   const applyBootstrapDraft = (): void => {
-    void draft.applyBootstrap(view).finally(() => statusRef.current?.focus())
+    void draft.applyBootstrap(view).finally(() => focusStatus())
   }
   const openHistory = (): void => {
     goSection('history')
+  }
+
+  const changeSetConflicts = buildChangeSetConflicts(conflictDiff, { dependencyPlan, projectedItems })
+  const unstageOp = (op: CharterOp): void => {
+    if (op.type.startsWith('objective.')) {
+      draft.unstageObjective()
+      focusStatus()
+      return
+    }
+    if ('itemId' in op) {
+      draft.unstage(op.itemId)
+      focusStatus()
+      return
+    }
+    if (op.type === 'item.add' || op.type === 'item.propose') {
+      const added = projectedItems.find(item => item.text === op.item.text && item.kind === op.item.kind)
+      if (added !== undefined) {
+        draft.unstage(added.id)
+        focusStatus()
+      }
+      return
+    }
   }
 
   const renderItems = (
@@ -1601,28 +1382,195 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
     )
   }
 
+  // W5 page split: explicit, typed contract consumed by Workspace/Review/Diagnostics pages.
+  const paneScope: PaneScope = {
+activeDeliverables,
+  activeInvariants,
+  area,
+  bootstrapPhase,
+  bootstrapProblem,
+  counts,
+  currentDeliverables,
+  currentInvariants,
+  deliverables,
+  dependencyByItemId,
+  dependencyEditorId,
+  dependencyGraphActiveKey,
+  dependencyGraphDepth,
+  dependencyGraphHidden,
+  dependencyGraphProblem,
+  dependencyGraphSupersedes,
+  dependencyPlan,
+  dependencyVisibleCount,
+  draft,
+  editable,
+  editor,
+  editorNeedsReason,
+  editorReason,
+  editorText,
+  focusStatus,
+  goSection,
+  historyDeliverables,
+  historyInvariants,
+  invariants,
+  locateGraphNodeInList,
+  newDeliverable,
+  newInvariant,
+  objectiveStaged,
+  openEditor,
+  openHistory,
+  pendingDeliverables,
+  pendingInvariants,
+  planInvalid,
+  projectedObjective,
+  relationFocusId,
+  relationGraph,
+  relationGraphAvailable,
+  relationLayout,
+  release,
+  renderItems,
+  saving,
+  section,
+  setDependencyEditorId,
+  setDependencyGraphActiveKey,
+  setDependencyGraphDepth,
+  setDependencyGraphFocusId,
+  setDependencyGraphHidden,
+  setDependencyGraphSupersedes,
+  setDependencyVisibleCount,
+  setPendingProposalFocusId,
+  showEmpty,
+  source,
+  stageGraphRequires,
+  t,
+  unknownBlocked,
+  view,
+  abandonUnknown,
+  applyBootstrapDraft,
+  applyHintId,
+  batchByItem,
+  bootstrap,
+  bootstrapBudgetOver,
+  bootstrapId,
+  bootstrapItems,
+  bootstrapObjective,
+  bootstrapObjectiveOver,
+  bootstrapPlan,
+  bootstrapPromptBytes,
+  bootstrapReplay,
+  bootstrapSaving,
+  bootstrapStorageOver,
+  bootstrapTextIssue,
+  bootstrapVisibleCount,
+  canApplyBootstrap,
+  closedObjectiveProposals,
+  confirmAbandon,
+  inactiveItems,
+  messageBytes,
+  messageCanSave,
+  messageCandidates,
+  messageDraft,
+  messageKind,
+  messageMenuOpen,
+  messageMenuRef,
+  messageOverBudget,
+  messageSeq,
+  messageTextAvailable,
+  ops,
+  pendingItemProposals,
+  pendingObjectiveProposals,
+  proposalReasons,
+  reviewLimit,
+  selectedMessage,
+  setMessageDraft,
+  setMessageKind,
+  setMessageMenuOpen,
+  setMessageSeq,
+  setProposalReasons,
+  setReviewLimit,
+  unknownReplay,
+  activeArchiveKey,
+  archiveCacheProblem,
+  archiveEntries,
+  archiveInputRef,
+  archivePreview,
+  archiveSource,
+  canExport,
+  capabilities,
+  chooseArchive,
+  chooseCachedArchive,
+  confirmRecovery,
+  draftOpen,
+  draftState,
+  errorText,
+  exportArchive,
+  exportProblem,
+  exportableState,
+  exporting,
+  formattedPreview,
+  initAdmission,
+  initializeEmpty,
+  integrityFeedback,
+  maintenanceEnabled,
+  maintenanceProblem,
+  maintenanceReplay,
+  overBudget,
+  preview,
+  previewBytes,
+  previewMode,
+  recordDigest,
+  recordState,
+  recoveryBusy,
+  restoreAdmission,
+  restoreArchive,
+  restoreArchiveReady,
+  restoreTarget,
+  retainedArchive,
+  setConfirmRecovery,
+  setIntegrityFeedback,
+  setPreviewMode,
+  setValidatorExpectation,
+  setValidatorFeedback,
+  setValidatorItemId,
+  setValidatorKind,
+  setValidatorPath,
+  setValidatorRunning,
+  validatorExpectation,
+  validatorFeedback,
+  validatorItemId,
+  validatorKind,
+  validatorPath,
+  validatorRunning,
+  }
+
+
   return (
-    <main className="charter-root" data-dsh-part="charter-pane">
+    <section className="charter-root" data-dsh-part="charter-pane" aria-label={t('header.title')}>
       <div className="charter-shell">
         <header className="charter-pagehead">
           <div className="charter-heading">
             <CharterMark />
             <div className="charter-heading__copy">
-              <h2>{t('header.title')}</h2>
-              <p className="charter-subtitle">{t('header.subtitle')}</p>
-              <p className="charter-disclaimer">{t('header.disclaimer')}</p>
+              <h2 ref={headingRef} tabIndex={-1}>{t('header.title')}</h2>
             </div>
           </div>
           <div className="charter-headside">
             <div className="charter-chips">
               <StatusTag tone="info">{t('header.version', { version: CHARTER_VERSION })}</StatusTag>
-              <StatusTag>{t('stats.revision', { revision: view.revision })}</StatusTag>
-              {ops.length > 0 && (
-                <StatusTag tone="info">
-                  {t('stats.afterApply', { active: counts.active, stored: projectedItems.length })}
-                </StatusTag>
-              )}
             </div>
+            {hasLocalWork && (
+              <button
+                type="button"
+                ref={changeSetSheet.triggerRef}
+                className="charter-changeset-trigger"
+                aria-haspopup="dialog"
+                aria-controls="charter-changeset-sheet"
+                onClick={() => changeSetSheet.setOpen(true)}
+              >
+                {t('changeset.open')}
+                <span className="charter-count">{localWork.stagedOps}</span>
+              </button>
+            )}
             <div
               className={`charter-meter${contextOver ? ' is-over' : budgetPercent >= 80 ? ' is-warn' : ''}`}
               role="meter"
@@ -1644,62 +1592,38 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                 <span className="charter-meter__fill" style={{ width: `${budgetPercent}%` }} />
               </span>
             </div>
+            {message !== null && !showActionBar && (
+              <span
+                className="charter-savestate"
+                role={feedback?.kind === 'error' || feedback?.kind === 'connection' ? 'alert' : 'status'}
+              >
+                {message}
+              </span>
+            )}
           </div>
         </header>
 
-        {state.status === 'connecting' && view !== null && (
-          <div className="charter-notice">
-            <span role="status">{t('status.reconnecting')}</span>
-          </div>
-        )}
-        {disconnected && (
-          <div className="charter-notice charter-notice--danger">
-            <span role="alert">{t('error.connection')}</span>
-            {state.errorKind !== undefined && <span className="charter-hint">{t(`error.kind.${state.errorKind}` as never)}</span>}
-            <ErrorDetails detail={state.error ?? undefined} t={t} />
-            <ActionButton variant="outline" onClick={source.retry}>{t('button.retry')}</ActionButton>
-          </div>
-        )}
-        {notice !== null && (
-          <div className="charter-notice charter-notice--warning">
-            <span role="status">{notice}</span>
-            {view.message !== undefined && view.message !== notice && (
-              <ErrorDetails detail={view.message} t={t} />
+        {paneNotice !== null && (
+          <div className={`charter-notice${paneNotice.tone === 'danger'
+            ? ' charter-notice--danger'
+            : paneNotice.tone === 'warning' ? ' charter-notice--warning' : ''}`}>
+            <span role={paneNotice.role}>{paneNotice.text}</span>
+            {paneNotice.hint !== undefined && <span className="charter-hint">{paneNotice.hint}</span>}
+            {paneNotice.detail !== undefined && <ErrorDetails detail={paneNotice.detail} t={t} />}
+            {paneNotice.blockedText !== undefined && <span>{paneNotice.blockedText}</span>}
+            {paneNotice.action === 'retry' && (
+              <ActionButton variant="outline" onClick={source.retry}>{t('button.retry')}</ActionButton>
+            )}
+            {paneNotice.action === 'rebase' && (
+              <ActionButton variant="outline" onClick={() => draft.rebase(view)}>
+                {t('conflict.rebase', { revision: view.revision })}
+              </ActionButton>
             )}
           </div>
         )}
-        {(editReplay || bootstrapReplay) && (
-          <div className="charter-notice charter-notice--warning">
-            <span role="alert">{t('footer.replayPending')}</span>
-          </div>
-        )}
-        {oldLifecycleUnknown && (
-          <div className="charter-notice charter-notice--warning">
-            <span role="alert">{t('footer.lifecyclePending')}</span>
-          </div>
-        )}
-        {revisionConflict && (
-          <div className="charter-notice charter-notice--warning">
-            <span role="alert">{t('notice.conflict', { from: baseRevision ?? 0, to: view.revision })}</span>
-            {canRebaseNow
-              ? (
-                  <ActionButton
-                    variant="outline"
-                    onClick={() => draft.rebase(view)}
-                  >
-                    {t('conflict.rebase', { revision: view.revision })}
-                  </ActionButton>
-                )
-              : <span>{t('conflict.rebaseBlocked')}</span>}
-          </div>
-        )}
-        {budgetNotice !== null && (
-          <div className={`charter-notice charter-notice--${budgetNotice.tone}`}>
-            <span role="alert">{budgetNotice.text}</span>
-          </div>
-        )}
 
-        <footer className="charter-actionbar">
+        {showActionBar && (
+        <div className="charter-actionbar" role="group" aria-label={t('changeset.title')}>
           <div
             ref={statusRef}
             className="charter-actionbar__status"
@@ -1761,7 +1685,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                   <>
                     <ActionButton
                       disabled={ops.length === 0 || saving || unknownBlocked}
-                      onClick={() => { draft.discardStaged(); statusRef.current?.focus() }}
+                      onClick={() => { draft.discardStaged(); focusStatus() }}
                     >
                       {t('footer.discard')}
                     </ActionButton>
@@ -1811,1640 +1735,98 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
                   </>
                 )}
           </div>
-        </footer>
+        </div>
+        )}
 
         <div className="charter-body">
-          <nav className="charter-nav" aria-label={t('nav.label')}>
-            <span className="charter-nav__label">{t('nav.label')}</span>
-            {([
-              { id: 'workspace' as const, target: 'overview' as const, label: t('nav.workspace'), help: t('nav.workspaceHelp') },
-              { id: 'review' as const, target: 'history' as const, label: t('nav.review'), help: t('nav.reviewHelp'), badge: totalPending },
-              { id: 'diagnostics' as const, target: 'context' as const, label: t('nav.diagnostics'), help: t('nav.diagnosticsHelp') },
-            ] as const).map(item => (
-              <Fragment key={item.id}>
-                <button
-                  type="button"
-                  className={`charter-nav__item${area === item.id ? ' is-active' : ''}`}
-                  aria-current={area === item.id ? 'page' : undefined}
-                  aria-describedby={`charter-nav-help-${item.id}`}
-                  onClick={() => goSection(item.target)}
-                >
-                  <span className="charter-nav__text">{item.label}</span>
-                  {'badge' in item && item.badge !== undefined && <span className="charter-nav__badge">{item.badge}</span>}
-                  <span
-                    className="charter-nav__help"
-                    data-tooltip={item.help}
-                    aria-hidden="true"
-                  />
-                </button>
-                <span id={`charter-nav-help-${item.id}`} className="charter-sr-only">{item.help}</span>
-              </Fragment>
-            ))}
-          </nav>
+          <SectionNav t={t} area={area} totalPending={totalPending} onNavigate={goSection} />
 
-          <div className="charter-content">
-            {area === 'workspace' && hasLocalWork && (
-              <section className="charter-card charter-section charter-changeset" aria-labelledby="charter-changeset-title">
-                <div className="charter-cardhead">
-                  <div className="charter-cardtitle">
-                    <span className="charter-kicker">{t('changeset.kicker')}</span>
-                    <h3 id="charter-changeset-title">{t('changeset.title')}</h3>
-                  </div>
-                  <span className="charter-count">{localWork.stagedOps}</span>
-                </div>
-                <div className="charter-changeset__body">
-                  <span>{t('changeset.ops', { count: localWork.stagedOps })}</span>
-                  <span>{t('changeset.promptDelta', {
-                    before: formatBytes(t, utf8Bytes(view.promptText)),
-                    after: formatBytes(t, previewBytes),
-                  })}</span>
-                  <span>{t('changeset.itemsDelta', {
-                    before: view.items.length,
-                    after: projectedItems.length,
-                  })}</span>
-                  {editor !== null && <span>{t('changeset.editorOpen')}</span>}
-                </div>
-                {conflictTotal > 0 && (
-                  <div className="charter-notice charter-notice--warning" role="status">
-                    <strong>{t('changeset.conflicts', { count: conflictTotal })}</strong>
-                    <ul className="charter-changeset__conflicts">
-                      {[
-                        ...conflictDiff.added.map(entry => ({ ...entry, kind: 'added' as const })),
-                        ...conflictDiff.worsened.map(entry => ({ ...entry, kind: 'worsened' as const })),
-                      ].map(entry => {
-                        const key = dependencyPlan.find(row => row.id === entry.itemId)?.localKey ?? entry.itemId
-                        const text = projectedItems.find(item => item.id === entry.itemId)?.text ?? entry.itemId
-                        return (
-                          <li key={entry.itemId}>
-                            <span className="charter-dependency__key">{key}</span>
-                            <span className="charter-changeset__conflicttext">{shortText(text, 40)}</span>
-                            <span>
-                              {t(entry.kind === 'added' ? 'changeset.conflictAdded' : 'changeset.conflictWorsened', {
-                                before: entry.beforeConflicts,
-                                after: entry.afterConflicts,
-                              })}
-                            </span>
-                          </li>
-                        )
-                      })}
-                    </ul>
-                  </div>
-                )}
-              </section>
-            )}
-
-            {area === 'workspace' && (
-              <>
-                {bootstrapPhase === 'draft' && (
-                  <button type="button" className="charter-callout" onClick={openHistory}>
-                    <span className="charter-kicker">{t('bootstrap.kicker')}</span>
-                    <strong>{t('bootstrap.ready')}</strong>
-                    <span>{t('bootstrap.body')}</span>
-                    <span className="charter-callout__link">{t('bootstrap.reviewNow')}</span>
-                  </button>
-                )}
-                {bootstrapPhase === 'checking' && (
-                  <div className="charter-notice" role="status">{t('bootstrap.loading')}</div>
-                )}
-                {(bootstrapPhase === 'failed' || bootstrapPhase === 'unavailable' || bootstrapPhase === 'no-summary' || bootstrapPhase === 'not-live') && (
-                  <div className="charter-callout charter-callout--static">
-                    <span className="charter-kicker">{t('bootstrap.kicker')}</span>
-                    <span role="status">{bootstrapProblemText(bootstrapProblem, t)
-                      ?? (bootstrapPhase === 'no-summary' ? t('bootstrap.noSummary')
-                        : bootstrapPhase === 'not-live' ? t('bootstrap.notLive')
-                          : t('bootstrap.overviewFailed'))}</span>
-                    <ErrorDetails detail={bootstrapProblem?.detail} t={t} />
-                    <span className="charter-callout__actions">
-                      <ActionButton variant="outline" onClick={() => draft.retryBootstrap(view)}>
-                        {t('bootstrap.checkAgain')}
-                      </ActionButton>
-                      <ActionButton onClick={openHistory}>{t('nav.open')}</ActionButton>
-                    </span>
-                  </div>
-                )}
-
-                {showEmpty && (
-                  <section className="charter-empty-state" role="note">
-                    <span className="charter-kicker">{t('empty.kicker')}</span>
-                    <h3>{t('empty.title')}</h3>
-                    <p>{t('empty.body')}</p>
-                    <div className="charter-empty-actions">
-                      <ActionButton variant="primary" disabled={!editable} onClick={() => goSection('objective')}>
-                        {t('objective.set')}
-                      </ActionButton>
-                      <ActionButton disabled={!editable} onClick={() => goSection('invariants')}>
-                        {t('composer.addInvariant')}
-                      </ActionButton>
-                    </div>
-                  </section>
-                )}
-
-                <section className={`charter-card charter-objective${utf8Bytes(projectedObjective?.current.text ?? '') > view.limits.maxObjectiveBytes ? ' is-over' : ''}`}>
-                  <div className="charter-cardhead">
-                    <div className="charter-cardtitle">
-                      <span className="charter-kicker">{t('objective.kicker')}</span>
-                      <h3>{projectedObjective?.current.text ?? t('objective.empty')}</h3>
-                      {objectiveStaged && (
-                        <span className="charter-tag charter-tag--info">{t('tag.staged')}</span>
-                      )}
-                    </div>
-                    <div className="charter-cardtools">
-                      <span className="charter-budget">
-                        {formatBytes(t, utf8Bytes(projectedObjective?.current.text ?? ''))} / {formatBytes(t, view.limits.maxObjectiveBytes)}
-                      </span>
-                      {objectiveStaged && (
-                        <ActionButton
-                          variant="outline"
-                          disabled={!editable || saving || unknownBlocked}
-                          onClick={() => { draft.unstageObjective(); statusRef.current?.focus() }}
-                        >
-                          {t('discard.unstageObjective')}
-                        </ActionButton>
-                      )}
-                      <ActionButton onClick={() => goSection('objective')}>{t('nav.open')}</ActionButton>
-                    </div>
-                  </div>
-                  {projectedObjective !== null && projectedObjective.original.text !== projectedObjective.current.text && (
-                    <p className="charter-original">{t('objective.original', { text: projectedObjective.original.text })}</p>
-                  )}
-                  {projectedObjective?.current.reason !== undefined && (
-                    <p className="charter-original">{t('objective.reason', { reason: projectedObjective.current.reason })}</p>
-                  )}
-                  {projectedObjective !== null && projectedObjective.original.text !== projectedObjective.current.text
-                    && projectedObjective.current.reason === undefined && (
-                    <p className="charter-original">{t('objective.reason', { reason: t('objective.reasonDefault') })}</p>
-                  )}
-                </section>
-
-                <div className="charter-overview-grid">
-                  <button type="button" className="charter-card charter-statcard" onClick={() => goSection('invariants')}>
-                    <span className="charter-kicker">{t('invariants.kicker')}</span>
-                    {ops.length > 0 && <span className="charter-kicker" role="note">{t('overview.afterApply')}</span>}
-                    <span className="charter-statcard__value">{activeInvariants.length}</span>
-                    <span className="charter-statcard__label">{countLabel(t, activeInvariants.length, 'invariants.one', 'invariants.other')}</span>
-                    <span className="charter-statcard__list">
-                      {activeInvariants.length === 0
-                        ? t('invariants.empty')
-                        : activeInvariants.slice(0, 3).map(item => <span key={item.id}>{item.text}</span>)}
-                    </span>
-                    <span className="charter-statcard__link">{t('nav.open')}</span>
-                  </button>
-                  <button type="button" className="charter-card charter-statcard" onClick={() => goSection('deliverables')}>
-                    <span className="charter-kicker">{t('deliverables.kicker')}</span>
-                    {ops.length > 0 && <span className="charter-kicker" role="note">{t('overview.afterApply')}</span>}
-                    <span className="charter-statcard__value">{activeDeliverables.length}</span>
-                    <span className="charter-statcard__label">{countLabel(t, activeDeliverables.length, 'deliverables.one', 'deliverables.other')}</span>
-                    <span className="charter-statcard__list">
-                      {activeDeliverables.length === 0
-                        ? t('deliverables.empty')
-                        : activeDeliverables.slice(0, 3).map(item => (
-                          <span key={item.id}>{item.text}<em>{progressLabel(item.progress, t)}</em></span>
-                        ))}
-                    </span>
-                    <span className="charter-statcard__link">{t('nav.open')}</span>
-                  </button>
-                </div>
-
-                <section className="charter-card charter-budgetcard">
-                  <div className="charter-cardhead">
-                    <div className="charter-cardtitle">
-                      <span className="charter-kicker">{t('overview.budget')}</span>
-                      <h3>{t('counts.summary', { active: counts.active, pending: counts.pending })}</h3>
-                    </div>
-                  </div>
-                  <div className="charter-budgetgrid">
-                    <span>{t('stats.budget', { used: formatBytes(t, previewBytes), limit: formatBytes(t, view.limits.maxPromptBytes) })}</span>
-                    <span>{t('objective.kicker')} {formatBytes(t, utf8Bytes(projectedObjective?.current.text ?? ''))} / {formatBytes(t, view.limits.maxObjectiveBytes)}</span>
-                    <span>{t('invariants.kicker')} {activeInvariants.length}</span>
-                    <span>{t('deliverables.kicker')} {activeDeliverables.length}</span>
-                    <span>{t('budget.recordLimit', { limit: formatBytes(t, view.limits.maxRecordBytes) })}</span>
-                  </div>
-                </section>
-              </>
-            )}
-
-            {area === 'workspace' && (
-              <>
-                <section className={`charter-card charter-objective${utf8Bytes(projectedObjective?.current.text ?? '') > view.limits.maxObjectiveBytes ? ' is-over' : ''}`}>
-                  <div className="charter-cardhead">
-                    <div className="charter-cardtitle">
-                      <span className="charter-kicker">{t('objective.kicker')}</span>
-                      <h3>{projectedObjective?.current.text ?? t('objective.empty')}</h3>
-                    </div>
-                    <div className="charter-cardtools">
-                      <span className="charter-budget">
-                        {formatBytes(t, utf8Bytes(projectedObjective?.current.text ?? ''))} / {formatBytes(t, view.limits.maxObjectiveBytes)}
-                      </span>
-                      {objectiveStaged && (
-                        <ActionButton
-                          variant="outline"
-                          disabled={!editable || saving || unknownBlocked}
-                          onClick={() => { draft.unstageObjective(); statusRef.current?.focus() }}
-                        >
-                          {t('discard.unstageObjective')}
-                        </ActionButton>
-                      )}
-                      <ActionButton
-                        variant="outline"
-                        disabled={!editable || projectedObjective !== null && objectiveStaged}
-                        onClick={() => openEditor({ kind: 'objective' })}
-                      >
-                        {projectedObjective === null ? t('objective.set') : t('objective.redirect')}
-                      </ActionButton>
-                    </div>
-                  </div>
-                  {projectedObjective !== null && projectedObjective.original.text !== projectedObjective.current.text && (
-                    <p className="charter-original">{t('objective.original', { text: projectedObjective.original.text })}</p>
-                  )}
-                  {projectedObjective?.current.reason !== undefined && (
-                    <p className="charter-original">{t('objective.reason', { reason: projectedObjective.current.reason })}</p>
-                  )}
-                  {projectedObjective !== null && projectedObjective.original.text !== projectedObjective.current.text
-                    && projectedObjective.current.reason === undefined && (
-                    <p className="charter-original">{t('objective.reason', { reason: t('objective.reasonDefault') })}</p>
-                  )}
-                  {editor?.kind === 'objective' && (
-                    <div className="charter-inlineeditor">
-                      <TextEditor
-                        value={editorText}
-                        onChange={value => draft.setEditorText(value)}
-                        reason={editorReason}
-                        onReasonChange={value => draft.setEditorReason(value)}
-                        showReason={editorNeedsReason}
-                        onSave={() => draft.saveEditor(view)}
-                        onCancel={() => draft.closeEditor()}
-                        maxBytes={view.limits.maxObjectiveBytes}
-                        previousBytes={normalizedBytes(projectedObjective?.current.text ?? '')}
-                        label={t('editor.objectiveAria')}
-                        t={t}
-                      />
-                    </div>
-                  )}
-                </section>
-                <p className="charter-hint">{t('overview.objectiveHint')}</p>
-              </>
-            )}
-
-            {area === 'workspace' && (
-              <section className="charter-card charter-section">
-                <div className="charter-cardhead">
-                  <div className="charter-cardtitle">
-                    <span className="charter-kicker">{t('invariants.kicker')}</span>
-                    <h3>{t('counts.summary', { active: activeInvariants.length, pending: pendingInvariants.length })}</h3>
-                  </div>
-                  <span className="charter-count">{invariants.length}</span>
-                </div>
-                <p className="charter-hint">{t('invariants.hint')}</p>
-                {counts.pending > 0 && <p className="charter-hint">{t('pending.hint')}</p>}
-                <div className="charter-list">
-                  {renderItems(currentInvariants, historyInvariants, 'invariants.empty', 'invariants')}
-                </div>
-                <div className={`charter-add${normalizedBytes(newInvariant) > view.limits.maxItemBytes ? ' is-over' : ''}`}>
-                  <textarea
-                    rows={2}
-                    disabled={!editable}
-                    value={newInvariant}
-                    placeholder={t('composer.placeholderInvariant')}
-                    aria-label={t('composer.invariantAria')}
-                    aria-invalid={normalizedBytes(newInvariant) > view.limits.maxItemBytes}
-                    onChange={event => draft.setNewInvariant(event.target.value)}
-                    onKeyDown={event => {
-                      if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
-                        event.preventDefault()
-                        draft.addItem(view, 'invariant', newInvariant, () => draft.setNewInvariant(''))
-                      }
-                    }}
-                  />
-                  <div className="charter-add__foot">
-                    <span className={`charter-budget${normalizedBytes(newInvariant) > view.limits.maxItemBytes ? ' is-over' : ''}`}>
-                      {normalizedBytes(newInvariant) > view.limits.maxItemBytes
-                        ? t('budget.itemOver', { limit: formatBytes(t, view.limits.maxItemBytes) })
-                        : `${formatBytes(t, normalizedBytes(newInvariant))} / ${formatBytes(t, view.limits.maxItemBytes)}`}
-                    </span>
-                    {newInvariant.length > 0 && (
-                      <ActionButton
-                        variant="outline"
-                        disabled={!editable || saving || unknownBlocked}
-                        onClick={() => draft.clearComposer('invariant')}
-                      >
-                        {t('composer.clear')}
-                      </ActionButton>
-                    )}
-                    <ActionButton
-                      variant="outline"
-                      disabled={!editable || !normalizedNonEmpty(newInvariant) || normalizedBytes(newInvariant) > view.limits.maxItemBytes}
-                      onClick={() => draft.addItem(view, 'invariant', newInvariant, () => draft.setNewInvariant(''))}
-                    >
-                      {t('composer.addInvariant')}
-                    </ActionButton>
-                    <ActionButton
-                      variant="outline"
-                      disabled={!editable || !normalizedNonEmpty(newInvariant) || normalizedBytes(newInvariant) > view.limits.maxItemBytes}
-                      onClick={() => draft.addProposal(view, 'invariant', newInvariant, () => draft.setNewInvariant(''))}
-                    >
-                      {t('composer.proposeInvariant')}
-                    </ActionButton>
-                  </div>
-                </div>
-                {editor !== null && editor.kind !== 'objective' && invariants.some(item => item.id === editor.item.id) && (
-                  <div className="charter-inlineeditor">
-                    <TextEditor
-                      value={editorText}
-                      onChange={value => draft.setEditorText(value)}
-                      onSave={() => draft.saveEditor(view)}
-                      onCancel={() => draft.closeEditor()}
-                      maxBytes={view.limits.maxItemBytes}
-                      previousBytes={editor.kind === 'edit' ? normalizedBytes(editor.item.text) : undefined}
-                      label={t('editor.invariantAria')}
-                      t={(key, values) => t(key as CharterLocaleKey, values)}
-                    />
-                  </div>
-                )}
-              </section>
-            )}
-
-            {area === 'workspace' && planInvalid && (
-              <div className="charter-notice charter-notice--danger" role="alert">
-                {t('deps.conflict')}
-              </div>
-            )}
-
-            {area === 'workspace' && dependencyPlan.length > 0 && (
-              <section className="charter-card charter-section" aria-labelledby="charter-dependency-title">
-                <div className="charter-cardhead">
-                  <div className="charter-cardtitle">
-                    <h3 id="charter-dependency-title">{t('deps.title')}</h3>
-                  </div>
-                  <div className="charter-cardtools">
-                    <span className="charter-count">{dependencyPlan.length}</span>
-                    {relationGraphAvailable && (
-                      <button
-                        type="button"
-                        className="charter-linkbutton"
-                        aria-pressed={!dependencyGraphHidden}
-                        onClick={() => setDependencyGraphHidden(value => !value)}
-                      >
-                        {dependencyGraphHidden ? t('deps.showGraph') : t('deps.hideGraph')}
-                      </button>
-                    )}
-                  </div>
-                </div>
-                {dependencyGraphProblem !== null && (
-                  <div className="charter-notice charter-notice--warning" role="alert">{dependencyGraphProblem}</div>
-                )}
-                <div className={`charter-dependency-layout${dependencyGraphHidden ? ' is-graph-hidden' : ''}`}>
-                  {!dependencyGraphHidden && relationGraphAvailable && relationLayout !== null
-                    && !relationLayout.degraded.hidden && !relationLayout.degraded.isolatedTooMany && (
-                    <a className="charter-graph__skip" href="#charter-dependency-list">{t('deps.skipToList')}</a>
-                  )}
-                  {!dependencyGraphHidden && relationGraphAvailable && relationGraph !== null && relationLayout !== null && (
-                    <DependencyGraph
-                      layout={relationLayout}
-                      model={relationGraph}
-                      focusId={relationFocusId}
-                      activeKey={dependencyGraphActiveKey ?? relationFocusId}
-                      depth={dependencyGraphDepth}
-                      showSupersedes={dependencyGraphSupersedes}
-                      editable={editable}
-                      onFocus={id => {
-                        setDependencyGraphFocusId(id)
-                        setDependencyGraphActiveKey(id)
-                      }}
-                      onActiveKey={setDependencyGraphActiveKey}
-                      onDepth={setDependencyGraphDepth}
-                      onShowSupersedes={setDependencyGraphSupersedes}
-                      onStageRequires={stageGraphRequires}
-                      onLocateList={locateGraphNodeInList}
-                      onProposal={id => { setPendingProposalFocusId(id); goSection('history') }}
-                      t={(key, values) => t(key as CharterLocaleKey, values)}
-                    />
-                  )}
-                  <div className="charter-dependency-listwrap">
-                    <ol className="charter-dependency-list" id="charter-dependency-list">
-                      {dependencyPlan.slice(0, dependencyVisibleCount).map((row, rowIndex) => {
-                        const item = view.items.find(candidate => candidate.id === row.id)
-                        return (
-                          <li
-                            key={row.id}
-                            className={`charter-dependency is-${row.executionDisplay}`}
-                            data-dependency-id={row.id}
-                            tabIndex={-1}
-                          >
-                            <span className="charter-sr-only">{t('deps.rowPosition', { index: rowIndex + 1, total: dependencyPlan.length })}</span>
-                            <div className="charter-dependency__row">
-                              <span className="charter-dependency__key">{row.localKey}</span>
-                              <div className="charter-dependency__main">
-                                <span className="charter-dependency__text" title={item?.text ?? row.id}>
-                                  {item?.text ?? row.id}
-                                </span>
-                                <span className="charter-dependency__meta">
-                                  <span className={`charter-dependency__status is-${row.executionDisplay}`}>
-                                    {t(`deps.status.${row.executionDisplay}`)}
-                                  </span>
-                                  {row.prerequisiteStatus === 'dependency-conflict' && row.executionDisplay !== 'dependency-conflict' && (
-                                    <span className="charter-dependency__status is-conflict">{t('deps.prerequisiteConflict')}</span>
-                                  )}
-                                  <span className="charter-dependency__requires">
-                                    {row.requires.length > 0
-                                      ? t('deps.requiresSummary', {
-                                        keys: row.requires
-                                          .map(requireId => dependencyByItemId.get(requireId)?.localKey ?? requireId)
-                                          .join(', '),
-                                      })
-                                      : t('deps.noRequires')}
-                                  </span>
-                                </span>
-                              </div>
-                              <div className="charter-dependency__actions">
-                                {relationGraphAvailable && (
-                                  <button
-                                    type="button"
-                                    className="charter-linkbutton"
-                                    onClick={() => {
-                                      setDependencyGraphHidden(false)
-                                      setDependencyGraphFocusId(row.id)
-                                      setDependencyGraphActiveKey(row.id)
-                                    }}
-                                  >
-                                    {t('deps.locateInGraph')}
-                                  </button>
-                                )}
-                                <button
-                                  type="button"
-                                  className="charter-linkbutton"
-                                  aria-expanded={dependencyEditorId === row.id}
-                                  onClick={() => setDependencyEditorId(id => id === row.id ? null : row.id)}
-                                >
-                                  {t('deps.editRequires')}
-                                </button>
-                              </div>
-                            </div>
-                            {dependencyEditorId === row.id && (
-                              <fieldset className="charter-dependency__editor">
-                                <legend>{t('deps.editRequires')}</legend>
-                                {view.items
-                                  .filter(candidate => candidate.kind === 'deliverable'
-                                    && candidate.review === 'accepted'
-                                    && candidate.lifecycle === 'current'
-                                    && candidate.id !== row.id)
-                                  .map(candidate => {
-                                    const candidateKey = dependencyByItemId.get(candidate.id)?.localKey ?? ''
-                                    return (
-                                      <label key={candidate.id}>
-                                        <input
-                                          type="checkbox"
-                                          checked={row.requiresIds.includes(candidate.id)}
-                                          disabled={!editable || saving || unknownBlocked}
-                                          onChange={event => {
-                                            const next = event.target.checked
-                                              ? [...row.requiresIds, candidate.id]
-                                              : row.requiresIds.filter(id => id !== candidate.id)
-                                            draft.setDeliverableRequires(view, row.id, next)
-                                          }}
-                                        />
-                                        <span>{candidateKey} · {shortText(candidate.text, 40)}</span>
-                                      </label>
-                                    )
-                                  })}
-                              </fieldset>
-                            )}
-                          </li>
-                        )
-                      })}
-                    </ol>
-                    {dependencyPlan.length > dependencyVisibleCount && (
-                      <button
-                        type="button"
-                        className="charter-linkbutton"
-                        onClick={() => setDependencyVisibleCount(count => count + 50)}
-                      >
-                        {t('deps.showMore', { count: Math.min(50, dependencyPlan.length - dependencyVisibleCount) })}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </section>
-            )}
-
-            {area === 'workspace' && (
-              <section className="charter-card charter-section">
-                <div className="charter-cardhead">
-                  <div className="charter-cardtitle">
-                    <span className="charter-kicker">{t('deliverables.kicker')}</span>
-                    <h3>{t('counts.summary', { active: activeDeliverables.length, pending: pendingDeliverables.length })}</h3>
-                  </div>
-                  <span className="charter-count">{deliverables.length}</span>
-                </div>
-                <div className="charter-list">
-                  {renderItems(currentDeliverables, historyDeliverables, 'deliverables.empty', 'deliverables')}
-                </div>
-                <div className={`charter-add${normalizedBytes(newDeliverable) > view.limits.maxItemBytes ? ' is-over' : ''}`}>
-                  <textarea
-                    rows={2}
-                    disabled={!editable}
-                    value={newDeliverable}
-                    placeholder={t('composer.placeholderDeliverable')}
-                    aria-label={t('composer.deliverableAria')}
-                    aria-invalid={normalizedBytes(newDeliverable) > view.limits.maxItemBytes}
-                    onChange={event => draft.setNewDeliverable(event.target.value)}
-                    onKeyDown={event => {
-                      if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
-                        event.preventDefault()
-                        draft.addItem(view, 'deliverable', newDeliverable, () => draft.setNewDeliverable(''))
-                      }
-                    }}
-                  />
-                  <div className="charter-add__foot">
-                    <span className={`charter-budget${normalizedBytes(newDeliverable) > view.limits.maxItemBytes ? ' is-over' : ''}`}>
-                      {normalizedBytes(newDeliverable) > view.limits.maxItemBytes
-                        ? t('budget.itemOver', { limit: formatBytes(t, view.limits.maxItemBytes) })
-                        : `${formatBytes(t, normalizedBytes(newDeliverable))} / ${formatBytes(t, view.limits.maxItemBytes)}`}
-                    </span>
-                    {newDeliverable.length > 0 && (
-                      <ActionButton
-                        variant="outline"
-                        disabled={!editable || saving || unknownBlocked}
-                        onClick={() => draft.clearComposer('deliverable')}
-                      >
-                        {t('composer.clear')}
-                      </ActionButton>
-                    )}
-                    <ActionButton
-                      variant="outline"
-                      disabled={!editable || !normalizedNonEmpty(newDeliverable) || normalizedBytes(newDeliverable) > view.limits.maxItemBytes}
-                      onClick={() => draft.addItem(view, 'deliverable', newDeliverable, () => draft.setNewDeliverable(''))}
-                    >
-                      {t('composer.addDeliverable')}
-                    </ActionButton>
-                    <ActionButton
-                      variant="outline"
-                      disabled={!editable || !normalizedNonEmpty(newDeliverable) || normalizedBytes(newDeliverable) > view.limits.maxItemBytes}
-                      onClick={() => draft.addProposal(view, 'deliverable', newDeliverable, () => draft.setNewDeliverable(''))}
-                    >
-                      {t('composer.proposeDeliverable')}
-                    </ActionButton>
-                  </div>
-                </div>
-                {editor !== null && editor.kind !== 'objective' && deliverables.some(item => item.id === editor.item.id) && (
-                  <div className="charter-inlineeditor">
-                    <TextEditor
-                      value={editorText}
-                      onChange={value => draft.setEditorText(value)}
-                      onSave={() => draft.saveEditor(view)}
-                      onCancel={() => draft.closeEditor()}
-                      maxBytes={view.limits.maxItemBytes}
-                      previousBytes={editor.kind === 'edit' ? normalizedBytes(editor.item.text) : undefined}
-                      label={t('editor.deliverableAria')}
-                      t={t}
-                    />
-                  </div>
-                )}
-              </section>
-            )}
-
-            {area === 'review' && (
-              <header className="charter-areahead">
-                <h2>{t('review.heading')}</h2>
-                <p className="charter-hint">{t('review.headingHint')}</p>
-              </header>
-            )}
-
-            {area === 'review' && source.proposeMessage !== undefined && (
-              <section className="charter-card charter-section charter-messageproposal" aria-labelledby="charter-message-proposal-title">
-                <div className="charter-cardhead">
-                  <div className="charter-cardtitle">
-                    <h3 id="charter-message-proposal-title">{t('review.messageProposal')}</h3>
-                    <p className="charter-hint">{t('review.messageProposalHint')}</p>
-                  </div>
-                </div>
-                <div className="charter-messageproposal__form">
-                  <div className="charter-messageproposal__field">
-                    <span className="charter-fieldlabel">{t('message.pick')}</span>
-                    <div
-                      className="charter-messageproposal__picker"
-                      onBlur={event => {
-                        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setMessageMenuOpen(false)
-                      }}
-                      onKeyDown={event => {
-                        if (event.key === 'Escape') {
-                          setMessageMenuOpen(false)
-                          return
-                        }
-                        if (!messageMenuOpen || (event.key !== 'ArrowDown' && event.key !== 'ArrowUp')) return
-                        const options = [...messageMenuRef.current?.querySelectorAll<HTMLButtonElement>('[role="option"]') ?? []]
-                        if (options.length === 0) return
-                        event.preventDefault()
-                        const current = options.indexOf(document.activeElement as HTMLButtonElement)
-                        const next = event.key === 'ArrowDown'
-                          ? (current + 1) % options.length
-                          : (current - 1 + options.length) % options.length
-                        options[next]?.focus()
-                      }}
-                    >
-                      <button
-                        type="button"
-                        className="charter-messageproposal__trigger"
-                        aria-label={t('message.pick')}
-                        aria-haspopup="listbox"
-                        aria-expanded={messageMenuOpen}
-                        disabled={messageCandidates.length === 0 || saving || unknownBlocked}
-                        onClick={() => setMessageMenuOpen(open => !open)}
-                      >
-                        <span>
-                          {selectedMessage === undefined
-                            ? t('message.pickPlaceholder')
-                            : `#${selectedMessage.seq} · ${shortText(selectedMessage.excerpt, 72)}`}
-                        </span>
-                        <span aria-hidden="true" className="charter-messageproposal__chevron">⌄</span>
-                      </button>
-                      {messageMenuOpen && (
-                        <div
-                          ref={messageMenuRef}
-                          className="charter-messageproposal__menu"
-                          role="listbox"
-                          aria-label={t('message.pick')}
-                        >
-                          {messageCandidates.map(candidate => (
-                            <button
-                              key={candidate.seq}
-                              type="button"
-                              role="option"
-                              aria-selected={candidate.seq === messageSeq}
-                              className={`charter-messageproposal__option${candidate.seq === messageSeq ? ' is-selected' : ''}`}
-                              title={candidate.excerpt}
-                              onClick={() => {
-                                setMessageSeq(candidate.seq)
-                                setMessageDraft(candidate.text ?? '')
-                                setMessageMenuOpen(false)
-                              }}
-                            >
-                              <span className="charter-messageproposal__optionseq">#{candidate.seq}</span>
-                              <span className="charter-messageproposal__optiontext">{candidate.excerpt}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <label className="charter-messageproposal__field">
-                    <span className="charter-fieldlabel">{t('message.textLabel')}</span>
-                    <textarea
-                      aria-label={t('message.textLabel')}
-                      className="charter-messageproposal__textarea"
-                      disabled={messageSeq !== undefined && !messageTextAvailable}
-                      value={messageDraft}
-                      onChange={event => setMessageDraft(event.target.value)}
-                    />
-                    <span className="charter-hint">
-                      {messageSeq !== undefined && !messageTextAvailable
-                        ? t('message.legacyUnavailable')
-                        : selectedMessage?.truncated === true
-                          ? t('message.truncated')
-                          : t('message.textHint')}
-                    </span>
-                  </label>
-                  <div className="charter-messageproposal__field">
-                    <span className="charter-fieldlabel">{t('message.kind')}</span>
-                    <div className="charter-messageproposal__kind" role="group" aria-label={t('message.kind')}>
-                      <button
-                        type="button"
-                        className={`charter-messageproposal__choice${messageKind === 'invariant' ? ' is-active' : ''}`}
-                        aria-pressed={messageKind === 'invariant'}
-                        onClick={() => setMessageKind('invariant')}
-                      >
-                        {t('invariants.kicker')}
-                      </button>
-                      <button
-                        type="button"
-                        className={`charter-messageproposal__choice${messageKind === 'deliverable' ? ' is-active' : ''}`}
-                        aria-pressed={messageKind === 'deliverable'}
-                        onClick={() => setMessageKind('deliverable')}
-                      >
-                        {t('deliverables.kicker')}
-                      </button>
-                    </div>
-                  </div>
-                  <div className="charter-messageproposal__actions">
-                    <span className={`charter-budget${messageOverBudget ? ' is-over' : ''}`}>
-                      {messageOverBudget
-                        ? t('budget.itemOver', { limit: formatBytes(t, view.limits.maxItemBytes) })
-                        : `${formatBytes(t, messageBytes)} / ${formatBytes(t, view.limits.maxItemBytes)}`}
-                    </span>
-                    <ActionButton
-                      variant="outline"
-                      disabled={saving || unknownBlocked || !messageCanSave}
-                      onClick={() => {
-                        if (!messageCanSave || messageSeq === undefined) return
-                        void draft.proposeLatestMessage({
-                          seq: messageSeq,
-                          kind: messageKind,
-                          text: messageDraft.trim(),
-                        })
-                      }}
-                    >
-                      {t('review.saveLatestMessage')}
-                    </ActionButton>
-                  </div>
-                </div>
-              </section>
-            )}
-
-            {area === 'review' && inactiveItems.length > 0 && (
-              <section className="charter-card charter-section" aria-labelledby="charter-inactive-title">
-                <div className="charter-cardhead">
-                  <div className="charter-cardtitle">
-                    <h3 id="charter-inactive-title">{t('review.inactiveItems')}</h3>
-                  </div>
-                  <span className="charter-count">{inactiveItems.length}</span>
-                </div>
-                <ul className="charter-timeline">
-                  {inactiveItems.slice(0, reviewLimit).map(item => (
-                    <li key={item.id} className="charter-timeline__row">
-                      <span className="charter-timeline__kind">{item.kind === 'invariant' ? t('invariants.kicker') : t('deliverables.kicker')}</span>
-                      <span className="charter-timeline__text">{item.text}</span>
-                      <span className="charter-timeline__state">
-                        {item.review === 'rejected' ? t('review.rejected') : t(`review.lifecycle.${item.lifecycle}`)}
-                      </span>
-                      {(item.supersedes !== undefined || item.supersededBy !== undefined) && (
-                        <span className="charter-timeline__lineage">{t('review.lineage')}</span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-
-            {area === 'review' && closedObjectiveProposals.length > 0 && (
-              <section className="charter-card charter-section" aria-labelledby="charter-objective-history-title">
-                <div className="charter-cardhead">
-                  <div className="charter-cardtitle">
-                    <h3 id="charter-objective-history-title">{t('review.objectiveHistory')}</h3>
-                  </div>
-                  <span className="charter-count">{closedObjectiveProposals.length}</span>
-                </div>
-                <ul className="charter-timeline">
-                  {closedObjectiveProposals.slice(0, reviewLimit).map(proposal => (
-                    <li key={proposal.id} className="charter-timeline__row">
-                      <span className="charter-timeline__kind">{t('objective.kicker')}</span>
-                      <span className="charter-timeline__text">{proposal.text === '' ? proposal.textDigest ?? '' : proposal.text}</span>
-                      <span className="charter-timeline__state">{t(`review.proposal.${proposal.review}`)}</span>
-                      <span className="charter-timeline__lineage">
-                        {t('review.proposalRevision', {
-                          revision: proposal.appliedRevision ?? proposal.reviewedAtRevision ?? proposal.createdRevision,
-                        })}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-
-            {area === 'review' && pendingItemProposals.length > 0 && (
-              <section className="charter-card charter-section" aria-labelledby="charter-item-proposals-title">
-                <div className="charter-cardhead">
-                  <div className="charter-cardtitle">
-                    <h3 id="charter-item-proposals-title">{t('review.itemProposals')}</h3>
-                  </div>
-                  <span className="charter-count">{pendingItemProposals.length}</span>
-                </div>
-                <ul className="charter-proposal-list">
-                  {pendingItemProposals.slice(0, reviewLimit).map(item => {
-                    const batch = batchByItem.get(item.id)
-                    return (
-                      <li key={item.id} className="charter-proposal" data-proposal-id={item.id} tabIndex={-1}>
-                        <p className="charter-proposal__text">{item.text}</p>
-                        <span className="charter-proposal__meta">
-                          {item.kind === 'invariant' ? t('invariants.kicker') : t('deliverables.kicker')}
-                          {batch === undefined ? '' : ` · ${t(`review.source.${batch.sourceKind}` as never)}`}
-                          {item.contentModified === true ? ` · ${t('review.contentModified')}` : ''}
-                        </span>
-                        <div className="charter-proposal__actions">
-                          <ActionButton
-                            variant="outline"
-                            disabled={saving || unknownBlocked}
-                            onClick={() => draft.stage(view, { type: 'item.accept', itemId: item.id })}
-                          >
-                            {t('item.accept')}
-                          </ActionButton>
-                          <ActionButton
-                            variant="outline"
-                            disabled={saving || unknownBlocked}
-                            onClick={() => draft.stage(view, { type: 'item.reject', itemId: item.id })}
-                          >
-                            {t('item.reject')}
-                          </ActionButton>
-                        </div>
-                      </li>
-                    )
-                  })}
-                </ul>
-              </section>
-            )}
-
-            {area === 'review' && pendingObjectiveProposals.length > 0 && (
-              <section className="charter-card charter-section" aria-labelledby="charter-objective-proposals-title">
-                <div className="charter-cardhead">
-                  <div className="charter-cardtitle">
-                    <h3 id="charter-objective-proposals-title">{t('review.objectiveProposals')}</h3>
-                  </div>
-                  <span className="charter-count">{pendingObjectiveProposals.length}</span>
-                </div>
-                <ul className="charter-proposal-list">
-                  {pendingObjectiveProposals.slice(0, reviewLimit).map(proposal => {
-                    const reason = proposalReasons[proposal.id] ?? ''
-                    const needsReason = view.objective !== null
-                    return (
-                      <li key={proposal.id} className="charter-proposal">
-                        <p className="charter-proposal__text">{proposal.text}</p>
-                        <span className="charter-proposal__meta">
-                          {t('review.proposalRevision', { revision: proposal.createdRevision })}
-                        </span>
-                        {needsReason && (
-                          <input
-                            className="charter-proposal__reason"
-                            value={reason}
-                            placeholder={t('review.objectiveReason')}
-                            aria-label={t('review.objectiveReason')}
-                            onChange={event => setProposalReasons(previous => ({
-                              ...previous,
-                              [proposal.id]: event.target.value,
-                            }))}
-                          />
-                        )}
-                        <div className="charter-proposal__actions">
-                          <ActionButton
-                            variant="outline"
-                            disabled={saving || unknownBlocked || (needsReason && reason.trim().length === 0)}
-                            onClick={() => draft.stage(view, {
-                              type: 'objective.accept',
-                              proposalId: proposal.id,
-                              ...(needsReason ? { reason } : {}),
-                            })}
-                          >
-                            {t('review.acceptObjective')}
-                          </ActionButton>
-                          <ActionButton
-                            variant="outline"
-                            disabled={saving || unknownBlocked}
-                            onClick={() => draft.stage(view, { type: 'objective.reject', proposalId: proposal.id })}
-                          >
-                            {t('review.rejectObjective')}
-                          </ActionButton>
-                        </div>
-                      </li>
-                    )
-                  })}
-                </ul>
-              </section>
-            )}
-
-            {area === 'review' && (view.proposalBatches?.length ?? 0) > 0 && (
-              <section className="charter-card charter-section" aria-labelledby="charter-batches-title">
-                <div className="charter-cardhead">
-                  <div className="charter-cardtitle">
-                    <h3 id="charter-batches-title">{t('review.title')}</h3>
-                  </div>
-                  <span className="charter-count">{view.proposalBatches!.length}</span>
-                </div>
-                <ol className="charter-batch-list">
-                  {view.proposalBatches!.slice().reverse().slice(0, reviewLimit).map(batch => {
-                    const pending = batch.candidates.filter(candidate =>
-                      candidate.kind === 'item'
-                      && view.items.some(item => item.id === candidate.id && item.review === 'pending')).length
-                    return (
-                      <li key={batch.id} className="charter-batch">
-                        <span className="charter-batch__source">{t(`review.source.${batch.source.kind}`)}</span>
-                        <span className="charter-batch__revision">{t('review.captured', { revision: batch.capturedAtRevision })}</span>
-                        <span className="charter-batch__count">{t('review.pendingCandidates', { count: pending })}</span>
-                        {batch.sourceIntegrity !== undefined && batch.sourceIntegrity !== 'not-applicable' && (
-                          <span className="charter-batch__count">
-                            {t('review.sourceIntegrity', { integrity: batch.sourceIntegrity })}
-                          </span>
-                        )}
-                      </li>
-                    )
-                  })}
-                </ol>
-              </section>
-            )}
-
-            {area === 'review' && (
-              <>
-                {bootstrapPhase === 'checking' && (
-                  <div className="charter-notice">
-                    <span role="status">{t('bootstrap.loading')}</span>
-                  </div>
-                )}
-                {bootstrapPhase === 'failed' && (
-                  <div className="charter-notice charter-notice--danger">
-                    <span role="alert">
-                      {bootstrapProblemText(bootstrapProblem, t) ?? t('bootstrap.requestFailed')}
-                    </span>
-                    <ErrorDetails detail={bootstrapProblem?.detail} t={t} />
-                    <ActionButton onClick={() => draft.retryBootstrap(view)}>{t('button.retry')}</ActionButton>
-                  </div>
-                )}
-                {bootstrapPhase === 'unavailable' && (
-                  <div className="charter-notice">
-                    <span role="status">
-                      {bootstrapProblemText(bootstrapProblem, t) ?? t('bootstrap.unavailable')}
-                    </span>
-                    <ErrorDetails detail={bootstrapProblem?.detail} t={t} />
-                    <ActionButton onClick={() => draft.retryBootstrap(view)}>{t('button.retry')}</ActionButton>
-                  </div>
-                )}
-                {(bootstrapPhase === 'no-summary' || bootstrapPhase === 'not-live' || bootstrapPhase === 'idle') && (
-                  <div className="charter-notice">
-                    <span role="status">
-                      {bootstrapPhase === 'no-summary'
-                        ? t('bootstrap.noSummary')
-                        : bootstrapPhase === 'not-live' ? t('bootstrap.notLive') : t('bootstrap.idle')}
-                    </span>
-                    <ActionButton onClick={() => draft.retryBootstrap(view)}>{t('bootstrap.checkAgain')}</ActionButton>
-                  </div>
-                )}
-                {bootstrapPhase === 'dismissed' && (
-                  <div className="charter-notice">
-                    <span role="status">{t('bootstrap.dismissed')}</span>
-                    <ActionButton onClick={() => draft.retryBootstrap(view)}>{t('bootstrap.checkAgain')}</ActionButton>
-                  </div>
-                )}
-                {ops.length > 0 && (
-                  <div className="charter-notice charter-notice--warning">
-                    <span role="status">{t('bootstrap.blocked')}</span>
-                  </div>
-                )}
-                {bootstrap !== null && ops.length === 0 && editor !== null && (
-                  <div className="charter-notice charter-notice--warning">
-                    <span role="alert">{t('bootstrap.blockedEditor')}</span>
-                    <ActionButton onClick={() => draft.closeEditor()}>{t('editor.cancel')}</ActionButton>
-                  </div>
-                )}
-                {bootstrap !== null && ops.length === 0 && editor === null && (
-                  <section className="charter-card charter-bootstrap" aria-labelledby="charter-bootstrap-title">
-                    <div className="charter-cardhead">
-                      <div className="charter-cardtitle">
-                        <span className="charter-kicker">{t('bootstrap.kicker')}</span>
-                        <h3 id="charter-bootstrap-title">{t('bootstrap.title')}</h3>
-                      </div>
-                      <span className={`charter-budget${bootstrapBudgetOver ? ' is-over' : ''}`}>
-                        {t('bootstrap.budget', {
-                          used: formatBytes(t, bootstrapPromptBytes),
-                          limit: formatBytes(t, view.limits.maxPromptBytes),
-                        })}
-                      </span>
-                    </div>
-                    <p className="charter-copy">{t('bootstrap.body')}</p>
-                    <span className="charter-source">
-                      {bootstrap.source.shadowedTokens === undefined
-                        ? t('bootstrap.sourcePlain')
-                        : t('bootstrap.source', { tokens: bootstrap.source.shadowedTokens })}
-                    </span>
-                    <div className="charter-bootstrap__summary">
-                      <StatusTag tone="info">{t('bootstrap.summary', { active: bootstrapPlan.active, pending: bootstrapPlan.pending })}</StatusTag>
-                      <span role="status">
-                        {t('bootstrap.reviewCounts', {
-                          total: bootstrapItems.length,
-                          visible: Math.min(bootstrapItems.length, bootstrapVisibleCount),
-                          selected: bootstrapItems.filter(item => item.selected).length,
-                        })}
-                      </span>
-                      <ActionButton
-                        disabled={bootstrapSaving || unknownBlocked}
-                        onClick={() => draft.setVisibleBootstrapSelected(true)}
-                      >
-                        {t('bootstrap.selectShown', { count: Math.min(bootstrapItems.length, bootstrapVisibleCount) })}
-                      </ActionButton>
-                      <ActionButton
-                        disabled={bootstrapSaving || unknownBlocked}
-                        onClick={() => draft.setVisibleBootstrapSelected(false)}
-                      >
-                        {t('bootstrap.clearShown')}
-                      </ActionButton>
-                    </div>
-                    {view.objective === null && (
-                      <label className="charter-bootstrap__field">
-                        <span>{t('bootstrap.objective')}</span>
-                        <textarea
-                          id={`${bootstrapId}-objective`}
-                          value={bootstrapObjective}
-                          rows={2}
-                          disabled={bootstrapSaving || unknownBlocked}
-                          aria-label={t('bootstrap.objective')}
-                          aria-invalid={bootstrapObjectiveOver || inspectUserText(bootstrapObjective).issue !== undefined}
-                          aria-describedby={`${bootstrapId}-objective-budget`}
-                          onChange={event => draft.setBootstrapObjective(event.target.value)}
-                        />
-                        <span id={`${bootstrapId}-objective-budget`} className={`charter-budget${bootstrapObjectiveOver ? ' is-over' : ''}`}>
-                          {bootstrapObjectiveOver
-                            ? t('budget.objectiveOver', { limit: formatBytes(t, view.limits.maxObjectiveBytes) })
-                            : `${formatBytes(t, normalizedBytes(bootstrapObjective))} / ${formatBytes(t, view.limits.maxObjectiveBytes)}`}
-                        </span>
-                      </label>
-                    )}
-                    {(() => {
-                      const ordered = [
-                        ...bootstrapItems.filter(item => item.kind === 'invariant').map(item => ({ item, kind: 'invariant' as const })),
-                        ...bootstrapItems.filter(item => item.kind === 'deliverable').map(item => ({ item, kind: 'deliverable' as const })),
-                      ]
-                      const visible = ordered.slice(0, bootstrapVisibleCount)
-                      const groups = [
-                        { kind: 'invariant' as const, label: t('bootstrap.groupInvariants'), items: visible.filter(entry => entry.kind === 'invariant') },
-                        { kind: 'deliverable' as const, label: t('bootstrap.groupDeliverables'), items: visible.filter(entry => entry.kind === 'deliverable') },
-                      ]
-                      return (
-                        <>
-                          {groups.map(group => group.items.length === 0 ? null : (
-                            <div className="charter-bootstrap__group" key={group.kind}>
-                              <h4>{group.label} ({group.items.length})</h4>
-                              {group.items.map(({ item }) => {
-                                const index = ordered.findIndex(entry => entry.item.id === item.id)
-                                const bytes = normalizedBytes(item.text)
-                                const outcome = bootstrapPlan.outcomes[item.id]
-                                const checkboxId = `${bootstrapId}-include-${item.id}`
-                                const textId = `${bootstrapId}-text-${item.id}`
-                                return (
-                                  <div className="charter-bootstrap__item" key={item.id}>
-                                    <input
-                                      id={checkboxId}
-                                      type="checkbox"
-                                      checked={item.selected}
-                                      disabled={bootstrapSaving || unknownBlocked}
-                                      aria-label={t('bootstrap.includeAria', { index: index + 1 })}
-                                      onChange={event => draft.updateBootstrapItem(item.id, { selected: event.target.checked })}
-                                    />
-                                    <label className="charter-bootstrap__checklabel" htmlFor={checkboxId}>{t('bootstrap.selected')}</label>
-                                    <div className="charter-draftfield">
-                                      <label className="charter-bootstrap__textlabel" htmlFor={textId}>{t('bootstrap.editAria', { index: index + 1 })}</label>
-                                      <textarea
-                                        id={textId}
-                                        value={item.text}
-                                        rows={2}
-                                        disabled={bootstrapSaving || unknownBlocked}
-                                        aria-invalid={item.text.trim().length === 0 || normalizedBytes(item.text) > view.limits.maxItemBytes || inspectUserText(item.text).issue !== undefined}
-                                        aria-describedby={`${textId}-meta`}
-                                        onChange={event => draft.updateBootstrapItem(item.id, { text: event.target.value })}
-                                      />
-                                      <span className="charter-draftfield__meta" id={`${textId}-meta`}>
-                                        {outcome !== undefined && (
-                                          <StatusTag tone={outcome === 'active' ? 'success' : 'warning'}>
-                                            {outcome === 'active' ? t('bootstrap.outcomeActive') : t('bootstrap.outcomePending')}
-                                          </StatusTag>
-                                        )}
-                                        <span className={`charter-budget${bytes > view.limits.maxItemBytes ? ' is-over' : ''}`}>
-                                          {bytes > view.limits.maxItemBytes
-                                            ? t('bootstrap.itemOver', { limit: formatBytes(t, view.limits.maxItemBytes) })
-                                            : `${formatBytes(t, bytes)} / ${formatBytes(t, view.limits.maxItemBytes)}`}
-                                        </span>
-                                      </span>
-                                    </div>
-                                  </div>
-                                )
-                              })}
-                            </div>
-                          ))}
-                          {ordered.length > visible.length && (
-                            <ActionButton disabled={bootstrapSaving || unknownBlocked} onClick={() => draft.showMoreBootstrapCandidates(40)}>
-                              {t('bootstrap.showMore', { count: Math.min(40, ordered.length - visible.length) })}
-                            </ActionButton>
-                          )}
-                        </>
-                      )
-                    })()}
-                    {bootstrapTextIssue !== undefined && (
-                      <div className="charter-notice charter-notice--danger" role="alert">
-                        {textIssueMessage(bootstrapTextIssue.issue, t)}
-                        {bootstrapTextIssue.where === 'candidate'
-                          ? ` (${t('bootstrap.editAria', { index: (bootstrapTextIssue.index ?? 0) + 1 })})`
-                          : ''}
-                      </div>
-                    )}
-                    {bootstrapBudgetOver && (
-                      <div className="charter-notice charter-notice--danger" role="alert">
-                        {t('bootstrap.overBudget', { limit: formatBytes(t, view.limits.maxPromptBytes) })}
-                      </div>
-                    )}
-                    {bootstrapPlan.pending > 0 && (
-                      <div className="charter-notice charter-notice--warning" role="note">
-                        {bootstrapPlan.pending === 1
-                          ? t('bootstrap.pendingOne')
-                          : t('bootstrap.pendingOther', { count: bootstrapPlan.pending })}
-                      </div>
-                    )}
-                    {bootstrapStorageOver && (
-                      <div className="charter-notice charter-notice--danger" role="alert">
-                        {t('bootstrap.overItems')}
-                      </div>
-                    )}
-                    {bootstrapProblem !== null && bootstrapProblem.kind === 'save-failed' && (
-                      <div className="charter-notice charter-notice--warning" role="alert">
-                        {bootstrapProblemText(bootstrapProblem, t)}
-                      </div>
-                    )}
-                    <div className="charter-bootstrap__actions">
-                      <ActionButton
-                        variant="primary"
-                        className="charter-actionbar__primary"
-                        disabled={bootstrapReplay ? bootstrapSaving : !canApplyBootstrap}
-                        ariaDescribedBy={applyHintId}
-                        onClick={applyBootstrapDraft}
-                        busy={bootstrapSaving}
-                      >
-                        {bootstrapSaving
-                          ? t('footer.applying')
-                          : bootstrapReplay ? t('footer.retryApply') : t('bootstrap.apply')}
-                      </ActionButton>
-                      <ActionButton
-                        disabled={bootstrapSaving || unknownBlocked}
-                        onClick={() => draft.dismissBootstrap()}
-                      >
-                        {t('bootstrap.discard')}
-                      </ActionButton>
-                      {unknownReplay && (
-                        <ActionButton variant="outline" onClick={abandonUnknown}>
-                          {confirmAbandon ? t('footer.abandonConfirm') : t('footer.abandon')}
-                        </ActionButton>
-                      )}
-                    </div>
-                  </section>
-                )}
-              </>
-            )}
-
-            {area === 'review' && (
-              (pendingItemProposals.length > reviewLimit
-                || inactiveItems.length > reviewLimit
-                || closedObjectiveProposals.length > reviewLimit
-                || pendingObjectiveProposals.length > reviewLimit
-                || (view.proposalBatches?.length ?? 0) > reviewLimit)
-                ? (
-                    <div className="charter-recovery__actions">
-                      <ActionButton variant="outline" onClick={() => setReviewLimit(current => current + 50)}>
-                        {t('history.showMore', { count: 50 })}
-                      </ActionButton>
-                    </div>
-                  )
-                : null
-            )}
-
-            {area === 'diagnostics' && (
-              <>
-                {source.runValidators !== undefined && (
-                  <section className="charter-card charter-section charter-validator" aria-labelledby="charter-validator-title">
-                    <div className="charter-cardhead">
-                      <div className="charter-cardtitle">
-                        <span className="charter-kicker">{t('diagnostics.kicker')}</span>
-                        <h3 id="charter-validator-title">{t('validators.title')}</h3>
-                      </div>
-                    </div>
-                    <p className="charter-hint">{t('validators.hint')}</p>
-                    <div className="charter-validator__form">
-                      <label className="charter-validator__field">
-                        <span className="charter-fieldlabel">{t('validators.targetLabel')}</span>
-                        <select
-                          aria-label={t('validators.itemAria')}
-                          value={validatorItemId}
-                          onChange={event => setValidatorItemId(event.target.value)}
-                        >
-                          <option value="">{t('validators.pickItem')}</option>
-                          {view.items
-                            .filter(item => item.review === 'accepted' && item.lifecycle === 'current')
-                            .map(item => (
-                              <option key={item.id} value={item.id} title={item.text}>
-                                {item.kind === 'invariant' ? t('invariants.kicker') : t('deliverables.kicker')} · {shortText(item.text, 14)}
-                              </option>
-                            ))}
-                        </select>
-                        <span className="charter-hint">{t('validators.targetHint')}</span>
-                      </label>
-                      <div className="charter-validator__row">
-                        <label className="charter-validator__field">
-                          <span className="charter-fieldlabel">{t('validators.methodLabel')}</span>
-                          <select
-                            aria-label={t('validators.kindAria')}
-                            value={validatorKind}
-                            onChange={event => setValidatorKind(event.target.value as typeof validatorKind)}
-                          >
-                            <option value="workspace.path-exists">{t('validators.kind.path-exists')}</option>
-                            <option value="workspace.file-digest">{t('validators.kind.file-digest')}</option>
-                            <option value="workspace.file-contains">{t('validators.kind.file-contains')}</option>
-                          </select>
-                        </label>
-                        <label className="charter-validator__field">
-                          <span className="charter-fieldlabel">{t('validators.pathLabel')}</span>
-                          <input
-                            aria-label={t('validators.pathAria')}
-                            placeholder={t('validators.pathPlaceholder')}
-                            value={validatorPath}
-                            onChange={event => setValidatorPath(event.target.value)}
-                          />
-                        </label>
-                      </div>
-                      {validatorKind !== 'workspace.path-exists' && (
-                        <label className="charter-validator__field">
-                          <span className="charter-fieldlabel">{t('validators.expectationLabel')}</span>
-                          <input
-                            aria-label={t('validators.expectationAria')}
-                            placeholder={validatorKind === 'workspace.file-digest' ? 'sha256:...' : t('validators.containsPlaceholder')}
-                            value={validatorExpectation}
-                            onChange={event => setValidatorExpectation(event.target.value)}
-                          />
-                        </label>
-                      )}
-                      <div className="charter-validator__actions">
-                        <ActionButton
-                          variant="outline"
-                          disabled={validatorRunning || validatorItemId === '' || validatorPath.trim() === ''}
-                          onClick={() => {
-                            void (async () => {
-                              setValidatorRunning(true)
-                              setValidatorFeedback(null)
-                              try {
-                                const result = await source.runValidators!([{
-                                  itemId: validatorItemId,
-                                  validator: {
-                                    kind: validatorKind,
-                                    path: validatorPath.trim(),
-                                    ...(validatorKind === 'workspace.file-digest' ? { expectedDigest: validatorExpectation.trim() } : {}),
-                                    ...(validatorKind === 'workspace.file-contains' ? { contains: validatorExpectation } : {}),
-                                  },
-                                }])
-                                setValidatorFeedback(result.ok ? t('validators.done') : errorLabel(result.code, t))
-                              } catch {
-                                setValidatorFeedback(t('validators.failed'))
-                              } finally {
-                                setValidatorRunning(false)
-                              }
-                            })()
-                          }}
-                        >
-                          {t('validators.run')}
-                        </ActionButton>
-                      </div>
-                    </div>
-                    {validatorFeedback !== null && <p className="charter-hint" role="status">{validatorFeedback}</p>}
-                  </section>
-                )}
-                {source.sourceIntegrity !== undefined && (
-                  <section className="charter-card charter-section" aria-labelledby="charter-integrity-title">
-                    <div className="charter-cardhead">
-                      <div className="charter-cardtitle">
-                        <span className="charter-kicker">{t('diagnostics.kicker')}</span>
-                        <h3 id="charter-integrity-title">{t('integrity.title')}</h3>
-                      </div>
-                    </div>
-                    <p className="charter-hint">{t('integrity.hint')}</p>
-                    <div className="charter-validator__actions">
-                      <ActionButton
-                        variant="outline"
-                        onClick={() => {
-                          void (async () => {
-                            try {
-                              const result = await source.sourceIntegrity!()
-                              if (result.ok) {
-                                const changed = result.items.filter(item => item.integrity !== 'intact').length
-                                  + result.batches.filter(batch => batch.integrity !== 'intact' && batch.integrity !== 'not-applicable').length
-                                setIntegrityFeedback(
-                                  t('integrity.summary', {
-                                    count: result.items.length + result.batches.length,
-                                    changed,
-                                  }) + (result.truncated === true ? ` ${t('integrity.truncated')}` : ''),
-                                )
-                              } else {
-                                setIntegrityFeedback(errorLabel(result.code, t))
-                              }
-                            } catch {
-                              setIntegrityFeedback(t('validators.failed'))
-                            }
-                          })()
-                        }}
-                      >
-                        {t('integrity.check')}
-                      </ActionButton>
-                    </div>
-                    {integrityFeedback !== null && <p className="charter-hint" role="status">{integrityFeedback}</p>}
-                  </section>
-                )}
-                <section className="charter-card charter-recovery" aria-labelledby="charter-recovery-title">
-                  <div className="charter-cardhead">
-                    <div className="charter-cardtitle">
-                      <span className="charter-kicker">{t('recovery.title')}</span>
-                      <h3 id="charter-recovery-title">{t('recovery.recordTitle')}</h3>
-                    </div>
-                    <StatusTag tone={recordState?.kind === 'healthy' ? 'success' : 'warning'}>
-                      {recordState?.kind === 'healthy'
-                        ? t('recovery.healthy')
-                        : recordState?.kind === 'absent-unconfirmed'
-                          ? t('recovery.absent')
-                          : recordState?.kind === 'invalid'
-                            ? recordState.reason === 'future-schema'
-                              ? t('recovery.futureSchema')
-                              : t('recovery.invalid')
-                            : recordState?.kind === 'lifecycle-mismatch'
-                              ? t('recovery.mismatch')
-                              : recordState?.kind === 'write-uncertain'
-                                ? t('recovery.uncertain')
-                                : t('recovery.unknown')}
-                    </StatusTag>
-                  </div>
-                  <dl className="charter-recovery__facts">
-                    <div>
-                      <dt>{t('recovery.revision')}</dt>
-                      <dd>{view.revision}</dd>
-                    </div>
-                    <div>
-                      <dt>{t('recovery.lifecycle')}</dt>
-                      <dd><code>{lifecycleLabel(view.lifecycle)}</code></dd>
-                    </div>
-                    <div>
-                      <dt>{t('recovery.digest')}</dt>
-                      <dd><code>{recordDigest === undefined ? '-' : shortText(recordDigest.replace('sha256:', ''), 20)}</code></dd>
-                    </div>
-                    {view.overBudget && <div><dt>{t('recovery.overBudget')}</dt><dd>!</dd></div>}
-                  </dl>
-                  <p className="charter-hint">{t('recovery.subtitle')}</p>
-                </section>
-
-                <section className="charter-card charter-recovery" aria-labelledby="charter-export-title">
-                  <div className="charter-cardhead">
-                    <div className="charter-cardtitle">
-                      <span className="charter-kicker">{t('recovery.exportTitle')}</span>
-                      <h3 id="charter-export-title">{t('recovery.export')}</h3>
-                    </div>
-                  </div>
-                  <p className="charter-hint">{t('recovery.exportHint')}</p>
-                  <div className="charter-notice charter-notice--warning" role="note">
-                    <span>{t('recovery.sensitive')}</span>
-                  </div>
-                  <div className="charter-recovery__actions">
-                    <ActionButton
-                      variant="primary"
-                      disabled={!canExport || recoveryBusy || exporting}
-                      onClick={exportArchive}
-                      busy={exporting}
-                    >
-                      {t('recovery.export')}
-                    </ActionButton>
-                    {!maintenanceEnabled && (
-                      <span className="charter-hint" role="note">
-                        {capabilities?.recordMaintenanceReason === 'record-limit'
-                          ? t('recovery.recordLimit')
-                          : t('recovery.capabilityUnavailable')}
-                      </span>
-                    )}
-                    {maintenanceEnabled && !exportableState && (
-                      <span className="charter-hint" role="note">{t('recovery.noRawRecord')}</span>
-                    )}
-                  </div>
-                  {exportProblem !== null && (
-                    <p className="charter-hint" role="alert">{exportProblem}</p>
-                  )}
-                </section>
-
-                <section className="charter-card charter-recovery" aria-labelledby="charter-restore-title">
-                  <div className="charter-cardhead">
-                    <div className="charter-cardtitle">
-                      <span className="charter-kicker">{t('recovery.title')}</span>
-                      <h3 id="charter-restore-title">{t('recovery.restoreTitle')}</h3>
-                    </div>
-                  </div>
-                  {recordState?.kind === 'write-uncertain' && (
-                    <div className="charter-notice charter-notice--warning" role="alert">
-                      <span>{t('recovery.writeUncertain')}</span>
-                    </div>
-                  )}
-                  {recordState?.kind === 'absent-unconfirmed' && (
-                    <div className="charter-notice" role="note">
-                      <span>{t('recovery.absentHint')}</span>
-                    </div>
-                  )}
-                  {recordState?.kind === 'healthy' && (
-                    <p className="charter-hint">{t('recovery.replaceHint')}</p>
-                  )}
-                  {maintenanceProblem !== null && (
-                    <div className="charter-recovery__problem">
-                      <div className="charter-notice charter-notice--warning" role="alert">
-                        <span>
-                          {t('recovery.problem')}
-                          {maintenanceProblem.code === undefined ? '' : ` (${errorText(String(maintenanceProblem.code))})`}
-                        </span>
-                        <ErrorDetails detail={maintenanceProblem.detail} t={t} />
-                      </div>
-                      <ActionButton variant="outline" onClick={() => draft.dismissMaintenanceProblem()}>
-                        {t('recovery.dismiss')}
-                      </ActionButton>
-                    </div>
-                  )}
-                  {draftState.maintenanceSaving && (
-                    <div className="charter-notice" role="status">
-                      <span>{t('recovery.inFlight')}</span>
-                    </div>
-                  )}
-                  {(maintenanceReplay || (unknownBlocked && (draftState.attempt?.kind === 'initialize' || draftState.attempt?.kind === 'restore'))) && (
-                    <div className="charter-recovery__problem">
-                      <div className="charter-notice" role="status">
-                        <span>{t('recovery.unknownOutcome')}</span>
-                      </div>
-                      {retainedArchive != null && (
-                        <dl className="charter-recovery__retained">
-                          <div><dt>{t('recovery.sourceSession')}</dt><dd>{retainedArchive.source.sessionId}</dd></div>
-                          <div><dt>{t('recovery.lifecycle')}</dt><dd>{retainedArchive.source.lifecycle}</dd></div>
-                          <div><dt>{t('recovery.previewRevision')}</dt><dd>{retainedArchive.source.revision ?? '-'}</dd></div>
-                          <div><dt>{t('recovery.previewDigest')}</dt><dd>{retainedArchive.source.recordDigest}</dd></div>
-                          <div><dt>{t('recovery.payloadDigest')}</dt><dd>{retainedArchive.payloadDigest}</dd></div>
-                        </dl>
-                      )}
-                      <div className="charter-recovery__actions">
-                        {maintenanceReplay && (
-                          <ActionButton variant="primary" onClick={() => void draft.retryMaintenance()}>
-                            {t('recovery.retry')}
-                          </ActionButton>
-                        )}
-                        <ActionButton variant="outline" onClick={abandonUnknown}>
-                          {confirmAbandon ? t('footer.abandonConfirm') : t('recovery.abandon')}
-                        </ActionButton>
-                      </div>
-                    </div>
-                  )}
-                  {maintenanceEnabled && (
-                    <>
-                  <div className="charter-archivecache">
-                    <div className="charter-archivecache__head">
-                      <strong>{t('recovery.cacheTitle')}</strong>
-                    </div>
-                    {archiveCacheProblem !== null
-                      ? <p className="charter-archivecache__empty" role="alert">{archiveCacheProblem}</p>
-                      : archiveEntries.length === 0
-                        ? <p className="charter-archivecache__empty">{t('recovery.cacheEmpty')}</p>
-                        : (
-                            <ul className="charter-archivecache__list" aria-label={t('recovery.cacheAria')}>
-                              {archiveEntries.map(entry => (
-                                <li key={entry.key}>
-                                  <button
-                                    type="button"
-                                    aria-pressed={activeArchiveKey === entry.key}
-                                    className={`charter-archivecache__item${activeArchiveKey === entry.key ? ' is-active' : ''}`}
-                                    onClick={() => chooseCachedArchive(entry)}
-                                  >
-                                    <span className="charter-archivecache__revision">
-                                      {t('recovery.cacheRevision', { revision: entry.revision })}
-                                    </span>
-                                    <span className="charter-archivecache__meta">
-                                      {formatTimestamp(entry.archivedAt)} · {shortText(entry.recordDigest.replace('sha256:', ''), 16)}
-                                    </span>
-                                  </button>
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                  </div>
-                  <p className="charter-hint">{t('recovery.cacheHint')}</p>
-                  <details className="charter-recovery__import">
-                    <summary>{t('recovery.importTitle')}</summary>
-                    <p className="charter-hint">{t('recovery.importHint')}</p>
-                    <label className="charter-recovery__file">
-                      <input
-                        ref={archiveInputRef}
-                        aria-label={t('recovery.chooseFile')}
-                        type="file"
-                        accept="application/json,.json"
-                        disabled={recoveryBusy || unknownBlocked}
-                        onChange={event => {
-                          const file = event.currentTarget.files?.[0]
-                          if (file !== undefined) chooseArchive(file)
-                        }}
-                      />
-                    </label>
-                  </details>
-                    </>
-                  )}
-                  {archivePreview !== null && (
-                    <div className="charter-recovery__preview">
-                      <strong>{t('recovery.previewTitle')}</strong>
-                      <span>{t('recovery.selected')}: {archivePreview.fileName}</span>
-                      {archivePreview.errorKey !== undefined
-                        ? <span role="alert">{t(archivePreview.errorKey as never, archivePreview.errorParams as never)}</span>
-                        : (
-                          <dl>
-                            <div><dt>{t('recovery.previewHealth')}</dt><dd>{archivePreview.health === undefined ? '-' : archiveHealthLabel(archivePreview.health, t)}</dd></div>
-                            <div><dt>{t('recovery.previewRevision')}</dt><dd>{archivePreview.revision ?? '-'}</dd></div>
-                            <div><dt>{t('recovery.previewLifecycle')}</dt><dd><code>{lifecycleLabel(archivePreview.lifecycle)}</code></dd></div>
-                            <div><dt>{t('recovery.previewDigest')}</dt><dd><code>{archivePreview.digest === undefined ? '-' : shortText(archivePreview.digest.replace('sha256:', ''), 20)}</code></dd></div>
-                            <div><dt>{t('recovery.exportedAt')}</dt><dd>{formatTimestamp(archivePreview.exportedAt)}</dd></div>
-                            <div><dt>{t('recovery.sourceSession')}</dt><dd><code>{shortText(archivePreview.sourceSession ?? '-', 24)}</code></dd></div>
-                            <div><dt>{t('recovery.payloadDigest')}</dt><dd>{archivePreview.payloadDigestOk === true ? t('recovery.verified') : t('recovery.unverified')}</dd></div>
-                          </dl>
-                        )}
-                    </div>
-                  )}
-                  {recordState?.kind === 'absent-unconfirmed' && (
-                    <div className="charter-recovery__danger">
-                      <p className="charter-hint" role="note">{t('recovery.initializeWarning')}</p>
-                      <ActionButton
-                        variant={confirmRecovery === 'initialize' ? 'primary' : 'outline'}
-                        disabled={!maintenanceEnabled || recoveryBusy || !initAdmission.ok}
-                        onClick={initializeEmpty}
-                      >
-                        {confirmRecovery === 'initialize' ? t('recovery.initializeConfirm') : t('recovery.initialize')}
-                      </ActionButton>
-                      {confirmRecovery === 'initialize' && (
-                        <ActionButton variant="outline" onClick={() => setConfirmRecovery(null)}>
-                          {t('recovery.cancel')}
-                        </ActionButton>
-                      )}
-                      {!initAdmission.ok && (
-                        <span className="charter-hint" role="note">
-                          {t(`recovery.reason.${initAdmission.reason}` as never)}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                  {restoreTarget && (
-                    <div className="charter-recovery__actions">
-                      <ActionButton
-                        variant={confirmRecovery === 'restore' ? 'primary' : 'outline'}
-                        disabled={!maintenanceEnabled || recoveryBusy || !restoreAdmission.ok || !restoreArchiveReady}
-                        onClick={restoreArchive}
-                      >
-                        {confirmRecovery === 'restore'
-                          ? t('recovery.restoreConfirm')
-                          : archiveSource === 'file'
-                            ? t('recovery.restoreFile')
-                            : t('recovery.restoreCached')}
-                      </ActionButton>
-                      {confirmRecovery === 'restore' && (
-                        <ActionButton variant="outline" onClick={() => setConfirmRecovery(null)}>
-                          {t('recovery.cancel')}
-                        </ActionButton>
-                      )}
-                      <span className="charter-hint">
-                        {archivePreview?.archive === undefined
-                          ? t('recovery.noPreview')
-                          : restoreArchiveReady
-                            ? t('recovery.readyToRestore')
-                            : t('recovery.diagnosticOnly')}
-                      </span>
-                      {!restoreAdmission.ok && (
-                        <span className="charter-hint" role="note">
-                          {t(`recovery.reason.${restoreAdmission.reason}` as never)}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </section>
-              </>
-            )}
-
-            {area === 'diagnostics' && (
-              <section className="charter-card charter-preview">
-                <div className="charter-preview__meta">
-                  <div className="charter-cardtitle">
-                    <span className="charter-kicker">{t('preview.title')}</span>
-                    <h3>{t('preview.subtitle')}</h3>
-                  </div>
-                  <StatusTag tone="info">{t('preview.bytesLabel', { bytes: formatBytes(t, previewBytes) })}</StatusTag>
-                </div>
-                {(draftOpen || bootstrapReplay) && ops.length === 0 && (
-                  <div className="charter-notice" role="note">{t('footer.draftStatus')}</div>
-                )}
-                <div className="charter-preview__toolbar" role="group" aria-label={t('preview.viewLabel')}>
-                  <button
-                    type="button"
-                    className={`charter-preview__view${previewMode === 'formatted' ? ' is-active' : ''}`}
-                    aria-pressed={previewMode === 'formatted'}
-                    disabled={preview === '' || formattedPreview === null}
-                    onClick={() => setPreviewMode('formatted')}
-                  >
-                    {t('preview.formatted')}
-                  </button>
-                  <button
-                    type="button"
-                    className={`charter-preview__view${previewMode === 'exact' ? ' is-active' : ''}`}
-                    aria-pressed={previewMode === 'exact'}
-                    onClick={() => setPreviewMode('exact')}
-                  >
-                    {t('preview.exact')}
-                  </button>
-                  <span className="charter-hint">
-                    {preview === ''
-                      ? t('preview.emptyHint')
-                      : previewMode === 'formatted'
-                        ? formattedPreview === null ? t('preview.formattedUnavailable') : t('preview.formattedHint')
-                        : t('preview.exactHint')}
-                  </span>
-                </div>
-                <pre>{preview === ''
-                  ? t('preview.empty')
-                  : previewMode === 'formatted' && formattedPreview !== null
-                    ? formattedPreview
-                    : preview}</pre>
-                <p className="charter-hint">{t('budget.recordLimit', { limit: formatBytes(t, view.limits.maxRecordBytes) })}</p>
-              </section>
-            )}
+          <div className="charter-content" id={area === 'workspace' ? 'charter-workspace-top' : area === 'review' ? 'charter-review-pending' : 'charter-diagnostics-top'}>
+            {area === 'workspace' && <WorkspacePage scope={paneScope} />}
+            {area === 'review' && <ReviewCenterPage scope={paneScope} />}
+            {area === 'diagnostics' && <DiagnosticsPage scope={paneScope} />}
           </div>
+          {hasLocalWork && (
+            <aside
+              id="charter-changeset"
+              className="charter-changeset-panel"
+              role="complementary"
+              aria-labelledby="charter-changeset-title"
+            >
+              <ChangeSetPanel
+                t={t}
+                headingId="charter-changeset-title"
+                ops={ops}
+                stagedOps={localWork.stagedOps}
+                promptDelta={t('changeset.promptDelta', {
+                  before: formatBytes(t, utf8Bytes(view.promptText)),
+                  after: formatBytes(t, previewBytes),
+                })}
+                itemsDelta={t('changeset.itemsDelta', {
+                  before: view.items.length,
+                  after: projectedItems.length,
+                })}
+                editorOpen={editor !== null}
+                conflicts={changeSetConflicts}
+                diffContext={{
+                  objectiveBefore: view.objective?.current.text ?? null,
+                  objectiveAfter: projectedObjective?.current.text ?? null,
+                  itemsBefore: view.items,
+                  projectedItems,
+                }}
+                canUnstage={editable && !saving && !unknownBlocked}
+                hint={footerHint}
+                onUnstage={unstageOp}
+              />
+            </aside>
+          )}
         </div>
+        {changeSetSheet.open && hasLocalWork && (
+          <div className="charter-sheet-backdrop" onClick={() => changeSetSheet.setOpen(false)}>
+            <section
+              id="charter-changeset-sheet"
+              ref={changeSetSheet.sheetRef}
+              className="charter-sheet"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="charter-changeset-sheet-title"
+              tabIndex={-1}
+              onClick={event => event.stopPropagation()}
+            >
+              <div className="charter-sheet__head">
+                <span className="charter-kicker">{t('changeset.kicker')}</span>
+                <ActionButton onClick={() => changeSetSheet.setOpen(false)}>{t('changeset.close')}</ActionButton>
+              </div>
+              <ChangeSetPanel
+                t={t}
+                headingId="charter-changeset-sheet-title"
+                ops={ops}
+                stagedOps={localWork.stagedOps}
+                promptDelta={t('changeset.promptDelta', {
+                  before: formatBytes(t, utf8Bytes(view.promptText)),
+                  after: formatBytes(t, previewBytes),
+                })}
+                itemsDelta={t('changeset.itemsDelta', {
+                  before: view.items.length,
+                  after: projectedItems.length,
+                })}
+                editorOpen={editor !== null}
+                conflicts={changeSetConflicts}
+                diffContext={{
+                  objectiveBefore: view.objective?.current.text ?? null,
+                  objectiveAfter: projectedObjective?.current.text ?? null,
+                  itemsBefore: view.items,
+                  projectedItems,
+                }}
+                canUnstage={editable && !saving && !unknownBlocked}
+                hint={footerHint}
+                onUnstage={unstageOp}
+              />
+            </section>
+          </div>
+        )}
       </div>
-    </main>
+    </section>
   )
 }
 
