@@ -453,11 +453,11 @@ ranges/`dshReleases`。对里程碑的影响：不新增人工门禁类别，但
 范围：Workspace、Review Center、Diagnostics & Maintenance 所有栏目统一迁移到同一设计系统与交互合同；
 设计 token 化、真实路由/滚动/焦点、Change Set v2 最小合同与完整 rail/sheet、Pane/store 拆分、DOM/浏览器
 可访问性与截图证据。纯客户端：不改 record schema、迁移、Host service、Remote/wire、prompt 投影、模型能力、
-`engines.dsh`/peer ranges/`dshReleases`。
+DSH ABI/wire。本分支另做仅声明层的兼容维护：rc.2 的 engines/peer/`dshReleases` 精确声明与有界 0.2 线范围，论证见 [compatibility.zh.md](compatibility.zh.md)。
 
-权威与状态：设计与执行细节由 [charter-gui-v1.zh.md](charter-gui-v1.zh.md) 持有（`Active`）；当前仅 W0 启动，
-代码未完成。人工验收前置约束：开发分支 `feat/0.3.0-gui` 不推送、不合并 `main`、不 tag/release/publish，
-不得声称 `0.3.0` 可用或已发布。退出条件：GUI 方案 §8 证据与人工验收；W0–W5 完成后才进入发布流程。
+权威与状态：设计与执行细节由 [charter-gui-v1.zh.md](charter-gui-v1.zh.md) 持有（`Active`）；W0–W6 源码与构建完成，机器门禁通过，
+人工验收与最终对照证据仍待完成。人工验收前置约束：开发分支 `feat/0.3.0-gui` 不推送、不合并 `main`、不 tag/release/publish，
+不得声称 `0.3.0` 可用或已发布。退出条件：GUI 方案 §8 证据与人工验收；W0–W6 完成后才进入发布流程。
 
 ## 14. 0.2.0 非目标
 
@@ -526,4 +526,4 @@ ranges/`dshReleases`。对里程碑的影响：不新增人工门禁类别，但
 | `0.1.1` | stable 后兼容 bug/security/DSH/a11y patch | 新持久状态、新 API、新工作流 |
 | `0.2.0` | 四个产品支柱、record v2、查询面、三中心 UI、架构重构 | 通用记忆、执行策略、任意 validator、无必要的新 domain |
 | `0.2.2` | 客户端依赖关系图形视图、§6.5 conflict 确认、预览 optional 字段 | 新 record schema/domain、新 Remote 方法、模型可见能力变更、图形独有能力 |
-| `0.3.0` | 全栏目 GUI 全面重构：设计系统、IA/路由、Change Set 合同、Pane/store 拆分、a11y/截图证据 | 新 record schema/domain、新 Remote/模型能力、兼容声明变更、人工验收前推送/合并/tag/publish/宣称可用 |
+| `0.3.0` | 全栏目 GUI 全面重构：设计系统、IA/路由、Change Set 合同、Pane/store 拆分、a11y/截图证据；仅声明层 DSH 兼容维护（rc.2 + 有界 engines 范围，须带矩阵证据） | 新 record schema/domain、新 Remote/模型能力、DSH ABI/wire 变更、人工验收前推送/合并/tag/publish/宣称可用 |

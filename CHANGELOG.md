@@ -13,6 +13,9 @@ DSH plugin ABI is still moving.
   badges, single progress control per deliverable row, complete Change Set rail/sheet, and page-level Pane split.
 - Token coverage audit and CI gate for all declared DSH theme versions.
 
+- W6 document-feel visual freeze: underline tabs, 720px document column + 280px Change Set rail at ≥1100, section/row anatomy, 36px dashed empty rows, 40/16/16 skeleton, quietlinks, single-line notice, and a px-geometry dependency graph (184px nodes, three-layer anatomy, static edge legend, compact inspector).
+- Verification: 39 files / 490 tests and `verify:ui-metrics -- --gate=final` PASS; screenshots and before/after sign-off remain local/manual.
+
 ### Compatibility
 
 - Added DSH `0.2.2-rc.2` support and a bounded `engines.dsh` 0.2-line range (`0.1.7-rc.2 || >=0.2.0-rc.1 <0.3.0-0`)

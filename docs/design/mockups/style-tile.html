@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0.3.0 视觉语言 style tile（文档感）</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="mockup.css">
+<style>
+  .tile { max-width: 1080px; margin: 0 auto; padding: 32px 24px 64px; }
+  .tile h2 { font: var(--dsw-font-l-20); margin: 0 0 4px; }
+  .tile .lede { color: var(--dsw-alias-label-tertiary); font-size: var(--dsw-font-xxs-12-font-size,12px); margin: 0 0 8px; }
+  .tilesec { margin-top: 40px; }
+  .tilesec > h3 { font-size: var(--dsw-font-s-14-font-size,14px); font-weight: 600; margin: 0 0 4px; }
+  .tilesec > p.rule { margin: 0 0 16px; color: var(--dsw-alias-label-tertiary); font-size: var(--dsw-font-xxs-12-font-size,12px); line-height: 18px; }
+  .specimen { border-top: var(--hairline) solid var(--dsw-alias-border-l2); }
+  .specimen .row:last-child { border-bottom: var(--hairline) solid var(--dsw-alias-border-l2); }
+  .typeline { display: flex; align-items: baseline; gap: 16px; padding: 10px 0; border-top: var(--hairline) solid var(--dsw-alias-border-l1); }
+  .typeline:first-child { border-top: 0; }
+  .typeline .tagname { width: 220px; flex: none; font-size: var(--dsw-font-xxs-12-font-size,12px); color: var(--dsw-alias-label-tertiary); font-variant-numeric: tabular-nums; }
+  .spacerow { display: flex; align-items: center; gap: 12px; padding: 6px 0; }
+  .spacerow .sp { height: 12px; background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 35%, transparent); border-radius: 2px; }
+  .spacerow .lbl { font-size: var(--dsw-font-xxs-12-font-size,12px); color: var(--dsw-alias-label-tertiary); font-variant-numeric: tabular-nums; width: 240px; flex:none; }
+  .duo { display: flex; gap: 32px; flex-wrap: wrap; }
+  .duo > div { flex: 1 1 320px; min-width: 0; }
+  .duo h4 { font-size: var(--dsw-font-xxs-12-font-size,12px); font-weight: 600; color: var(--dsw-alias-label-tertiary); margin: 0 0 8px; }
+  .card-demo { border: var(--hairline) solid var(--dsw-alias-border-l2); background: var(--dsw-alias-bg-layer-1); border-radius: var(--dsw-radius-lg); padding: 12px 16px; }
+  .chiprow { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .btnrow { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .anatomy { border: 1px dashed var(--dsw-alias-border-l3); border-radius: var(--dsw-radius-md); padding: 12px; position: relative; }
+  .anatomy .anno { position: absolute; font-size: var(--dsw-font-xxxs-11-font-size,11px); color: var(--dsw-alias-state-business-primary); }
+  .badrow { display: flex; gap: 8px; align-items: flex-start; padding: 6px 0; }
+  .badrow .m { font-size: 11px; line-height: 14px; }
+  .goodrow { display: flex; gap: 8px; align-items: baseline; padding: 6px 0; }
+  .strike { text-decoration: line-through; text-decoration-color: var(--dsw-alias-state-error-primary); }
+</style>
+</head>
+<body>
+<div class="desk">
+  <div class="desk__caption">0.3.0 视觉语言 style tile · 文档感方向 · <a href="?dark" class="quietlink">切换明暗</a></div>
+  <div class="pane pane--1440">
+    <div class="tile">
+      <h2>视觉语言：契约是一份可读文档</h2>
+      <p class="lede">层级 = 尺寸阶 × 字重 × 留白。卡片只属于可交互容器；纯展示一律 section + 行 + 发丝线。kicker 微字不再承载层级。</p>
+
+      <div class="tilesec">
+        <h3>1 · 字号阶（7 档，全部宿主 token）</h3>
+        <p class="rule">禁止 10/10.5/11.5/12.5/13.5/15/18/22px 与 em/rem 混用；字重只用 400/500/600；行高用 token 自带。</p>
+        <div class="typeline"><span class="tagname">--dsw-font-l-20 · 页面标题 · 500</span><span style="font:var(--dsw-font-l-20)">会话契约</span></div>
+        <div class="typeline"><span class="tagname">14/22 · section 标题 · 600</span><span style="font-size:var(--dsw-font-s-14-font-size,14px);line-height:var(--dsw-font-s-14-line-height,22px);font-weight:600">硬约束</span></div>
+        <div class="typeline"><span class="tagname">--dsw-font-xs-13 · 正文</span><span style="font:var(--dsw-font-xs-13)">发布前运行源码检查、兼容矩阵和候选 artifact 验证。</span></div>
+        <div class="typeline"><span class="tagname">--dsw-font-xxs-12 · 元信息 · tabular</span><span style="font:var(--dsw-font-xxs-12);font-variant-numeric:tabular-nums;color:var(--dsw-alias-label-tertiary)">rev 7 · 191 B / 8.0 KiB · 2026-11-12</span></div>
+        <div class="typeline"><span class="tagname">--dsw-font-xxxs-11 · 仅 chip/badge</span><span class="chip chip--business"><i></i>进行中</span></div>
+        <div class="typeline"><span class="tagname">--dsh-content-font-size · 用户内容 · 1.7</span><span style="font-size:var(--dsh-content-font-size,14px);line-height:1.7">交付一个持久、用户所有、可审计的会话契约。</span></div>
+      </div>
+
+      <div class="tilesec">
+        <h3>2 · 留白节奏（8px 网格）</h3>
+        <p class="rule">section 间 32；section 标题→首行 4–8；行内 padding 6；行间发丝线；页顶 32；页底 64；文档列 720 / 右栏 280 / gap 48。</p>
+        <div class="spacerow"><span class="lbl">section 间距 32</span><span class="sp" style="width:32px"></span></div>
+        <div class="spacerow"><span class="lbl">页面左右 gutter 24</span><span class="sp" style="width:24px"></span></div>
+        <div class="spacerow"><span class="lbl">行内垂直 padding 6</span><span class="sp" style="width:6px"></span></div>
+        <div class="spacerow"><span class="lbl">chip / 按钮内距 8</span><span class="sp" style="width:8px"></span></div>
+      </div>
+
+      <div class="tilesec">
+        <h3>3 · 容器规则</h3>
+        <p class="rule">左：卡片只给可交互容器（编辑器、Change Set、notice、图形区）。右：纯展示内容 = 标题 + 行 + 发丝线，无盒子。</p>
+        <div class="duo">
+          <div>
+            <h4>可交互 → 卡片</h4>
+            <div class="card-demo">
+              <div style="font-size:var(--dsw-font-s-14-font-size,14px);font-weight:600">编辑硬约束</div>
+              <div style="margin-top:8px;padding:8px;border-radius:var(--dsw-radius-md);border:var(--hairline) solid var(--dsw-alias-border-l4);background:var(--dsw-alias-bg-layer-3);min-height:36px;color:var(--dsw-alias-label-tertiary)">输入正文…</div>
+            </div>
+          </div>
+          <div>
+            <h4>纯展示 → section + 行</h4>
+            <div class="rows specimen">
+              <div class="row"><span class="row__dot"></span><div class="row__body"><div class="row__text">发布前运行源码检查与兼容矩阵。</div></div><div class="row__meta"><span>46 B</span></div></div>
+              <div class="row"><span class="row__dot"></span><div class="row__body"><div class="row__text">用户正式文本进入 user role。</div></div><div class="row__meta"><span>33 B</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tilesec">
+        <h3>4 · 行解剖与对齐规则</h3>
+        <p class="rule">行 = grid [16px 圆点 | 1fr 文本 | auto 元信息]，元信息与正文首行同 20px 行盒 → 基线天然对齐；数字一律 tabular-nums 右对齐。上：错误（元信息小号顶对齐，视觉下沉）。下：正确。</p>
+        <div class="duo">
+          <div>
+            <h4 class="strike">错误对齐</h4>
+            <div class="badrow"><span class="row__dot" style="margin-top:2px"></span><span>按稿实现文档流 Workspace</span><span class="m" style="color:var(--dsw-alias-label-tertiary)">26 B</span></div>
+          </div>
+          <div>
+            <h4>基线对齐</h4>
+            <div class="rows specimen"><div class="row"><span class="row__dot"></span><div class="row__body"><div class="row__text">按稿实现文档流 Workspace</div></div><div class="row__meta"><span>D2</span><span>26 B</span></div></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tilesec">
+        <h3>5 · 状态语言</h3>
+        <p class="rule">状态 = 语义色 chip（10% color-mix 底 + 同色文字 + 6px 圆点）；暂存 = 左侧 2px business 强调条 + 5% 底；冲突 = warn；unknown = 吸顶条持续显示。状态永不只靠颜色（chip 带文字，行带强调条）。</p>
+        <div class="chiprow">
+          <span class="chip chip--neutral"><i></i>未开始</span>
+          <span class="chip chip--business"><i></i>进行中</span>
+          <span class="chip chip--warn"><i></i>受阻</span>
+          <span class="chip chip--success"><i></i>已完成</span>
+          <span class="chip chip--danger"><i></i>依赖冲突</span>
+          <span class="chip chip--outline">依赖 D1</span>
+          <span class="chip chip--business"><i></i>已暂存</span>
+          <span class="chip chip--outline">待审 · 消息提案</span>
+        </div>
+      </div>
+
+      <div class="tilesec">
+        <h3>6 · 按钮与焦点</h3>
+        <p class="rule">primary 只在"应用/保存"主动作；其余 ghost；行内操作用 quietlink；disabled 保持形状 + opacity .4；焦点环用宿主 focus token。</p>
+        <div class="btnrow">
+          <button class="btn btn--primary btn--sm">应用</button>
+          <button class="btn btn--sm">预览上下文</button>
+          <button class="btn btn--sm">丢弃</button>
+          <button class="btn btn--sm" disabled>应用</button>
+          <button class="quietlink">撤销</button>
+          <button class="btn btn--sm" style="outline:var(--dsw-focus-ring-width,2px) solid var(--dsw-focus-ring-color);outline-offset:2px">焦点态</button>
+        </div>
+      </div>
+
+      <div class="tilesec">
+        <h3>7 · 加载与空态</h3>
+        <p class="rule">加载 = 3 行 skeleton（bg-skeleton），不整页跳动；空态 = 一行虚线"添加"行，不渲染零值块、不嵌套卡片。</p>
+        <div class="duo">
+          <div><h4>skeleton</h4><div style="display:grid;gap:12px;padding:8px 0"><span style="display:block;height:28px;width:45%;border-radius:var(--dsw-radius-sm);background:var(--dsw-alias-bg-skeleton)"></span><span style="display:block;height:16px;border-radius:var(--dsw-radius-sm);background:var(--dsw-alias-bg-skeleton)"></span><span style="display:block;height:16px;width:70%;border-radius:var(--dsw-radius-sm);background:var(--dsw-alias-bg-skeleton)"></span></div></div>
+          <div><h4>空态行</h4><button class="row--empty">+ 添加第一条交付物</button></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+<script>
+  if (new URLSearchParams(location.search).has('dark')) document.body.setAttribute('data-ds-dark-theme', '');
+</script>
+</body>
+</html>

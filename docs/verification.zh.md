@@ -55,11 +55,11 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 - 源码门禁（2026-11-12）：`npm run check` = 39 文件 / **490 测试** PASS（typecheck、build、remote/client
   smoke、Vitest、token gate）；`npm run verify:ui-metrics -- --gate=css|ia` PASS。
 - 度量记录（W1/W2/W4）：CSS gate — 字号档 6、字重 3、颜色字面量 0、非 token 圆角 0、非 token shadow 0、
-  padding 12、gap 8、`!important` 0；IA gate — objective 渲染 1、旧 overview/stat/budget 0、`goSection` 滚动/聚焦
+  padding 9、gap 8、`!important` 0；IA gate — 旧 objective 卡片 0、旧 overview/stat/budget 0、`goSection` 滚动/聚焦
   yes、操作条仅 dirty yes；final gate PASS。隔离 profile 与 CDP 矩阵均在已安装 livery 层
   （`body[data-dsh-livery]` 存在）下采集暗/亮两套；没有第二个 livery preset 可做更广抽查。记录：
   `.tmp/gui-acceptance/2026-11-12/livery-spotcheck.md`。
-- Token 覆盖审计（W0）：`charter.css` 使用的 35 个静态 host token 在全部 10 个声明 DSH 版本的
+- Token 覆盖审计（W0）：`charter.css` 使用的 41 个静态 host token 在全部 10 个声明 DSH 版本的
   `@deepseek-ai/dsh-client-ui-theme` 中均有定义；`--dsh-content-font-size` 带 `14px` fallback；兼容块有意为空。
   门禁：`npm run verify:tokens`。
 - 真实浏览器证据（把新 bundle 通过 CDP 注入已安装 Web Host；除特别说明外**不等于**已安装 artifact）：
@@ -68,10 +68,23 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 - 隔离 profile 证据：当前树的 WIP artifact 曾安装到 `DSH_HOME=/tmp/dsh-w4-home`，安装后 `lib/client.js`
   hash 与仓库 build 一致；该开发包曾命名为 `dsh-charter-0.2.2.tgz`，因与已发布不可变 0.2.2 的
   artifact/digest 冲突，**审查后已删除**。今后 dev pack 必须先 bump 版本（如 `0.3.0`）再打包。
-- 本地验收部署（2026-11-12）：开发候选 `0.3.0`（未发布）打包为
-  `dist/dsh-charter-0.3.0-rc2-range-final.tgz`（SHA-256 `31c4c61d…`），已安装到本地 `web` 与 `desktop`
-  profile；其 `engines.dsh`、全部 DSH peer 范围、`dshReleases`、token inventory 与测试均声明支持 `0.2.2-rc.2`。
-  Desktop 需重启 app 后加载。
+- 本地验收部署（2026-11-12）：W6 验收构建为 `dist/dsh-charter-0.3.0-w6-final.tgz`
+  （SHA-256 `ab74591c…`，client `986f8403…`）。已安装到本地 `web` 与 `desktop` profile，包版本 `0.3.0`，
+  `engines.dsh` 为有界 0.2 线范围。另按用户要求恢复 Pane 页头版本 chip（`v0.3.0`）。
+- Desktop 热更新（2026-11-12，纠正）：Desktop **不需要**退出重开来加载重建后的 `dsh-charter` bundle。在已安装
+  profile 下，对 profile 依赖做替换后，CDP 驱动的 `127.0.0.1:51452` 页面无需刷新即完成 Pane 替换：bundle
+  probe 在 **824ms** 出现，CSS probe 在 **402ms** 生效，最终 bundle+CSS 在 **886ms** 生效。两次替换中
+  `.charter-tabs__tab` 始终为 3，`style[data-plugin-css="dsh-charter/charter.css"]` 始终为 1 个，版本 chip 与
+  Pane 保持挂载，页面无异常。路径为 Host profile 重组 + client bundle HMR；仅插件变更无需重启 Host。
+- 依赖图 disclosure 文案（2026-11-12）：执行路径折叠时显示“展开依赖图”，展开后显示“收起依赖图”；已实测关闭 → 展开 → 再关闭，section 无重复。
+
+
+- 最终构建矩阵（2026-11-13）：基于已安装 `w6-final` artifact（client `986f8403…`），重采 Review Center 的
+  320/375/560/850/1440 × 暗/亮 × 中/英共 20 张，并采 Diagnostics 850/1440 两张；每张均满足
+  `documentElement.scrollWidth == clientWidth`、3 个 `charter-tabs__tab`、Pane 已挂载。证据：
+  `.tmp/gui-acceptance/2026-11-13/matrix-final/`。这替换了 Review/Diagnostics 子集的旧 W6 前矩阵；空/已应用/
+  脏/冲突六状态矩阵与冻结稿并排对照仍缺。
+
 - 十版本源码矩阵（2026-11-12）：全部声明版本 `0.1.7-rc.2` … `0.2.2-rc.2` 通过 typecheck、build 与测试；
   因 rc.2 仍在 pnpm 24 小时 `minimumReleaseAge` 窗口内，矩阵以 `--allow-new-release` 运行；已生成并跟踪 rc.2
   的兼容 lockfile。证据：`.tmp/compat-matrix-0.3.0.json`。
@@ -81,8 +94,9 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 - Pane 页面级拆分（2026-11-12）：`CharterPane.tsx` 3459 → 1842 行；新增 `WorkspacePage`/`ReviewCenterPage`/
   `DiagnosticsPage` 与生成的 `pane-scope.ts`；共享 `pane-format`/`pane-ui`；真实浏览器 v0.3.0 三区域路由验证；
   490 测试 + final gate PASS。
+- W6 文档感视觉冻结（2026-11-12）：下划线 tabs 取代左侧纵向导航；≥1100 为 720px 文档列 + 280px Change Set rail；section/行解剖、36px 虚线空态、40/16/16 skeleton、单行 notice、quietlink、暂存 inset 语言与 px 几何依赖图（184px 节点、三层解剖、legend、紧凑 inspector）已落地。`charter.css` 现消费 41 个已审计静态 host token；`npm run check` 39 文件 / 490 测试 PASS；`verify:ui-metrics -- --gate=final` PASS。CDP 注入截图：`.tmp/gui-acceptance/2026-11-12/ux-after-workspace-1440.png`、`w6-dirty-1440.png`、`w6-graph-1440.png` 与九节点重叠回归 `w6-graph-9nodes.png`、`w6-review-1440.png`、`w6-diagnostics-1440.png`。CDP 视口实测：320/850/1440 的 root/document 横向溢出均为 0；图形区在 320/850 隐藏、1440 可见；用户字号 10/14/22 下节点文本 scrollWidth/clientWidth 与 scrollHeight/clientHeight 相等（无裁切）。冻结稿并排与人工验收仍待完成。
 - 发布前仍需人工/环境证据：fresh-profile Host+Session Pane、Desktop 窗口、真实 screen reader、真实 200%
-  文本布局、zh/en 切换、livery 抽查记录，以及 W1–W5 全部人工验收。
+  文本布局、zh/en 切换、livery 抽查记录，以及 W1–W6 全部人工验收。
 
 ## 2. 本地基线
 

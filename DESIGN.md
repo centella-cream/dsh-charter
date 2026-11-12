@@ -1,9 +1,10 @@
 # dsh-charter Design Contract（0.3.0 GUI）
 
-> **Status:** Active — 0.3.0 development contract. Not implemented, not released, not a release note.
+> **Status:** Active — 0.3.0 development contract; W0–W6 source implementation complete, human acceptance pending. Not released, not a release note.
 > **Scope:** 所有 Pane 栏目（Workspace / Review Center / Diagnostics & Maintenance）的设计系统与交互合同。
 > **Authority:** `docs/design/charter-gui-v1.zh.md`（设计与实施权威）；`docs/design/version-roadmap.zh.md`
-> （版本范围权威）；`docs/design/charter-workspace-v2.zh.md`（Workspace/Change Set 语义）。
+> （版本范围权威）；`docs/design/charter-workspace-v2.zh.md`（Workspace/Change Set 语义）；
+> `docs/design/mockups/`（冻结视觉基准稿，2026-11-12 评审通过，文档感方向）。
 > **Guardrail:** 人工验收通过前不推送 `feat/0.3.0-gui`、不合并 `main`、不 tag/release/publish、不声称 0.3.0
 > 可用或已发布。
 > **Runtime boundary:** 纯客户端；不改 record schema、迁移、Host service、Remote/wire、prompt 投影、模型能力、
@@ -16,7 +17,8 @@ Charter 是一份**可读的契约文档**，不是仪表盘：
 1. 第一屏回答：目标是什么、哪些硬约束、下一个交付物、是否被阻塞。
 2. 目标只出现一次；条目按阅读顺序排列；统计只在真正回答问题时出现。
 3. 所有栏目共用同一套 token、组件、键盘与状态合同；不允许某个栏目保留旧样式。
-4. 窄屏（≤560 / ≤879px）是一等公民；宽屏（≥1100px）在 W5 提供三栏 + Change Set rail/sheet。
+4. 窄屏（≤560 / ≤879px）是一等公民；宽屏（≥1100px）为文档列 720 + 右侧 Change Set rail 280（冻结稿），
+   不做左侧三栏。
 
 ## 2. 设计 token
 
@@ -61,7 +63,7 @@ UI 字号只允许 7 个不同值；禁止 10/10.5/11.5/12.5/13.5/15/18/22px、`
 | 阴影 | 只用 elevation token；卡片不留重阴影，用发丝边 + 表面色 |
 | 间距 | 2/4/6/8/12/16/20/24/32/48；`padding` 值 ≤12 种、`gap` ≤8 种 |
 | 控件高度 | 28（sm 按钮）/36（md 按钮）/34（输入框）/40（触屏/设置行） |
-| 命名常量 | `--ch-content-max:960px`、`--ch-reading-max:720px`、`--ch-page-inset-top:28px`、`--ch-page-gutter:clamp(16px,4vw,32px)`、`--ch-page-bottom:48px`、`--ch-actionbar-h:48px`、`--ch-scroll-margin:calc(var(--ch-actionbar-h) + 16px)`；禁止散落魔法数字 |
+| 命名常量 | `--ch-content-max:960px`、`--ch-reading-max:720px`、`--ch-rail-w:280px`、`--ch-rail-gap:48px`、`--ch-rail-layout-max:1080px`、`--ch-page-inset-top:28px`、`--ch-page-gutter:clamp(16px,4vw,32px)`、`--ch-page-bottom:48px`、`--ch-actionbar-h:48px`、`--ch-scroll-margin:calc(var(--ch-actionbar-h) + 16px)`；禁止散落魔法数字 |
 
 ## 3. 布局与 IA
 
@@ -70,14 +72,25 @@ UI 字号只允许 7 个不同值；禁止 10/10.5/11.5/12.5/13.5/15/18/22px、`
   吸顶 actionbar/nav 以宿主 scrollBody 为滚动祖先；锚点用 `scroll-margin-top: var(--ch-scroll-margin)`。
 - Composer 在契约视图下由宿主隐藏（`display:none`），切回对话视图为 170px；Pane 不依赖其高度、不预留滚动空间。
 - 内容 `max-width:960px`，阅读列 720px；页边距/吸顶高/滚动偏移全部走命名常量。
-- 页面头：标题 + revision + 预算 meter；slogan/免责声明移入空态或帮助 popover。
+- 页面头：标题 + 版本标识 chip（用户要求保留）+ revision + 预算 meter；slogan/免责声明移入空态或帮助 popover。
 - 操作条：仅 dirty/replay/conflict/unknown 时吸顶（高 `--ch-actionbar-h`）；clean 状态不常驻。
-- 一级区域：Workspace / Review Center / Diagnostics & Maintenance，使用宿主风格 tab/segmented 控件；
+- 一级区域：Workspace / Review Center / Diagnostics & Maintenance，全宽度使用顶部**下划线 tabs**
+  （nav + 按钮 + `aria-current="page"`，active 2px business 下划线）；左侧纵向导航删除；
   每个 section 有稳定 `id` 与 `scroll-margin-top: var(--ch-scroll-margin)`；跳转必须滚动 + 聚焦标题。
+- 容器规则（冻结稿 §4.9）：卡片只用于可交互容器（编辑器、Change Set、notice、图形区）；纯展示内容
+  一律 section + 行 + 发丝线，不装箱。行解剖 `grid [16px 圆点 | 1fr 文本 | auto 元信息]`，元信息
+  12px tabular 与正文首行同 20px 行盒基线对齐；行级轻动作用 quietlink（点状下划线），不用按钮。
+- 暂存语言：暂存行 = 左侧 inset 2px business 强调条 + 5% color-mix 底 + “已暂存” chip；空态 = 一行
+  36px 虚线添加行；加载 = 3 行 skeleton（bg-skeleton）。
 - Workspace 文档流：目标（唯一）→ 硬约束 → 交付物 → 执行路径（依赖图 disclosure）→ 阻塞原因；
   全局预算只在 header meter 与 Change Set 摘要出现；条目行内字节数属于字段计数器。
 - Change Set：按 workspace-v2 §5.6/§5.7 最小合同——桌面有名称 complementary region，窄屏 modal bottom sheet
-  （focus trap/Escape/focus restore/in-flight 写锁）；W5 完成完整 rail/sheet。
+  （focus trap/Escape/focus restore/in-flight 写锁）；rail 为安静 margin note（摘要 dl + 分组 op 行 +
+  quietlink 撤销），视觉按冻结稿 `mockup-home-dirty.html`。
+- 依赖关系图（冻结稿 `mockup-graph.html`）：执行路径 disclosure 内的图形卡片；节点固定 184px、**全 px
+  几何**（不随用户字号缩放，修复旧 em 布局文本裁切）、三层解剖（key+chip / 两行截断正文+title /
+  readiness 脚注）、左侧 3px 状态强调条；边三态（实线=生效、business 虚线=已暂存、点线=候选提案）+
+  legend；画布下方一行式 inspector；语义列表始终是权威操作面。
 - Review Center：pending 批次 → 时间线 → inactive/rejected/archive → 已应用历史；空态明确。
 - Diagnostics：健康/完整性在前，validator/证据其次，Context Preview 有固定锚点，导出/恢复在最后。
 - 状态：clean / dirty / replay / conflict / unknown / offline 各有唯一呈现；disabled Apply 旁显示首要原因；
@@ -100,7 +113,9 @@ UI 字号只允许 7 个不同值；禁止 10/10.5/11.5/12.5/13.5/15/18/22px、`
 - `--gate=ia`：目标只渲染 1 次；`goSection` 必须滚动/聚焦；所有栏目共用同一路由与状态合同。
 - `npm run check` 全绿；截图矩阵 320/375/560/850/1440 × 明暗 × 中英 × 六状态；滚动探针与 a11y 证据入
   `.tmp/gui-acceptance/`；发布截图只用合成数据。
-- 证据按 CI / local / manual 标注；人工验收覆盖 W1–W5 后才进入发布流程。
+- 视觉验收 = 与 `docs/design/mockups/` 冻结稿同宽度/主题/状态并排对照；rail/inspector/图形工具条
+  无原始枚举串；用户字号 10/14/22 下图形无文本裁切。
+- 证据按 CI / local / manual 标注；人工验收覆盖 W1–W6 后才进入发布流程。
 
 ## 6. 非目标
 

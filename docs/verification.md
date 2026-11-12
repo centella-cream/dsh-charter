@@ -76,12 +76,12 @@ and the remaining full-design gates must be recorded separately before declaring
 - Source gates (2026-11-12): `npm run check` = 39 files / **490 tests** PASS (typecheck, build, remote/client
   smoke, Vitest, token gate); `npm run verify:ui-metrics -- --gate=css|ia` PASS.
 - Metric record (W1/W2/W4): CSS gate — `font-size` values 6, font weights 3, literal colors 0, non-token
-  radius 0, non-token shadow 0, padding 12, gap 8, `!important` 0; IA gate — objective rendered 1, legacy
+  radius 0, non-token shadow 0, padding 9, gap 8, `!important` 0; IA gate — legacy objective card 0, legacy
   overview/stat/budget 0, `goSection` scroll/focus yes, action bar dirty-only yes; final gate PASS. The
   isolated profile and CDP matrix were captured under the installed livery layer (`body[data-dsh-livery]`
   present), dark and light; no second livery preset was available for a broader spot check. Record:
   `.tmp/gui-acceptance/2026-11-12/livery-spotcheck.md`.
-- Token coverage audit (W0): 35 static host vars used by `charter.css` are defined in
+- Token coverage audit (W0): 41 static host vars used by `charter.css` are defined in
   `@deepseek-ai/dsh-client-ui-theme` for **all 10 declared DSH versions**; `--dsh-content-font-size` has a
   `14px` fallback; the compat block is intentionally empty. Gate: `npm run verify:tokens`.
 - Real-browser evidence (CDP-injected new bundle into the installed Web Host; explicitly **not** the same as an
@@ -92,10 +92,26 @@ and the remaining full-design gates must be recorded separately before declaring
   `DSH_HOME=/tmp/dsh-w4-home` and its `lib/client.js` hash matched the repo build; the dev tarball named
   `dsh-charter-0.2.2.tgz` was **deleted** after review because it collided with the published immutable 0.2.2
   artifact/digest. Future dev packs must bump the version (e.g. `0.3.0`) before packing.
-- Local acceptance deployment (2026-11-12): dev candidate `0.3.0` (unreleased) packed as
-  `dist/dsh-charter-0.3.0-rc2-range-final.tgz` (SHA-256 `31c4c61d…`), installed into the local `web` and
-  `desktop` profiles; it declares `0.2.2-rc.2` in `engines.dsh`, every DSH peer range, `dshReleases`, the token
-  inventory, and tests. Desktop requires an app restart to load it.
+- Local acceptance deployment (2026-11-12): the W6 acceptance build is
+  `dist/dsh-charter-0.3.0-w6-final.tgz` (SHA-256 `ab74591c…`, client `986f8403…`). It is installed in both local
+  `web` and `desktop` profiles, with the bounded `engines.dsh` range and package version `0.3.0`. Also updated:
+  the Pane header version chip (`v0.3.0`) is restored at the user's request.
+- Desktop hot reload (2026-11-12, corrected): Desktop does **not** require a quit/reopen to load a rebuilt
+  `dsh-charter` bundle. With the installed profile, a profile dependency replace was observed to swap the
+  running Pane in a CDP-driven page at `127.0.0.1:51452` without a page reload: a bundle probe appeared in
+  **824 ms**, a CSS probe was applied in **402 ms**, and the final bundle+CSS state appeared in **886 ms**. Across
+  both swaps `.charter-tabs__tab` stayed at 3, exactly one `style[data-plugin-css="dsh-charter/charter.css"]`
+  remained, the version chip and Pane stayed mounted, and no page exceptions were recorded. This is the
+  Host profile recomposition + client bundle HMR path; no Host restart is needed for a plugin-only change.
+- Disclosure affordance (2026-11-12): the execution-path `details` summary names `Expand dependency map` when closed and `Collapse dependency map` when open; verified closed → open → closed without duplicate sections.
+
+
+- Final-build matrix (2026-11-13): from the installed `w6-final` artifact (client `986f8403…`), Review Center was
+  recaptured at 320/375/560/850/1440 × dark/light × zh/en (20 images) plus Diagnostics at 850/1440; every capture
+  had `documentElement.scrollWidth == clientWidth`, three `charter-tabs__tab` entries, and a mounted Pane. Evidence:
+  `.tmp/gui-acceptance/2026-11-13/matrix-final/`. This replaces the pre-W6 matrix for the Review/Diagnostics
+  subset; Empty/Applied/Dirty/Conflict six-state matrix and the frozen-mockup side-by-side are still missing.
+
 - Ten-version source matrix (2026-11-12): all declared DSH versions `0.1.7-rc.2` … `0.2.2-rc.2` pass
   typecheck, build, and tests; run with `--allow-new-release` because rc.2 is inside the pnpm 24-hour
   `minimumReleaseAge` window. The tracked rc.2 compatibility lockfile was generated and added. Evidence:
@@ -107,8 +123,9 @@ and the remaining full-design gates must be recorded separately before declaring
 - Pane page split (2026-11-12): `CharterPane.tsx` 3459 → 1842 lines; new `WorkspacePage`, `ReviewCenterPage`,
   `DiagnosticsPage` and generated `pane-scope.ts`; shared `pane-format`/`pane-ui`; real-browser v0.3.0 three-area
   route check; 490 tests and final gate PASS.
+- W6 document-feel visual freeze (2026-11-12): underline tabs replace the left rail; 720px document column + 280px Change Set rail at ≥1100; section/row anatomy, dashed 36px empty add rows, 40/16/16 skeleton, single-line notice, quietlinks, staged inset language and px-geometry graph (184px nodes, three-layer anatomy, legend, compact inspector). `charter.css` now consumes 41 audited static host tokens; `npm run check` 39 files / 490 tests PASS; `verify:ui-metrics -- --gate=final` PASS. CDP-injected screenshots: `.tmp/gui-acceptance/2026-11-12/ux-after-workspace-1440.png`, `w6-dirty-1440.png`, `w6-graph-1440.png` and nine-node overlap regression `w6-graph-9nodes.png`, `w6-review-1440.png`, `w6-diagnostics-1440.png`. CDP viewport measurements: 320/850/1440 root and document horizontal overflow 0; graph hidden at 320/850 and visible at 1440; node text at user font preferences 10/14/22 has equal scroll/client width and height (no clipping). Human before/after sign-off remains pending.
 - Still manual/blocked before release: fresh-profile Host+Session Pane, Desktop window, real screen reader,
-  true 200% text-layout audit, zh/en switch, livery spot-check record, and all human acceptance (W1–W5).
+  true 200% text-layout audit, zh/en switch, livery spot-check record, and all human acceptance (W1–W6).
 
 ## 2. Local baseline
 

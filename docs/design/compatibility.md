@@ -45,7 +45,7 @@ verified peer ranges / dsh.compatibility.dshReleases:
   0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2 || 0.2.1-rc.3 || 0.2.1-rc.4 || 0.2.1-rc.5 || 0.2.2-rc.1 || 0.2.2-rc.2
 ```
 
-Token compatibility (0.3.0): the Pane consumes 35 static host design tokens plus one runtime
+Token compatibility (0.3.0): the Pane consumes 41 static host design tokens plus one runtime
 `--dsh-content-font-size` variable. The audit in `scripts/verify/token-coverage.mjs` checks that every static
 token is defined by `@deepseek-ai/dsh-client-ui-theme` for every version above (2026-11-12: all present); the
 runtime variable has a CSS fallback. No per-version fallback block is needed today; adding a host token requires

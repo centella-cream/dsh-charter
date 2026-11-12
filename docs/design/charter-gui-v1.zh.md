@@ -1,8 +1,8 @@
 # `dsh-charter` 0.3.0 GUI 全面重构方案（所有栏目统一）
 
-> **状态：** `Active` —— 0.3.0 开发范围与设计权威（W0 已启动）。代码未完成、未发布；人工验收通过前不得声称
-> 0.3.0 可用或已发布，不得推送开发分支。
-> **版本范围：** `0.3.0`（W0–W5，所有栏目统一重构；纯客户端，不改 record/Remote/prompt/模型能力）。
+> **状态：** `Active` —— 0.3.0 开发范围与设计权威（W0–W6 源码实现完成，人工验收待完成）。未发布；人工验收
+> 通过前不得声称 0.3.0 可用或已发布，不得推送开发分支。
+> **版本范围：** `0.3.0`（W0–W6，所有栏目统一重构；纯客户端，不改 record/Remote/prompt/模型能力；仅做 DSH 版本声明维护，见 §2）。
 > 版本决策见 §2.1。
 > **基准：** 2026-11-12，基于已发布 `0.2.2` 发布树（client 源码最后变更 `f9d93c0`，发布证据见
 > [0.2.2 发布说明](../release-notes/0.2.2.md)）。本文所有度量均在 `main` @ `433bdce` 的工作树上重测。
@@ -10,6 +10,8 @@
 > [v1 核心设计](charter-design-v1.zh.md)决定；Workspace/Proposal/依赖语义由
 > [charter-workspace-v2.zh.md](charter-workspace-v2.zh.md) §5、§6 决定。本文只细化 GUI 呈现、交互状态与验证证据；
 > 与权威文档冲突时先修订权威文档。
+> **视觉权威：** 2026-11-12 评审通过的高保真冻结稿 [docs/design/mockups/](mockups/README.md)（文档感方向）
+> 是本文 §4.9/§5.7 的视觉基准；实现与验收以稿子对照为准，视觉调整必须先修订稿子与对应条文。
 > **替代/被替代：** 无 / 无。
 > **专题范围：** Pane 视觉设计系统、信息架构呈现、交互状态、响应式与可访问性、GUI 证据门禁。不涉及
 > record schema、迁移、Host service、Remote/wire、prompt 投影、模型工具面与 DSH 兼容声明。
@@ -39,7 +41,7 @@
 - **证据层**：以可重复的度量脚本 + 真实浏览器截图矩阵 + DOM/可访问性检查替代“看起来还行”的验收，并把
   截图、README、verification 与版本元数据同批更新。
 
-**版本决策：`0.3.0`（所有栏目统一重构，W0–W5）**。纯客户端、不触碰契约；Workspace、Review Center、
+**版本决策：`0.3.0`（所有栏目统一重构，W0–W6）**。纯客户端、不触碰契约；Workspace、Review Center、
 Diagnostics & Maintenance 全部迁移到同一设计系统与交互合同；W5 的三栏/Change Set rail/sheet 与 Pane/store
 拆分进入 0.3.0 范围。0.3.0 是开发目标版本，人工验收通过前不推送、不合并、不发布、不声称可用。
 
@@ -177,10 +179,12 @@ Diagnostics & Maintenance 全部迁移到同一设计系统与交互合同；W5 
 
 ## 2. 版本归属与决策记录
 
-GUI 全面重构**不改变** record schema、迁移、Host service、Remote/wire、prompt 投影、模型能力与
-`engines.dsh`/peer ranges/`dshReleases`，因此不构成兼容性变更。版本决策已完成。
+GUI 全面重构**不改变 record schema、迁移、Host service、Remote/wire、prompt 投影与模型能力。
+本分支同时包含一项**仅声明层**的 DSH 兼容维护：补齐 `0.2.2-rc.2` 的 engines/peer/`dshReleases`
+精确声明，并把 `engines.dsh` 收敛为有界 0.2 线范围；不改任何 DSH ABI、wire 或 record，论证与矩阵见
+[compatibility.zh.md](compatibility.zh.md)。
 
-### 2.1 D0：目标版本 `0.3.0`，范围 W0–W5（所有栏目统一重构）
+### 2.1 D0：目标版本 `0.3.0`，范围 W0–W6（所有栏目统一重构）
 
 - 版本号：`0.3.0`（开发目标；普通递增，不使用 `rc` 后缀）。
 - 范围：Workspace、Review Center、Diagnostics & Maintenance **所有栏目**统一迁移到同一设计系统与交互合同；
@@ -204,8 +208,8 @@ region，窄屏为 modal bottom sheet（focus trap/Escape/focus restore/in-fligh
 
 1. 开发在本地 `feat/0.3.0-gui` 分支；人工验收前不推送、不合并 `main`。
 2. 不 tag、不 GitHub Release、不 npm publish；不在 README/CHANGELOG/release notes 中写“0.3.0 已发布/可用”。
-3. 证据先行：每阶段 `npm run check` + §8 证据；人工验收覆盖 W1–W5 后才进入发布流程。
-4. 旧记录、兼容声明与 `engines`/peer 不变；兼容矩阵仍按 AGENTS.md 门禁执行。
+3. 证据先行：每阶段 `npm run check` + §8 证据；人工验收覆盖 W1–W6 后才进入发布流程。
+4. 旧记录与 DSH ABI/wire 不变；本分支只做版本声明维护（rc.2 + 有界 engines 范围），兼容矩阵仍按 AGENTS.md 门禁执行，证据见 compatibility.zh.md。
 
 ### 2.5 备选方案（已否决，仅存档）
 
@@ -362,13 +366,14 @@ Pane 只允许下列角色（`--ch-font-*` 是引用宿主 token 的局部别名
 - **Input / Textarea / Select**：`h34 / radius-md / .5px border-l4 / bg-layer-3 / 13px`；focus 边框
   `state-business-primary`；invalid `state-error-primary`；label 13/500，hint 12 `label-tertiary`。
 - **Tag / Status**：`11/17 / radius 999 / padding 1px 8`；底色 `color-mix(state-primary 10–12%)`；状态圆点 7px。
-- **SegmentedTabs**：容器 `radius-lg + bg-module-platform`，tab `h34 + radius-md`；active 用 `bg-layer` +
-  `label-primary`，不使用大写 kicker。
+- **UnderlineTabs（区域导航）**：`nav` + 按钮；`padding 10px 0 8px`，13/500；inactive `label-tertiary`，
+  hover `label-secondary`；active `label-primary` + 2px `state-business-primary` 下划线（`aria-current="page"`）；
+  Review badge 用 pill 计数（11/600，business 10% 底）。不使用 SegmentedTabs 箱式容器与大写 kicker。
 - **Card**：只用于 Change Set / notice / 编辑器 / 图形区；`radius-lg + .5px border-l2 + bg-layer-1`，
   内部不再嵌套卡片；纯展示 section 用标题 + 行 + 发丝线。
 - **Meter**：宽 128–160px、高 4px；`label-secondary` 文字、`state-*` 填色；配 `role="meter"` 与 aria 值。
-- **Graph**：语义列继续是权威操作面；图形区只做增强，toolbar 高 32、节点 `radius-sm`、边用
-  `label-tertiary`、焦点用 focus token；窄屏默认折叠为 disclosure。
+- **Graph**：语义列继续是权威操作面；图形区只做增强；完整视觉规格见 §5.7（冻结稿
+  [mockups/mockup-graph.html](mockups/mockup-graph.html)）；窄屏默认折叠为 disclosure。
 - **Notification**：单条内联区（dot + 文本 + 可选详情折叠），按 error > warning > info 去重；不再堆叠 7 条。
 
 ### 4.6 动效与反馈
@@ -381,10 +386,10 @@ Pane 只允许下列角色（`--ch-font-*` 是引用宿主 token 的局部别名
 
 | 容器宽度 | 布局 |
 | --- | --- |
-| ≤ 560px | 顶部区域导航 + 单列文档流；操作条可换行；触控 ≥ 40px |
-| 561–879px | 顶部区域导航 + 单列（阅读列不受 172px 侧栏挤压） |
-| 880–1099px | 顶部区域导航 + 单列 960 容器 |
-| ≥ 1100px（W5） | 左侧 200px 区域导航 + 中间文档列；Change Set 右侧 rail 或底部 sheet |
+| ≤ 560px | 顶部下划线 tabs + 单列文档流；操作条可换行；触控 ≥ 40px |
+| 561–879px | 顶部下划线 tabs + 单列文档流（阅读列 720 不受侧栏挤压） |
+| 880–1099px | 顶部下划线 tabs + 单列容器 960，阅读列 720 居中 |
+| ≥ 1100px | 顶部下划线 tabs + 文档列 720 + 右侧 Change Set rail 280（gap 48，容器 1080）；**无左侧纵向导航** |
 
 同时要求：320px 可用（无横向滚动）、200% 文本缩放不破版、forced-colors 下边界仍可见、reduced-motion 下无动效。
 
@@ -403,6 +408,44 @@ Pane 只允许下列角色（`--ch-font-*` 是引用宿主 token 的局部别名
   in-flight/unknown 时写锁优先于 Escape（[workspace-v2 §5.7](charter-workspace-v2.zh.md)）。
 - 真实浏览器键盘遍历 + 200% 缩放 + screen reader 人工抽查纳入 §8.5 证据。
 
+### 4.9 视觉语言冻结（文档感，2026-11-12 评审通过）
+
+本节规则由 [docs/design/mockups/](mockups/README.md) 的四份高保真稿冻结（`style-tile.html`、
+`mockup-home-clean.html`、`mockup-home-dirty.html`、`mockup-graph.html`）；`mockup.css` 是参考实现，
+W6 落地时按其合入 `charter.css`。实现与稿不一致时，要么修实现，要么先修订稿与本节，不允许静默漂移。
+
+1. **文档感总原则**：Charter 是一份可读契约文档。层级由尺寸阶 × 字重 × 留白承载；不靠边框、底色、
+   kicker 微字制造视觉重量。
+2. **容器规则**：卡片（`bg-layer-1` + 发丝 `border-l2` + `radius-lg`）只用于可交互容器——行内编辑器、
+   Change Set 面板、notice、依赖图形区；纯展示内容（目标、硬约束、交付物、诊断行）一律
+   section + 行 + 发丝线，不装箱。
+3. **页头**：icon + “会话契约” h2（20/28）一行；右侧元信息 = 版本标识 chip（**已批准的冻结稿偏离**，用户 2026-11-12 明确要求保留）+ `rev N` + prompt meter（128px 轨道 +
+   字节数，`role="meter"`），与标题同 28px 行盒基线对齐；slogan/免责声明不进首屏；页头下发丝线。
+4. **区域导航**：所有宽度使用顶部下划线 tabs（规格见 §4.5 UnderlineTabs）；左侧纵向导航删除。
+5. **Section 解剖**：标题行 = h3（14/22 600）+ 计数摘要（12px tertiary，如“3 条生效 · 1 条待审”）+
+   右侧动作（`+ 添加` ghost sm / quietlink）；section 间 32px，标题到首行 4–8px。
+6. **行解剖**：`grid [16px 圆点 | 1fr 文本 | auto 元信息]`；圆点 5px 对准 20px 行盒中线；元信息
+   （字节数、D 编号）12px tertiary `tabular-nums` 右对齐，与正文首行同 20px 行盒 → 基线天然对齐；
+   行间发丝 `border-l1`；行 hover `bg-layer-1`。
+7. **目标**：文档 lead 段落——用户内容字号（`--dsh-content-font-size`）× 1.7 行高，无盒子；
+   “初始目标”“编辑”放 section 标题行右侧（quietlink + ghost sm）。
+8. **暂存语言**：暂存行 = 左侧 inset 2px business 强调条 + 5% `color-mix` 底 + “已暂存” chip；暂存
+   objective 同语言。只表达“未提交”，不改变 review/lifecycle 语义。
+9. **chip 规格**：11/14、pill、padding 2px 8px、底色 `color-mix(state 10–12%)` + 6px 同色圆点；
+   未开始/进行中/已完成/受阻/冲突用语义色；关系（依赖 D1）与来源（待审 · 消息提案）用 outline 发丝 chip。
+10. **quietlink**：行级轻动作（撤销、初始目标、展开依赖图）用点状下划线文本链接，不用按钮。
+11. **吸顶操作条**（仅 dirty/replay/conflict/unknown）：48px（`--ch-actionbar-h`），`bg-layer-1` +
+    `elevation-soft` + 底部发丝线；左 = 状态点 + 计数 + 一句 hint，右 = ghost/ghost/primary sm 按钮组，
+    单行盒垂直居中。
+12. **Change Set rail**（≥1100，280px，sticky）：安静 margin note——标题 + 计数 pill、摘要 `dl`
+    （Prompt 字节/条目，12px tabular）、分组 op 行（类别标签 11/600 tertiary + before→after 12px +
+    quietlink 撤销）、底部一句 hint；不是重卡片。窄屏 sheet 沿用同一内容解剖。
+13. **空态**：一行 36px 虚线“+ 添加”行；不渲染嵌套卡片与常驻编辑器。加载 = 3 行 skeleton
+    （`bg-skeleton`，40/16/16）。
+14. **notice**：单条内联（7px 语义色点 + 文本 + 可选详情），8% 语义色底 + `radius-md`；不堆叠。
+15. **宽度**：阅读列 720（`--ch-reading-max`）居中；单列容器 960；rail 模式容器 1080
+    （720 + 48 gap + 280 rail，`--ch-rail-w`/`--ch-rail-gap`/`--ch-rail-layout-max`）。
+
 ## 5. 信息架构与交互重构
 
 ### 5.1 区域模型
@@ -420,7 +463,8 @@ Change Set 按 [workspace-v2](charter-workspace-v2.zh.md) §5.6/§5.7 实现：*
 opener focus restore；in-flight/unknown 时不可绕过确认或写锁）。Workspace 顶部只保留一行“N 项待应用”入口
 摘要，它不是 Change Set 面板本体，也不承载 before→after。W5 增强为完整 rail/sheet（分组、逐项撤销、
 canonical diff、reconcile 状态）。若 D0 选择改为内联卡片，则必须先修订 v2 §5.1/§5.2/§5.7 并给出等价论证，
-且该修订是 W2 的前置条件（§2）。
+且该修订是 W2 的前置条件（§2）。冻结稿 [mockup-home-dirty.html](mockups/mockup-home-dirty.html) 细化该合同
+的视觉构成：吸顶操作条与 rail 解剖按 §4.9 规则 11/12 执行。
 
 ### 5.2 Workspace 文档流（替代 10 卡平铺）
 
@@ -431,13 +475,13 @@ canonical diff、reconcile 状态）。若 D0 选择改为内联卡片，则必�
 交付一个持久、用户所有、可审计的会话契约。
 ──────────────────────────────────────────────────────────────
 硬约束 (3)                                  [+ 添加]
-· 交付前运行源码检查、九版本兼容矩阵和候选 artifact 验证。      12 B
+· 交付前运行源码检查、十版本兼容矩阵和候选 artifact 验证。      12 B
 · 用户正式进入 user role，模型只读……                            18 B
 ──────────────────────────────────────────────────────────────
 交付物 (2)                                  [+ 添加]
 · 依赖关系图视图……   进行中 · 依赖 D1                         86 B
 ──────────────────────────────────────────────────────────────
-执行路径  [展开依赖图]
+执行路径  [展开依赖图 / 收起依赖图]
 目标 ← 硬约束 → 交付物 D1 → D2
 ──────────────────────────────────────────────────────────────
 阻塞原因（仅在有阻塞时出现）
@@ -450,6 +494,9 @@ canonical diff、reconcile 状态）。若 D0 选择改为内联卡片，则必�
 - 统计卡删除；数量放 section 标题（如“硬约束 (3)”）。需要跨区信息时用 header 摘要，不再用统计卡。
 - 空态：只渲染一个 empty-state 卡 + “设置目标 / 添加硬约束”两个主操作；不渲染零值块。
 - 依赖图默认折叠为“执行路径”disclosure；语义列表始终可见（保持 v2 §5.7 的权威操作面）。
+
+本节 ASCII 示意只保留结构意图；视觉构成以冻结稿 [mockup-home-clean.html](mockups/mockup-home-clean.html)
+为准（页头、下划线 tabs、行解剖、chip、quietlink、空态按 §4.9 执行）。
 
 ### 5.3 真实导航与滚动路由
 
@@ -489,10 +536,33 @@ canonical diff、reconcile 状态）。若 D0 选择改为内联卡片，则必�
 ### 5.6 i18n 与文案
 
 - 所有新文案进 `locales.ts` 的同一命名空间，中英同步；禁止硬编码中文。
+- rail、inspector、图形工具条与节点脚注不得出现原始枚举/op 类型串（如 `in-progress`、`accept`、
+  `verification.set`），一律走 `t()`；现有 `progress.*`、`changeset.op.*` key 复用。
 - 页面头只保留一句副标题；slogan/免责声明移入空态或帮助 popover，降低首屏噪声。
 - 计数、revision、字节数使用 `Intl` 或现有格式化函数，保持 `tabular-nums`。
 
-## 6. 实施阶段（W0–W5）
+### 5.7 依赖关系图视觉规格（冻结，稿：mockup-graph.html）
+
+图形区在“执行路径”disclosure 内，属可交互容器，允许卡片（§4.9 规则 2）。
+
+- **卡片与工具条**：`graphcard`（`bg-layer-1` + 发丝 `border-l2` + `radius-lg`）；工具条单行 =
+  标题（14/22 600）+ 焦点 select（sm，h28）+ 候选/历史开关（checkbox，12px）+ 缩放组
+  （− / 百分比 / +，h28 发丝分组）。
+- **画布**：`bg-base` 内嵌 + 发丝 `border-l1` + `radius-md`，min-height 360，overflow hidden；边用 SVG。
+- **节点**：固定宽 184px、**全 px 几何**——节点尺寸不随用户字号设置缩放（这是对旧版 em 几何 × 固定 px
+  字号失配导致文本裁切回归的修复；用户字号只影响语义列表）；解剖三层 = `[Dn key · 状态 chip] /
+  正文 13/20 两行截断 + 完整 title / readiness 脚注 12px tertiary`；左侧 3px 状态强调条
+  （done success / in-progress business / blocked warn / conflict error 且边框同色）；候选 = 虚线边框；
+  暂存 = focus-ring outline；选中 = business 边框。
+- **边状态语言**：实线 1.5px `label-tertiary` = 生效依赖（prerequisite → dependent 箭头）；
+  2px business 虚线 = 已暂存新依赖（随 Change Set 原子提交）；点线 = 候选提案依赖（接受后生效）。
+  画布底部一行静态 legend 说明三种边。
+- **inspector**：画布下方一行式区域（顶部发丝分隔）：选中节点 `Dn + 正文 + 进度 chip` /
+  依赖与被依赖 outline chips / 暂存变更 chip / 右侧 [编辑][+ 依赖] ghost sm。不使用重面板。
+- **边界**：语义列表始终是权威操作面；<880px 图形区随 disclosure 默认折叠且不渲染画布；节点为
+  button 语义可聚焦（`aria-current` 标记选中），画布 `role="img"` + 完整文本替代；拖拽仅是增强。
+
+## 6. 实施阶段（W0–W6）
 
 | 阶段 | 目标 | 主要变更 | 退出条件 |
 | --- | --- | --- | --- |
@@ -501,16 +571,17 @@ canonical diff、reconcile 状态）。若 D0 选择改为内联卡片，则必�
 | W2 IA 骨架（2–3d） | 去重、真实路由与 Change Set 最小合同 | 删除重复 objective；section id/滚动/聚焦；脏态操作条；预算收敛；空态折叠；Workspace 文档流；桌面 Change Set complementary region + 窄屏 modal bottom sheet（v2 §5.7） | 目标唯一；无死导航；DOM 测试覆盖路由；Change Set 合同通过；窄屏截图通过 |
 | W3 Review/状态收口（1d） | 次级区域与状态机 | Review 顺序、Diagnostics 预览锚点、notice 去重、skeleton、disabled 视觉权重、a11y 语义 | 六种状态各有唯一呈现；键盘遍历无死角 |
 | W4 证据与发布（1–1.5d） | 可验收 | 截图矩阵（含 320）、滚动/Change Set/a11y 证据、livery 主题抽查、README/截图/verification/CHANGELOG/release notes 同步 | §8 全部证据完成；发布门禁按 `docs/releasing.md` |
-| W5 结构终态（2–3d，0.3.0 范围内） | 宽屏与结构收口 | 三栏 + 完整 Change Set rail/sheet 交互、Pane/store 拆分、DOM/浏览器 a11y 门禁工具 ADR | W1–W4 证据通过后实施；与 W1–W4 同一个 0.3.0 分支/版本；人工验收覆盖 W1–W5 |
+| W5 结构终态（2–3d，0.3.0 范围内） | 宽屏与结构收口 | 完整 Change Set rail/sheet 交互（视觉按 §4.9 冻结稿）、Pane/store 拆分、DOM/浏览器 a11y 门禁工具 ADR | W1–W4 证据通过后实施；与 W1–W4 同一个 0.3.0 分支/版本 |
+| W6 视觉语言落地（2–3d） | 冻结稿对照实现 | 按 §4.9/§5.7 将 `mockups/mockup.css` 合入 `charter.css` 并调整页面组件：容器规则（纯展示去卡片）、行解剖与基线对齐、下划线 tabs（移除左侧纵向导航）、吸顶条/rail 构成、空态/skeleton、依赖图 px 几何重建与 inspector；rail/inspector 文案全部 `t()` | before/after × 冻结稿并排对照评审通过（明暗 × 320–1440）；`--gate=final` PASS；`npm run check` 全绿；用户字号 10/14/22 下图形无文本裁切 |
 
-估计：W0–W5 合计 8–12 个工程日（不含人工验收等待；W2 因 Change Set 最小合同、W5 因三栏/rail 增加），
-单分支、每阶段独立提交、`npm run check` 全绿才进入下一阶段。
+估计：W0–W6 合计 10–15 个工程日（不含人工验收等待；W2 因 Change Set 最小合同、W5 因 rail/sheet、
+W6 因视觉落地增加），单分支、每阶段独立提交、`npm run check` 全绿才进入下一阶段。
 
 **W0 进度（2026-11-12）**：本地分支 `feat/0.3.0-gui` 已建立（未推送）；`DESIGN.md` 与
 `scripts/verify/ui-metrics.mjs` 已落盘；基线由 `npm run verify:ui-metrics` 生成并保存在
 `.tmp/gui-baseline/`（本地证据，不随包发布）；**Web 滚动所有权探针已完成并冻结**（证据：
 `.tmp/gui-acceptance/2026-11-12/`，结论见 §1.1/§4.1），采用回退 A（宿主滚动、Pane 文档流）。**Token 覆盖
-审计已完成（2026-11-12）**：10 个声明 DSH 版本的 theme package 中，35 个静态 host token 均有定义，唯一动态
+审计已完成（2026-11-12）**：10 个声明 DSH 版本的 theme package 中，41 个静态 host token 均有定义，唯一动态
 `--dsh-content-font-size` 已有 14px fallback，compat 块保持为空；`npm run check` 已包含 token gate。**待完成**：
 Desktop 侧确认。W1 可开始，但不得新建内层滚动容器。
 
@@ -547,7 +618,7 @@ W3 人工验收。证据：`.tmp/gui-acceptance/2026-11-12/w3-a11y-summary.md`�
 已按审查删除，避免与已发布不可变 0.2.2 同名冲突；最终开发候选 `0.3.0`（`package.json`/`src/version.ts` 均为
 0.3.0，未发布）打包为 `dist/dsh-charter-0.3.0.tgz`（rc.2 兼容构建，SHA-256 `31c4c61d…`），并已部署到本地 `web` 与 `desktop`
 profile（node_modules 版本 0.3.0，client bundle 含 0.3.0）：Web 验收服务运行在 `http://127.0.0.1:52080/`，
-Desktop 需重启 app 后加载新 Pane；部署/回滚记录见 `.tmp/gui-acceptance/2026-11-12/acceptance-deploy.md`。
+Desktop 的 Pane 由 Host profile 重组 + client bundle HMR 热替换（2026-11-12 实测无需重启）；部署/回滚记录见 `.tmp/gui-acceptance/2026-11-12/acceptance-deploy.md`。
 exact artifact client 已通过 CDP 注入真实 Host 验证 Pane 与 Change Set rail；并完成 320/375/560/850/1440、
 明/暗、forced-colors、reduced-motion、2x page-scale 的截图矩阵。**待完成**：fresh-profile Host+Session、Desktop
 重启后的真实窗口、zh/en 切换、真实 AT 证据、README/verification 发布同步。
@@ -558,7 +629,7 @@ exact artifact client 已通过 CDP 注入真实 Host 验证 Pane 与 Change Set
 移除行内字节数和重复进度标签、进度控件收敛为行尾单一 select、空态去虚线框、表单次级按钮按需出现。Change Set rail 的分组 / before→after / 单条撤销 / 桌面 complement + 窄屏 sheet 均已落地。
 `npm run check` 490/490、`--gate=final` PASS；真实浏览器 v0.3.0 已验证三区域路由、objective 单卡和诊断
 Context Preview。**剩余**：per-domain store 的细粒度拆分（当前以 `draft-store`、`change-set-model`、
-`useChangeSetSheet`、`section-routing`、`page-order` 为 store 边界）与 W1–W5 人工验收。
+`useChangeSetSheet`、`section-routing`、`page-order` 为 store 边界）与 W1–W6 人工验收。
 
 ## 7. 版本与发布策略
 
@@ -566,7 +637,7 @@ Context Preview。**剩余**：per-domain store 的细粒度拆分（当前以 `
   人工验收通过前不推送、不合并、不 tag/publish；不提前写“0.3.0 已发布/可用”。
 - 发布元数据仍按 AGENTS.md Lesson 4 的同一原子集合更新：`package.json` 版本、README/README.zh 的能力清单与
   截图、CHANGELOG/CHANGELOG.zh、`docs/release-notes/<version>.md`、docs 索引、`docs/verification*.md`、
-  `SHA256SUMS`、artifact digest；本轮不修改 `engines.dsh`、peer ranges、`dshReleases`。
+  `SHA256SUMS`、artifact digest；本轮仅维护 DSH 版本声明（rc.2 + 有界 engines 范围），不改 ABI/wire；声明证据见 compatibility.zh.md。
 - 兼容矩阵不豁免：发布前对全部声明版本与当前 untracked 版本跑
   `node scripts/verify/compat-matrix.mjs --versions all`。
 - 截图与 README 从**验收通过的 exact build** 重新采集；不得复用未验收构建的截图。
@@ -614,6 +685,8 @@ W0 固化 `scripts/verify/ui-metrics.mjs`，输出 §0.1 的指标；W1/W2/W4 �
 - **滚动所有权探针**：Web/Desktop × Composer 开合 × 375/850/1440 的 computed height/overflow、双滚动条、
   吸顶位置，结论与 §4.1 主方案/回退方案一致。
 - **合成数据**：发布用截图只使用合成演示 Session；`.tmp/gui-acceptance/` 中的真实记录证据不得提交或外传。
+- **冻结稿对照**：W6 完成后按 [docs/design/mockups/](mockups/README.md) 同宽度/主题/状态截图并排对照，
+  差异逐条写入验收记录（允许实现细节微调，不允许视觉语言替换）。
 
 ### 8.4 可访问性证据
 
@@ -630,7 +703,7 @@ W0 固化 `scripts/verify/ui-metrics.mjs`，输出 §0.1 的指标；W1/W2/W4 �
 
 ### 8.6 兼容与发布证据
 
-- 九版本矩阵 + 当前 untracked `latest`/`next`（AGENTS.md 兼容门禁）。
+- 十版本矩阵 + 当前 untracked `latest`/`next`（AGENTS.md 兼容门禁）。
 - 精确 artifact、fresh profile、Desktop/Web UI、zh/en 切换、旧记录读取；按 `docs/verification.md` 标注
   CI / local / manual，不夸大覆盖范围。
 
@@ -640,7 +713,7 @@ W0 固化 `scripts/verify/ui-metrics.mjs`，输出 §0.1 的指标；W1/W2/W4 �
 
 Pane 仍声明最低 `0.1.7-rc.2`。0.2.2-rc.1 的 token 合约不能假设旧版本全有。W0 审计已按 10 个声明版本完成
 （2026-11-12）：用 `scripts/verify/token-coverage.mjs` 对 `scripts/verify/token-coverage.inventory.json` 与
-CSS 实际使用的 host token 逐项比对；**35 个静态 host token 在全部 10 个版本的
+CSS 实际使用的 host token 逐项比对；**41 个静态 host token 在全部 10 个版本的
 `@deepseek-ai/dsh-client-ui-theme` 中均有定义**，唯一动态 token `--dsh-content-font-size` 已带 `14px` fallback。
 因此 `charter-token-compat` 块保持为空（不是漏填），不再需要旧版 fallback 字面量；新增 host token 必须先更新
 inventory 并让 `npm run check` 中的 token gate 通过。若未来某版本确实缺失，仍按原规则在有界块内集中定义、
@@ -660,18 +733,20 @@ inventory 并让 `npm run check` 中的 token gate 通过。若未来某版本�
 - 本方案不改 record/Remote/prompt，回滚只需回退客户端代码；旧记录仍可读。
 - `section` 持久化语义不变；新增的滚动/焦点逻辑只影响客户端。
 - W5 的 Pane/store 拆分在同一个 0.3.0 分支内以独立提交/可回滚开关实施，不与 W1–W4 混在同一提交；人工验收
-  覆盖 W1–W5 后才算 0.3.0 GUI 完成。
+  覆盖 W1–W6 后才算 0.3.0 GUI 完成。
 
 ## 10. 决策状态
 
 | 编号 | 决策 | 状态 | 结论 |
 | --- | --- | --- | --- |
-| D0 | 目标版本 | **已决策** | `0.3.0`，W0–W5，所有栏目统一重构 |
+| D0 | 目标版本 | **已决策** | `0.3.0`，W0–W6，所有栏目统一重构 |
 | D0b | Change Set 呈现路径 | **已决策** | 实现 workspace-v2 §5.7 最小合同；W5 完整 rail/sheet；不修订 v2 |
-| D1 | 布局终态 | **已决策** | 窄屏 A-lite + 宽屏三栏/rail（W5），全栏目共用同一合同 |
-| D2 | 旧 DSH 版 token 缺失策略 | **已决策**（2026-11-12） | 9 版本 token 覆盖审计通过：35 个静态 token 全有定义，动态 token 有 fallback；兼容块保持空 |
+| D1 | 布局终态 | **已决策**（2026-11-12 冻结稿修订） | 全宽度顶部下划线 tabs + 文档列 720；≥1100 加右侧 Change Set rail 280（容器 1080）；不做左侧三栏 |
+| D2 | 旧 DSH 版 token 缺失策略 | **已决策**（2026-11-12） | 10 版本 token 覆盖审计通过：41 个静态 token 全有定义，动态 token 有 fallback；兼容块保持空 |
 | D3 | 证据工具：人工截图/axe vs 新增浏览器自动化 | **已决策**（2026-11-12） | 人工 + CDP 脚本 + `ui-metrics`/`token-coverage` 门禁；不引入 Playwright/axe 依赖（若引入先写 ADR） |
 | D4 | 设计 skill 的落地方式 | **已决策**（2026-11-12） | 用户级 `--copy` 安装（跨项目），未提交仓库、未加入发布依赖 |
+| D5 | 视觉方向 | **已决策**（2026-11-12） | 文档感；冻结稿 `docs/design/mockups/`（style tile + clean/dirty/依赖图三屏），规则见 §4.9/§5.7 |
+| D6 | 页头版本 chip（冻结稿偏离） | **已批准偏离**（2026-11-12） | 用户明确要求保留插件版本标识；在 §4.9 规则 3 记为受控偏离，位于页头右侧元信息，不恢复 slogan/免责声明 |
 
 0.3.0 未发布；发布流程只在人工验收通过并获得明确发布指令后启动。
 
@@ -761,7 +836,11 @@ URL/commit、拒绝无许可证或行为不明的包；impeccable 的 launcher �
 - [ ] 明暗 × 中英 × 320/375/560/850/1440 × 六状态截图完成，主截图来自验收构建且使用合成数据。
 - [ ] 字体偏好 10/14/22 下不破版；内容文字跟随、UI 文字固定阶。
 - [ ] 键盘全路径 + 200% 缩放 + forced-colors + reduced-motion 通过。
-- [x] 旧版 DSH token 覆盖审计完成（2026-11-12，9 版本 / 35 静态 token / 1 动态 fallback）；兼容块为空且有门禁。
+- [ ] 与冻结稿（docs/design/mockups/）并排对照评审通过：明暗 × 320/375/560/850/1440 × 六状态。
+- [ ] 依赖图节点 px 几何 + 正文两行截断；用户字号 10/14/22 下无文本裁切、无节点溢出。
+- [ ] rail、inspector、图形工具条无原始枚举/op 类型串，全部走 locales。
+- [ ] 区域导航为顶部下划线 tabs（nav + aria-current）；旧左侧纵向导航已移除。
+- [x] 旧版 DSH token 覆盖审计完成（2026-11-12，10 版本 / 41 静态 token / 1 动态 fallback）；兼容块为空且有门禁。
 - [ ] `npm run check`、兼容矩阵、exact artifact/fresh profile 门禁通过，证据按 CI/local/manual 标注。
 - [ ] README/README.zh、CHANGELOG、release notes、docs 索引、SHA256SUMS 同批更新；未 push/tag/publish。
 - [ ] 人工验收前未推送 `feat/0.3.0-gui`、未合并 `main`、未 tag/publish；仓库与 README 无“0.3.0 可用/已发布”声明。
@@ -770,10 +849,10 @@ URL/commit、拒绝无许可证或行为不明的包；impeccable 的 launcher �
 
 | 日期 | 变更 |
 | --- | --- |
-| 2026-11-11 | 创建本提案（Proposed）：基线度量、设计系统目标、IA 重构、W0–W5、证据计划、社区工具附录。 |
+| 2026-11-11 | 创建本提案（Proposed）：基线度量、设计系统目标、IA 重构、W0–W5（后扩展至 W6）、证据计划、社区工具附录。 |
 | 2026-11-11 | 评审修订 v2：修复 P1×4（圆角门禁、滚动运行时探针、Change Set v2 合同、兼容块计数）与 P2×11（预算口径、字阶表述与 section token、padding 口径、魔法数字、W1 范围、disabled 措辞、320 截图、合成数据、skill 审阅、内部一致性），并同步外围索引与 AGENTS.md 状态词汇表。 |
 | 2026-11-11 | 评审修订 v3：Card 规格统一为 `radius-lg`（H17/P1 残留）；附录 C 补齐 better-typography 安装命令，与“已安装 4 个 skill”一致。 |
-| 2026-11-12 | D0 决策：目标版本 `0.3.0`（所有栏目统一重构，W0–W5）；D0b 采用 workspace-v2 最小合同；D1 采用窄屏 A-lite + 宽屏三栏/rail。执行边界：本地 `feat/0.3.0-gui`，人工验收前不推送/合并/发布/宣称可用；状态转 `Active`。 |
+| 2026-11-12 | D0 决策：目标版本 `0.3.0`（所有栏目统一重构，W0–W5，后扩展至 W6）；D0b 采用 workspace-v2 最小合同；D1 采用窄屏 A-lite + 宽屏三栏/rail。执行边界：本地 `feat/0.3.0-gui`，人工验收前不推送/合并/发布/宣称可用；状态转 `Active`。 |
 | 2026-11-12 | W0/W1 进展：Web 滚动探针冻结（宿主滚动、`overflow-x:clip`）；CSS token 层通过 `--gate=css`；W1 人工视觉确认仍未完成。 |
 | 2026-11-12 | W2a 进展：目标单次渲染、旧 overview/stat/budget 移除、真实 section 路由（滚动+聚焦）、clean 状态隐藏操作条；`--gate=ia` 与 `npm run check` 通过；Change Set rail/sheet 待 W2b。 |
 | 2026-11-12 | W2b 完成：Change Set v2 最小合同（桌面 complementary region、窄屏 modal sheet + focus trap/Escape/focus restore）、冲突摘要入面板、Change Set 测试；W2 源码层完成，真实浏览器证据与人工验收仍待。 |
@@ -781,6 +860,9 @@ URL/commit、拒绝无许可证或行为不明的包；impeccable 的 launcher �
 | 2026-11-12 | W4 部分：WIP artifact 打包（SHA-256 `12c66dbc…`）、隔离 profile exact install、隔离 Host 启动、exact artifact client 真实 Host 渲染；fresh-profile session、Desktop、截图矩阵与发布文档仍待。 |
 | 2026-11-12 | W5 页面级拆分完成：WorkspacePage/ReviewCenterPage/DiagnosticsPage + typed PaneScope + pane-format/pane-ui；CharterPane 3459→1842；490/490 + final gate；真实浏览器 v0.3.0 三区域验证；per-domain store 细粒度拆分仍待人工验收边界。 |
 | 2026-11-12 | 审查修复：W0 token 覆盖门禁（9 版本/35 静态 token/1 动态 fallback）落盘；rail 状态文案本地化；导航 a11y 文档统一为 nav+aria-current；补 `--ch-reading-max` 并移除 sticky 60px 魔法数字；dev artifact 删除以保护已发布 0.2.2。 |
-| 2026-11-12 | 本地验收部署：`0.3.0` dev candidate（`1d1963f1…`）安装到本地 web+desktop profile；Web 验收服务 52080；Desktop 重启后生效；未推送/发布。 |
+| 2026-11-12 | 本地验收部署：`0.3.0` dev candidate（`1d1963f1…`）安装到本地 web+desktop profile；Web 验收服务 52080；Desktop 当时按重启验证。后续 2026-11-12 确认 Desktop 支持 bundle 热更新，见下方 W6 记录。 |
 | 2026-11-12 | DSH rc.2 适配：声明 `0.2.2-rc.2`（engines/peers/dshReleases/token inventory/测试/文档），十版本矩阵 PASS；rc.2 兼容 artifact `31c4c61d…` 安装 web+desktop；engines 改为有界 0.2 线范围。 |
 | 2026-11-12 | UX 减负：平铺 section、去除冗余小字/角标/免责声明、行内字节与重复进度标签移除、单一进度控件、空态/表单降噪；490 测试 + final gate PASS；artifact `1d1963f1…` 已部署 web+desktop。 |
+| 2026-11-12 | 本地验收部署：W6 验收构建 `dist/dsh-charter-0.3.0-w6-final.tgz`（`ab74591c…`，client `986f8403…`）已安装到本地 web+desktop profile；恢复 Pane 页头 `v0.3.0` 版本标识；Desktop 实测热更新（bundle 824ms / CSS 402ms / 最终 886ms；后续披露标签修复构建 `ab74591c…` 已热更新，tabs=3、style=1、无异常），无需重启；人工验收待完成。 |
+| 2026-11-12 | W6 视觉语言落地（源码）：按 docs/design/mockups 合入文档感 CSS 与组件——顶部下划线 tabs、720 文档列 + 280 Change Set rail、section/行解剖与对齐、36px 虚线空态、40/16/16 skeleton、quietlink/notice、依赖图 px 几何 + 紧凑 inspector；490/490 + final gate PASS；CDP 截图 320/850/1440，root/document 横向溢出 0，图形区 320/850 隐藏、1440 可见，字号 10/14/22 节点文本无裁切；冻结稿并排评审与人工验收仍待完成。 |
+| 2026-11-12 | 视觉语言冻结（文档感）：style tile + clean 首屏 / 脏态 rail / 依赖关系图三份高保真稿入库 `docs/design/mockups/`（含 `mockup.css` 参考实现与 `tokens.css` 宿主 token 快照）；新增 §4.9 视觉冻结与 §5.7 依赖图规格；更新 §4.5/§4.7/§5.1/§5.2/§5.6/§8.3、D1/D5 决策与 W6 实施阶段；区域导航定为顶部下划线 tabs（去左侧纵向导航）。 |

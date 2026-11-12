@@ -11,6 +11,8 @@
 - Workspace、审阅中心、诊断与维护全栏目 GUI 重构：平铺 section、减少小字/角标、交付物行单一进度控件、
   Change Set 完整 rail/sheet、页面级 Pane 拆分。
 - 全部声明 DSH 版本的主题 token 覆盖审计与门禁。
+- W6 文档感视觉冻结：下划线 tabs、≥1100 的 720px 文档列 + 280px Change Set rail、section/行解剖、36px 虚线空态、40/16/16 skeleton、quietlink、单行 notice，以及 px 几何依赖图（184px 节点、三层解剖、静态边 legend、紧凑 inspector）。
+- 验证：39 文件 / 490 测试与 `verify:ui-metrics -- --gate=final` PASS；截图与并排 before/after 评审仍为本地/人工项。
 
 ### 兼容性
 

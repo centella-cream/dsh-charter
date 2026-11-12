@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>会话契约 · 约束关系图（850px · 文档感）</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="mockup.css">
+</head>
+<body>
+<div class="desk">
+  <div class="desk__caption">0.3.0 视觉稿 · 执行路径 / 依赖关系图（展开态）· 850px 容器 · 合成数据 · <a href="?dark" class="quietlink">切换明暗</a></div>
+
+  <div class="pane pane--850">
+    <div class="layout layout--single">
+      <div class="doc">
+
+        <header class="head">
+          <span class="head__icon" aria-hidden="true">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 2h8a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z"/>
+              <path d="M5.5 5.5h5M5.5 8h5M5.5 10.5h3"/>
+            </svg>
+          </span>
+          <h2>会话契约</h2>
+          <div class="head__meta">
+            <span>rev 7</span>
+            <span class="meter" role="meter" aria-valuemin="0" aria-valuemax="8192" aria-valuenow="191" aria-label="契约上下文占用">
+              <span class="meter__track"><span class="meter__fill" style="width:16%"></span></span>
+              191 B / 8.0 KiB
+            </span>
+          </div>
+        </header>
+        <div class="headrule"></div>
+
+        <nav class="tabs" aria-label="契约区域">
+          <button type="button" aria-current="page">工作区</button>
+          <button type="button">审阅中心 <span class="pillcount">2</span></button>
+          <button type="button">诊断与维护</button>
+        </nav>
+
+        <!-- 执行路径：disclosure 展开态，图形区为可交互容器 → 允许卡片 -->
+        <section class="sec" aria-labelledby="h-execution">
+          <details class="disclosure" open>
+            <summary aria-labelledby="h-execution">
+              <span class="caret" aria-hidden="true">▶</span>
+              <h3 id="h-execution" style="margin:0;font-size:var(--dsw-font-s-14-font-size,14px);font-weight:600">执行路径</h3>
+              <span class="pathline"><b>D1</b><span class="arrow">→</span><b>D2</b><span class="arrow">→</span><b>D3</b></span>
+            </summary>
+
+            <div class="graphcard">
+              <div class="graphcard__toolbar">
+                <span class="graphcard__title">依赖关系图</span>
+                <div class="graphcard__tools">
+                  <label class="check" style="gap:6px">
+                    <span style="color:var(--dsw-alias-label-tertiary)">焦点</span>
+                    <select class="select-sm" aria-label="聚焦节点">
+                      <option>D2 · 按稿实现文档流…</option>
+                      <option>D1 · 冻结视觉语言…</option>
+                      <option>D3 · 补齐截图矩阵…</option>
+                    </select>
+                  </label>
+                  <label class="check"><input type="checkbox" checked> 候选</label>
+                  <label class="check"><input type="checkbox"> 历史</label>
+                  <span class="zoomgroup">
+                    <button type="button" aria-label="缩小">−</button>
+                    <span class="zoomval">100%</span>
+                    <button type="button" aria-label="放大">+</button>
+                  </span>
+                </div>
+              </div>
+
+              <div class="canvas" role="img" aria-label="交付物依赖图：D1 已完成，D2 进行中依赖 D1，D3 等待 D2，候选 D4 提议依赖 D2，另有一条已暂存的 D1 到 D3 依赖">
+                <svg aria-hidden="true">
+                  <defs>
+                    <marker id="arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                      <path d="M0,0 L8,4 L0,8 z" fill="var(--dsw-alias-label-tertiary)"/>
+                    </marker>
+                    <marker id="arrowB" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                      <path d="M0,0 L8,4 L0,8 z" fill="var(--dsw-alias-state-business-primary)"/>
+                    </marker>
+                  </defs>
+                  <!-- 生效依赖：D1 → D2 → D3 -->
+                  <path class="edge" d="M 200 115 C 226 115, 226 99, 252 99" marker-end="url(#arrow)"/>
+                  <path class="edge" d="M 436 99 C 462 99, 462 115, 488 115" marker-end="url(#arrow)"/>
+                  <!-- 已暂存的新依赖：D1 → D3（顶部弧线） -->
+                  <path class="edge edge--staged" d="M 108 64 C 108 14, 580 14, 580 64" marker-end="url(#arrowB)"/>
+                  <!-- 候选提案的依赖：D2 → D4 -->
+                  <path class="edge edge--proposed" d="M 344 152 L 344 224" marker-end="url(#arrow)"/>
+                </svg>
+
+                <button type="button" class="node node--done" style="left:16px; top:64px" title="D1 冻结视觉语言规格与首屏高保真稿">
+                  <span class="node__head"><span class="node__key">D1</span><span class="chip chip--success"><i></i>已完成</span></span>
+                  <span class="node__text">冻结视觉语言规格与首屏高保真稿</span>
+                  <span class="node__foot">无前置</span>
+                </button>
+
+                <button type="button" class="node node--in-progress node--selected" style="left:252px; top:48px" aria-current="true" title="D2 按稿实现文档流 Workspace 与对齐规则">
+                  <span class="node__head"><span class="node__key">D2</span><span class="chip chip--business"><i></i>进行中</span></span>
+                  <span class="node__text">按稿实现文档流 Workspace 与对齐规则</span>
+                  <span class="node__foot">前置 D1 已满足</span>
+                </button>
+
+                <button type="button" class="node" style="left:488px; top:64px" title="D3 补齐 320px 与暗色截图矩阵证据">
+                  <span class="node__head"><span class="node__key">D3</span><span class="chip chip--neutral"><i></i>未开始</span></span>
+                  <span class="node__text">补齐 320px 与暗色截图矩阵证据</span>
+                  <span class="node__foot">等待 D2 · 新依赖已暂存</span>
+                </button>
+
+                <button type="button" class="node node--candidate" style="left:252px; top:224px" title="D4（候选提案）建立 before/after 视觉回归清单">
+                  <span class="node__head"><span class="node__key">D4</span><span class="chip chip--outline">候选</span></span>
+                  <span class="node__text">建立 before/after 视觉回归清单</span>
+                  <span class="node__foot">待审阅 · 提议依赖 D2</span>
+                </button>
+              </div>
+
+              <!-- 选中节点 inspector -->
+              <div class="inspector">
+                <div class="inspector__main">
+                  <div class="inspector__title">
+                    <span class="node__key">D2</span>
+                    <b>按稿实现文档流 Workspace 与对齐规则</b>
+                    <span class="chip chip--business"><i></i>进行中</span>
+                  </div>
+                  <div class="inspector__rels">
+                    <span class="lbl">依赖</span><span class="chip chip--outline">D1 · 已完成</span>
+                    <span class="lbl">被依赖</span><span class="chip chip--outline">D3</span><span class="chip chip--outline">D4 · 候选</span>
+                  </div>
+                  <div class="inspector__rels">
+                    <span class="lbl">暂存变更</span><span class="chip chip--business"><i></i>新增依赖 D1 → D3</span>
+                  </div>
+                </div>
+                <div class="inspector__actions">
+                  <button type="button" class="btn btn--sm">编辑</button>
+                  <button type="button" class="btn btn--sm">+ 依赖</button>
+                </div>
+              </div>
+
+              <p class="graphnote">图形区仅作增强：语义列表始终是权威操作面，窄屏自动折叠为 disclosure。实线 = 生效依赖；蓝色虚线 = 已暂存的新依赖（随 Change Set 原子提交）；点线 = 候选提案依赖（接受后生效）。节点为固定 px 几何 + 两行截断 + 完整 title，修复旧版 em 布局在用户字号变化时的文本裁切。</p>
+            </div>
+          </details>
+        </section>
+
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  if (new URLSearchParams(location.search).has('dark')) document.body.setAttribute('data-ds-dark-theme', '');
+</script>
+</body>
+</html>

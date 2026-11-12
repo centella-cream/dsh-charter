@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>会话契约 · clean 首屏（850px · 文档感）</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="mockup.css">
+</head>
+<body>
+<div class="desk">
+  <div class="desk__caption">0.3.0 视觉稿 · clean 首屏 · 850px 容器 · 合成数据 · <a href="?dark" class="quietlink">切换明暗</a></div>
+
+  <div class="pane pane--850">
+    <div class="layout layout--single">
+      <div class="doc">
+
+        <!-- 页头：无卡片，标题 + 元信息一行，基线对齐 -->
+        <header class="head">
+          <span class="head__icon" aria-hidden="true">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 2h8a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z"/>
+              <path d="M5.5 5.5h5M5.5 8h5M5.5 10.5h3"/>
+            </svg>
+          </span>
+          <h2>会话契约</h2>
+          <div class="head__meta">
+            <span>rev 7</span>
+            <span class="meter" role="meter" aria-valuemin="0" aria-valuemax="8192" aria-valuenow="191" aria-label="契约上下文占用">
+              <span class="meter__track"><span class="meter__fill" style="width:16%"></span></span>
+              191 B / 8.0 KiB
+            </span>
+          </div>
+        </header>
+        <div class="headrule"></div>
+
+        <!-- 区域导航：下划线 tabs，安静 -->
+        <nav class="tabs" aria-label="契约区域">
+          <button type="button" aria-current="page">工作区</button>
+          <button type="button">审阅中心 <span class="pillcount">2</span></button>
+          <button type="button">诊断与维护</button>
+        </nav>
+
+        <!-- 目标：文档 lead 段落，无卡片 -->
+        <section class="sec" aria-labelledby="h-objective">
+          <div class="sec__head">
+            <h3 id="h-objective">目标</h3>
+            <div class="sec__actions">
+              <button type="button" class="quietlink">初始目标</button>
+              <button type="button" class="btn btn--sm">编辑</button>
+            </div>
+          </div>
+          <p class="obj__text">交付一个持久、用户所有、可审计的会话契约，让长会话中的硬约束与交付物始终对模型可见。</p>
+        </section>
+
+        <!-- 硬约束：section + 行，行内发丝分隔 -->
+        <section class="sec" aria-labelledby="h-invariants">
+          <div class="sec__head">
+            <h3 id="h-invariants">硬约束</h3>
+            <span class="sec__count">3 条生效 · 1 条待审</span>
+            <div class="sec__actions">
+              <button type="button" class="btn btn--sm">+ 添加</button>
+            </div>
+          </div>
+          <div class="rows">
+            <div class="row">
+              <span class="row__dot" aria-hidden="true"></span>
+              <div class="row__body"><div class="row__text">发布前运行源码检查、九版本兼容矩阵和候选 artifact 验证。</div></div>
+              <div class="row__meta"><span>46 B</span></div>
+            </div>
+            <div class="row">
+              <span class="row__dot" aria-hidden="true"></span>
+              <div class="row__body"><div class="row__text">用户正式文本进入 user role，模型只读、只能提案。</div></div>
+              <div class="row__meta"><span>33 B</span></div>
+            </div>
+            <div class="row">
+              <span class="row__dot" aria-hidden="true"></span>
+              <div class="row__body">
+                <div class="row__text">溢出必须可见，任何预算超限都显式拒绝，不静默截断。</div>
+                <div class="row__sub"><span class="chip chip--outline">待审 · 来自消息提案</span></div>
+              </div>
+              <div class="row__meta"><span>38 B</span></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 交付物：状态 chip 承载进度，行尾字节数对齐 -->
+        <section class="sec" aria-labelledby="h-deliverables">
+          <div class="sec__head">
+            <h3 id="h-deliverables">交付物</h3>
+            <span class="sec__count">2 条</span>
+            <div class="sec__actions">
+              <button type="button" class="btn btn--sm">+ 添加</button>
+            </div>
+          </div>
+          <div class="rows">
+            <div class="row">
+              <span class="row__dot" aria-hidden="true"></span>
+              <div class="row__body">
+                <div class="row__text">冻结视觉语言规格与首屏高保真稿</div>
+                <div class="row__sub"><span class="chip chip--success"><i></i>已完成</span></div>
+              </div>
+              <div class="row__meta"><span>D1</span><span>22 B</span></div>
+            </div>
+            <div class="row">
+              <span class="row__dot" aria-hidden="true"></span>
+              <div class="row__body">
+                <div class="row__text">按稿实现文档流 Workspace 与对齐规则</div>
+                <div class="row__sub">
+                  <span class="chip chip--business"><i></i>进行中</span>
+                  <span class="chip chip--outline">依赖 D1</span>
+                </div>
+              </div>
+              <div class="row__meta"><span>D2</span><span>26 B</span></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 执行路径：折叠 disclosure，图形只在展开时出现 -->
+        <section class="sec" aria-labelledby="h-execution">
+          <details class="disclosure">
+            <summary aria-labelledby="h-execution">
+              <span class="caret" aria-hidden="true">▶</span>
+              <h3 id="h-execution" style="margin:0;font-size:var(--dsw-font-s-14-font-size,14px);font-weight:600">执行路径</h3>
+              <span class="pathline"><b>D1</b><span class="arrow">→</span><b>D2</b></span>
+              <span style="margin-left:auto"><button type="button" class="quietlink">展开依赖图</button></span>
+            </summary>
+            <div class="rows">
+              <div class="row">
+                <span class="row__dot" aria-hidden="true"></span>
+                <div class="row__body"><div class="row__text" style="color:var(--dsw-alias-label-tertiary)">（依赖图形区 — 仅在此展开时渲染，窄屏保持语义列表）</div></div>
+                <div class="row__meta"></div>
+              </div>
+            </div>
+          </details>
+        </section>
+
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  if (new URLSearchParams(location.search).has('dark')) document.body.setAttribute('data-ds-dark-theme', '');
+</script>
+</body>
+</html>
