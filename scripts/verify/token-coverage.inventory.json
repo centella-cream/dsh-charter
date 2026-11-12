@@ -1,0 +1,77 @@
+{
+  "auditDate": "2026-11-12",
+  "source": {
+    "package": "@deepseek-ai/dsh-client-ui-theme",
+    "versions": [
+      "0.1.7-rc.2",
+      "0.2.0-rc.1",
+      "0.2.0-rc.2",
+      "0.2.1-rc.1",
+      "0.2.1-rc.2",
+      "0.2.1-rc.3",
+      "0.2.1-rc.4",
+      "0.2.1-rc.5",
+      "0.2.2-rc.1",
+      "0.2.2-rc.2"
+    ],
+    "method": "npm pack each version; extract CSS custom-property definitions from package/lib/**/*.js and *.css",
+    "note": "Declared DSH versions from package.json engines.dsh. All static host tokens used by charter.css are defined in every version."
+  },
+  "css": "src/client/charter.css",
+  "staticVars": [
+    "--ds-ease-in-out",
+    "--ds-font-family-code",
+    "--ds-transition-duration",
+    "--dsw-alias-bg-base",
+    "--dsw-alias-bg-layer-1",
+    "--dsw-alias-bg-layer-2",
+    "--dsw-alias-border-l1",
+    "--dsw-alias-border-l2",
+    "--dsw-alias-border-l3",
+    "--dsw-alias-brand-primary",
+    "--dsw-alias-button-primary-fill",
+    "--dsw-alias-button-primary-hover",
+    "--dsw-alias-interactive-bg-hover",
+    "--dsw-alias-label-primary",
+    "--dsw-alias-label-primary-foreground",
+    "--dsw-alias-label-secondary",
+    "--dsw-alias-label-tertiary",
+    "--dsw-alias-state-error-primary",
+    "--dsw-alias-state-success-primary",
+    "--dsw-alias-state-warn-primary",
+    "--dsw-elevation-panel",
+    "--dsw-elevation-prominent",
+    "--dsw-elevation-soft",
+    "--dsw-focus-ring-color",
+    "--dsw-focus-ring-width",
+    "--dsw-font-base-16-font-size",
+    "--dsw-font-family",
+    "--dsw-font-l-20-font-size",
+    "--dsw-font-s-14-font-size",
+    "--dsw-font-xs-13-font-size",
+    "--dsw-font-xxs-12-font-size",
+    "--dsw-font-xxxs-11-font-size",
+    "--dsw-radius-lg",
+    "--dsw-radius-md",
+    "--dsw-radius-sm"
+  ],
+  "dynamicVars": {
+    "--dsh-content-font-size": {
+      "fallbackRequired": true,
+      "fallback": "14px",
+      "note": "host runtime font-size variable; charter.css already uses var(..., 14px)"
+    }
+  },
+  "missingByVersion": {
+    "0.1.7-rc.2": [],
+    "0.2.0-rc.1": [],
+    "0.2.0-rc.2": [],
+    "0.2.1-rc.1": [],
+    "0.2.1-rc.2": [],
+    "0.2.1-rc.3": [],
+    "0.2.1-rc.4": [],
+    "0.2.1-rc.5": [],
+    "0.2.2-rc.1": [],
+    "0.2.2-rc.2": []
+  }
+}
