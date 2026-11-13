@@ -1207,7 +1207,14 @@ Reason code 进入 Remote contract fixture，UI 只根据 code/reason 决定恢�
 - active invariant；
 - active deliverable；
 - progress；
-- 完整 active dependency graph 的局部 label。
+- 完整 active dependency graph 的局部 label；
+- active deliverable 的稳定 `id`，即 `charter_propose.requires` 的唯一合法引用空间（§12.2）。invariant 不返回
+  `id`：它永远不能充当前置，省略可把 envelope 成本压到最小（实测 49 B/交付物；64 项最坏情况 +3,136 B，
+  占 32 KiB cap 的 9.6%，由 `tests/host/composition.spec.ts` 的 standing envelope 测试锁定）。
+
+注入的 standing prompt 不携带 `id`，且在尚无任何依赖时连局部 label 也不渲染，因此 `charter_read standing` 是模型
+获得可引用标识符的唯一途径。standing 省略 `id` 会让模型"看得见前置却无法寻址"，第一条依赖在结构上永远无法由
+agent 建立——只有用户手工建出第一条边之后，前置 id 才会经由他人的 `requires` 间接泄漏给模型。
 
 `all` 继续作为显式历史读取入口，增加 cursor、limit 和 `nextCursor`，并保持最终 item count 与 32 KiB envelope cap。
 `standing` 仍返回完整有效工作集，不静默分页硬约束。Proposal provenance 和完整 change timeline 默认不返回，避免工具
@@ -1224,6 +1231,11 @@ Reason code 进入 Remote contract fixture，UI 只根据 code/reason 决定恢�
 - 不能改变 objective；
 - 不能运行 validator；
 - 受单次 proposal 数量和字节上限约束。
+
+`requires` 的引用空间固定为 `charter_read` 返回的 active deliverable `id`。`D<n>` 局部 label 只是展示标签，**不是**
+合法引用；工具描述与参数描述都必须显式说明这一点，避免模型拿 prompt 里看到的 label 当引用。引用不存在、指向非
+active 交付物或使用 label 时，整次调用显式失败并回显非法引用，不静默丢弃、不部分创建。同一次调用内的条目不能互相
+引用（batch-candidate 依赖不被接受），因为 pending 条目此刻还没有 id。
 
 模型提出的 dependency 只有用户在 Review Center 接受并提交 Change Set 后才生效。
 

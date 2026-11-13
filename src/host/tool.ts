@@ -7,9 +7,11 @@ export function defineCharterReadTool(charter: CharterService): ToolDefinition {
     description:
       'Read the current user-authored session charter (read-only). The standing charter is normally present '
       + 'in runtime context when automatic injection is available; do not call standing merely to restate that '
-      + 'context. Call it when the context may be absent or stale, or when revision/verification details are '
-      + 'needed. standing fails explicitly with LIMIT_EXCEEDED rather than returning a partial working set; '
-      + 'use all with cursor/limit for inactive/history entries (64 items / 32 KiB per page).',
+      + 'context. Call it when the context may be absent or stale, when revision/verification details are '
+      + 'needed, or when you need deliverable ids: charter_propose.requires references those ids and the '
+      + 'injected context does not expose them. standing fails explicitly with LIMIT_EXCEEDED rather than '
+      + 'returning a partial working set; use all with cursor/limit for inactive/history entries '
+      + '(64 items / 32 KiB per page).',
     parameters: {
       view: {
         type: 'string',
@@ -75,7 +77,10 @@ export function defineCharterProposeTool(charter: CharterService): ToolDefinitio
     description:
       'Create pending proposals for the current Session charter. This tool is not a write path: the user must '
       + 'review and accept proposals in the Review Center. Only invariants and deliverables are allowed; objectives, '
-      + 'acceptance, archival, purge, and progress changes are not. At most 16 items; requires must reference current active deliverables and is stored as pending proposed prerequisites resolved on acceptance. Batch-candidate requires are not accepted by this tool.',
+      + 'acceptance, archival, purge, and progress changes are not. At most 16 items. A deliverable may carry '
+      + 'requires: ids of current active deliverables that must finish first, exactly as returned by charter_read. '
+      + 'Display keys such as "D1" are labels, not valid references, and items within one call cannot reference '
+      + 'each other. requires is stored as pending proposed prerequisites and resolved on acceptance.',
     parameters: {
       items: {
         type: 'array',
@@ -86,7 +91,14 @@ export function defineCharterProposeTool(charter: CharterService): ToolDefinitio
           properties: {
             kind: { type: 'string', enum: ['invariant', 'deliverable'], required: true },
             text: { type: 'string', required: true },
-            requires: { type: 'array', items: { type: 'string' } },
+            requires: {
+              type: 'array',
+              description:
+                'Optional prerequisite references for a deliverable: the `id` values of current active '
+                + 'deliverables exactly as returned by charter_read (ids look like "item-<uuid>"). '
+                + 'Not "D1"-style display keys.',
+              items: { type: 'string' },
+            },
           },
         },
       },

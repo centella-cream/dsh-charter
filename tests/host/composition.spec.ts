@@ -1192,6 +1192,101 @@ describe('dsh-charter host composition', () => {
     })
   })
 
+  it('lets the model address a prerequisite it discovered through charter_read', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-discovered-requires-'))
+    roots.push(root)
+    const ctx = await mount(root)
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('discovered-requires'), {
+      meta: { cwd: root, createdAt: 1_700_000_000_070 },
+    })
+    await waitForReady(service, session)
+    const seed = await service.edit({
+      sessionId: session.id,
+      mutationId: 'discovered-requires-seed',
+      baseRevision: 0,
+      ops: [
+        { type: 'item.add', item: { clientRef: 'rule', kind: 'invariant', text: 'No secrets', order: 0 } },
+        { type: 'item.add', item: { clientRef: 'a', kind: 'deliverable', text: 'Build', order: 1, progress: 'done' } },
+      ],
+    })
+    if (!seed.ok) throw new Error('seed failed')
+
+    // The standing read is the model's whole view of the identifier space: the
+    // injected prompt carries no ids, so a prerequisite that cannot be named
+    // here could never be proposed and no first dependency could ever exist.
+    const standing = service.readForModel(session, 'standing')
+    const discovered = standing.items.find(item => item.text === 'Build')?.id
+    expect(discovered).toBe(seed.ids.a)
+    // An invariant can never be a prerequisite, so it stays id-free to keep the
+    // bounded standing envelope as small as possible.
+    expect(standing.items.find(item => item.text === 'No secrets')).not.toHaveProperty('id')
+
+    const proposal = await service.proposeFromAgent(session, [{
+      kind: 'deliverable',
+      text: 'Release',
+      ...(discovered === undefined ? {} : { requires: [discovered] }),
+    }], 'tool-discovered-requires')
+    expect(proposal.ok).toBe(true)
+    const pending = service.view(session).items.find(item => item.text === 'Release')
+    expect(pending).toMatchObject({ review: 'pending', proposedRequires: [seed.ids.a] })
+    await service.edit({
+      sessionId: session.id,
+      mutationId: 'discovered-requires-accept',
+      baseRevision: service.view(session).revision,
+      ops: [{ type: 'item.accept', itemId: pending!.id }],
+    })
+    expect(service.view(session).items.find(item => item.text === 'Release')).toMatchObject({
+      review: 'accepted',
+      requires: [seed.ids.a],
+    })
+
+    // A "D1" display key is a label, not a reference. The rejection must stay
+    // explicit and create nothing, exactly as the tool description promises.
+    const byDisplayKey = await service.proposeFromAgent(session, [{
+      kind: 'deliverable',
+      text: 'Deploy',
+      requires: ['D1'],
+    }], 'tool-display-key-requires')
+    expect(byDisplayKey.ok).toBe(false)
+    expect(byDisplayKey.message).toMatch(/current active deliverables/u)
+    expect(service.view(session).items.some(item => item.text === 'Deploy')).toBe(false)
+  })
+
+  it('keeps the standing envelope within its cap while exposing deliverable ids', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-standing-envelope-'))
+    roots.push(root)
+    const ctx = await mount(root)
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('standing-envelope'), {
+      meta: { cwd: root, createdAt: 1_700_000_000_080 },
+    })
+    await waitForReady(service, session)
+    const ops = Array.from({ length: 64 }, (_, index) => ({
+      type: 'item.add' as const,
+      item: {
+        clientRef: `envelope-${index}`,
+        kind: 'deliverable' as const,
+        text: `Deliverable ${index} with a realistically long description of the work involved`,
+        order: index,
+        progress: 'not-started' as const,
+      },
+    }))
+    const result = await service.edit({
+      sessionId: session.id,
+      mutationId: 'standing-envelope-add',
+      baseRevision: 0,
+      ops,
+    })
+    expect(result).toMatchObject({ ok: true })
+    const standing = service.readForModel(session, 'standing')
+    expect(standing.items).toHaveLength(64)
+    expect(standing.items.every(item => typeof item.id === 'string' && item.id.startsWith('item-'))).toBe(true)
+    // Worst case for the id cost: the item cap is already reached, so the whole
+    // envelope must still fit the hard 32 KiB tool budget.
+    expect(Buffer.byteLength(JSON.stringify(standing), 'utf8')).toBeLessThanOrEqual(32 * 1_024)
+  })
+
   it('keeps a bounded cache of recent archives and reads one back', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-charter-archive-cache-'))
     roots.push(root)

@@ -1556,8 +1556,14 @@ export class CharterService extends Service {
     const objective = record.current.objective?.current.text ?? null
     if (mode === 'standing') {
       // `standing` is the model's working set: metadata that does not help the
-      // model (ids, review, lifecycle are constant for standing rows) only
+      // model (review and lifecycle are constant for standing rows) only
       // inflates the tool result. The same hard envelope cap applies here.
+      //
+      // A deliverable's `id` is the deliberate exception: it is the reference
+      // space `charter_propose.requires` validates against, so without it the
+      // model can see a prerequisite but never address one, and no first
+      // dependency could ever be proposed. Invariants omit `id` because they
+      // can never be a prerequisite, which keeps the envelope minimal.
       const plan = dependencyProjection(record.current.items)
       const keyById = new Map(plan.map(row => [row.id, row]))
       const simplified = relevant.map(item => ({
@@ -1567,6 +1573,7 @@ export class CharterService extends Service {
         progress: item.kind === 'deliverable' ? item.progress : null,
         ...(item.kind === 'deliverable'
           ? {
+              id: item.id,
               key: keyById.get(item.id)?.localKey ?? null,
               requires: keyById.get(item.id)?.requires ?? [],
             }

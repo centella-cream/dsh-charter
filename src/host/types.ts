@@ -260,7 +260,12 @@ export type CharterBootstrapResult =
     }
 
 export interface CharterToolItem {
-  /** Present only in the bounded `all` debugging view. */
+  /**
+   * Always present in the bounded `all` debugging view. In the `standing` view
+   * it is present on deliverables only: it is the reference space
+   * `charter_propose.requires` validates against, and an invariant can never be
+   * a prerequisite.
+   */
   readonly id?: string
   readonly kind: CharterItem['kind']
   readonly text: string
