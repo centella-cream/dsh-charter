@@ -5,9 +5,8 @@ English | [中文](version-roadmap.zh.md)
 > This English file is a non-normative summary. The Chinese roadmap is normative when details differ.
 >
 > **Status:** Active — version and scope authority.
-> **Version scope:** 0.1 history, the published 0.2 line, and the 0.3 GUI line and the 0.3.1 convergence candidate.
-> **Baseline:** 2026-11-13; `0.2.2` and `0.3.0` are published; `0.3.1` is the GUI convergence candidate (in
-> progress, unpublished; plain increments, no `rc` suffix).
+> **Version scope:** 0.1 history, the published 0.2 line, and the 0.3 GUI line and the published 0.3.1 convergence patch.
+> **Baseline:** 2026-11-13; `0.2.2` and `0.3.0` are published; `0.3.1` is the published GUI convergence patch; `0.4.0` is the next candidate line.
 > **Authority:** Chinese [version-roadmap.zh.md](version-roadmap.zh.md) is normative for scope.
 > **Supersedes / Superseded by:** none / none
 
@@ -27,7 +26,7 @@ The release path is:
   → 0.2.1 post-0.2.0 UI/diagnostics/recovery-cache patch
   → 0.2.2 dependency graph + §6.5 confirmation (client-only patch, published)
   → 0.3.0 all-section GUI refactor (client-only, published)
-  → 0.3.1 dependency-graph/a11y convergence, envelope warning, local traffic forensics (client-only, candidate)
+  → 0.3.1 dependency-graph/a11y convergence, envelope warning, local traffic forensics (client-only, published)
   → 0.4.0 existing-deliverable relation proposal + record schema v3 (scope decision pending)
 ```
 
@@ -39,7 +38,7 @@ rc.5 fixed the correctness defect inside the promised 0.1 workflow: previously e
 
 `0.2.0` is not a bucket for isolated improvements. It is a complete Charter workflow upgrade spanning existing-feature improvements, new capabilities, information architecture and interaction redesign, data-model evolution, query APIs, and client architecture.
 
-`0.3.0` is the published GUI baseline: it unifies the GUI of Workspace, Review Center, and Diagnostics & Maintenance under one design system and interaction contract, and completes real routing, the Change Set contract, and the Pane/store split. The scope and acceptance plan live in [charter-gui-v1.zh.md](charter-gui-v1.zh.md) (`Active`). It was released on 2026-11-13. `0.3.1` is the current convergence candidate and remains unpublished until human acceptance; its branch is not pushed, `main` is not merged, and nothing is tagged/released/published or described as available.
+`0.3.0` is the published GUI baseline: it unifies the GUI of Workspace, Review Center, and Diagnostics & Maintenance under one design system and interaction contract, and completes real routing, the Change Set contract, and the Pane/store split. The scope and acceptance plan live in [charter-gui-v1.zh.md](charter-gui-v1.zh.md) (`Active`). It was released on 2026-11-13. `0.3.1` was released on 2026-11-13; the next candidate line is `0.4.0`.
 
 ## 2. Current Release State
 
@@ -47,7 +46,7 @@ rc.5 fixed the correctness defect inside the promised 0.1 workflow: previously e
 - `0.2.1` is published on npm (`latest`/`next`) and as GitHub Release `v0.2.1`; its tag, assets, and npm bytes are immutable.
 - `0.2.0` is an earlier public release.
 - `0.2.1` is a compatible post-`0.2.0` patch: editable message proposals, clearer diagnostics/typography, and an owner-only bounded recovery cache. It does not change `recordSchemaVersion` 2 or the model tool surface; the `dsh_charter_archives_v1` domain is a bounded derivative cache, not a second authority.
-- `0.3.0` was published on 2026-11-13. `0.3.1` is the current GUI convergence candidate (dependency-graph audit, standing-envelope warning, local traffic forensics): unpublished; the local branch is not pushed and nothing is tagged/released/published before human acceptance.
+- `0.3.0` was published on 2026-11-13. `0.3.1` was published on 2026-11-13 as the GUI convergence patch; `0.4.0` is the next candidate line.
 - `0.1.0-rc.6` remains an earlier public release. Historical rc tags and releases are immutable.
 
 ## 3. Why rc.5

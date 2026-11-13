@@ -11,9 +11,9 @@ tag、不删除已发布 Release、不在打 tag 后重建字节。
 
 ## 当前状态（2026-11-13）
 
-- **已发布：** `0.3.0` — npm `latest`/`next`，GitHub Release `v0.3.0`；精确产物
-  `dsh-charter-0.3.0.tgz`，SHA-256 `31daf17dbc823837c1b0c1ba7bc1033444db1059a2f2cd6f1a481f8d330b5d78`。
-- **上一版本：** `0.2.2` — npm `latest`/`next`，GitHub Release `v0.2.2`。
+- **已发布：** `0.3.1` — npm `latest`/`next`，GitHub Release `v0.3.1`；精确产物
+  `dsh-charter-0.3.1.tgz`，SHA-256 `62fd230209dbf5c58aed09f0870775aa6d0d69feb4eff18aebf83f9803f28353`。
+- **上一版本：** `0.3.0` — GitHub Release `v0.3.0`。
 - **更早版本：** `0.2.1`。
 - **发布后诊断：** 真实模型 compaction 和 512 条 core 性能均已通过。
 - 不得手动 publish，也不得绕过受保护门禁。

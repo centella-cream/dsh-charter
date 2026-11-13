@@ -99,8 +99,8 @@ and the remaining full-design gates must be recorded separately before declaring
   `31daf17dbc823837c1b0c1ba7bc1033444db1059a2f2cd6f1a481f8d330b5d78`; npm `latest`/`next` both `0.3.0`, GitHub
   Release `v0.3.0` public and immutable. This supersedes the local `w6-final` development artifact for installation.
 - 0.3.1 GUI convergence candidate (2026-11-13): `npm run check` 41 files / **499 tests** PASS;
-  token coverage 41 static + 1 dynamic over 11 declared DSH versions PASS; ten-version source matrix PASS
-  (`.tmp/compat-031-final.json`). Shared standing-envelope builder
+  token coverage 41 static + 1 dynamic over 11 declared DSH versions PASS; eleven-version matrix PASS in
+  candidate compatibility evidence (run `43445530821`). Shared standing-envelope builder
   (`src/core/standing-envelope.ts`) is used by both Host and Diagnostics; a 64-deliverable fixture with
   production-length ids proves the id cost is exactly 49 B/deliverable and the envelope stays under 32 KiB.
 - `traffic-check` propose telemetry parses the actual JSON tool-result envelope (`{ok, message}`), not
@@ -124,11 +124,16 @@ and the remaining full-design gates must be recorded separately before declaring
   `.tmp/gui-acceptance/2026-11-13/diagnostics-envelope-031.png`.
 - 0.3.1 README screenshots were recaptured from the exact local build injected into the running Web app:
   `docs/assets/charter-pane-0.3.1.png`, `charter-pane-0.3.1.zh.png`, `charter-graph-0.3.1.zh.png`.
+- 0.3.1 release publication (2026-11-13): candidate run `43445530821` at producer commit
+  `de1b83be004aecc63b09cfaeaf647ca94fb7567a`; release commit `0c00715d85be0e873d43175a4a26b724ea6c14d4`;
+  promotion run `43449411538`. Published artifact `dsh-charter-0.3.1.tgz` SHA-256
+  `62fd230209dbf5c58aed09f0870775aa6d0d69feb4eff18aebf83f9803f28353`; npm `latest`/`next` both `0.3.1`, GitHub
+  Release `v0.3.1` public and immutable. Candidate compatibility evidence covers 11 declared DSH versions,
+  including `0.2.2-rc.3`.
 - Local acceptance artifact (2026-11-13): `dist/dsh-charter-0.3.1.tgz` SHA-256
   `9f779443fd83c8e320d94d1981c18dc896d9d5905a7cc3f7dc8673f307806860`; exact-artifact package smoke and packed
   recovery smoke PASS. `dist/dsh-charter-0.3.1.tgz` (same bytes) is installed in local `web` and `desktop`
   profiles; both resolve client `fcd56a48…`. The Host version chip updates after a clean Host restart.
-- 0.3.1 is not published; candidate/promotion evidence is intentionally absent until human acceptance.
 - Local acceptance deployment (2026-11-12): the W6 acceptance build is
   `dist/dsh-charter-0.3.0-w6-final.tgz` (SHA-256 `ab74591c…`, client `986f8403…`). It is installed in both local
   `web` and `desktop` profiles, with the bounded `engines.dsh` range and package version `0.3.0`. Also updated:

@@ -45,10 +45,10 @@ deliverables, evidence, and dependency relationships survive compaction and rema
 
 ## Status
 
-- **Current development candidate:** `0.3.1` — the GUI convergence release. It keeps the frozen document-feel Pane and closes
+- **Current release:** `0.3.1` — the GUI convergence release. It keeps the frozen document-feel Pane and closes
   the dependency-graph audit and standing-envelope observability gaps. It ships the document-feel Pane across
   Workspace, Review Center, and Diagnostics; the dependency graph; the bounded DSH compatibility declaration;
-  and the Host tool fix that exposes deliverable ids to `charter_propose.requires`. **Not published yet;** latest published release is `0.3.0`.
+  and the Host tool fix that exposes deliverable ids to `charter_propose.requires`.
 - **Previous release:** `0.2.2` — dependency-graph workspace view, compact dependency list, and explicit
   dependency-conflict confirmation.
 - **Earlier release:** `0.2.1`; **primary DSH baseline:** `0.2.2-rc.3`; eleven declared DSH versions are
@@ -191,16 +191,16 @@ storage.
 
 ## Install
 
-The latest published release is `0.3.0`:
+The latest release is `0.3.1`. Install the exact version for a reproducible profile:
 
 ```bash
-dsh plugin --profile web add dsh-charter@0.3.0
+dsh plugin --profile web add dsh-charter@0.3.1
 ```
 
-The `0.3.1` development candidate is not published. Build/accept it from the working tree:
+For air-gapped machines or exact-artifact verification:
 
 ```bash
-npm pack
+npm pack dsh-charter@0.3.1
 dsh plugin --profile web add ./dsh-charter-0.3.1.tgz
 ```
 

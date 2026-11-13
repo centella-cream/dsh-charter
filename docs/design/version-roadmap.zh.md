@@ -3,8 +3,8 @@
 [English](version-roadmap.md) | 中文
 
 > **状态：** Active — 版本与范围权威。
-> **版本范围：** 0.1 历史、已发布的 0.2 线、已发布的 0.3.0 GUI 重构线，以及 0.3.1 收敛开发线。
-> **基准：** 2026-11-13；`0.2.2`、`0.3.0` 已发布；`0.3.1` 为 GUI 收敛补丁（进行中，未发布；普通递增，不使用 `rc` 后缀）。
+> **版本范围：** 0.1 历史、已发布的 0.2 线、已发布的 0.3.0 GUI 重构线与 0.3.1 收敛发布线。
+> **基准：** 2026-11-13；`0.2.2`、`0.3.0` 已发布；`0.3.1` 为已发布的 GUI 收敛补丁；`0.4.0` 为下一候选线。
 > **权威：** 中文版本为 scope 的 normative。
 > **替代/被替代：** 无 / 无
 
@@ -24,7 +24,7 @@
   → 0.2.1：0.2.0 之后的 UI、诊断与恢复缓存补丁
   → 0.2.2：依赖关系图形视图 + §6.5 冲突确认（纯客户端补丁线，已发布）
   → 0.3.0：全栏目 GUI 全面重构（纯客户端，已发布）
-  → 0.3.1：依赖图/无障碍收敛、standing envelope 预警、本地流量取证（纯客户端，进行中，未发布）
+  → 0.3.1：依赖图/无障碍收敛、standing envelope 预警、本地流量取证（纯客户端，已发布）
   → 0.4.0：既有交付物 relation proposal + record schema v3（范围待决策）
 ```
 
@@ -39,17 +39,18 @@ rc.5 修复了与产品承诺冲突的审阅正确性问题：此前历史草案
 
 `0.3.0` 是已发布的 GUI 重构基线：把 Workspace、Review Center、Diagnostics & Maintenance 所有栏目统一迁移到同一设计
 系统与交互合同，并完成真实路由、Change Set 合同与 Pane/store 收口。范围与验收由
-[charter-gui-v1.zh.md](charter-gui-v1.zh.md)（`Active`）持有；`0.3.0` 未实现完成、未发布，人工验收通过前
-不得推送开发分支、不 tag/publish、不得声称可用。
+[charter-gui-v1.zh.md](charter-gui-v1.zh.md)（`Active`）持有；`0.3.0` 已于 2026-11-13 发布，`0.3.1` 为后续收敛补丁。
 
 ## 2. 当前发布状态
 
-- `0.2.2` 已于 2026-11-11 发布到 npm（`latest`/`next`）和 GitHub Release `v0.2.2`；tag、资产和 npm 字节不可变。
+- `0.3.1` 已于 2026-11-13 发布到 npm（`latest`/`next`）和 GitHub Release `v0.3.1`；tag、资产和 npm 字节不可变。
+- `0.3.0` 已于 2026-11-13 发布。
+- `0.2.2` 已于 2026-11-11 发布到 npm 和 GitHub Release `v0.2.2`；tag、资产和 npm 字节不可变。
 - `0.2.1` 已发布到 npm（`latest`/`next`）和 GitHub Release `v0.2.1`；tag、资产和 npm 字节不可变。
 - `0.2.0` 是更早的公开版本。
 - `0.2.1` 是 `0.2.0` 之后的兼容补丁：可编辑消息提案、更清晰的诊断/排版、owner-only 有界恢复缓存。不改变
   `recordSchemaVersion` 2 或模型工具面；`dsh_charter_archives_v1` 是有界派生物缓存，不是第二正本。
-- `0.3.1` 为当前开发线（GUI 收敛补丁）：保持零 record/Remote/prompt 变化；`0.4.0` 才允许 relation proposal 与 schema v3。旧 `0.3.0` 分支记录仅作历史。
+- `0.3.1` 已发布：保持零 record/Remote/prompt 变化；`0.4.0` 才允许 relation proposal 与 schema v3。
   人工验收前不合并 `main`、不 tag/release/publish，不声称可用。
 - `0.1.0-rc.6` 仍是更早的公开版本。历史 rc tag/release 不可变。
 
@@ -452,7 +453,7 @@ ranges/`dshReleases`。对里程碑的影响：不新增人工门禁类别，但
 
 ### 14.2 `0.3.0` 新增范围：全栏目 GUI 全面重构（已发布）
 
-### 14.2.1 `0.3.1` 收敛范围（进行中）
+### 14.2.1 `0.3.1` 收敛范围（已发布）
 
 - 依赖图审计：泳道标题、方向箭头、44px 沿边命中区、历史线型、自适应高度、移除未使用 `ops`。
 - Diagnostics standing envelope 预警：共享序列化函数、32 KiB cap、id 开销、80%/超限三态。
@@ -540,5 +541,5 @@ DSH ABI/wire。本分支另做仅声明层的兼容维护：rc.2 的 engines/pee
 | `0.1.1` | stable 后兼容 bug/security/DSH/a11y patch | 新持久状态、新 API、新工作流 |
 | `0.2.0` | 四个产品支柱、record v2、查询面、三中心 UI、架构重构 | 通用记忆、执行策略、任意 validator、无必要的新 domain |
 | `0.2.2` | 客户端依赖关系图形视图、§6.5 conflict 确认、预览 optional 字段 | 新 record schema/domain、新 Remote 方法、模型可见能力变更、图形独有能力 |
-| `0.3.1` | GUI 收敛补丁：依赖图审计、standing envelope 预警、本地 traffic checker；零 record/Remote/prompt 变化 | 新 record schema/domain、新 Remote/模型能力、DSH ABI/wire 变更、人工验收前推送/合并/tag/publish/宣称可用 |
+| `0.3.1` | GUI 收敛补丁：依赖图审计、standing envelope 预警、本地 traffic checker；零 record/Remote/prompt 变化（已发布） | 新 record schema/domain、新 Remote/模型能力、DSH ABI/wire 变更 |
 | `0.4.0` | 既有交付物 relation proposal + record schema v3 + downgrade fence（待决策） | 未经 roadmap/设计修订直接实现、无 downgrade fence、无人工验收 |

@@ -76,7 +76,7 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
   `31daf17dbc823837c1b0c1ba7bc1033444db1059a2f2cd6f1a481f8d330b5d78`；npm `latest`/`next` 均为 `0.3.0`，
   GitHub Release `v0.3.0` 已公开且不可变。安装以该发布 artifact 取代本地 `w6-final` 开发包。
 - 0.3.1 GUI 收敛候选（2026-11-13）：`npm run check` 41 文件 / **499 测试** PASS；
-  token 覆盖 41 static + 1 dynamic、11 个声明 DSH 版本 PASS；十版本源码矩阵 PASS（`.tmp/compat-031-final.json`）。共享 standing-envelope 构造函数由 Host 与
+  token 覆盖 41 static + 1 dynamic、11 个声明 DSH 版本 PASS；十一版本矩阵在候选兼容证据（run `43445530821`）中 PASS。共享 standing-envelope 构造函数由 Host 与
   Diagnostics 共用；64 个交付物、生产长度 id 的 fixture 证明 id 开销恰为 49 B/交付物且 envelope 不超过 32 KiB。
 - `traffic-check` 的 propose 遥测改为解析真实 JSON tool-result envelope（`{ok, message}`），不再对序列化
   文本做正则。fixture 覆盖单个 `D1` 拒绝、未知 id、非 requires 类失败和 accepted：display-key=1、
@@ -95,11 +95,15 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
   id 开销和 80%/超限三态。
 - 0.3.1 README 截图由精确本地构建注入运行中的 Web app 后重采：
   `docs/assets/charter-pane-0.3.1.png`、`charter-pane-0.3.1.zh.png`、`charter-graph-0.3.1.zh.png`。
+- 0.3.1 正式发布（2026-11-13）：候选 run `43445530821`，producer commit
+  `de1b83be004aecc63b09cfaeaf647ca94fb7567a`；release commit `0c00715d85be0e873d43175a4a26b724ea6c14d4`；
+  提升 run `43449411538`。已发布 artifact `dsh-charter-0.3.1.tgz`，SHA-256
+  `62fd230209dbf5c58aed09f0870775aa6d0d69feb4eff18aebf83f9803f28353`；npm `latest`/`next` 均为 `0.3.1`，
+  GitHub Release `v0.3.1` 已公开且不可变。候选兼容证据覆盖 11 个声明 DSH 版本（含 `0.2.2-rc.3`）。
 - 本地验收 artifact（2026-11-13）：`dist/dsh-charter-0.3.1.tgz` SHA-256
   `9f779443fd83c8e320d94d1981c18dc896d9d5905a7cc3f7dc8673f307806860`；exact-artifact package smoke 与 packed
   recovery smoke PASS。`dist/dsh-charter-0.3.1.tgz`（同一字节）已安装到本地 `web` 与 `desktop` profile；
   两端 client 均为 `fcd56a48…`。Host 版本 chip 在干净重启 Host 后更新。
-- 0.3.1 尚未发布；人工验收前不构造 candidate/promotion 证据。
 - 本地验收部署（2026-11-12）：W6 验收构建为 `dist/dsh-charter-0.3.0-w6-final.tgz`
   （SHA-256 `ab74591c…`，client `986f8403…`）。已安装到本地 `web` 与 `desktop` profile，包版本 `0.3.0`，
   `engines.dsh` 为有界 0.2 线范围。另按用户要求恢复 Pane 页头版本 chip（`v0.3.0`）。

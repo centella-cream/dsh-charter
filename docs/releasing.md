@@ -12,9 +12,9 @@ tagging.
 
 ## Current state (2026-11-13)
 
-- **Published:** `0.3.0` — npm `latest`/`next`, GitHub Release `v0.3.0`; exact artifact
-  `dsh-charter-0.3.0.tgz`, SHA-256 `31daf17dbc823837c1b0c1ba7bc1033444db1059a2f2cd6f1a481f8d330b5d78`.
-- **Previous release:** `0.2.2` — npm `latest`/`next`, GitHub Release `v0.2.2`.
+- **Published:** `0.3.1` — npm `latest`/`next`, GitHub Release `v0.3.1`; exact artifact
+  `dsh-charter-0.3.1.tgz`, SHA-256 `62fd230209dbf5c58aed09f0870775aa6d0d69feb4eff18aebf83f9803f28353`.
+- **Previous release:** `0.3.0` — GitHub Release `v0.3.0`.
 - **Earlier release:** `0.2.1`.
 - **Post-release diagnostics:** real-model compaction and 512-item core performance both passed.
 - Do not manually publish or bypass the protected gates.
