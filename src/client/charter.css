@@ -4342,6 +4342,15 @@ charter-graph__help { display: none; }
   height: 44px;
   border-radius: 999px;
   background: transparent;
+  pointer-events: none;
+}
+
+.charter-graph__edgehit-path {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 44;
+  pointer-events: stroke;
+  cursor: pointer;
 }
 
 .charter-graph__node {

@@ -312,6 +312,11 @@ export function DependencyGraph({
                   <g key={edge.key} className={edgeClass(edge)}>
                     <path d={edge.path} className="charter-graph__edge-line" markerEnd={`url(#${edgeMarker(edge)})`} />
                     {edge.state === 'staged-removed' && <path d={edge.path} className="charter-graph__edge-removed" />}
+                    <path
+                      d={edge.path}
+                      className="charter-graph__edgehit-path"
+                      onClick={() => handleActivate(edge.key)}
+                    />
                   </g>
                 ))}
               </svg>

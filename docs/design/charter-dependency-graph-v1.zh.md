@@ -1,6 +1,6 @@
 # `dsh-charter` 依赖关系图形化视图设计（提案）
 
-> **状态：** `Implemented — pending release acceptance`——0.3.1 已完成方向箭头、泳道标题、沿边命中区和历史线型；
+> **状态：** `Implemented — pending release acceptance`——0.3.1 已完成方向箭头、泳道标题、沿边 44px 命中路径和历史线型；
 > 真实浏览器自动化已记录，真实 AT/VoiceOver 人工门禁仍待完成。进入发布前仍以[版本路线](version-roadmap.zh.md)为准
 > （[charter-workspace-v2.zh.md](charter-workspace-v2.zh.md) §1.1）。
 > **版本范围：** `0.2.2` / `0.3.1`（纯客户端）。源码实现已完成；发布前仍需完成真实 AT 人工门禁（§3.10）。
