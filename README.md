@@ -21,8 +21,8 @@ deliverables, evidence, and dependency relationships survive compaction and rema
 
 ![Dependency graph in the 0.3.1 Pane](docs/assets/charter-graph-0.3.1.zh.png)
 
-> The execution-path dependency graph: lane headings, directional arrows, path-sized edge hit targets, and a
-> state/type legend. The semantic list remains the authoritative surface.
+> The execution-path dependency graph: lane headings, the three-column execution grid, and the state/type
+> legend. Edge arrows and hit targets appear when dependencies exist. The semantic list remains authoritative.
 
 ## Contents
 
