@@ -124,10 +124,7 @@ execution guards for restrictions that must be machine-enforced.
 Deliverables are not an independent, ordered checklist. A deliverable can declare **prerequisites** on other deliverables, and those relationships become part of the
 stored contract, the validation boundary, the UI plan, and the model-visible prompt.
 
-```text
-Tests (D1) ───────────┐
-Migration (D2) ───────┴──> Release (D3)
-```
+![Dependency relationships: Tests D1 and Migration D2 feed Release D3](docs/assets/dependency-example.svg)
 
 - **Typed, validated edges.** Each deliverable may carry `requires: [id…]`. The Host rejects self-edges,
   duplicate prerequisites, dangling references, inactive endpoints, and cycles. The whole Change Set fails

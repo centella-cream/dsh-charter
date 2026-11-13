@@ -111,10 +111,7 @@
 deliverable 不是一份互不相关的顺序清单。一个 deliverable 可以声明对其他 deliverable 的**前置约束**，
 这些关系会进入存储契约、校验边界、UI 计划和模型可见 prompt。
 
-```text
-测试 (D1) ────────────┐
-迁移 (D2) ────────────┴──> 发布 (D3)
-```
+![依赖关系：测试 D1 与迁移 D2 汇聚到发布 D3](docs/assets/dependency-example.zh.svg)
 
 - **类型化、可校验的关系。**每个 deliverable 可携带 `requires: [id…]`。Host 拒绝自环、重复前置、
   悬空引用、非 active 端点和环；整个 Change Set 原子失败，不会写入半张图。
