@@ -19,7 +19,7 @@ deliverables, evidence, and dependency relationships survive compaction and rema
 > The Pane in a local Web profile: underline area tabs, a 720px document column, aligned document
 > rows, and a compact execution-path disclosure. Screenshot uses synthetic demo values only.
 
-![Dependency graph in the Pane](docs/assets/charter-graph-0.3.1.zh.png)
+![Dependency graph in the Pane](docs/assets/charter-graph-0.3.1.png)
 
 > The execution-path dependency graph: lane headings, the three-column execution grid, and the state/type
 > legend. Edge arrows and hit targets appear when dependencies exist. The semantic list remains authoritative.
