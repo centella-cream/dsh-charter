@@ -107,7 +107,7 @@ and the remaining full-design gates must be recorded separately before declaring
   serialized text. Fixture now covers a single `D1` rejection, an unknown id, a non-requires proposal failure,
   and an accepted result: display-key=1, unknown-id=1, other=1, accepted=1. Raw `D1"}` contamination is gone.
 - Graph browser audit (2026-11-13, Chromium 1440×1000, synthetic applied session): lane headings, 5 arrow
-  markers, an SVG edge hit path with `vector-effect: non-scaling-stroke`, measured 21 px inside / 23 px outside the segment at 1440 px (44 px stroke), `max-height: none`, and no horizontal overflow at 860/900/1000/1100/1200/1440
+  markers, an SVG edge hit path with `vector-effect: non-scaling-stroke`, measured 21–22 px inside / 23 px outside the segment at 1440 px (44 px stroke), `max-height: none`, and no horizontal overflow at 860/900/1000/1100/1200/1440
   or at 200% page scale. At 1100 the app shell's content container is 813 px, below the 880 px graph-fold
   threshold, so the graph stays folded while the semantic list remains available; recorded as a layout
   observation, not a two-column W0-1 pass. Real VoiceOver/AT remains a manual gate.

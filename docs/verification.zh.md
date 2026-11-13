@@ -82,7 +82,7 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
   文本做正则。fixture 覆盖单个 `D1` 拒绝、未知 id、非 requires 类失败和 accepted：display-key=1、
   unknown-id=1、other=1、accepted=1；不再出现 `D1"}` 尾串污染。
 - 依赖图浏览器审计（2026-11-13，Chromium 1440×1000，合成 applied session）：泳道标题、5 个箭头 marker、
-  SVG 沿路径命中描边（`vector-effect: non-scaling-stroke`；1440 px 实测 21 px 在带内 / 23 px 在带外，即 44 px 宽）、`max-height: none`；860/900/1000/1100/1200/1440 与 200% 页面缩放均无横向
+  SVG 沿路径命中描边（`vector-effect: non-scaling-stroke`；1440 px 实测 21–22 px 在带内 / 23 px 在带外，即 44 px 宽）、`max-height: none`；860/900/1000/1100/1200/1440 与 200% 页面缩放均无横向
   溢出。1100 视口下 app shell 内容容器为 813 px，低于 880 px 折叠阈值，图形区保持折叠但语义列表可用；
   记录为布局观察，不宣称 W0-1 双栏通过。真实 VoiceOver/AT 仍是人工门禁。
 - 流量取证（2026-11-13）：`traffic-check` 增加 `charter_propose` 调用/拒绝统计、display-key/unknown-id 分类
