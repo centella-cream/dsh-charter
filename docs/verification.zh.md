@@ -76,7 +76,7 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
   `31daf17dbc823837c1b0c1ba7bc1033444db1059a2f2cd6f1a481f8d330b5d78`；npm `latest`/`next` 均为 `0.3.0`，
   GitHub Release `v0.3.0` 已公开且不可变。安装以该发布 artifact 取代本地 `w6-final` 开发包。
 - 0.3.1 GUI 收敛候选（2026-11-13）：`npm run check` 41 文件 / **499 测试** PASS；
-  token 覆盖 41 static + 1 dynamic、10 个声明 DSH 版本 PASS。共享 standing-envelope 构造函数由 Host 与
+  token 覆盖 41 static + 1 dynamic、10 个声明 DSH 版本 PASS；十版本源码矩阵 PASS（`.tmp/compat-031.json`）。共享 standing-envelope 构造函数由 Host 与
   Diagnostics 共用；64 个交付物、生产长度 id 的 fixture 证明 id 开销恰为 49 B/交付物且 envelope 不超过 32 KiB。
 - 依赖图浏览器审计（2026-11-13，Chromium 1440×1000，合成 applied session）：泳道标题、5 个箭头 marker、
   230×44 px 沿边命中 capsule、`max-height: none`；860/900/1000/1100/1200/1440 与 200% 页面缩放均无横向
