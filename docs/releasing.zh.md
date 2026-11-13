@@ -9,11 +9,12 @@
 这是当前发布清单，取代早期按 rc 编写的暂存说明。已发布的 tag、GitHub Release 和 npm 版本不可变：不移动
 tag、不删除已发布 Release、不在打 tag 后重建字节。
 
-## 当前状态（2026-11-06）
+## 当前状态（2026-11-13）
 
-- **已发布：** `0.2.1` — npm `latest`/`next`，GitHub Release `v0.2.1`；精确产物 SHA-256
-  `d4ae14e19b4d65264a53b57c0f9d3f93eb8303189e8daa3f3f35beb97104d498`。
-- **上一版本：** `0.2.0`（GitHub Release `v0.2.0`，0.2.1 之前的 npm `latest`/`next`）。
+- **发布中：** `0.3.0` — GUI 重构版本；候选由 `release-candidate.yml` 构建，只能由
+  `release-promote.yml` 提升。
+- **上一版本：** `0.2.2` — npm `latest`/`next`，GitHub Release `v0.2.2`。
+- **更早版本：** `0.2.1`。
 - **发布后诊断：** 真实模型 compaction 和 512 条 core 性能均已通过。
 - 不得手动 publish，也不得绕过受保护门禁。
 

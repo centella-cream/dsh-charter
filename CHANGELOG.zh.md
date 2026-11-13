@@ -4,21 +4,33 @@
 
 记录 `dsh-charter` 的重要变更。DSH 插件 ABI 仍在演进，项目保持 pre-1.0 版本线。
 
-## 未发布 — 0.3.0（开发候选）
+## 0.3.0 — 2026-11-13
+
+Workspace、审阅中心、诊断与维护统一到文档感 GUI。不改变 record schema、Remote wire 或 prompt 投影。
+
+### 新增
+
+- 顶部下划线 tabs 取代左侧纵向导航；宽屏为 720px 文档列 + 280px Change Set rail，窄屏保留 modal sheet。
+- 文档行、D 编号/字节右对齐元信息、quiet 行动作、虚线空态、skeleton、单行 notice；Change Set rail 为安静
+  margin note，含分组 op 和 quiet 撤销。
+- px 几何依赖图：固定 184px 节点、三层解剖、候选/暂存/生效边语言、静态 legend、紧凑 inspector 和随状态变化的
+  disclosure 文案。
+- Pane 页头保留已批准的 `v0.3.0` 版本 chip。
+- `charter_read standing` 返回交付物稳定 id，供 `charter_propose.requires` 使用；`D<n>` 明确只是展示标签，
+  非法引用显式失败。
 
 ### 变更
 
-- Workspace、审阅中心、诊断与维护全栏目 GUI 重构：平铺 section、减少小字/角标、交付物行单一进度控件、
-  Change Set 完整 rail/sheet、页面级 Pane 拆分。
-- 全部声明 DSH 版本的主题 token 覆盖审计与门禁。
-- W6 文档感视觉冻结：下划线 tabs、≥1100 的 720px 文档列 + 280px Change Set rail、section/行解剖、36px 虚线空态、40/16/16 skeleton、quietlink、单行 notice，以及 px 几何依赖图（184px 节点、三层解剖、静态边 legend、紧凑 inspector）。
-- 验证：39 文件 / 490 测试与 `verify:ui-metrics -- --gate=final` PASS；截图与并排 before/after 评审仍为本地/人工项。
+- 审阅中心、诊断与维护共用同一文档字号、行、chip、notice 与焦点合同。
+- client CSS 按归属 style tag upsert，热更新替换旧样式且不产生重复标签。
+- Diagnostics 作为显式顶层路由，不再落到 context-preview 锚点。
 
-### 兼容性
+### 验证
 
-- 新增 DSH `0.2.2-rc.2` 支持，并将 `engines.dsh` 改为有界 0.2 线范围
-  （`0.1.7-rc.2 || >=0.2.0-rc.1 <0.3.0-0`）：未来 0.2.x prerelease 更新无需插件重新发版；精确的
-  `dshReleases`/peer 列表仍是十版本矩阵已验证支持集。
+- `npm run check`：39 文件 / **492 测试** PASS；十版本 token 覆盖 PASS；
+  `verify:ui-metrics -- --gate=final` PASS。
+- 十版本兼容矩阵 PASS；release-candidate workflow 执行 exact-artifact package/recovery、fresh profile 和
+  Gateway 门禁。
 
 ## 0.2.2 — 2026-11-11
 

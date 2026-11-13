@@ -73,7 +73,7 @@ and the remaining full-design gates must be recorded separately before declaring
 
 - Branch `feat/0.3.0-gui`; W6 implementation commits `f3ac8f2`/`2ad1df3`/`bb576cd`/`840d202` plus follow-up docs are committed and the
   worktree is clean at audit time. **Not pushed/merged/tagged/published**; no `0.3.0` availability claim.
-- Source gates (2026-11-12): `npm run check` = 39 files / **490 tests** PASS (typecheck, build, remote/client
+- Source gates (2026-11-12): `npm run check` = 39 files / **492 tests** PASS (typecheck, build, remote/client
   smoke, Vitest, token gate); `npm run verify:ui-metrics -- --gate=css|ia` PASS.
 - Metric record (W1/W2/W4): CSS gate — `font-size` values 6, font weights 3, literal colors 0, non-token
   radius 0, non-token shadow 0, padding 9, gap 8, `!important` 0; IA gate — legacy objective card 0, legacy
@@ -129,8 +129,8 @@ and the remaining full-design gates must be recorded separately before declaring
   ten-version matrix; new versions are probed with `compat-matrix --discover` before being added to it.
 - Pane page split (2026-11-12): `CharterPane.tsx` 3459 → 1842 lines; new `WorkspacePage`, `ReviewCenterPage`,
   `DiagnosticsPage` and generated `pane-scope.ts`; shared `pane-format`/`pane-ui`; real-browser v0.3.0 three-area
-  route check; 490 tests and final gate PASS.
-- W6 document-feel visual freeze (2026-11-12): underline tabs replace the left rail; 720px document column + 280px Change Set rail at ≥1100; section/row anatomy, dashed 36px empty add rows, 40/16/16 skeleton, single-line notice, quietlinks, staged inset language and px-geometry graph (184px nodes, three-layer anatomy, legend, compact inspector). `charter.css` now consumes 41 audited static host tokens; `npm run check` 39 files / 490 tests PASS; `verify:ui-metrics -- --gate=final` PASS. CDP-injected screenshots: `.tmp/gui-acceptance/2026-11-12/ux-after-workspace-1440.png`, `w6-dirty-1440.png`, `w6-graph-1440.png` and nine-node overlap regression `w6-graph-9nodes.png`, `w6-review-1440.png`, `w6-diagnostics-1440.png`. CDP viewport measurements: 320/850/1440 root and document horizontal overflow 0; graph hidden at 320/850 and visible at 1440; node text at user font preferences 10/14/22 has equal scroll/client width and height (no clipping). Human before/after sign-off remains pending.
+  route check; 492 tests and final gate PASS.
+- W6 document-feel visual freeze (2026-11-12): underline tabs replace the left rail; 720px document column + 280px Change Set rail at ≥1100; section/row anatomy, dashed 36px empty add rows, 40/16/16 skeleton, single-line notice, quietlinks, staged inset language and px-geometry graph (184px nodes, three-layer anatomy, legend, compact inspector). `charter.css` now consumes 41 audited static host tokens; `npm run check` 39 files / 492 tests PASS; `verify:ui-metrics -- --gate=final` PASS. CDP-injected screenshots: `.tmp/gui-acceptance/2026-11-12/ux-after-workspace-1440.png`, `w6-dirty-1440.png`, `w6-graph-1440.png` and nine-node overlap regression `w6-graph-9nodes.png`, `w6-review-1440.png`, `w6-diagnostics-1440.png`. CDP viewport measurements: 320/850/1440 root and document horizontal overflow 0; graph hidden at 320/850 and visible at 1440; node text at user font preferences 10/14/22 has equal scroll/client width and height (no clipping). Human before/after sign-off remains pending.
 - Still manual/blocked before release: fresh-profile Host+Session Pane, Desktop window, real screen reader,
   true 200% text-layout audit, zh/en switch, livery spot-check record, and all human acceptance (W1–W6).
 

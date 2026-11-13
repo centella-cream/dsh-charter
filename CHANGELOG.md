@@ -5,22 +5,35 @@ English | [中文](CHANGELOG.zh.md)
 All notable changes to `dsh-charter` are recorded here. The project follows a pre-1.0 version line while the
 DSH plugin ABI is still moving.
 
-## Unreleased — 0.3.0 (development candidate)
+## 0.3.0 — 2026-11-13
+
+Document-feel GUI release across Workspace, Review Center, and Diagnostics & Maintenance. No record-schema,
+Remote-wire, or prompt-projection change.
+
+### Added
+
+- Underline area tabs replace the left vertical navigation; wide screens use a 720px document column plus a
+  280px Change Set rail, and narrow screens keep the modal sheet.
+- Document rows with aligned D-number/byte metadata, quiet row actions, dashed empty rows, skeleton, and inline
+  notice; the Change Set rail is a quiet margin note with grouped ops and quiet unstage links.
+- Px-geometry execution graph: fixed 184px nodes, three-layer anatomy, candidate/staged/active edges, static
+  legend, compact inspector, and state-aware disclosure label.
+- Approved `v0.3.0` version chip in the Pane header.
+- `charter_read standing` exposes stable deliverable ids for `charter_propose.requires`; `D<n>` labels are
+  display-only and invalid references fail explicitly.
 
 ### Changed
 
-- GUI redesign across Workspace, Review Center, and Diagnostics: flat section layout, reduced microcopy and
-  badges, single progress control per deliverable row, complete Change Set rail/sheet, and page-level Pane split.
-- Token coverage audit and CI gate for all declared DSH theme versions.
+- Review Center and Diagnostics share the same document typography, row, chip, notice, and focus contracts.
+- Client CSS is upserted by its owned style tag so hot reload replaces stale CSS without duplicate tags.
+- Diagnostics is an explicit top-level route instead of a context-preview anchor.
 
-- W6 document-feel visual freeze: underline tabs, 720px document column + 280px Change Set rail at ≥1100, section/row anatomy, 36px dashed empty rows, 40/16/16 skeleton, quietlinks, single-line notice, and a px-geometry dependency graph (184px nodes, three-layer anatomy, static edge legend, compact inspector).
-- Verification: 39 files / 490 tests and `verify:ui-metrics -- --gate=final` PASS; screenshots and before/after sign-off remain local/manual.
+### Verification
 
-### Compatibility
-
-- Added DSH `0.2.2-rc.2` support and a bounded `engines.dsh` 0.2-line range (`0.1.7-rc.2 || >=0.2.0-rc.1 <0.3.0-0`)
-  so future 0.2.x prerelease updates install without a plugin rebuild. The exact `dshReleases`/peer list remains
-  the ten-version matrix-verified support set.
+- `npm run check`: 39 files / **492 tests** PASS; ten-version token coverage PASS;
+  `verify:ui-metrics -- --gate=final` PASS.
+- Ten-version compatibility matrix PASS; release-candidate workflow runs exact-artifact package/recovery,
+  fresh-profile and Gateway gates.
 
 ## 0.2.2 — 2026-11-11
 

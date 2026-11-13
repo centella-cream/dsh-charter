@@ -2,9 +2,9 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![GitHub](https://img.shields.io/badge/GitHub-centella--cream%2Fdsh--charter-181717?logo=github)](https://github.com/centella-cream/dsh-charter)
-[![DSH](https://img.shields.io/badge/DSH-9%20verified%20versions-4b6bfb)](docs/design/compatibility.md)
+[![DSH](https://img.shields.io/badge/DSH-10%20verified%20versions-4b6bfb)](docs/design/compatibility.md)
 [![Node](https://img.shields.io/badge/node-%5E22.19%20%7C%7C%20%3E%3D24-339933)](package.json)
-[![Status: 0.2.2 stable](https://img.shields.io/badge/status-0.2.2-brightgreen)](#status)
+[![Status: 0.3.0](https://img.shields.io/badge/status-0.3.0-brightgreen)](#status)
 
 English | [中文](README.zh.md)
 
@@ -14,17 +14,22 @@ English | [中文](README.zh.md)
 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). Goals, hard constraints,
 deliverables, evidence, and dependency relationships survive compaction and remain visible and editable.
 
-![Charter tab in the current 0.2.2 build](docs/assets/charter-pane.zh.png)
+![Charter Pane in the 0.3.0 document-feel layout](docs/assets/charter-pane-0.3.0.png)
 
-> The current **0.2.2** Pane in a local Web profile. UI strings follow the active DSH language; this image uses
-> demo values so no private Session content is published.
+> The **0.3.0** Pane in a local Web profile: underline area tabs, a 720px document column, aligned document
+> rows, and a compact execution-path disclosure. Screenshot uses synthetic demo values only.
+
+![Dependency graph in the 0.3.0 Pane](docs/assets/charter-graph-0.3.0.zh.png)
+
+> The execution-path dependency graph: fixed-px nodes, three-layer node anatomy, status language, and a static
+> edge legend. The semantic list remains the authoritative surface.
 
 ## Contents
 
 - [Status](#status)
 - [Why](#why)
-- [0.2 headline: constraint relationships](#02-headline-constraint-relationships)
-- [Other 0.2 capabilities](#other-02-capabilities)
+- [0.3 headline: document-feel Pane](#03-headline-document-feel-pane)
+- [Other 0.3 capabilities](#other-03-capabilities)
 - [How it works](#how-it-works)
 - [Install](#install)
 - [Quick start](#quick-start)
@@ -39,32 +44,39 @@ deliverables, evidence, and dependency relationships survive compaction and rema
 
 ## Status
 
-- **Published release:** `0.2.2` — npm `latest` and `next`, GitHub Release `v0.2.2`; dependency-graph workspace
-  view, compact dependency list, and explicit dependency-conflict confirmation.
-- **Previous release:** `0.2.1`.
-- **Earlier release:** `0.2.0`.
-- **Primary DSH baseline:** `0.2.2-rc.2`; ten declared DSH versions are source-matrix verified.
-- Versioning from `0.2.0` onward uses plain increments (`0.2.0`, `0.2.1`, …), never an `rc` suffix.
+- **Current release:** `0.3.0` — the GUI redesign release. It ships the frozen document-feel Pane across
+  Workspace, Review Center, and Diagnostics; the dependency graph; the bounded DSH compatibility declaration;
+  and the Host tool fix that exposes deliverable ids to `charter_propose.requires`.
+- **Previous release:** `0.2.2` — dependency-graph workspace view, compact dependency list, and explicit
+  dependency-conflict confirmation.
+- **Earlier release:** `0.2.1`; **primary DSH baseline:** `0.2.2-rc.2`; ten declared DSH versions are
+  source-matrix verified.
+- Versioning from `0.2.0` onward uses plain increments (`0.2.0`, `0.2.1`, `0.2.2`, `0.3.0`), never an `rc`
+  suffix.
 
-### 0.2.2 highlights
+### 0.3 headline: document-feel Pane
 
-- **Dependency graph view:** Workspace renders a local ego graph of deliverables plus a compact, always-present
-  semantic list. Execution, candidate, and replacement lanes are distinct; isolated contracts use a bounded grid.
-- **Graph and list are one editing surface:** both stage the same `deliverable.requires` Change Set ops; Apply
-  remains the only commit point.
-- **Explicit dependency conflicts:** a Change Set that adds or worsens a dependency conflict lists the affected
-  deliverables and requires a second confirmation before Apply.
-- **Compact prerequisite editor:** the list shows a two-line summary and opens a checkbox editor for one row at a
-  time, avoiding hundreds of native multi-select options.
-- **Keyboard and degraded states:** the graph is one Tab stop with arrow/`[`/`]` traversal, a skip link to the
-  list, and explicit dense/isolated fallbacks.
+- **One document, not a dashboard.** Workspace, Review Center, and Diagnostics share the same reading column,
+  type scale, row anatomy, chips, quiet links, and empty/skeleton states.
+- **Underline area tabs, no left rail.** All widths use the top underline tabs; wide screens add a 720px
+  document column plus a 280px Change Set rail only while a Change Set is open.
+- **Rows align.** Each row is `[status dot | text | right-aligned D-number and bytes]`; byte metadata and the
+  D-number share the text baseline. Row-level actions are quiet links, not a second button bar.
+- **Staged changes speak one language.** A staged row uses a 2px business inset, a 5% tint, and a “Staged”
+  chip; the Change Set rail is a quiet margin note, not another card stack.
+- **The graph is a real view, not a second authority.** The execution-path disclosure renders a px-geometry
+  graph with fixed 184px nodes, two-line truncation, status anatomy, edge states, and a compact inspector; the
+  semantic list remains authoritative.
+- **Version visible.** The Pane header carries the approved `v0.3.0` chip, revision, and prompt meter together.
 
-### 0.2.1 highlights
+### Other 0.3 capabilities
 
-- Message proposals prefill an **editable body** from the selected user message.
-- Diagnostics separates fact validation from evidence integrity.
-- Recovery restores from a bounded Host cache (five per Session, 25 per profile).
-- The Pane header and form typography follow the lighter `dsh-context` hierarchy.
+- DSH `0.2.2-rc.2` declarations plus a bounded `engines.dsh` 0.2-line range; exact `dshReleases`/peer list
+  remains the ten-version matrix-verified support set.
+- `charter_read standing` now exposes stable deliverable ids so the model can propose real `requires`
+  references; `D<n>` labels are documented as display-only, and invalid references fail explicitly.
+- Desktop and Web plugin bundles hot-reload through the Host profile recomposition/client HMR path; CSS is
+  upserted by its owned style tag so a rebuilt stylesheet replaces the old one without duplicate tags.
 
 ## Why
 
@@ -170,17 +182,17 @@ storage.
 
 ## Install
 
-The latest public release is `0.2.2`. Install the published exact version for a reproducible profile:
+The latest public release is `0.3.0`. Install the exact version for a reproducible profile:
 
 ```bash
-dsh plugin --profile web add dsh-charter@0.2.2
+dsh plugin --profile web add dsh-charter@0.3.0
 ```
 
 For air-gapped machines or exact-artifact verification, install the published tarball:
 
 ```bash
-npm pack dsh-charter@0.2.2
-dsh plugin --profile web add ./dsh-charter-0.2.2.tgz
+npm pack dsh-charter@0.3.0
+dsh plugin --profile web add ./dsh-charter-0.3.0.tgz
 ```
 
 For Desktop, use **Desktop → Plugins → Install/Update**, or import the same local tarball if your Desktop build
@@ -217,8 +229,8 @@ A Session that is not live in the current Host process is shown read-only; start
 
 ## The Charter tab
 
-The Pane opens from the Session view. On wide screens it uses a left section navigation; on narrow screens it
-uses a horizontal tab strip.
+The Pane opens from the Session view. All widths use the top underline area tabs; wide screens keep the
+document column at 720px and open the Change Set as a 280px right-side margin note only when needed.
 
 | Area | Purpose |
 | --- | --- |

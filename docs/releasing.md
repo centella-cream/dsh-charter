@@ -10,11 +10,12 @@ This is the current release checklist. It replaces the older per-rc staging note
 Releases, and npm versions are immutable: never move a tag, delete a published release, or rebuild bytes after
 tagging.
 
-## Current state (2026-11-06)
+## Current state (2026-11-13)
 
-- **Published:** `0.2.1` — npm `latest`/`next`, GitHub Release `v0.2.1`; exact artifact SHA-256
-  `d4ae14e19b4d65264a53b57c0f9d3f93eb8303189e8daa3f3f35beb97104d498`.
-- **Previous release:** `0.2.0` (GitHub Release `v0.2.0`, npm `latest`/`next` before 0.2.1).
+- **Publishing:** `0.3.0` — GUI redesign; candidate is built by `release-candidate.yml` and promoted only by
+  `release-promote.yml`.
+- **Previous release:** `0.2.2` — npm `latest`/`next`, GitHub Release `v0.2.2`.
+- **Earlier release:** `0.2.1`.
 - **Post-release diagnostics:** real-model compaction and 512-item core performance both passed.
 - Do not manually publish or bypass the protected gates.
 

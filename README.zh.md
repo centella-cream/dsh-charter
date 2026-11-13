@@ -2,9 +2,9 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![GitHub](https://img.shields.io/badge/GitHub-centella--cream%2Fdsh--charter-181717?logo=github)](https://github.com/centella-cream/dsh-charter)
-[![DSH](https://img.shields.io/badge/DSH-9%20verified%20versions-4b6bfb)](docs/design/compatibility.zh.md)
+[![DSH](https://img.shields.io/badge/DSH-10%20verified%20versions-4b6bfb)](docs/design/compatibility.zh.md)
 [![Node](https://img.shields.io/badge/node-%5E22.19%20%7C%7C%20%3E%3D24-339933)](package.json)
-[![Status: 0.2.2 stable](https://img.shields.io/badge/status-0.2.2-brightgreen)](#状态)
+[![Status: 0.3.0](https://img.shields.io/badge/status-0.3.0-brightgreen)](#状态)
 
 [English](README.md) | 中文
 
@@ -13,17 +13,21 @@
 `dsh-charter` 是 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的持久化、用户所有的
 会话契约插件。目标、硬约束、交付物、证据和依赖关系在上下文压缩后仍然保留，并且始终可查看、可编辑。
 
-![当前 0.2.2 构建中的会话契约页](docs/assets/charter-pane.zh.png)
+![0.3.0 文档感布局中的会话契约页](docs/assets/charter-pane-0.3.0.zh.png)
 
-> 这是本地 Web profile 中当前 **0.2.2** Pane 的界面。UI 文案跟随 DSH 当前语言；截图使用演示数据，不发布
-> 任何私人 Session 内容。
+> 本地 Web profile 中 **0.3.0** Pane：顶部下划线 tabs、720px 文档列、对齐的文档行和可折叠执行路径。
+> 截图仅使用合成演示数据。
+
+![0.3.0 Pane 中的依赖关系图](docs/assets/charter-graph-0.3.0.zh.png)
+
+> 执行路径中的依赖关系图：固定 px 节点、三层节点解剖、状态语言和静态边 legend；语义列表始终是权威操作面。
 
 ## 目录
 
 - [状态](#状态)
 - [为什么需要](#为什么需要)
-- [0.2 核心亮点：约束关系](#02-核心亮点约束关系)
-- [其他 0.2 能力](#其他-02-能力)
+- [0.3 核心亮点：文档感 Pane](#03-核心亮点文档感-pane)
+- [其他 0.3 能力](#其他-03-能力)
 - [工作原理](#工作原理)
 - [安装](#安装)
 - [快速开始](#快速开始)
@@ -38,30 +42,34 @@
 
 ## 状态
 
-- **已发布版本：**`0.2.2` — npm `latest` 和 `next`，GitHub Release `v0.2.2`；依赖关系图形视图、紧凑依赖
-  列表和依赖冲突二次确认。
-- **上一版本：**`0.2.1`。
-- **更早版本：**`0.2.0`。
-- **主要 DSH 基线：**`0.2.2-rc.2`；十个声明版本通过源码矩阵验证。
-- 从 `0.2.0` 起版本号使用普通递增（`0.2.0`、`0.2.1`…），不再使用 `rc` 后缀。
+- **当前版本：**`0.3.0` — GUI 重构版本。Workspace、Review Center、Diagnostics & Maintenance 统一到冻结的
+  文档感 Pane；包含依赖关系图、有界 DSH 兼容声明，以及让 `charter_propose.requires` 可用交付物 id 的
+  Host 工具修复。
+- **上一版本：**`0.2.2` — 依赖关系图形视图、紧凑依赖列表和依赖冲突二次确认。
+- **更早版本：**`0.2.1`；**主要 DSH 基线：**`0.2.2-rc.2`；十个声明版本通过源码矩阵验证。
+- 从 `0.2.0` 起版本号使用普通递增（`0.2.0`、`0.2.1`、`0.2.2`、`0.3.0`），不再使用 `rc` 后缀。
 
-### 0.2.2 重点变化
+### 0.3 核心亮点：文档感 Pane
 
-- **依赖关系图形视图：**Workspace 以局部 ego 图展示交付物前置关系，并保留紧凑语义列表；执行、候选和替代历史
-  车道分开；无依赖边时显示有界孤立节点网格。
-- **图与列表共用一个编辑面：**两侧都写同一组 `deliverable.requires` Change Set ops，Apply 仍是唯一提交点。
-- **显式依赖冲突：**引入或加重依赖冲突的 Change Set 会列出受影响交付物，并要求二次确认后再 Apply。
-- **紧凑前置编辑：**列表显示两行摘要，点“编辑前置”才展开一行的 checkbox 编辑器，避免一次渲染数百个
-  native multi-select 选项。
-- **键盘与降级状态：**图形区只占一个 Tab 停靠点，方向键/`[`/`]` 遍历，skip link 跳到列表；图形过密或
-  无依赖时有明确降级和空状态。
+- **一份文档，不是仪表盘。** Workspace、审阅中心和诊断与维护共用同一阅读列、字号阶、行解剖、chip、
+  quiet link 与空态/skeleton。
+- **顶部下划线 tabs，无左侧纵向导航。** 所有宽度使用顶部 tabs；宽屏只在有 Change Set 时增加
+  720px 文档列 + 280px Change Set rail。
+- **行对齐。** 每行是 `[状态圆点 | 正文 | 右对齐 D 编号与字节数]`；字节元信息、D 编号与正文首行共用
+  20px 行盒基线。行级轻动作用 quiet link，不额外堆按钮。
+- **暂存语言统一。** 暂存行使用 2px business 内嵌强调条、5% 底色和“已暂存”chip；Change Set rail 是安静的
+  margin note，不再套一层卡片。
+- **依赖图是增强视图，不是第二权威。** 执行路径 disclosure 内是 px 几何依赖图：固定 184px 节点、两行截断、
+  状态解剖、边状态和紧凑 inspector；语义列表始终是权威操作面。
+- **版本可见。** Pane 页头同时显示已批准的 `v0.3.0` chip、revision 和 prompt meter。
 
-### 0.2.1 重点变化
+### 其他 0.3 能力
 
-- 消息提案会从所选用户消息预填**可编辑正文**。
-- 诊断区把事实有效性验证和证据完整性拆开。
-- 恢复改为从 Host 维护的缓存选择快照（每 Session 5 份、整个 profile 25 份）。
-- Pane 页头和表单排版对齐更轻量的 `dsh-context` 层级。
+- DSH `0.2.2-rc.2` 声明与有界 `engines.dsh` 0.2 线范围；精确 `dshReleases`/peer 列表仍是十版本矩阵已验证支持集。
+- `charter_read standing` 现在返回交付物稳定 id，模型可以提出真实 `requires` 引用；`D<n>` 明确只是展示标签，
+  非法引用显式失败。
+- Desktop/Web 插件通过 Host profile 重组 + client HMR 热更新；CSS 按归属 style tag upsert，重载后替换旧样式，
+  不产生重复标签。
 
 ## 为什么需要
 
@@ -150,17 +158,17 @@ compaction summary 返回只读草案，不写 storage。
 
 ## 安装
 
-当前公开版本是 `0.2.2`。可复现 profile 请安装已发布的精确版本：
+当前公开版本是 `0.3.0`。可复现 profile 请安装精确版本：
 
 ```bash
-dsh plugin --profile web add dsh-charter@0.2.2
+dsh plugin --profile web add dsh-charter@0.3.0
 ```
 
 离线机器或需要精确验证 artifact 时，安装已发布 tarball：
 
 ```bash
-npm pack dsh-charter@0.2.2
-dsh plugin --profile web add ./dsh-charter-0.2.2.tgz
+npm pack dsh-charter@0.3.0
+dsh plugin --profile web add ./dsh-charter-0.3.0.tgz
 ```
 
 Desktop 请使用 **Desktop → Plugins → Install/Update**；若 Desktop 构建支持本地插件导入，也可导入同一

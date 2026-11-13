@@ -50,9 +50,9 @@ same commit. Do not delete a historical decision just because it is inactive; mo
 | Document | Status | Version scope | Notes |
 | --- | --- | --- | --- |
 | [design/charter-design-v1.md](design/charter-design-v1.md) | Active | 0.1 core; invariants apply to 0.2 | Core Charter invariants and v1 product baseline. |
-| [design/charter-workspace-v2.zh.md](design/charter-workspace-v2.zh.md) | Implemented — pending release acceptance | 0.2.0 | Workspace, proposal timeline, dependencies; topic-scoped. |
+| [design/charter-workspace-v2.zh.md](design/charter-workspace-v2.zh.md) | Active | 0.2.0 / 0.3.0 | Workspace, proposal timeline, dependencies; topic-scoped. |
 | [design/charter-dependency-graph-v1.zh.md](design/charter-dependency-graph-v1.zh.md) | Active | 0.2.2 | Client-side dependency graph view. Source implementation lands on the 0.2.2 line; real browser/AT and W0-1/2/3 gate evidence remains pending. |
-| [design/charter-gui-v1.zh.md](design/charter-gui-v1.zh.md) | Active | 0.3.0 (in development, unreleased) | All-section GUI refactor: design system, IA/routing, Change Set contract, Pane/store split, evidence gates. Frozen visual language (document-feel): [design/mockups/](design/mockups/README.md). 0.3.0 is not released; no availability claims before manual acceptance. |
+| [design/charter-gui-v1.zh.md](design/charter-gui-v1.zh.md) | Active | 0.3.0 | All-section GUI refactor: design system, IA/routing, Change Set contract, Pane/store split, evidence gates. Frozen visual language (document-feel): [design/mockups/](design/mockups/README.md). |
 | [design/version-roadmap.md](design/version-roadmap.md) | Active | whole line | Scope/version authority; Chinese is normative. |
 | [design/compatibility.md](design/compatibility.md) | Active | declared DSH versions | Compatibility claims and matrix. |
 | [history/2026-10-19-charter-design-v1-review.md](history/2026-10-19-charter-design-v1-review.md) | Historical | 0.1 | Frozen v1 design review. |

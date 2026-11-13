@@ -627,7 +627,7 @@ exact artifact client 已通过 CDP 注入真实 Host 验证 Pane 与 Change Set
 从 `CharterPane` 抽出（3459 → 1842 行），通过 typed `PaneScope` 接收页面状态；共享 UI/格式化抽到 `pane-ui` /
 `pane-format`。同时完成视觉减负：平铺 section（去卡片堆叠）、删除重复 kicker/count/说明小字与目标免责声明、
 移除行内字节数和重复进度标签、进度控件收敛为行尾单一 select、空态去虚线框、表单次级按钮按需出现。Change Set rail 的分组 / before→after / 单条撤销 / 桌面 complement + 窄屏 sheet 均已落地。
-`npm run check` 490/490、`--gate=final` PASS；真实浏览器 v0.3.0 已验证三区域路由、objective 单卡和诊断
+`npm run check` 492/492、`--gate=final` PASS；真实浏览器 v0.3.0 已验证三区域路由、objective 单卡和诊断
 Context Preview。**剩余**：per-domain store 的细粒度拆分（当前以 `draft-store`、`change-set-model`、
 `useChangeSetSheet`、`section-routing`、`page-order` 为 store 边界）与 W1–W6 人工验收。
 
@@ -858,11 +858,11 @@ URL/commit、拒绝无许可证或行为不明的包；impeccable 的 launcher �
 | 2026-11-12 | W2b 完成：Change Set v2 最小合同（桌面 complementary region、窄屏 modal sheet + focus trap/Escape/focus restore）、冲突摘要入面板、Change Set 测试；W2 源码层完成，真实浏览器证据与人工验收仍待。 |
 | 2026-11-12 | W3 收口进展：notice 改为单条优先级横幅；导航帮助改为可聚焦 `?` 按钮（键盘/触屏可见）；真实 AX tree 抽查（命名 region、0 空名按钮、命名 dialog）；200%/forced-colors/AT 证据仍待。 |
 | 2026-11-12 | W4 部分：WIP artifact 打包（SHA-256 `12c66dbc…`）、隔离 profile exact install、隔离 Host 启动、exact artifact client 真实 Host 渲染；fresh-profile session、Desktop、截图矩阵与发布文档仍待。 |
-| 2026-11-12 | W5 页面级拆分完成：WorkspacePage/ReviewCenterPage/DiagnosticsPage + typed PaneScope + pane-format/pane-ui；CharterPane 3459→1842；490/490 + final gate；真实浏览器 v0.3.0 三区域验证；per-domain store 细粒度拆分仍待人工验收边界。 |
+| 2026-11-12 | W5 页面级拆分完成：WorkspacePage/ReviewCenterPage/DiagnosticsPage + typed PaneScope + pane-format/pane-ui；CharterPane 3459→1842；492/492 + final gate；真实浏览器 v0.3.0 三区域验证；per-domain store 细粒度拆分仍待人工验收边界。 |
 | 2026-11-12 | 审查修复：W0 token 覆盖门禁（9 版本/35 静态 token/1 动态 fallback）落盘；rail 状态文案本地化；导航 a11y 文档统一为 nav+aria-current；补 `--ch-reading-max` 并移除 sticky 60px 魔法数字；dev artifact 删除以保护已发布 0.2.2。 |
 | 2026-11-12 | 本地验收部署：`0.3.0` dev candidate（`1d1963f1…`）安装到本地 web+desktop profile；Web 验收服务 52080；Desktop 当时按重启验证。后续 2026-11-12 确认 Desktop 支持 bundle 热更新，见下方 W6 记录。 |
 | 2026-11-12 | DSH rc.2 适配：声明 `0.2.2-rc.2`（engines/peers/dshReleases/token inventory/测试/文档），十版本矩阵 PASS；rc.2 兼容 artifact `31c4c61d…` 安装 web+desktop；engines 改为有界 0.2 线范围。 |
-| 2026-11-12 | UX 减负：平铺 section、去除冗余小字/角标/免责声明、行内字节与重复进度标签移除、单一进度控件、空态/表单降噪；490 测试 + final gate PASS；artifact `1d1963f1…` 已部署 web+desktop。 |
+| 2026-11-12 | UX 减负：平铺 section、去除冗余小字/角标/免责声明、行内字节与重复进度标签移除、单一进度控件、空态/表单降噪；492 测试 + final gate PASS；artifact `1d1963f1…` 已部署 web+desktop。 |
 | 2026-11-12 | 本地验收部署：W6 验收构建 `dist/dsh-charter-0.3.0-w6-final.tgz`（`ab74591c…`，client `986f8403…`）已安装到本地 web+desktop profile；恢复 Pane 页头 `v0.3.0` 版本标识；Desktop 实测热更新（bundle 824ms / CSS 402ms / 最终 886ms；后续披露标签修复构建 `ab74591c…` 已热更新，tabs=3、style=1、无异常），无需重启；人工验收待完成。 |
-| 2026-11-12 | W6 视觉语言落地（源码）：按 docs/design/mockups 合入文档感 CSS 与组件——顶部下划线 tabs、720 文档列 + 280 Change Set rail、section/行解剖与对齐、36px 虚线空态、40/16/16 skeleton、quietlink/notice、依赖图 px 几何 + 紧凑 inspector；490/490 + final gate PASS；CDP 截图 320/850/1440，root/document 横向溢出 0，图形区 320/850 隐藏、1440 可见，字号 10/14/22 节点文本无裁切；冻结稿并排评审与人工验收仍待完成。 |
+| 2026-11-12 | W6 视觉语言落地（源码）：按 docs/design/mockups 合入文档感 CSS 与组件——顶部下划线 tabs、720 文档列 + 280 Change Set rail、section/行解剖与对齐、36px 虚线空态、40/16/16 skeleton、quietlink/notice、依赖图 px 几何 + 紧凑 inspector；492/492 + final gate PASS；CDP 截图 320/850/1440，root/document 横向溢出 0，图形区 320/850 隐藏、1440 可见，字号 10/14/22 节点文本无裁切；冻结稿并排评审与人工验收仍待完成。 |
 | 2026-11-12 | 视觉语言冻结（文档感）：style tile + clean 首屏 / 脏态 rail / 依赖关系图三份高保真稿入库 `docs/design/mockups/`（含 `mockup.css` 参考实现与 `tokens.css` 宿主 token 快照）；新增 §4.9 视觉冻结与 §5.7 依赖图规格；更新 §4.5/§4.7/§5.1/§5.2/§5.6/§8.3、D1/D5 决策与 W6 实施阶段；区域导航定为顶部下划线 tabs（去左侧纵向导航）。 |

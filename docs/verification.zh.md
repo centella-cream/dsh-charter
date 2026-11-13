@@ -52,7 +52,7 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 ## 1.2 0.3.0 GUI 开发候选（未发布，待本地人工验收）
 
 - 分支 `feat/0.3.0-gui`；W6 实现提交 `f3ac8f2`/`2ad1df3`/`bb576cd`/`840d202` 及后续文档提交已完成，审计时工作树干净。**未推送/未合并/未 tag/未发布**，无 0.3.0 可用性声明。
-- 源码门禁（2026-11-12）：`npm run check` = 39 文件 / **490 测试** PASS（typecheck、build、remote/client
+- 源码门禁（2026-11-12）：`npm run check` = 39 文件 / **492 测试** PASS（typecheck、build、remote/client
   smoke、Vitest、token gate）；`npm run verify:ui-metrics -- --gate=css|ia` PASS。
 - 度量记录（W1/W2/W4）：CSS gate — 字号档 6、字重 3、颜色字面量 0、非 token 圆角 0、非 token shadow 0、
   padding 9、gap 8、`!important` 0；IA gate — 旧 objective 卡片 0、旧 overview/stat/budget 0、`goSection` 滚动/聚焦
@@ -99,8 +99,8 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
   精确的 peer/`dshReleases` 列表仍是十版本矩阵已验证支持集；新版本先由 `compat-matrix --discover` 探测再加入。
 - Pane 页面级拆分（2026-11-12）：`CharterPane.tsx` 3459 → 1842 行；新增 `WorkspacePage`/`ReviewCenterPage`/
   `DiagnosticsPage` 与生成的 `pane-scope.ts`；共享 `pane-format`/`pane-ui`；真实浏览器 v0.3.0 三区域路由验证；
-  490 测试 + final gate PASS。
-- W6 文档感视觉冻结（2026-11-12）：下划线 tabs 取代左侧纵向导航；≥1100 为 720px 文档列 + 280px Change Set rail；section/行解剖、36px 虚线空态、40/16/16 skeleton、单行 notice、quietlink、暂存 inset 语言与 px 几何依赖图（184px 节点、三层解剖、legend、紧凑 inspector）已落地。`charter.css` 现消费 41 个已审计静态 host token；`npm run check` 39 文件 / 490 测试 PASS；`verify:ui-metrics -- --gate=final` PASS。CDP 注入截图：`.tmp/gui-acceptance/2026-11-12/ux-after-workspace-1440.png`、`w6-dirty-1440.png`、`w6-graph-1440.png` 与九节点重叠回归 `w6-graph-9nodes.png`、`w6-review-1440.png`、`w6-diagnostics-1440.png`。CDP 视口实测：320/850/1440 的 root/document 横向溢出均为 0；图形区在 320/850 隐藏、1440 可见；用户字号 10/14/22 下节点文本 scrollWidth/clientWidth 与 scrollHeight/clientHeight 相等（无裁切）。冻结稿并排与人工验收仍待完成。
+  492 测试 + final gate PASS。
+- W6 文档感视觉冻结（2026-11-12）：下划线 tabs 取代左侧纵向导航；≥1100 为 720px 文档列 + 280px Change Set rail；section/行解剖、36px 虚线空态、40/16/16 skeleton、单行 notice、quietlink、暂存 inset 语言与 px 几何依赖图（184px 节点、三层解剖、legend、紧凑 inspector）已落地。`charter.css` 现消费 41 个已审计静态 host token；`npm run check` 39 文件 / 492 测试 PASS；`verify:ui-metrics -- --gate=final` PASS。CDP 注入截图：`.tmp/gui-acceptance/2026-11-12/ux-after-workspace-1440.png`、`w6-dirty-1440.png`、`w6-graph-1440.png` 与九节点重叠回归 `w6-graph-9nodes.png`、`w6-review-1440.png`、`w6-diagnostics-1440.png`。CDP 视口实测：320/850/1440 的 root/document 横向溢出均为 0；图形区在 320/850 隐藏、1440 可见；用户字号 10/14/22 下节点文本 scrollWidth/clientWidth 与 scrollHeight/clientHeight 相等（无裁切）。冻结稿并排与人工验收仍待完成。
 - 发布前仍需人工/环境证据：fresh-profile Host+Session Pane、Desktop 窗口、真实 screen reader、真实 200%
   文本布局、zh/en 切换、livery 抽查记录，以及 W1–W6 全部人工验收。
 
