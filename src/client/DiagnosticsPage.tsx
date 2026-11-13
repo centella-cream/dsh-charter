@@ -1,8 +1,10 @@
-import type { ReactNode } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import type { PaneScope } from './pane-scope.js'
 import { ActionButton, ErrorDetails, StatusTag } from './pane-ui.js'
 import { archiveHealthLabel, errorLabel, formatBytes, formatTimestamp, lifecycleLabel, shortText } from './pane-format.js'
 import { PAGE_ORDER } from './page-order.js'
+import { buildStandingEnvelope, STANDING_TOOL_MAX_BYTES, STANDING_TOOL_MAX_ITEMS } from '../core/standing-envelope.js'
+import type { CharterItem } from '../core/schemas.js'
 
 export function DiagnosticsPage({ scope }: { readonly scope: PaneScope }): ReactNode {
   const {
@@ -68,9 +70,55 @@ export function DiagnosticsPage({ scope }: { readonly scope: PaneScope }): React
   validatorRunning,
   view,
   } = scope
+  const standingEnvelope = useMemo(() => {
+    try {
+      return buildStandingEnvelope(
+        view.items as unknown as CharterItem[],
+        view.revision,
+        view.objective?.current.text ?? null,
+      )
+    } catch {
+      return null
+    }
+  }, [view])
+  const envelopePercent = standingEnvelope === null
+    ? 0
+    : Math.min(999, Math.round((standingEnvelope.bytes / STANDING_TOOL_MAX_BYTES) * 100))
+  const envelopeState = standingEnvelope === null
+    ? null
+    : standingEnvelope.bytes > STANDING_TOOL_MAX_BYTES
+      ? 'over'
+      : envelopePercent >= 80 ? 'near' : 'ok'
   return (
     <>
     {area === 'diagnostics' && (<>
+                <section className="charter-card charter-section charter-envelope" aria-labelledby="charter-envelope-title">
+                  <div className="charter-cardhead">
+                    <div className="charter-cardtitle">
+                      <h3 id="charter-envelope-title">{t('diagnostics.envelopeTitle')}</h3>
+                    </div>
+                  </div>
+                  {standingEnvelope === null ? (
+                    <p className="charter-hint">{t('diagnostics.envelopeUnavailable')}</p>
+                  ) : (
+                    <>
+                      <p className="charter-hint">{t('diagnostics.envelopeHint')}</p>
+                      <dl className="charter-envelope__facts">
+                        <div><dt>{t('diagnostics.envelopeUsage')}</dt><dd>{formatBytes(t, standingEnvelope.bytes)} / {formatBytes(t, STANDING_TOOL_MAX_BYTES)}</dd></div>
+                        <div><dt>{t('diagnostics.envelopePercent')}</dt><dd>{envelopePercent}%</dd></div>
+                        <div><dt>{t('diagnostics.envelopeItems')}</dt><dd>{standingEnvelope.itemCount} / {STANDING_TOOL_MAX_ITEMS}</dd></div>
+                        <div><dt>{t('diagnostics.envelopeDeliverables')}</dt><dd>{standingEnvelope.deliverableCount}</dd></div>
+                        <div><dt>{t('diagnostics.envelopePromptCap')}</dt><dd>{formatBytes(t, view.limits.maxPromptBytes)}</dd></div>
+                        <div><dt>{t('diagnostics.envelopeIdCost')}</dt><dd>{t('diagnostics.envelopeIdCostValue', { count: standingEnvelope.deliverableCount })}</dd></div>
+                      </dl>
+                      <p className={`charter-envelope__status is-${envelopeState}`} role="status">
+                        {envelopeState === 'over'
+                          ? t('diagnostics.envelopeOver')
+                          : envelopeState === 'near' ? t('diagnostics.envelopeNear') : t('diagnostics.envelopeOk')}
+                      </p>
+                    </>
+                  )}
+                </section>
                 {source.runValidators !== undefined && (<section className="charter-card charter-section charter-validator" aria-labelledby="charter-validator-title">
                     <div className="charter-cardhead">
                       <div className="charter-cardtitle">

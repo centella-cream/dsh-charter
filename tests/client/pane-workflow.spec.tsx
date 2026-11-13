@@ -519,6 +519,20 @@ describe('rc.6 pane help and formatted preview', () => {
     expect(textOf(tree.root)).toContain('preview.emptyHint')
   })
 
+  it('shows the standing envelope estimate on Diagnostics', () => {
+    const ready = view({ revision: 1 })
+    const src = source(ready)
+    const draft = new CharterDraft(sessionId, () => src)
+    draft.bindLifecycle(lifecycle)
+    const tree = mount(src, draft)
+    const context = tree.root.findAll(node => node.type === 'button' && textOf(node).includes('nav.diagnostics'))[0]
+    act(() => context!.props.onClick())
+    const text = textOf(tree.root)
+    expect(text).toContain('diagnostics.envelopeTitle')
+    expect(text).toContain('diagnostics.envelopeUsage')
+    expect(text).toContain('diagnostics.envelopeOk')
+  })
+
   it('shows the context preview as formatted JSON by default', () => {
     const ready = view({
       revision: 1,
@@ -585,6 +599,11 @@ describe('dependency graph pane surface', () => {
     expect(tree.root.findAll(node => node.props['id'] === 'charter-dependency-list')).toHaveLength(1)
     expect(tree.root.findAll(node => node.props['aria-label'] === 'deps.graphAria').length).toBeGreaterThan(0)
     expect(tree.root.findAll(node => node.type === 'details')[0]).toBeDefined()
+    expect(textOf(tree.root)).toContain('deps.laneExecution')
+    expect(tree.root.findAll(node => String(node.props.className ?? '').includes('charter-graph__arrow')).length).toBeGreaterThan(0)
+    const edgeHits = tree.root.findAll(node => String(node.props.className ?? '') === 'charter-graph__edgehit')
+    expect(edgeHits).toHaveLength(1)
+    expect(Number.parseFloat(String(edgeHits[0]!.props.style.width))).toBeGreaterThan(44)
   })
 
   it('expands the windowed dependency list before locating a graph node', () => {

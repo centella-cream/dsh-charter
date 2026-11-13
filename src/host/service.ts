@@ -26,6 +26,7 @@ import { queryItems, type ItemQueryRequest } from '../core/query.js'
 import { changeSetPreviewDigest, planChangeSet, type PlannedChangeSet } from '../core/change-set.js'
 import { sha256Json, sha256Text } from '../core/digest.js'
 import { dependencyProjection } from '../core/dependencies.js'
+import { buildStandingEnvelope, STANDING_TOOL_MAX_ITEMS, STANDING_TOOL_MAX_BYTES } from '../core/standing-envelope.js'
 import { sourceIntegrity } from '../core/source-integrity.js'
 import {
   agentProjectionDigest,
@@ -1555,42 +1556,17 @@ export class CharterService extends Service {
       : record.current.items
     const objective = record.current.objective?.current.text ?? null
     if (mode === 'standing') {
-      // `standing` is the model's working set: metadata that does not help the
-      // model (review and lifecycle are constant for standing rows) only
-      // inflates the tool result. The same hard envelope cap applies here.
-      //
-      // A deliverable's `id` is the deliberate exception: it is the reference
-      // space `charter_propose.requires` validates against, so without it the
-      // model can see a prerequisite but never address one, and no first
-      // dependency could ever be proposed. Invariants omit `id` because they
-      // can never be a prerequisite, which keeps the envelope minimal.
-      const plan = dependencyProjection(record.current.items)
-      const keyById = new Map(plan.map(row => [row.id, row]))
-      const simplified = relevant.map(item => ({
-        kind: item.kind,
-        text: item.text,
-        verification: item.verification.state,
-        progress: item.kind === 'deliverable' ? item.progress : null,
-        ...(item.kind === 'deliverable'
-          ? {
-              id: item.id,
-              key: keyById.get(item.id)?.localKey ?? null,
-              requires: keyById.get(item.id)?.requires ?? [],
-            }
-          : {}),
-      }))
-      const maxItems = 64
-      const maxEnvelopeBytes = 32 * 1_024
-      const envelope = { revision: record.current.revision, objective, items: simplified, truncated: 0 }
-      if (simplified.length > maxItems
-        || Buffer.byteLength(JSON.stringify(envelope), 'utf8') > maxEnvelopeBytes) {
+      // `standing` is the model's working set; use the same pure builder as the
+      // Diagnostics envelope estimate so bytes and field order cannot drift.
+      const standing = buildStandingEnvelope(record.current.items, record.current.revision, objective)
+      if (standing.itemCount > STANDING_TOOL_MAX_ITEMS || standing.bytes > STANDING_TOOL_MAX_BYTES) {
         throw charterError(
           'LIMIT_EXCEEDED',
-          `standing charter exceeds the ${maxItems}-item/${maxEnvelopeBytes}-byte tool envelope; `
+          `standing charter exceeds the ${STANDING_TOOL_MAX_ITEMS}-item/${STANDING_TOOL_MAX_BYTES}-byte tool envelope; `
           + 'no partial standing view is returned',
         )
       }
-      return envelope
+      return standing.view
     }
 
     // `all` is the bounded debugging projection. The cap applies to the final
