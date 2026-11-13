@@ -100,7 +100,7 @@ and the remaining full-design gates must be recorded separately before declaring
   Release `v0.3.0` public and immutable. This supersedes the local `w6-final` development artifact for installation.
 - 0.3.1 GUI convergence candidate (2026-11-13): `npm run check` 41 files / **499 tests** PASS;
   token coverage 41 static + 1 dynamic over 10 declared DSH versions PASS; ten-version source matrix PASS
-  (`.tmp/compat-031.json`). Shared standing-envelope builder
+  (`.tmp/compat-031-final.json`). Shared standing-envelope builder
   (`src/core/standing-envelope.ts`) is used by both Host and Diagnostics; a 64-deliverable fixture with
   production-length ids proves the id cost is exactly 49 B/deliverable and the envelope stays under 32 KiB.
 - `traffic-check` propose telemetry parses the actual JSON tool-result envelope (`{ok, message}`), not
