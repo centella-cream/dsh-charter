@@ -78,8 +78,11 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 - 0.3.1 GUI 收敛候选（2026-11-13）：`npm run check` 41 文件 / **499 测试** PASS；
   token 覆盖 41 static + 1 dynamic、10 个声明 DSH 版本 PASS；十版本源码矩阵 PASS（`.tmp/compat-031.json`）。共享 standing-envelope 构造函数由 Host 与
   Diagnostics 共用；64 个交付物、生产长度 id 的 fixture 证明 id 开销恰为 49 B/交付物且 envelope 不超过 32 KiB。
+- `traffic-check` 的 propose 遥测改为解析真实 JSON tool-result envelope（`{ok, message}`），不再对序列化
+  文本做正则。fixture 覆盖单个 `D1` 拒绝、未知 id、非 requires 类失败和 accepted：display-key=1、
+  unknown-id=1、other=1、accepted=1；不再出现 `D1"}` 尾串污染。
 - 依赖图浏览器审计（2026-11-13，Chromium 1440×1000，合成 applied session）：泳道标题、5 个箭头 marker、
-  44 px 沿路径命中描边（键盘 button 230×44 px）、`max-height: none`；860/900/1000/1100/1200/1440 与 200% 页面缩放均无横向
+  SVG 沿路径命中描边（`vector-effect: non-scaling-stroke`；1440 px 实测 21 px 在带内 / 23 px 在带外，即 44 px 宽）、`max-height: none`；860/900/1000/1100/1200/1440 与 200% 页面缩放均无横向
   溢出。1100 视口下 app shell 内容容器为 813 px，低于 880 px 折叠阈值，图形区保持折叠但语义列表可用；
   记录为布局观察，不宣称 W0-1 双栏通过。真实 VoiceOver/AT 仍是人工门禁。
 - 流量取证（2026-11-13）：`traffic-check` 增加 `charter_propose` 调用/拒绝统计、display-key/unknown-id 分类
@@ -93,9 +96,9 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 - 0.3.1 README 截图由精确本地构建注入运行中的 Web app 后重采：
   `docs/assets/charter-pane-0.3.1.png`、`charter-pane-0.3.1.zh.png`、`charter-graph-0.3.1.zh.png`。
 - 本地验收 artifact（2026-11-13）：`dist/dsh-charter-0.3.1.tgz` SHA-256
-  `a558dcedabb1ebc606fc89a8a77eb02e7c04e3691d23017d116b94cbb6162a12`；exact-artifact package smoke 与 packed
-  recovery smoke PASS。`dist/dsh-charter-0.3.1-acceptance.tgz`（同一字节）已安装到本地 `web` 与 `desktop` profile；
-  两端 client 均为 `f7700f02…`。Host 版本 chip 在干净重启 Host 后更新。
+  `9f779443fd83c8e320d94d1981c18dc896d9d5905a7cc3f7dc8673f307806860`；exact-artifact package smoke 与 packed
+  recovery smoke PASS。`dist/dsh-charter-0.3.1-final.tgz`（同一字节）已安装到本地 `web` 与 `desktop` profile；
+  两端 client 均为 `fcd56a48…`。Host 版本 chip 在干净重启 Host 后更新。
 - 0.3.1 尚未发布；人工验收前不构造 candidate/promotion 证据。
 - 本地验收部署（2026-11-12）：W6 验收构建为 `dist/dsh-charter-0.3.0-w6-final.tgz`
   （SHA-256 `ab74591c…`，client `986f8403…`）。已安装到本地 `web` 与 `desktop` profile，包版本 `0.3.0`，

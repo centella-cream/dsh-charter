@@ -2300,17 +2300,6 @@
   white-space: nowrap;
 }
 
-.charter-graph__edgehit {
-  position: absolute;
-  width: 44px;
-  height: 44px;
-  padding: 0px;
-  transform: translate(-50%, -50%);
-  border: 0;
-  border-radius: 50%;
-  background: transparent;
-  cursor: pointer;
-}
 .charter-graph__edgehit:focus-visible { outline: 2px solid var(--charter-brand); outline-offset: 1px; }
 
 .charter-graph__footer {
@@ -3701,15 +3690,6 @@
   font-size: var(--dsw-font-xxs-12-font-size);
 }
 
-.charter-graph__edgehit {
-  position: absolute;
-  width: 28px;
-  height: 28px;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  cursor: pointer;
-}
 
 .charter-graph__legend {
   display: flex;
@@ -4338,10 +4318,15 @@ charter-graph__help { display: none; }
 }
 
 .charter-graph__edgehit {
+  position: absolute;
   z-index: 0;
+  width: 44px;
   height: 44px;
+  transform: translate(-50%, -50%);
+  border: 0;
   border-radius: 999px;
   background: transparent;
+  cursor: pointer;
   pointer-events: none;
 }
 
@@ -4349,6 +4334,7 @@ charter-graph__help { display: none; }
   fill: none;
   stroke: transparent;
   stroke-width: 44;
+  vector-effect: non-scaling-stroke;
   pointer-events: stroke;
   cursor: pointer;
 }

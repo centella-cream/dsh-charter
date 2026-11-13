@@ -12,6 +12,10 @@
 > **替代/被替代：** 无 / 无。
 > **实现就绪度：** 所有未尽事项的做法都在 **§10**，每项都有决定或"兜底值 + 测量方法 + 决策规则"。
 > 因此实现可按兜底值开工，W0 实测后**只调参数、不改结构**（§10.10）。
+>
+> **0.3.1 几何决策：** 实现已采用固定 px 几何（184px 节点、`PX_PER_EM=18.4`、`PX_PER_EM_Y=22`）。
+> 本文 D19 与 §3.7 的 em 契约保留为历史分析；当前权威几何规格是 [charter-gui-v1.zh.md](charter-gui-v1.zh.md) §5.7。
+> 200% **根字号文本缩放**尚未由 W0-2 覆盖；W0-2 现有证据是字号 10/14/22 + 200% page scale。
 
 ## 0. 目标与形态取舍
 
@@ -54,8 +58,9 @@
    候选边虚线**只读但可被方向键到达**（D9、D10、§3.4）。**替代关系同样在 v1 画出**：`supersedes` 边走第三条
    `history` 泳道，端点是只读**幽灵节点**（点线、无 `D<n>`、无 rank、可被 `[`/`]` 与 `Enter` 到达），因此执行泳道
    "rank = 执行序"的语义不受影响；本次 staged 的替代两端仍留在执行泳道并标"新增/删除"（D11、§10.1）。
-8. **200% 文本缩放**：全部几何以 **em** 表达，布局输出无量纲单位，缩放/平移只对单一 wrapper 施加一个
-   transform；节点高度取离散档位、由字符数纯函数决定，**不做运行时测量**（D19、§3.7）。
+8. **缩放**：实现采用 **固定 px 几何**；布局仍输出确定性 layout units，渲染层按 `PX_PER_EM=18.4` /
+   `PX_PER_EM_Y=22` 转 px，单一 wrapper transform；节点高度由字符数纯函数决定。200% **根字号文本缩放**尚未
+   由 W0-2 覆盖，W0-2 证据是字号 10/14/22 + 200% page scale（D19 的历史 em 推导已被 0.3.1 决策取代）。
 9. **兼容性**：图形视图本身不动 record schema、迁移、fork、Host、Remote、wire、prompt。（§8 的 §6.5 冲突确认是
    独立事项，它确实改了 core/Host/wire/client，但 wire 上是 optional 字段、不参与任何 digest 输入。）
    **但兼容矩阵不豁免**：发布门禁仍要求对全部已声明版本与当前 untracked 版本重跑矩阵并重新绑定证据。
@@ -124,7 +129,7 @@
 | --- | --- | --- |
 | 屏幕阅读器读不到 canvas 像素；forced colors / 200% 文本缩放对位图无效；焦点需要 DOM 或手写 ARIA overlay | **外部事实** | 不能，只能适配 |
 | SVG 内 ARIA role 与焦点行为跨浏览器/AT 差异大（`role="listitem"` 在 SVG 内不等于 HTML list item） | **外部事实** | 不能，按 §3.5 规避 |
-| 200% 文本缩放只放大文本，不放大写死的 px 盒子 | **外部事实** | 不能，按 D19 用 em 规避 |
+| 200% 文本缩放只放大文本，不放大写死的 px 盒子 | **外部事实** | 0.3.1 已接受固定 px 几何；字号 10/14/22 + page scale 已有证据，根字号 32px 尚未验证 |
 | bundle 必须单一自包含 factory，任何库都被内联 | **外部事实**（DSH 打包契约） | 不能 |
 | 兼容矩阵是发布门禁 | **外部事实**（项目治理） | 不能 |
 | §5.7 canvas 条款的措辞 | 内部选择 | 可议，但**本提案不需要改**（§1.3.1） |
@@ -221,7 +226,7 @@
 | D16 | 新增 i18n 键中英成对（§3.9） | 项目语言配对规则 |
 | D17 | **合规的可验证形式**：语义列表始终在 DOM 中、始终可聚焦可操作；隐藏图形区后**所有操作仍可在列表完成**；图上与 inspector 内不存在任何列表之外的独有操作 | §5.7 与 §1.3.1 的落点，必须有测试 |
 | D18 | **默认焦点规则**：① `selectedItemId` 若在图中则用它；② 否则取拓扑序第一个 **`prerequisiteStatus === 'dependency-conflict'`** 的 active deliverable；③ 无冲突则第一个 `waiting`；④ 再无则拓扑序第一个 active deliverable；⑤ 无 active deliverable 但有候选边时，取 canonical order 第一个 pending 节点。展开图形区**不抢焦点** | `focusId` 可为 `undefined`，必须定义默认值。**必须看 `prerequisiteStatus` 而非 `executionDisplay`**：core 的 UI 组合规则会把冲突掩盖成 `in-progress`/`blocked`（[dependencies.ts:125](../../src/core/dependencies.ts)），只看 `executionDisplay` 会选错节点——W0 原型实测复现 |
-| D19 | **缩放契约**：所有几何以 **em** 表达；布局函数输出**无量纲 layout units**；SVG 与 HTML 标签层在**同一 wrapper** 内、共用**一个** CSS transform；节点高度取离散档位（`3em` / `4.5em`），由摘要字符数**纯函数**决定，**不做运行时文本测量** | 200% 文本缩放只放大文本不放大 px 盒；固定 px + HTML 文本必然溢出，而运行时测量会破坏布局确定性（§3.7） |
+| D19 | **缩放契约（已被 0.3.1 决策取代）**：实现为全 px 几何（184px 节点、`PX_PER_EM=18.4`、`PX_PER_EM_Y=22`）；布局函数输出 layout units，渲染层转 px；SVG 与 HTML 标签层在同一 wrapper 内、共用一个 CSS transform；节点高度由字符数纯函数决定，不做运行时测量 | 旧版 em 推导与固定 px 冲突；3.1 改用 px 并保持 184px 节点/两行截断。200% 根字号（32px）文本缩放仍未覆盖，不能引用 W0-2 的 page scale 证据 |
 
 ### 3.3 接口：语义层与几何层分离
 
@@ -279,7 +284,7 @@ export function layoutRelationGraph(
 ): GraphLayout
 
 export interface GraphLayout {
-  /** 坐标单位是 em 倍数（无量纲）；渲染层乘以 --charter-graph-unit（D19） */
+  /** 坐标单位是 layout units；渲染层按 PX_PER_EM/PX_PER_EM_Y 转 px（0.3.1） */
   readonly nodes: readonly (RelationNode & {
     readonly x: number; readonly y: number
     readonly w: number; readonly h: number          // h ∈ {3, 4.5}（em 倍数）
@@ -428,7 +433,7 @@ inspector 与列表看到）；仍 > 60 → ② 深度锁 1；仍 > 60 → ③ �
 
 ### 3.7 视觉与缩放规格
 
-**几何（全部 em，D19）**
+**几何（px 渲染，0.3.1；em 推导保留为历史）**
 
 以下数值满足两条硬不变式，否则节点必然重叠（W0 原型实测：违反时 6 节点样本出现 9 处重叠）：
 
@@ -440,13 +445,13 @@ LINE_CAPACITY = floor((NODE_W − 2 × padding) / 摘要字号)   （由几何�
 
 | 项 | 值 | 推导 |
 | --- | --- | --- |
-| 单位 | `--charter-graph-unit: 1em`（继承根字号）；布局输出无量纲单位，渲染层乘以该 unit | D19 |
-| 节点宽 | `10em`（min `9em` / max `12em`） | 初始视图宽度约束（见下） |
-| rank 列间距 | `12.5em` = 节点宽 `10em` + 边间距 `2.5em` | 横向不重叠 |
-| 同 rank 行间距 | `5.5em` = 最大节点高 `4.5em` + 行间距 `1em` | 纵向不重叠 |
-| 节点盒 | 高取 `3em` / `4.5em` 两档，且 `min-height: max(3em, 44px)` | D7 触控下限 |
+| 单位 | layout units → px：`PX_PER_EM=18.4`、`PX_PER_EM_Y=22`（无 `--charter-graph-unit`） | 0.3.1 决策 |
+| 节点宽 | `184px` = `10 × 18.4px`（min/max 由 W0 定） | 固定 px 几何 |
+| rank 列间距 | `230px` = `12.5 × 18.4px` | 横向不重叠 |
+| 同 rank 行间距 | `121px` = `5.5 × 22px` | 纵向不重叠 |
+| 节点盒 | 高度 `66px` / `99px`（`3/4.5 × 22px`），`min-height: 44px` | D7 触控下限 |
 | 节点圆角/边框 | 7px / 1px `--charter-border-soft` | 与现有 `charter-dependency` 行一致 |
-| 每行容量 | `LINE_CAPACITY = floor((10 − 2×0.625) / 0.78) = 11`（CJK 计 1，拉丁/数字计 0.5） | 由几何推导；**偏保守**，W0-2 用真实渲染行数校准 |
+| 每行容量 | 仍由 `NODE_W`、padding 与摘要字号推导为 11 个 CJK 等效字符 | W0-2 校准；px 化后需重新确认 |
 | 节点文本 | HTML 层：`D<n>` 用 `--charter-brand` `0.6875em`/700（复用 `charter-dependency__key` 语言），摘要 `0.78em`，状态 `0.6875em` tertiary | 与现有列表视觉一致 |
 | 边 | 三次贝塞尔水平走向，1.5px，箭头 8px，`vector-effect: non-scaling-stroke` | — |
 | hit 线 | 同路径、透明、命中宽 ≥44px 等效 | D7 |
@@ -474,11 +479,11 @@ LINE_CAPACITY = floor((NODE_W − 2 × padding) / 摘要字号)   （由几何�
    `weight` 按字符计权（CJK 计 1，拉丁/数字/空格计 0.5），
    `LINE_CAPACITY = floor((NODE_W_EM − 2 × NODE_PADDING_EM) / SUMMARY_EM) = floor((10 − 1.25) / 0.78) = 11`
    ——即**每行约 11 个 CJK 字符或 22 个拉丁字符**，两行合计约 22 CJK / 44 拉丁。
-   节点高度只由 `labelLines` 决定（`3em` / `4.5em`），**不做运行时文本测量**，因此布局确定性成立、快照测试可行。
+   节点高度只由 `labelLines` 决定（`66px` / `99px`，即 `3/4.5 × 22px`），**不做运行时文本测量**，因此布局确定性成立、快照测试可行。
    该常量**偏保守**（按参考字号的等宽估算，未按实际字体度量）：保守方向只会让节点偏高，不会溢出；
    W0-2 用"纯函数行数 vs 真实渲染行数"逐节点校准，若实测长期偏保守可上调常量（上调后必须重跑零重叠验收）。
-3. 200% 文本缩放下，因为节点盒与文本都以 em 表达，两者**同比放大**，夹取行为不变（行数不变、溢出仍由 CSS
-   省略号处理），不会溢出节点盒。
+3. 实现使用固定 px 节点；用户字号只影响语义列表。200% **页面缩放**会同比放大整个画布，不能证明
+   200% **根字号文本缩放**（32px）下固定 184px 盒不裁切；该场景仍待真实浏览器人工门禁。
 4. 完整正文永远可得：accessible name 含**未截断**摘要、inspector 可展开全文、hover/focus 提供等价 tooltip；
    tooltip 不承载唯一信息（§5.7）。
 5. **单一变换**：SVG 与 HTML 标签层放在同一个 `position: relative` wrapper 内，缩放/平移只对 wrapper 施加
@@ -604,7 +609,7 @@ W0-1/2/3 与人工项的**执行步骤**见 §10.11，参数**定稿规则**见 
 | 图上编辑破坏 Change Set 原子性 | D4：图只 stage ops；Apply 保持唯一提交点与 previewDigest 校验；W3 等价性测试兜底 |
 | SVG 内 ARIA 跨 AT 不一致 | 只用 `role="button"`/`role="link"` + roving tabindex + `aria-label`；不用 SVG list 语义；W0-3 用真实 AT 验证 |
 | Tab 陷阱 / 键盘用户到不了列表 | D5 复合控件（图 = 1 个 Tab 停靠）+ 前置 skip 链接，卡片外到列表 ≤ 2 次 Tab |
-| 200% 文本缩放导致节点溢出或两层错位 | D19：全 em 几何、离散高度档位、纯函数行数、单一 wrapper transform；W0-2 实测把关 |
+| 200% 文本缩放导致节点溢出或两层错位 | 0.3.1 全 px 几何、纯函数行数、单一 wrapper transform；W0-2 现有字号 10/14/22 + page scale 证据不覆盖根字号 32px，仍待人工 |
 | 大图不可读 | D2 只做 ego 图 |
 | pending 节点被误读为执行序 | D10：不给 rank/`D<n>`，独立泳道 + "未进入执行序"写进 accessible name 与角标 |
 | 引入图形库导致 bundle 与无障碍失控 | D6 自研，零新依赖；W2 记录真实 bundle delta |
@@ -849,7 +854,7 @@ col(n)      = base(n) + candRank(n)
 **决定：CSS transform 施加在单一 wrapper 上，不用 viewBox 变换。**
 
 - 理由：viewBox 缩放会同时缩放 stroke 与 SVG 内文本，与"浏览器文本缩放改根字号"叠加时互相干扰；
-  CSS transform 对 HTML 标签层与 SVG 一视同仁，正好复用 D19 的"单一 transform"约束。
+  CSS transform 对 HTML 标签层与 SVG 一视同仁；0.3.1 沿用 px 几何与"单一 transform"约束。
 - 缩放档位：`0.75 / 1 / 1.25`，工具条按钮 + 键盘 `+` / `-` / `0`。
 - **最小缩放 0.75**：「适应窗口」按内容与容器比值算 scale，但 clamp 到 ≥0.75；clamp 后仍放不下就保持
   0.75 并允许平移，**不无限缩小**（避免文本缩到不可读，也避免与 200% 文本缩放叠加后失效）。
@@ -972,7 +977,7 @@ col(n)      = base(n) + candRank(n)
 | 参数 | 兜底值（可先按此实现） | 测量方法 | 决策规则 |
 | --- | --- | --- | --- |
 | D5 可导航元素阈值 | 60 | W0-3 真实键盘走查：从默认焦点遍历全图所需按键数与耗时（**含 history 泳道**） | 40 个元素可在 30 秒内走完且不迷失 → 保持 60；走查者报告疲劳/迷失 → 降到 40。降级路径不变（关 history → 锁深度 → 隐藏图形区） |
-| §3.7 几何常量 | `NODE_W 10em` / `RANK_PITCH 12.5em` / `ROW_PITCH 5.5em` / 高度 `3｜4.5em`（已满足两条不变式、20 组组合零重叠） | W0-2 真实字体度量 | 只允许调 `NODE_W_EM`（9–12em）与 `SUMMARY_EM`；调后必须重算 `LINE_CAPACITY` 与两条不变式，并重跑 W0-0 零重叠 |
+| §3.7 几何常量 | `NODE_W=184px` / `RANK_PITCH=230px` / `ROW_PITCH=121px` / 高度 `66｜99px`（已满足两条不变式） | W0-2 真实浏览器 | 只允许按 px 调 `NODE_W`（9–12 单位 ×18.4）与摘要字号；调后必须重算 `LINE_CAPACITY` 与两条不变式，并重跑 W0-0 零重叠 |
 | `LINE_CAPACITY` | 11 | W0-2 逐节点比对纯函数行数 vs 真实行数 | 见 §10.6（按语言分别校准） |
 | §3.1 两栏断点 | 容器 `<880px` 堆叠（沿用现有 container query 断点集合） | W0-1 五档宽度自动测量 | 取"最小的全部 PASS 宽度"，且必须落在现有断点集合 `{880, 560, 520}` 内，不新增断点 |
 | 图形区高度 | 基础 `22.5em`，附加带按行数增高 | W0-2 在 200% 缩放下确认能同时显示 ≥2 列 + 候选带 + history 带 | 不满足则提到 `26em`；仍不满足则改为容器高度自适应 + 内部滚动 |

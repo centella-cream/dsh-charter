@@ -103,8 +103,11 @@ and the remaining full-design gates must be recorded separately before declaring
   (`.tmp/compat-031.json`). Shared standing-envelope builder
   (`src/core/standing-envelope.ts`) is used by both Host and Diagnostics; a 64-deliverable fixture with
   production-length ids proves the id cost is exactly 49 B/deliverable and the envelope stays under 32 KiB.
+- `traffic-check` propose telemetry parses the actual JSON tool-result envelope (`{ok, message}`), not
+  serialized text. Fixture now covers a single `D1` rejection, an unknown id, a non-requires proposal failure,
+  and an accepted result: display-key=1, unknown-id=1, other=1, accepted=1. Raw `D1"}` contamination is gone.
 - Graph browser audit (2026-11-13, Chromium 1440×1000, synthetic applied session): lane headings, 5 arrow
-  markers, a 44 px path-wide edge stroke (keyboard button 230×44 px), `max-height: none`, and no horizontal overflow at 860/900/1000/1100/1200/1440
+  markers, an SVG edge hit path with `vector-effect: non-scaling-stroke`, measured 21 px inside / 23 px outside the segment at 1440 px (44 px stroke), `max-height: none`, and no horizontal overflow at 860/900/1000/1100/1200/1440
   or at 200% page scale. At 1100 the app shell's content container is 813 px, below the 880 px graph-fold
   threshold, so the graph stays folded while the semantic list remains available; recorded as a layout
   observation, not a two-column W0-1 pass. Real VoiceOver/AT remains a manual gate.
@@ -122,9 +125,9 @@ and the remaining full-design gates must be recorded separately before declaring
 - 0.3.1 README screenshots were recaptured from the exact local build injected into the running Web app:
   `docs/assets/charter-pane-0.3.1.png`, `charter-pane-0.3.1.zh.png`, `charter-graph-0.3.1.zh.png`.
 - Local acceptance artifact (2026-11-13): `dist/dsh-charter-0.3.1.tgz` SHA-256
-  `a558dcedabb1ebc606fc89a8a77eb02e7c04e3691d23017d116b94cbb6162a12`; exact-artifact package smoke and packed
-  recovery smoke PASS. `dist/dsh-charter-0.3.1-acceptance.tgz` (same bytes) is installed in local `web` and `desktop`
-  profiles; both resolve client `f7700f02…`. The Host version chip updates after a clean Host restart.
+  `9f779443fd83c8e320d94d1981c18dc896d9d5905a7cc3f7dc8673f307806860`; exact-artifact package smoke and packed
+  recovery smoke PASS. `dist/dsh-charter-0.3.1-final.tgz` (same bytes) is installed in local `web` and `desktop`
+  profiles; both resolve client `fcd56a48…`. The Host version chip updates after a clean Host restart.
 - 0.3.1 is not published; candidate/promotion evidence is intentionally absent until human acceptance.
 - Local acceptance deployment (2026-11-12): the W6 acceptance build is
   `dist/dsh-charter-0.3.0-w6-final.tgz` (SHA-256 `ab74591c…`, client `986f8403…`). It is installed in both local

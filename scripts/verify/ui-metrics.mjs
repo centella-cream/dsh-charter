@@ -106,7 +106,12 @@ function metric(id, label, value, target, phase, pass, detail = []) {
   return { id, label, value, target, phase, pass, detail }
 }
 
+const edgeHitPathRule = /\.charter-graph__edgehit-path\s*\{([^}]*)\}/u.exec(cssNoComments)?.[1] ?? ''
+const edgeHitPathIsScaled = /vector-effect\s*:\s*non-scaling-stroke/u.test(edgeHitPathRule)
+const edgeHitPathWidth = /stroke-width\s*:\s*44(?:px)?\b/u.test(edgeHitPathRule)
+
 const metrics = [
+  metric('graph-hit-path', 'graph edge hit path is 44 CSS px', edgeHitPathIsScaled && edgeHitPathWidth ? '44px' : 'scaled/missing', '44px + non-scaling-stroke', 'css', edgeHitPathIsScaled && edgeHitPathWidth, [edgeHitPathRule.trim()]),
   metric('ui-font-sizes', 'UI font-size values', uiFontSizes.length, '≤ 7', 'css',
     uiFontSizes.length <= 7, uiFontSizes),
   metric('font-weights', 'font-weight values', fontWeights.length, '≤ 3', 'css',

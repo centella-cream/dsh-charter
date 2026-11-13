@@ -249,7 +249,52 @@ export function summarizeCharterRead(events, activeSnapshots = []) {
 }
 
 /**
- * Summarize charter_propose calls and rejections without runtime instrumentation.
+ * Parse a charter_propose tool result. Both tools render text as JSON, so classify
+ * by the actual `{ok, message}` envelope instead of matching serialized text.
+ * @param {string} text
+ * @returns {{ outcome: 'accepted'|'rejected'|'unclassified', message: string }}
+ */
+export function parseCharterProposeResult(text) {
+  let parsed
+  try { parsed = JSON.parse(text) } catch { parsed = undefined }
+  if (parsed !== null && typeof parsed === 'object') {
+    if (parsed.ok === true) return { outcome: 'accepted', message: '' }
+    if (parsed.ok === false) {
+      return { outcome: 'rejected', message: typeof parsed.message === 'string' ? parsed.message : String(text) }
+    }
+  }
+  // Backward-compatible fallback for an unenveloped rejection message.
+  if (text.includes('charter_propose requires must reference current active deliverables:')) {
+    return { outcome: 'rejected', message: text }
+  }
+  return { outcome: 'unclassified', message: text }
+}
+
+/** Strip JSON/message punctuation that older raw results may append after a value. */
+function cleanRequirementValue(value) {
+  return value.trim().replace(/["'}\]\s]+$/u, '')
+}
+
+/** Split the rejection values out of the actionable Host message. */
+export function classifyRequireRejection(message) {
+  const marker = 'charter_propose requires must reference current active deliverables:'
+  const markerAt = message.indexOf(marker)
+  if (markerAt < 0) return { displayKeyRejects: 0, unknownIdRejects: 0, values: [], other: true }
+  const values = message.slice(markerAt + marker.length)
+    .split(',')
+    .map(cleanRequirementValue)
+    .filter(Boolean)
+  let displayKeyRejects = 0
+  let unknownIdRejects = 0
+  for (const value of values) {
+    if (/^D\d+$/u.test(value)) displayKeyRejects += 1
+    else unknownIdRejects += 1
+  }
+  return { displayKeyRejects, unknownIdRejects, values, other: false }
+}
+
+/**
+ * Summarize charter_propose calls and results without runtime instrumentation.
  * @param {readonly any[]} events
  * @returns {any}
  */
@@ -269,6 +314,8 @@ export function summarizeCharterPropose(events) {
       step: event.data?.step,
       callId: event.data?.callId,
       items: Array.isArray(parsed?.items) ? parsed.items.length : 0,
+      outcome: 'unclassified',
+      message: '',
       rejected: false,
       resultBytes: undefined,
       displayKeyRejects: 0,
@@ -304,27 +351,28 @@ export function summarizeCharterPropose(events) {
     if (matched === undefined || matched.resultBytes !== undefined) continue
     const resultText = textOfContent(message.content)
     matched.resultBytes = Buffer.byteLength(resultText, 'utf8')
-    const marker = 'charter_propose requires must reference current active deliverables:'
-    const markerAt = resultText.indexOf(marker)
-    if (markerAt >= 0) {
-      matched.rejected = true
-      const values = resultText.slice(markerAt + marker.length).split(',').map(value => value.trim()).filter(Boolean)
-      matched.rejectionValues = values
-      for (const value of values) {
-        if (/^D\d+$/u.test(value)) matched.displayKeyRejects += 1
-        else matched.unknownIdRejects += 1
-      }
+    const result = parseCharterProposeResult(resultText)
+    matched.outcome = result.outcome
+    matched.message = result.message
+    matched.rejected = result.outcome === 'rejected'
+    if (matched.rejected) {
+      const classified = classifyRequireRejection(result.message)
+      matched.displayKeyRejects = classified.displayKeyRejects
+      matched.unknownIdRejects = classified.unknownIdRejects
+      matched.rejectionValues = classified.values
     }
   }
   const results = calls.filter(call => call.resultBytes !== undefined)
-  const rejected = calls.filter(call => call.rejected)
+  const rejected = results.filter(call => call.rejected)
   return {
     calls: calls.length,
     paired: results.length,
-    accepted: results.length - rejected.length,
+    accepted: results.filter(call => call.outcome === 'accepted').length,
     rejected: rejected.length,
     displayKeyRejects: rejected.reduce((sum, call) => sum + call.displayKeyRejects, 0),
     unknownIdRejects: rejected.reduce((sum, call) => sum + call.unknownIdRejects, 0),
+    otherRejects: rejected.filter(call => !call.message.includes('charter_propose requires must reference current active deliverables:')).length,
+    unclassified: results.filter(call => call.outcome === 'unclassified').length,
     resultBytes: results.reduce((sum, call) => sum + call.resultBytes, 0),
     rejectionValues: [...new Set(rejected.flatMap(call => call.rejectionValues))].slice(0, 20),
     callDetails: calls,

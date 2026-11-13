@@ -129,7 +129,7 @@ function main() {
   console.log(`  tool schema: ${report.toolSchema.count ?? 'n/a'} tools, ${report.toolSchema.bytes ?? 'n/a'} B, charter_read ${report.toolSchema.charterReadToolBytes ?? 'n/a'} B`)
   console.log(`  cache: read ${report.modelAttempts.usage.cacheReadTokens}, write ${report.modelAttempts.usage.cacheWriteTokens}, reported attempts ${report.modelAttempts.usage.cacheReportedAttempts}`)
   console.log(`  charter_read: ${report.charterRead.calls} calls, ${report.charterRead.paired} paired, ${report.charterRead.resultBytes} B results, ${report.charterRead.redundantReads} redundant candidates, ${report.charterRead.ambiguous} ambiguous`)
-  console.log(`  charter_propose: ${report.charterPropose.calls} calls, ${report.charterPropose.accepted} accepted, ${report.charterPropose.rejected} rejected (display-key ${report.charterPropose.displayKeyRejects}, unknown-id ${report.charterPropose.unknownIdRejects})`)
+  console.log(`  charter_propose: ${report.charterPropose.calls} calls, ${report.charterPropose.accepted} accepted, ${report.charterPropose.rejected} rejected (display-key ${report.charterPropose.displayKeyRejects}, unknown-id ${report.charterPropose.unknownIdRejects}, other ${report.charterPropose.otherRejects}, unclassified ${report.charterPropose.unclassified})`)
   for (const note of report.notes ?? []) console.log(`  NOTE: ${note}`)
   for (const warning of report.warnings) console.log(`  WARN: ${warning}`)
 }

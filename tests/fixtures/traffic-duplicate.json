@@ -4,5 +4,11 @@
   { "type": "tool/call", "seq": 3, "data": { "name": "charter_read", "turn": 1, "step": 1, "callId": "read-1", "arguments": "{\"view\":\"standing\"}" } },
   { "type": "tool/result", "seq": 4, "data": { "turn": 1, "step": 1, "message": { "toolCallId": "read-1", "content": [{ "type": "text", "text": "{\"items\":[]}" }] } } },
   { "type": "tool/call", "seq": 5, "data": { "name": "charter_propose", "turn": 1, "step": 2, "callId": "propose-1", "arguments": "{\"items\":[]}" } },
-  { "type": "tool/result", "seq": 6, "data": { "turn": 1, "step": 2, "message": { "toolCallId": "propose-1", "content": [{ "type": "text", "text": "charter_propose requires must reference current active deliverables: D1, item-missing" }] } } }
+  { "type": "tool/result", "seq": 6, "data": { "turn": 1, "step": 2, "message": { "toolCallId": "propose-1", "content": [{ "type": "text", "text": "{\"ok\":false,\"message\":\"charter_propose requires must reference current active deliverables: D1\"}" }] } } },
+  { "type": "tool/call", "seq": 7, "data": { "name": "charter_propose", "turn": 1, "step": 3, "callId": "propose-2", "arguments": "{\"items\":[]}" } },
+  { "type": "tool/result", "seq": 8, "data": { "turn": 1, "step": 3, "message": { "toolCallId": "propose-2", "content": [{ "type": "text", "text": "{\"ok\":false,\"message\":\"charter_propose requires must reference current active deliverables: item-missing\"}" }] } } },
+  { "type": "tool/call", "seq": 9, "data": { "name": "charter_propose", "turn": 1, "step": 4, "callId": "propose-3", "arguments": "{\"items\":[]}" } },
+  { "type": "tool/result", "seq": 10, "data": { "turn": 1, "step": 4, "message": { "toolCallId": "propose-3", "content": [{ "type": "text", "text": "{\"ok\":false,\"message\":\"Charter is not editable in its current state\"}" }] } } },
+  { "type": "tool/call", "seq": 11, "data": { "name": "charter_propose", "turn": 1, "step": 5, "callId": "propose-4", "arguments": "{\"items\":[]}" } },
+  { "type": "tool/result", "seq": 12, "data": { "turn": 1, "step": 5, "message": { "toolCallId": "propose-4", "content": [{ "type": "text", "text": "{\"ok\":true,\"revision\":2}" }] } } }
 ]
