@@ -29,25 +29,26 @@
 | `0.2.1-rc.4` | 支持 | 同上 |
 | `0.2.1-rc.5` | 支持 | 同上 |
 | `0.2.2-rc.1` | 支持（上一基线） | 同上 + typecheck/build/Vitest/remote/client smoke + 真实 Web profile 安装/启动、boot graph、bundle HTTP |
-| `0.2.2-rc.2` | 支持（主开发基线） | typecheck/build/Vitest/remote/client smoke + 十版本源码矩阵 |
+| `0.2.2-rc.2` | 支持 | typecheck/build/Vitest/remote/client smoke |
+| `0.2.2-rc.3` | 支持（主开发基线） | typecheck/build/Vitest/remote/client smoke + 十一版本源码矩阵 |
 | `0.1.5-rc.1` / `0.1.5-rc.2` / `0.1.5-rc.3` | 不支持 | 契约差异过大，见第 4 节 |
 | `0.1.6-alpha.x` | 不支持 | 与 0.1.5 同代，未逐一验证 |
 | `0.2.2-alpha.2` / `0.2.2-alpha.3` | 不支持 | strict-peer 安装失败：这些 alpha 版本要求 Cordis 4.0.6 alpha 图；0.2.2-rc.1 线固定 Cordis 4.1.0，不进入测试 |
 | `0.3.x` | 未声明 | 大版本升级需要重新核验 |
 
-`package.json` 的 DSH peer 范围与 `engines.dsh` 就是已验证的十个精确版本：
+`package.json` 的 DSH peer 范围与 `engines.dsh` 覆盖已验证的十一个精确版本：
 
 ```text
 engines.dsh:
   0.1.7-rc.2 || >=0.2.0-rc.1 <0.3.0-0
 
 已验证的 peer ranges / dsh.compatibility.dshReleases:
-  0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2 || 0.2.1-rc.3 || 0.2.1-rc.4 || 0.2.1-rc.5 || 0.2.2-rc.1 || 0.2.2-rc.2
+  0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2 || 0.2.1-rc.3 || 0.2.1-rc.4 || 0.2.1-rc.5 || 0.2.2-rc.1 || 0.2.2-rc.2 || 0.2.2-rc.3
 ```
 
 Token 兼容（0.3.0）：Pane 使用 41 个静态宿主设计 token 和 1 个运行时变量
 `--dsh-content-font-size`。`scripts/verify/token-coverage.mjs` 逐版本检查每个静态 token 是否由
-`@deepseek-ai/dsh-client-ui-theme` 定义（2026-11-12 审计：全部存在）；运行时变量带 CSS fallback。当前不需要
+`@deepseek-ai/dsh-client-ui-theme` 定义（2026-11-13 审计：全部存在）；运行时变量带 CSS fallback。当前不需要
 按版本兼容块；新增宿主 token 必须更新 `scripts/verify/token-coverage.inventory.json` 并通过
 `npm run check` 中的 gate。
 

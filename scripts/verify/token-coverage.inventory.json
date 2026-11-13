@@ -1,5 +1,5 @@
 {
-  "auditDate": "2026-11-12",
+  "auditDate": "2026-11-13",
   "source": {
     "package": "@deepseek-ai/dsh-client-ui-theme",
     "versions": [
@@ -12,10 +12,11 @@
       "0.2.1-rc.4",
       "0.2.1-rc.5",
       "0.2.2-rc.1",
-      "0.2.2-rc.2"
+      "0.2.2-rc.2",
+      "0.2.2-rc.3"
     ],
     "method": "npm pack each version; extract CSS custom-property definitions from package/lib/**/*.js and *.css",
-    "note": "Declared DSH versions from package.json engines.dsh. All static host tokens used by charter.css are defined in every version."
+    "note": "Declared DSH versions from package.json engines.dsh. All static host tokens used by charter.css are defined in every version; 0.2.2-rc.3 audited 2026-11-13."
   },
   "css": "src/client/charter.css",
   "staticVars": [
@@ -78,6 +79,7 @@
     "0.2.1-rc.4": [],
     "0.2.1-rc.5": [],
     "0.2.2-rc.1": [],
-    "0.2.2-rc.2": []
+    "0.2.2-rc.2": [],
+    "0.2.2-rc.3": []
   }
 }

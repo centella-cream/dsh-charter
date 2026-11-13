@@ -11,7 +11,7 @@ history and the Changelog. Temporary directories, profiles, tarballs, and fetche
 excluded from the published package.
 
 Environment: macOS, Node `v22.23.1`, npm `12.0.2`, pnpm `12.3.4`. Local DSH development baseline:
-`0.2.2-rc.2` (the current npm `next`).
+`0.2.2-rc.3` (the current npm `next`).
 
 ## 1. Current conclusion
 
@@ -83,7 +83,7 @@ and the remaining full-design gates must be recorded separately before declaring
   present), dark and light; no second livery preset was available for a broader spot check. Record:
   `.tmp/gui-acceptance/2026-11-12/livery-spotcheck.md`.
 - Token coverage audit (W0): 41 static host vars used by `charter.css` are defined in
-  `@deepseek-ai/dsh-client-ui-theme` for **all 10 declared DSH versions**; `--dsh-content-font-size` has a
+  `@deepseek-ai/dsh-client-ui-theme` for **all 11 declared DSH versions**; `--dsh-content-font-size` has a
   `14px` fallback; the compat block is intentionally empty. Gate: `npm run verify:tokens`.
 - Real-browser evidence (CDP-injected new bundle into the installed Web Host; explicitly **not** the same as an
   installed artifact unless stated): multi-width 320/375/560/850/1440, dark/light, forced-colors,
@@ -99,7 +99,7 @@ and the remaining full-design gates must be recorded separately before declaring
   `31daf17dbc823837c1b0c1ba7bc1033444db1059a2f2cd6f1a481f8d330b5d78`; npm `latest`/`next` both `0.3.0`, GitHub
   Release `v0.3.0` public and immutable. This supersedes the local `w6-final` development artifact for installation.
 - 0.3.1 GUI convergence candidate (2026-11-13): `npm run check` 41 files / **499 tests** PASS;
-  token coverage 41 static + 1 dynamic over 10 declared DSH versions PASS; ten-version source matrix PASS
+  token coverage 41 static + 1 dynamic over 11 declared DSH versions PASS; ten-version source matrix PASS
   (`.tmp/compat-031-final.json`). Shared standing-envelope builder
   (`src/core/standing-envelope.ts`) is used by both Host and Diagnostics; a 64-deliverable fixture with
   production-length ids proves the id cost is exactly 49 B/deliverable and the envelope stays under 32 KiB.
@@ -156,7 +156,7 @@ and the remaining full-design gates must be recorded separately before declaring
 
 - Mechanical mockup comparison (2026-11-13): `dirty-mockup-vs-final.png` and `graph-mockup-vs-final.png` were composed from the frozen mockups and the `w6-final` build under `.tmp/gui-acceptance/2026-11-13/side-by-side/`; this is reference material only, not the human side-by-side review, and empty/applied/conflict captures remain missing.
 
-- Ten-version source matrix (2026-11-12): all declared DSH versions `0.1.7-rc.2` … `0.2.2-rc.2` pass
+- Eleven-version source matrix (2026-11-13): all declared DSH versions `0.1.7-rc.2` … `0.2.2-rc.3` pass
   typecheck, build, and tests; run with `--allow-new-release` because rc.2 is inside the pnpm 24-hour
   `minimumReleaseAge` window. The tracked rc.2 compatibility lockfile was generated and added. Evidence:
   `.tmp/compat-matrix-0.3.0.json`.

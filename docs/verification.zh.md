@@ -9,7 +9,7 @@
 验证日期：2026-11-11。当前源码版本：`0.2.2`（2026-11-11 已发布）。本文件是当前证据记录；历史逐提交的叙事保留在 Git 历史和 Changelog。临时目录、profile、
 tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 
-环境：macOS，Node `v22.23.1`，npm `12.0.2`，pnpm `12.3.4`。本地 DSH 开发基线：`0.2.2-rc.2`（当前 npm
+环境：macOS，Node `v22.23.1`，npm `12.0.2`，pnpm `12.3.4`。本地 DSH 开发基线：`0.2.2-rc.3`（当前 npm
 `next`）。
 
 ## 1. 当前结论
@@ -61,7 +61,7 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
   yes、操作条仅 dirty yes；final gate PASS。隔离 profile 与 CDP 矩阵均在已安装 livery 层
   （`body[data-dsh-livery]` 存在）下采集暗/亮两套；没有第二个 livery preset 可做更广抽查。记录：
   `.tmp/gui-acceptance/2026-11-12/livery-spotcheck.md`。
-- Token 覆盖审计（W0）：`charter.css` 使用的 41 个静态 host token 在全部 10 个声明 DSH 版本的
+- Token 覆盖审计（W0）：`charter.css` 使用的 41 个静态 host token 在全部 11 个声明 DSH 版本的
   `@deepseek-ai/dsh-client-ui-theme` 中均有定义；`--dsh-content-font-size` 带 `14px` fallback；兼容块有意为空。
   门禁：`npm run verify:tokens`。
 - 真实浏览器证据（把新 bundle 通过 CDP 注入已安装 Web Host；除特别说明外**不等于**已安装 artifact）：
@@ -76,7 +76,7 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
   `31daf17dbc823837c1b0c1ba7bc1033444db1059a2f2cd6f1a481f8d330b5d78`；npm `latest`/`next` 均为 `0.3.0`，
   GitHub Release `v0.3.0` 已公开且不可变。安装以该发布 artifact 取代本地 `w6-final` 开发包。
 - 0.3.1 GUI 收敛候选（2026-11-13）：`npm run check` 41 文件 / **499 测试** PASS；
-  token 覆盖 41 static + 1 dynamic、10 个声明 DSH 版本 PASS；十版本源码矩阵 PASS（`.tmp/compat-031-final.json`）。共享 standing-envelope 构造函数由 Host 与
+  token 覆盖 41 static + 1 dynamic、11 个声明 DSH 版本 PASS；十版本源码矩阵 PASS（`.tmp/compat-031-final.json`）。共享 standing-envelope 构造函数由 Host 与
   Diagnostics 共用；64 个交付物、生产长度 id 的 fixture 证明 id 开销恰为 49 B/交付物且 envelope 不超过 32 KiB。
 - `traffic-check` 的 propose 遥测改为解析真实 JSON tool-result envelope（`{ok, message}`），不再对序列化
   文本做正则。fixture 覆盖单个 `D1` 拒绝、未知 id、非 requires 类失败和 accepted：display-key=1、
@@ -123,7 +123,7 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 
 - 机械并排对照（2026-11-13）：`.tmp/gui-acceptance/2026-11-13/side-by-side/` 下用冻结稿与 `w6-final` 构建合成了 dirty/graph 两张对照图；这是参考材料，不等于人工并排评审，empty/applied/conflict 截图仍缺。
 
-- 十版本源码矩阵（2026-11-12）：全部声明版本 `0.1.7-rc.2` … `0.2.2-rc.2` 通过 typecheck、build 与测试；
+- 十一版本源码矩阵（2026-11-13）：全部声明版本 `0.1.7-rc.2` … `0.2.2-rc.3` 通过 typecheck、build 与测试；
   因 rc.2 仍在 pnpm 24 小时 `minimumReleaseAge` 窗口内，矩阵以 `--allow-new-release` 运行；已生成并跟踪 rc.2
   的兼容 lockfile。证据：`.tmp/compat-matrix-0.3.0.json`。
 - 兼容范围策略：`engines.dsh` 现为 `0.1.7-rc.2 || >=0.2.0-rc.1 <0.3.0-0`。DSH 以 `includePrerelease` 求值，

@@ -29,25 +29,26 @@ This document answers three questions:
 | `0.2.1-rc.4` | Supported | same |
 | `0.2.1-rc.5` | Supported | same |
 | `0.2.2-rc.1` | Supported (previous baseline) | same + real Web profile install/startup, boot graph, bundle HTTP |
-| `0.2.2-rc.2` | Supported (primary development baseline) | typecheck, build, Vitest suite, remote/client smoke, ten-version source matrix |
+| `0.2.2-rc.2` | Supported | typecheck, build, Vitest suite, remote/client smoke |
+| `0.2.2-rc.3` | Supported (primary development baseline) | typecheck, build, Vitest suite, remote/client smoke, eleven-version source matrix |
 | `0.1.5-rc.1` / `0.1.5-rc.2` / `0.1.5-rc.3` | Not supported | contract differences too large; see section 4 |
 | `0.1.6-alpha.x` | Not supported | same generation as 0.1.5; not individually verified |
 | `0.2.2-alpha.2` / `0.2.2-alpha.3` | Not supported | strict-peer install fails because these alpha lines require a Cordis 4.0.6 alpha graph; the 0.2.2-rc.1 line pins Cordis 4.1.0. No tests run. |
 | `0.3.x` | Not declared | major upgrade requires re-verification |
 
-The DSH peer ranges and `engines.dsh` in `package.json` are exactly the ten verified versions:
+The DSH peer ranges and `engines.dsh` in `package.json` cover exactly the eleven verified versions:
 
 ```text
 engines.dsh:
   0.1.7-rc.2 || >=0.2.0-rc.1 <0.3.0-0
 
 verified peer ranges / dsh.compatibility.dshReleases:
-  0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2 || 0.2.1-rc.3 || 0.2.1-rc.4 || 0.2.1-rc.5 || 0.2.2-rc.1 || 0.2.2-rc.2
+  0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2 || 0.2.1-rc.3 || 0.2.1-rc.4 || 0.2.1-rc.5 || 0.2.2-rc.1 || 0.2.2-rc.2 || 0.2.2-rc.3
 ```
 
 Token compatibility (0.3.0): the Pane consumes 41 static host design tokens plus one runtime
 `--dsh-content-font-size` variable. The audit in `scripts/verify/token-coverage.mjs` checks that every static
-token is defined by `@deepseek-ai/dsh-client-ui-theme` for every version above (2026-11-12: all present); the
+token is defined by `@deepseek-ai/dsh-client-ui-theme` for every version above (2026-11-13: all present); the
 runtime variable has a CSS fallback. No per-version fallback block is needed today; adding a host token requires
 updating `scripts/verify/token-coverage.inventory.json` and passing the gate in `npm run check`.
 

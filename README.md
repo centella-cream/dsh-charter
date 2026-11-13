@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![GitHub](https://img.shields.io/badge/GitHub-centella--cream%2Fdsh--charter-181717?logo=github)](https://github.com/centella-cream/dsh-charter)
-[![DSH](https://img.shields.io/badge/DSH-10%20verified%20versions-4b6bfb)](docs/design/compatibility.md)
+[![DSH](https://img.shields.io/badge/DSH-11%20verified%20versions-4b6bfb)](docs/design/compatibility.md)
 [![Node](https://img.shields.io/badge/node-%5E22.19%20%7C%7C%20%3E%3D24-339933)](package.json)
 [![Status: 0.3.1](https://img.shields.io/badge/status-0.3.1-brightgreen)](#status)
 
@@ -51,7 +51,7 @@ deliverables, evidence, and dependency relationships survive compaction and rema
   and the Host tool fix that exposes deliverable ids to `charter_propose.requires`. **Not published yet;** latest published release is `0.3.0`.
 - **Previous release:** `0.2.2` — dependency-graph workspace view, compact dependency list, and explicit
   dependency-conflict confirmation.
-- **Earlier release:** `0.2.1`; **primary DSH baseline:** `0.2.2-rc.2`; ten declared DSH versions are
+- **Earlier release:** `0.2.1`; **primary DSH baseline:** `0.2.2-rc.3`; eleven declared DSH versions are
   source-matrix verified.
 - Versioning from `0.2.0` onward uses plain increments (`0.2.0`, `0.2.1`, `0.2.2`, `0.3.0`, `0.3.1`), never an `rc`
   suffix.
@@ -84,8 +84,8 @@ deliverables, evidence, and dependency relationships survive compaction and rema
 
 ### Compatibility and runtime
 
-- DSH `0.2.2-rc.2` declarations plus a bounded `engines.dsh` 0.2-line range; exact `dshReleases`/peer list
-  remains the ten-version matrix-verified support set.
+- DSH `0.2.2-rc.3` declarations plus a bounded `engines.dsh` 0.2-line range; exact `dshReleases`/peer list
+  remains the eleven-version matrix-verified support set.
 - `charter_read standing` now exposes stable deliverable ids so the model can propose real `requires`
   references; `D<n>` labels are documented as display-only, and invalid references fail explicitly.
 - Desktop and Web plugin bundles hot-reload through the Host profile recomposition/client HMR path; CSS is
@@ -289,7 +289,7 @@ The only model-visible capacity is `maxPromptBytes`; `maxItems` and `maxPendingI
 | `0.1.7-rc.2` | Supported (minimum) |
 | `0.2.0-rc.1` / `0.2.0-rc.2` | Supported |
 | `0.2.1-rc.1` / `0.2.1-rc.2` / `0.2.1-rc.3` / `0.2.1-rc.4` / `0.2.1-rc.5` | Supported |
-| `0.2.2-rc.1` / `0.2.2-rc.2` | Supported (primary baseline: `0.2.2-rc.2`) |
+| `0.2.2-rc.1` / `0.2.2-rc.2` / `0.2.2-rc.3` | Supported (primary baseline: `0.2.2-rc.3`) |
 | `0.3.x` | Not declared until verified |
 
 `engines.dsh` uses a bounded 0.2-line range (`0.1.7-rc.2 || >=0.2.0-rc.1 <0.3.0-0`), evaluated with
