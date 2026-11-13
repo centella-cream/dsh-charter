@@ -13,21 +13,22 @@
 `dsh-charter` 是 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的持久化、用户所有的
 会话契约插件。目标、硬约束、交付物、证据和依赖关系在上下文压缩后仍然保留，并且始终可查看、可编辑。
 
-![0.3.1 文档感布局中的会话契约页](docs/assets/charter-pane-0.3.1.zh.png)
+![文档感布局中的会话契约页](docs/assets/charter-pane-0.3.1.zh.png)
 
-> 本地 Web profile 中 **0.3.1** Pane：顶部下划线 tabs、720px 文档列、对齐的文档行和可折叠执行路径。
+> 本地 Web profile 中的 Pane：顶部下划线 tabs、720px 文档列、对齐的文档行和可折叠执行路径。
 > 截图仅使用合成演示数据。
 
-![0.3.1 Pane 中的依赖关系图](docs/assets/charter-graph-0.3.1.zh.png)
+![Pane 中的依赖关系图](docs/assets/charter-graph-0.3.1.zh.png)
 
 > 执行路径依赖图：泳道标题、三列执行网格和状态/类型 legend；存在依赖时显示方向箭头与沿边命中区。语义列表始终是权威操作面。
 
 ## 目录
 
 - [状态](#状态)
+- [核心能力](#核心能力)
+- [依赖关系](#依赖关系)
+- [提案、诊断与恢复](#提案诊断与恢复)
 - [为什么需要](#为什么需要)
-- [0.3 核心亮点：文档感 Pane](#03-核心亮点文档感-pane)
-- [其他 0.3 能力](#其他-03-能力)
 - [工作原理](#工作原理)
 - [安装](#安装)
 - [快速开始](#快速开始)
@@ -49,7 +50,9 @@
 - **更早版本：**`0.2.1`；**主要 DSH 基线：**`0.2.2-rc.2`；十个声明版本通过源码矩阵验证。
 - 从 `0.2.0` 起版本号使用普通递增（`0.2.0`、`0.2.1`、`0.2.2`、`0.3.0`、`0.3.1`），不再使用 `rc` 后缀。
 
-### 0.3 核心亮点：文档感 Pane
+## 核心能力
+
+### 文档感 Pane
 
 - **一份文档，不是仪表盘。** Workspace、审阅中心和诊断与维护共用同一阅读列、字号阶、行解剖、chip、
   quiet link 与空态/skeleton。
@@ -61,9 +64,9 @@
   margin note，不再套一层卡片。
 - **依赖图是增强视图，不是第二权威。** 执行路径 disclosure 内是 px 几何依赖图：固定 184px 节点、两行截断、
   状态解剖、边状态和紧凑 inspector；语义列表始终是权威操作面。
-- **版本可见。** Pane 页头同时显示当前 `v0.3.1` chip、revision 和 prompt meter。
+- **版本可见。** Pane 页头同时显示已安装版本 chip、revision 和 prompt meter。
 
-### 0.3.1 收敛项
+### 依赖图与诊断
 
 - **依赖图审计：** 泳道标题、SVG 方向箭头、沿边展开的 44px 命中区、点划线历史边、自适应画布高度，并移除
   未使用的 graph `ops` 输入。
@@ -72,7 +75,7 @@
 - **流量取证：** 本地 `traffic-check` 增加 `charter_propose` 拒绝分类和 active charter surface hash；
   `traffic-diff` 对比前后基线。不新增运行时埋点、不上报。
 
-### 其他 0.3 能力
+### 兼容性与运行时
 
 - DSH `0.2.2-rc.2` 声明与有界 `engines.dsh` 0.2 线范围；精确 `dshReleases`/peer 列表仍是十版本矩阵已验证支持集。
 - `charter_read standing` 现在返回交付物稳定 id，模型可以提出真实 `requires` 引用；`D<n>` 明确只是展示标签，
@@ -103,10 +106,10 @@
 契约是声明，不是强制执行策略。需要机器强制的限制请使用 Host permissions、sandbox policy、hooks 或
 执行守卫。
 
-## 0.2 核心亮点：约束关系
+## 依赖关系
 
-0.2.0 最核心的变化，是 deliverable 不再是一份互不相关的顺序清单。一个 deliverable 可以声明对其他
-deliverable 的**前置约束**，而这些关系会进入存储契约、校验边界、UI 计划和模型可见 prompt。
+deliverable 不是一份互不相关的顺序清单。一个 deliverable 可以声明对其他 deliverable 的**前置约束**，
+这些关系会进入存储契约、校验边界、UI 计划和模型可见 prompt。
 
 ```text
 测试 (D1) ────────────┐
@@ -124,10 +127,12 @@ deliverable 的**前置约束**，而这些关系会进入存储契约、校验�
 - **生命周期安全。**archive、restore、supersede、fork 和 proposal acceptance 都会校验或重映射关系；
   `proposedRequires` 让 pending deliverable 引用候选前置条件，接受时解析为正式 requires。
 - **有界。**关系集合同样受 record 和 prompt 预算约束，不引入独立的图正本。
+- **依赖图视角。** 依赖图是局部 ego 视图，包含候选泳道和替代历史泳道；它不是第二权威，图上的编辑与列表
+  暂存同一组 Change Set ops。零依赖时使用有界孤立节点网格和明确的“添加前置”提示。
 
 依赖是用户编写的**执行约束**，不是强制 sandbox 或权限系统。
 
-## 其他 0.2 能力
+## 提案、诊断与恢复
 
 - 三个一级区域：**Workspace**、**Review Center**、**Diagnostics & Maintenance**。
 - record schema v2、内存 v1 迁移、proposal batch、类型化 provenance 和 objective proposal。

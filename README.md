@@ -14,12 +14,12 @@ English | [中文](README.zh.md)
 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). Goals, hard constraints,
 deliverables, evidence, and dependency relationships survive compaction and remain visible and editable.
 
-![Charter Pane in the 0.3.1 document-feel layout](docs/assets/charter-pane-0.3.1.png)
+![Charter Pane in the document-feel layout](docs/assets/charter-pane-0.3.1.png)
 
-> The **0.3.1** Pane in a local Web profile: underline area tabs, a 720px document column, aligned document
+> The Pane in a local Web profile: underline area tabs, a 720px document column, aligned document
 > rows, and a compact execution-path disclosure. Screenshot uses synthetic demo values only.
 
-![Dependency graph in the 0.3.1 Pane](docs/assets/charter-graph-0.3.1.zh.png)
+![Dependency graph in the Pane](docs/assets/charter-graph-0.3.1.zh.png)
 
 > The execution-path dependency graph: lane headings, the three-column execution grid, and the state/type
 > legend. Edge arrows and hit targets appear when dependencies exist. The semantic list remains authoritative.
@@ -27,9 +27,10 @@ deliverables, evidence, and dependency relationships survive compaction and rema
 ## Contents
 
 - [Status](#status)
+- [Core capabilities](#core-capabilities)
+- [Dependency relationships](#dependency-relationships)
+- [Proposals, diagnostics, and recovery](#proposals-diagnostics-and-recovery)
 - [Why](#why)
-- [0.3 headline: document-feel Pane](#03-headline-document-feel-pane)
-- [Other 0.3 capabilities](#other-03-capabilities)
 - [How it works](#how-it-works)
 - [Install](#install)
 - [Quick start](#quick-start)
@@ -55,7 +56,9 @@ deliverables, evidence, and dependency relationships survive compaction and rema
 - Versioning from `0.2.0` onward uses plain increments (`0.2.0`, `0.2.1`, `0.2.2`, `0.3.0`, `0.3.1`), never an `rc`
   suffix.
 
-### 0.3 headline: document-feel Pane
+## Core capabilities
+
+### Document-feel Pane
 
 - **One document, not a dashboard.** Workspace, Review Center, and Diagnostics share the same reading column,
   type scale, row anatomy, chips, quiet links, and empty/skeleton states.
@@ -68,9 +71,9 @@ deliverables, evidence, and dependency relationships survive compaction and rema
 - **The graph is a real view, not a second authority.** The execution-path disclosure renders a px-geometry
   graph with fixed 184px nodes, two-line truncation, status anatomy, edge states, and a compact inspector; the
   semantic list remains authoritative.
-- **Version visible.** The Pane header carries the current `v0.3.1` chip, revision, and prompt meter together.
+- **Version visible.** The Pane header carries the installed version chip, revision, and prompt meter together.
 
-### 0.3.1 convergence
+### Dependency graph and diagnostics
 
 - **Graph audit:** lane headings, directional SVG arrows, path-sized 44px edge hit targets, a dot-dash history
   line, an adaptive-height canvas, and removal of the unused graph `ops` input.
@@ -79,7 +82,7 @@ deliverables, evidence, and dependency relationships survive compaction and rema
 - **Traffic forensics:** the local `traffic-check` reports `charter_propose` rejection categories and active
   charter-surface hashes; `traffic-diff` compares before/after baselines. No runtime telemetry or upload is added.
 
-### Other 0.3 capabilities
+### Compatibility and runtime
 
 - DSH `0.2.2-rc.2` declarations plus a bounded `engines.dsh` 0.2-line range; exact `dshReleases`/peer list
   remains the ten-version matrix-verified support set.
@@ -116,10 +119,9 @@ permission boundary.
 A charter is a declaration, not an enforcement policy. Use Host permissions, sandbox policy, hooks, or
 execution guards for restrictions that must be machine-enforced.
 
-## 0.2 headline: constraint relationships
+## Dependency relationships
 
-The defining change in 0.2.0 is that deliverables are no longer an independent, ordered checklist. A
-deliverable can declare **prerequisites** on other deliverables, and those relationships become part of the
+Deliverables are not an independent, ordered checklist. A deliverable can declare **prerequisites** on other deliverables, and those relationships become part of the
 stored contract, the validation boundary, the UI plan, and the model-visible prompt.
 
 ```text
@@ -151,7 +153,7 @@ Migration (D2) ───────┴──> Release (D3)
 
 Dependencies are a user-authored **execution constraint**, not an enforced sandbox or permission system.
 
-## Other 0.2 capabilities
+## Proposals, diagnostics, and recovery
 
 - Three primary areas: **Workspace**, **Review Center**, and **Diagnostics & Maintenance**.
 - Record schema v2 with in-memory v1 migration, proposal batches, typed provenance, and objective proposals.
