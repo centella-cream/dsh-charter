@@ -104,7 +104,7 @@ and the remaining full-design gates must be recorded separately before declaring
   (`src/core/standing-envelope.ts`) is used by both Host and Diagnostics; a 64-deliverable fixture with
   production-length ids proves the id cost is exactly 49 B/deliverable and the envelope stays under 32 KiB.
 - Graph browser audit (2026-11-13, Chromium 1440×1000, synthetic applied session): lane headings, 5 arrow
-  markers, a 230×44 px edge hit capsule, `max-height: none`, and no horizontal overflow at 860/900/1000/1100/1200/1440
+  markers, a 44 px path-wide edge stroke (keyboard button 230×44 px), `max-height: none`, and no horizontal overflow at 860/900/1000/1100/1200/1440
   or at 200% page scale. At 1100 the app shell's content container is 813 px, below the 880 px graph-fold
   threshold, so the graph stays folded while the semantic list remains available; recorded as a layout
   observation, not a two-column W0-1 pass. Real VoiceOver/AT remains a manual gate.
