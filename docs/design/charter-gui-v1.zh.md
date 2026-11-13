@@ -190,8 +190,7 @@ GUI 全面重构**不改变 record schema、迁移、Host service、Remote/wire�
 - 范围：Workspace、Review Center、Diagnostics & Maintenance **所有栏目**统一迁移到同一设计系统与交互合同；
   设计 token 化、真实路由/滚动/焦点、Change Set 合同、Pane/store 拆分、DOM/浏览器可访问性与截图证据。
 - 不做：0.2.3 单发、0.2.3+0.3.0 两段式（均不再作为实施路径）。
-- 状态：W0 启动；代码未完成、未发布。人工验收通过前不推送 `feat/0.3.0-gui`、不合并 `main`、不 tag/
-  release/publish、不声称 0.3.0 可用或已发布。
+- 状态：W0–W6 完成，用户已验收；`0.3.0` 已从 `main` 发布，tag/GitHub Release/npm 均已生效。
 
 ### 2.2 D0b：Change Set 呈现路径
 
@@ -616,9 +615,8 @@ W3 人工验收。证据：`.tmp/gui-acceptance/2026-11-12/w3-a11y-summary.md`�
 
 **W4 进度（2026-11-12，部分）**：开发 artifact（W5 后曾打包为 `dsh-charter-0.2.2.tgz`，SHA-256 `67c3e005…`）
 已按审查删除，避免与已发布不可变 0.2.2 同名冲突；最终开发候选 `0.3.0`（`package.json`/`src/version.ts` 均为
-0.3.0，未发布）打包为 `dist/dsh-charter-0.3.0.tgz`（rc.2 兼容构建，SHA-256 `31c4c61d…`），并已部署到本地 `web` 与 `desktop`
-profile（node_modules 版本 0.3.0，client bundle 含 0.3.0）：Web 验收服务运行在 `http://127.0.0.1:52080/`，
-Desktop 的 Pane 由 Host profile 重组 + client bundle HMR 热替换（2026-11-12 实测无需重启）；部署/回滚记录见 `.tmp/gui-acceptance/2026-11-12/acceptance-deploy.md`。
+0.3.0，开发期构建）打包并部署到本地 `web` 与 `desktop` profile（node_modules 版本 0.3.0，client bundle 含 0.3.0）：Web 验收服务运行在 `http://127.0.0.1:52080/`，
+Desktop 的 Pane 由 Host profile 重组 + client bundle HMR 热替换（2026-11-12 实测无需重启）；最终 0.3.0 已于 2026-11-13 正式发布。
 exact artifact client 已通过 CDP 注入真实 Host 验证 Pane 与 Change Set rail；并完成 320/375/560/850/1440、
 明/暗、forced-colors、reduced-motion、2x page-scale 的截图矩阵。**待完成**：fresh-profile Host+Session、Desktop
 重启后的真实窗口、zh/en 切换、真实 AT 证据、README/verification 发布同步。

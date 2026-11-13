@@ -69,10 +69,11 @@ The `main` tree has passed source-level acceptance for the implemented workspace
 This is source acceptance, not a release acceptance: real Desktop/browser diagnostics, real-model compaction, performance,
 and the remaining full-design gates must be recorded separately before declaring `0.2.0` stable. The Pane uses `watchSummary` plus paged queries with a full-watch compatibility fallback; the network layer still fetches all pages, so the 512-item performance gate remains separate.
 
-## 1.2 0.3.0 GUI development candidate (unreleased, local acceptance pending)
+## 1.2 0.3.0 GUI release (published 2026-11-13)
 
-- Branch `feat/0.3.0-gui`; W6 implementation commits `f3ac8f2`/`2ad1df3`/`bb576cd`/`840d202` plus follow-up docs are committed and the
-  worktree is clean at audit time. **Not pushed/merged/tagged/published**; no `0.3.0` availability claim.
+- Released `0.3.0` from `main`; candidate run `43360673386` (producer commit `0613ead…`), release commit
+  `4331cbc…`, promotion run `43361855799`; tag and GitHub Release `v0.3.0` are public, npm `latest`/`next` are `0.3.0`.
+  Branch/worktree are clean and pushed.
 - Source gates (2026-11-12): `npm run check` = 39 files / **492 tests** PASS (typecheck, build, remote/client
   smoke, Vitest, token gate); `npm run verify:ui-metrics -- --gate=css|ia` PASS.
 - Metric record (W1/W2/W4): CSS gate — `font-size` values 6, font weights 3, literal colors 0, non-token

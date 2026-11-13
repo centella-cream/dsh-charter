@@ -49,9 +49,11 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 | 0.2.2 依赖图源码 | 2026-11-11 PASS：`npm run check` 37 个文件 / 475 个测试；W0-0 原型 41/41（旧契约；无边孤立节点网格例外由 `tests/client/relation-graph.spec.ts` 的产品测试覆盖）；Web Pane 在 3 条 active + 4 条 pending 交付物的 Session 上渲染图形、候选泳道、inspector 和常驻语义列表；浏览器 console 无错误。UI 自测（2026-11-11）：三节点孤立图 + 空提示、紧凑列表、添加依赖/隐藏/显示、本地 key 前置摘要均正常，无 console 错误。W0-1/2/3 与真实 AT/人工门禁仍待完成。 |
 | 0.2.2 依赖图 bundle | 2026-11-11 以 `d362d6f` 为基线，按统一预算方法 `gzip -9 -c lib/client.js | wc -c` 实测：113,990 → 130,474 B（+16,484 B），`<40 KB` gzip 预算通过。raw 仅作诊断：`lib/client.js` 591,936 → 670,173 字节（+78,237 B），CSS output 47,230 → 55,540 B（+8,310 B）；raw 不作为预算口径。 |
 
-## 1.2 0.3.0 GUI 开发候选（未发布，待本地人工验收）
+## 1.2 0.3.0 GUI 正式版本（2026-11-13 已发布）
 
-- 分支 `feat/0.3.0-gui`；W6 实现提交 `f3ac8f2`/`2ad1df3`/`bb576cd`/`840d202` 及后续文档提交已完成，审计时工作树干净。**未推送/未合并/未 tag/未发布**，无 0.3.0 可用性声明。
+- 已从 `main` 发布 `0.3.0`；候选 run `43360673386`（producer commit `0613ead…`），release commit
+  `4331cbc…`，提升 run `43361855799`；tag 与 GitHub Release `v0.3.0` 已公开，npm `latest`/`next` 均为 `0.3.0`。
+  分支/工作树干净且已推送。
 - 源码门禁（2026-11-12）：`npm run check` = 39 文件 / **492 测试** PASS（typecheck、build、remote/client
   smoke、Vitest、token gate）；`npm run verify:ui-metrics -- --gate=css|ia` PASS。
 - 度量记录（W1/W2/W4）：CSS gate — 字号档 6、字重 3、颜色字面量 0、非 token 圆角 0、非 token shadow 0、
