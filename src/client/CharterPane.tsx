@@ -582,10 +582,9 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
     return buildRelationGraph({
       committed: view.items as unknown as GraphInputItem[],
       projected: projectedItems as unknown as GraphInputItem[],
-      ops,
       showSupersedes: true,
     })
-  }, [view, projectedItems, ops, dependencyPlanResult.ok])
+  }, [view, projectedItems, dependencyPlanResult.ok])
   const relationFocusId = relationGraph === null
     ? undefined
     : dependencyGraphFocusId !== undefined && relationGraph.nodes.some(node => node.id === dependencyGraphFocusId)

@@ -22,6 +22,7 @@ export interface DependencyGraphProps {
 
 const PX_PER_EM = 18.4
 const PX_PER_EM_Y = 22
+const GRAPH_PAD = 18
 
 function nodeName(node: PlacedNode, t: DependencyGraphProps['t']): string {
   if (node.lane === 'execution') {
@@ -54,6 +55,25 @@ function nodeClass(node: PlacedNode): string {
 
 function edgeClass(edge: PlacedEdge): string {
   return `charter-graph__edge is-${edge.kind} is-${edge.state}`
+}
+
+function edgeMarker(edge: PlacedEdge): string {
+  if (edge.state === 'staged-added') return 'charter-arrow-staged'
+  if (edge.state === 'staged-removed') return 'charter-arrow-removed'
+  if (edge.kind === 'proposed') return 'charter-arrow-proposed'
+  if (edge.kind === 'supersedes') return 'charter-arrow-history'
+  return 'charter-arrow-committed'
+}
+
+function edgeHitStyle(edge: PlacedEdge, layout: GraphLayout): { left: number; top: number; width: number; angle: number } | null {
+  const from = layout.nodes.find(node => node.id === edge.from)
+  const to = layout.nodes.find(node => node.id === edge.to)
+  if (from === undefined || to === undefined) return null
+  const x1 = GRAPH_PAD + (from.x + from.w / 2) * PX_PER_EM
+  const y1 = GRAPH_PAD + (from.y + 1.5) * PX_PER_EM_Y
+  const x2 = GRAPH_PAD + (to.x + to.w / 2) * PX_PER_EM
+  const y2 = GRAPH_PAD + (to.y + 1.5) * PX_PER_EM_Y
+  return { left: (x1 + x2) / 2, top: (y1 + y2) / 2, width: Math.max(44, Math.hypot(x2 - x1, y2 - y1)), angle: Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI }
 }
 
 type ChipTone = 'neutral' | 'business' | 'success' | 'warn' | 'danger' | 'outline'
@@ -111,6 +131,16 @@ export function DependencyGraph({
 
   const executionNodes = useMemo(() => layout.nodes.filter(node => node.lane === 'execution'), [layout.nodes])
   const availableNodes = useMemo(() => model.nodes.filter(node => node.lane === 'execution'), [model.nodes])
+  const lanes = useMemo(() => ([
+    ['execution', layout.nodes.filter(node => node.lane === 'execution')],
+    ['candidate', layout.nodes.filter(node => node.lane === 'candidate')],
+    ['history', layout.nodes.filter(node => node.lane === 'history')],
+  ] as const).flatMap(([lane, nodes]) => nodes.length === 0 ? [] : [{
+    lane,
+    count: nodes.length,
+    top: lane === 'execution' ? 0 : GRAPH_PAD + Math.min(...nodes.map(node => node.y)) * PX_PER_EM_Y - 18,
+    label: lane === 'execution' ? t('deps.laneExecution') : lane === 'candidate' ? t('deps.laneCandidate') : t('deps.laneHistory'),
+  }]), [layout.nodes, t])
 
   const focusKey = (next: string): void => {
     onActiveKey(next)
@@ -247,22 +277,40 @@ export function DependencyGraph({
               role="img"
               aria-label={t('deps.graphAria')}
               style={{
-                width: `${Math.max(layout.width, 1) * PX_PER_EM + 16}px`,
-                height: `${Math.max(layout.height * PX_PER_EM_Y + 24, 360)}px`,
+                width: `${Math.max(layout.width, 1) * PX_PER_EM + GRAPH_PAD * 2}px`,
+                height: `${Math.max(layout.height * PX_PER_EM_Y + GRAPH_PAD * 2, 360)}px`,
                 transform: `scale(${zoom})`,
                 transformOrigin: 'top left',
               }}
             >
+              {lanes.map(lane => (
+                <span key={lane.lane} className="charter-graph__lane" style={{ top: `${lane.top}px` }} aria-hidden="true">
+                  {lane.label} <b>{lane.count}</b>
+                </span>
+              ))}
               <svg
                 className="charter-graph__svg"
+                style={{
+                  left: `${GRAPH_PAD}px`,
+                  top: `${GRAPH_PAD}px`,
+                  width: `${Math.max(layout.width, 1) * PX_PER_EM}px`,
+                  height: `${Math.max(layout.height, 1) * PX_PER_EM_Y}px`,
+                }}
                 viewBox={`0 0 ${Math.max(layout.width, 1)} ${Math.max(layout.height, 1)}`}
                 preserveAspectRatio="none"
                 aria-hidden="true"
                 focusable="false"
               >
+                <defs>
+                  <marker id="charter-arrow-committed" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path className="charter-graph__arrow charter-graph__arrow--committed" d="M0,0 L8,4 L0,8 z" /></marker>
+                  <marker id="charter-arrow-staged" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path className="charter-graph__arrow charter-graph__arrow--staged" d="M0,0 L8,4 L0,8 z" /></marker>
+                  <marker id="charter-arrow-removed" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path className="charter-graph__arrow charter-graph__arrow--removed" d="M0,0 L8,4 L0,8 z" /></marker>
+                  <marker id="charter-arrow-proposed" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path className="charter-graph__arrow charter-graph__arrow--proposed" d="M0,0 L8,4 L0,8 z" /></marker>
+                  <marker id="charter-arrow-history" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path className="charter-graph__arrow charter-graph__arrow--history" d="M0,0 L8,4 L0,8 z" /></marker>
+                </defs>
                 {layout.edges.map(edge => (
                   <g key={edge.key} className={edgeClass(edge)}>
-                    <path d={edge.path} className="charter-graph__edge-line" />
+                    <path d={edge.path} className="charter-graph__edge-line" markerEnd={`url(#${edgeMarker(edge)})`} />
                     {edge.state === 'staged-removed' && <path d={edge.path} className="charter-graph__edge-removed" />}
                   </g>
                 ))}
@@ -277,8 +325,8 @@ export function DependencyGraph({
                   aria-label={nodeName(node, t)}
                   aria-current={node.id === focusId ? 'true' : undefined}
                   style={{
-                    left: `${node.x * PX_PER_EM}px`,
-                    top: `${node.y * PX_PER_EM_Y}px`,
+                    left: `${GRAPH_PAD + node.x * PX_PER_EM}px`,
+                    top: `${GRAPH_PAD + node.y * PX_PER_EM_Y}px`,
                     width: '184px',
                     minHeight: `${GRAPH.touchTargetPx}px`,
                   }}
@@ -336,10 +384,7 @@ export function DependencyGraph({
                   tabIndex={-1}
                   aria-label={edgeName(edge, model, t)}
                   title={edgeName(edge, model, t)}
-                  style={{
-                    left: `${edge.labelAt.x * PX_PER_EM}px`,
-                    top: `${edge.labelAt.y * PX_PER_EM_Y}px`,
-                  }}
+                  style={(() => { const hit = edgeHitStyle(edge, layout); return hit === null ? { left: 0, top: 0, width: 44 } : { left: `${hit.left}px`, top: `${hit.top}px`, width: `${hit.width}px`, transform: `translate(-50%, -50%) rotate(${hit.angle}deg)` } })()}
                   onClick={() => handleActivate(edge.key)}
                 />
               ))}
@@ -349,6 +394,9 @@ export function DependencyGraph({
             <span><i className="charter-graph__swatch charter-graph__swatch--committed" aria-hidden="true" />{t('deps.legendCommitted')}</span>
             <span><i className="charter-graph__swatch charter-graph__swatch--staged" aria-hidden="true" />{t('deps.legendStaged')}</span>
             <span><i className="charter-graph__swatch charter-graph__swatch--proposed" aria-hidden="true" />{t('deps.legendProposed')}</span>
+            {layout.edges.some(edge => edge.kind === 'supersedes') && (
+              <span><i className="charter-graph__swatch charter-graph__swatch--history" aria-hidden="true" />{t('deps.legendHistory')}</span>
+            )}
           </div>
           <div className="charter-graph__footer">
             {(selectedNode?.lane === 'execution'

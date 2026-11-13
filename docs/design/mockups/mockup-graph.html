@@ -71,6 +71,8 @@
               </div>
 
               <div class="canvas" role="img" aria-label="交付物依赖图：D1 已完成，D2 进行中依赖 D1，D3 等待 D2，候选 D4 提议依赖 D2，另有一条已暂存的 D1 到 D3 依赖">
+                <span class="lane" style="top:0">执行 <b>3</b></span>
+                <span class="lane" style="top:208px">候选 <b>1</b></span>
                 <svg aria-hidden="true">
                   <defs>
                     <marker id="arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
@@ -136,7 +138,7 @@
                 </div>
               </div>
 
-              <p class="graphnote">图形区仅作增强：语义列表始终是权威操作面，窄屏自动折叠为 disclosure。实线 = 生效依赖；蓝色虚线 = 已暂存的新依赖（随 Change Set 原子提交）；点线 = 候选提案依赖（接受后生效）。节点为固定 px 几何 + 两行截断 + 完整 title，修复旧版 em 布局在用户字号变化时的文本裁切。</p>
+              <p class="graphnote">图形区仅作增强：语义列表始终是权威操作面，窄屏自动折叠为 disclosure。实线 = 生效依赖；蓝色虚线 = 已暂存的新依赖（随 Change Set 原子提交）；点线 = 候选提案依赖（接受后生效）；点划线 = 替代历史。边带方向箭头，泳道标题只作标识，不改语义列表的权威地位。节点为固定 px 几何 + 两行截断 + 完整 title，修复旧版 em 布局在用户字号变化时的文本裁切。</p>
             </div>
           </details>
         </section>

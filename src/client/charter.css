@@ -2200,22 +2200,6 @@
 .charter-graph__help summary { cursor: pointer; }
 .charter-graph__help p { margin: 4px 0 0; font-size: var(--dsw-font-xxxs-11-font-size); line-height: 1.45; }
 
-.charter-graph__viewport {
-  box-sizing: border-box;
-  width: 100%;
-  min-height: 0;
-  max-height: 460px;
-  overflow: auto;
-  border: 1px solid var(--charter-border-soft);
-  border-radius: var(--dsw-radius-sm);
-  background: var(--charter-surface);
-}
-
-.charter-graph__viewport:focus-visible {
-  outline: 2px solid var(--charter-brand);
-  outline-offset: 2px;
-}
-
 .charter-graph__canvas {
   position: relative;
   min-width: 0;
@@ -4304,4 +4288,107 @@ charter-graph__help { display: none; }
 
 .charter-disclosure[open] .charter-disclosure__hint-collapse {
   display: inline;
+}
+
+/* 0.3.1 graph audit: lane labels, arrows, path-sized edge hit targets. */
+.charter-graph__lane {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  display: flex;
+  height: 18px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  border-bottom: var(--ch-hairline) solid var(--charter-border-soft);
+  color: var(--dsw-alias-label-tertiary);
+  background: var(--dsw-alias-bg-base);
+  font-size: var(--dsw-font-xxxs-11-font-size);
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.charter-graph__lane b {
+  color: var(--dsw-alias-label-secondary);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.charter-graph__arrow--committed { fill: var(--dsw-alias-label-tertiary); }
+.charter-graph__arrow--staged { fill: var(--dsw-alias-state-business-primary); }
+.charter-graph__arrow--removed { fill: var(--dsw-alias-state-error-primary); }
+.charter-graph__arrow--proposed { fill: var(--dsw-alias-label-tertiary); }
+.charter-graph__arrow--history { fill: var(--dsw-alias-label-tertiary); }
+
+.charter-graph__edge.is-supersedes .charter-graph__edge-line {
+  stroke-dasharray: 8 3 2 3;
+}
+
+.charter-graph__swatch--history {
+  border-top: 1.5px dashed var(--dsw-alias-label-tertiary);
+}
+
+.charter-graph__viewport {
+  max-height: none;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.charter-graph__edgehit {
+  z-index: 0;
+  height: 44px;
+  border-radius: 999px;
+  background: transparent;
+}
+
+.charter-graph__node {
+  z-index: 1;
+}
+
+@media (forced-colors: active) {
+  .charter-graph__arrow { fill: CanvasText; }
+}
+
+/* 0.3.1: standing tool envelope diagnostics. */
+.charter-envelope__facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 16px;
+  margin: 8px 0 0;
+  font-size: var(--dsw-font-xxs-12-font-size);
+  font-variant-numeric: tabular-nums;
+}
+
+.charter-envelope__facts div {
+  display: flex;
+  min-width: 0;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.charter-envelope__facts dt {
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.charter-envelope__facts dd {
+  margin: 0;
+  color: var(--dsw-alias-label-secondary);
+  text-align: right;
+}
+
+.charter-envelope__status {
+  margin: 8px 0 0;
+  color: var(--dsw-alias-label-secondary);
+  font-size: var(--dsw-font-xxs-12-font-size);
+}
+
+.charter-envelope__status.is-near {
+  color: var(--dsw-alias-state-warn-primary);
+}
+
+.charter-envelope__status.is-over {
+  color: var(--dsw-alias-state-error-primary);
 }

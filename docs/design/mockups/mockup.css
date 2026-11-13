@@ -374,6 +374,10 @@ body {
 .edge { stroke: var(--dsw-alias-label-tertiary); stroke-width: 1.5; fill: none; }
 .edge--staged { stroke: var(--dsw-alias-state-business-primary); stroke-width: 2; stroke-dasharray: 5 4; }
 .edge--proposed { stroke: var(--dsw-alias-label-tertiary); stroke-dasharray: 2 4; }
+.edge--history { stroke: var(--dsw-alias-label-tertiary); stroke-dasharray: 8 3 2 3; }
+.lane { position:absolute; z-index:3; left:0; right:0; display:flex; align-items:center; gap:6px; height:18px; padding:0 8px; border-bottom:var(--hairline) solid var(--dsw-alias-border-l2); color:var(--dsw-alias-label-tertiary); background:var(--dsw-alias-bg-base); font-size:var(--dsw-font-xxxs-11-font-size); font-weight:600; }
+.lane b { color:var(--dsw-alias-label-secondary); font-weight:500; }
+.swatch--history { border-top:1.5px dashed var(--dsw-alias-label-tertiary); }
 
 /* 节点：固定 px 几何 + 两行截断（修复旧 em 布局的文本裁切） */
 .node {

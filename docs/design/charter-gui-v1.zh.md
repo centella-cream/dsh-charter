@@ -553,9 +553,16 @@ canonical diff、reconcile 状态）。若 D0 选择改为内联卡片，则必�
   正文 13/20 两行截断 + 完整 title / readiness 脚注 12px tertiary`；左侧 3px 状态强调条
   （done success / in-progress business / blocked warn / conflict error 且边框同色）；候选 = 虚线边框；
   暂存 = focus-ring outline；选中 = business 边框。
-- **边状态语言**：实线 1.5px `label-tertiary` = 生效依赖（prerequisite → dependent 箭头）；
-  2px business 虚线 = 已暂存新依赖（随 Change Set 原子提交）；点线 = 候选提案依赖（接受后生效）。
-  画布底部一行静态 legend 说明三种边。
+- **泳道**：执行 / 候选 / 历史三个泳道各有 18px 标题带（名称 + 条目数）与发丝分隔线；标题只作标识，
+  不进入 Tab 顺序。泳道空时不渲染标题带。
+- **边状态语言**：实线 1.5px `label-tertiary` = 生效依赖（prerequisite → dependent，带同色 SVG 箭头）；
+  2px business 虚线 = 已暂存新依赖（随 Change Set 原子提交）；点线 = 候选提案依赖（接受后生效）；
+  点划线 = 替代历史；错误色虚线 = 已暂存删除。画布底部 legend 按实际出现的边状态展示，history 出现时
+  增加第 4 项。箭头和线型共同表达方向/状态，不单靠列位置。
+- **交互命中**：每条边使用沿整条边展开的 44px 高透明 capsule 按钮，不是中点圆钮；节点层在其上方，
+  点击边不会遮挡节点；键盘仍通过图形区单 Tab + roving tab 访问。
+- **画布高度**：不设固定 `max-height`；画布随布局高度增长，窄屏仍由 disclosure 折叠；200% 页面缩放下
+  由宿主滚动承载，不在图形区制造第二套固定像素视口。
 - **inspector**：画布下方一行式区域（顶部发丝分隔）：选中节点 `Dn + 正文 + 进度 chip` /
   依赖与被依赖 outline chips / 暂存变更 chip / 右侧 [编辑][+ 依赖] ghost sm。不使用重面板。
 - **边界**：语义列表始终是权威操作面；<880px 图形区随 disclosure 默认折叠且不渲染画布；节点为
@@ -571,7 +578,7 @@ canonical diff、reconcile 状态）。若 D0 选择改为内联卡片，则必�
 | W3 Review/状态收口（1d） | 次级区域与状态机 | Review 顺序、Diagnostics 预览锚点、notice 去重、skeleton、disabled 视觉权重、a11y 语义 | 六种状态各有唯一呈现；键盘遍历无死角 |
 | W4 证据与发布（1–1.5d） | 可验收 | 截图矩阵（含 320）、滚动/Change Set/a11y 证据、livery 主题抽查、README/截图/verification/CHANGELOG/release notes 同步 | §8 全部证据完成；发布门禁按 `docs/releasing.md` |
 | W5 结构终态（2–3d，0.3.0 范围内） | 宽屏与结构收口 | 完整 Change Set rail/sheet 交互（视觉按 §4.9 冻结稿）、Pane/store 拆分、DOM/浏览器 a11y 门禁工具 ADR | W1–W4 证据通过后实施；与 W1–W4 同一个 0.3.0 分支/版本 |
-| W6 视觉语言落地（2–3d） | 冻结稿对照实现 | 按 §4.9/§5.7 将 `mockups/mockup.css` 合入 `charter.css` 并调整页面组件：容器规则（纯展示去卡片）、行解剖与基线对齐、下划线 tabs（移除左侧纵向导航）、吸顶条/rail 构成、空态/skeleton、依赖图 px 几何重建与 inspector；rail/inspector 文案全部 `t()` | before/after × 冻结稿并排对照评审通过（明暗 × 320–1440）；`--gate=final` PASS；`npm run check` 全绿；用户字号 10/14/22 下图形无文本裁切 |
+| W6 视觉语言落地（2–3d） | 冻结稿对照实现（0.3.1 图审计修订 §5.7） | 按 §4.9/§5.7 将 `mockups/mockup.css` 合入 `charter.css` 并调整页面组件：容器规则（纯展示去卡片）、行解剖与基线对齐、下划线 tabs（移除左侧纵向导航）、吸顶条/rail 构成、空态/skeleton、依赖图 px 几何重建与 inspector；rail/inspector 文案全部 `t()` | before/after × 冻结稿并排对照评审通过（明暗 × 320–1440）；`--gate=final` PASS；`npm run check` 全绿；用户字号 10/14/22 下图形无文本裁切 |
 
 估计：W0–W6 合计 10–15 个工程日（不含人工验收等待；W2 因 Change Set 最小合同、W5 因 rail/sheet、
 W6 因视觉落地增加），单分支、每阶段独立提交、`npm run check` 全绿才进入下一阶段。
@@ -860,7 +867,7 @@ URL/commit、拒绝无许可证或行为不明的包；impeccable 的 launcher �
 | 2026-11-12 | 审查修复：W0 token 覆盖门禁（9 版本/35 静态 token/1 动态 fallback）落盘；rail 状态文案本地化；导航 a11y 文档统一为 nav+aria-current；补 `--ch-reading-max` 并移除 sticky 60px 魔法数字；dev artifact 删除以保护已发布 0.2.2。 |
 | 2026-11-12 | 本地验收部署：`0.3.0` dev candidate（`1d1963f1…`）安装到本地 web+desktop profile；Web 验收服务 52080；Desktop 当时按重启验证。后续 2026-11-12 确认 Desktop 支持 bundle 热更新，见下方 W6 记录。 |
 | 2026-11-12 | DSH rc.2 适配：声明 `0.2.2-rc.2`（engines/peers/dshReleases/token inventory/测试/文档），十版本矩阵 PASS；rc.2 兼容 artifact `31c4c61d…` 安装 web+desktop；engines 改为有界 0.2 线范围。 |
-| 2026-11-12 | UX 减负：平铺 section、去除冗余小字/角标/免责声明、行内字节与重复进度标签移除、单一进度控件、空态/表单降噪；492 测试 + final gate PASS；artifact `1d1963f1…` 已部署 web+desktop。 |
+| 2026-11-12 | UX 减负：平铺 section、去除冗余小字/角标/免责声明、行内字节与重复进度标签移除、单一进度控件、空态/表单降噪；498 测试 + final gate PASS；artifact `1d1963f1…` 已部署 web+desktop。 |
 | 2026-11-12 | 本地验收部署：W6 验收构建 `dist/dsh-charter-0.3.0-w6-final.tgz`（`ab74591c…`，client `986f8403…`）已安装到本地 web+desktop profile；恢复 Pane 页头 `v0.3.0` 版本标识；Desktop 实测热更新（bundle 824ms / CSS 402ms / 最终 886ms；后续披露标签修复构建 `ab74591c…` 已热更新，tabs=3、style=1、无异常），无需重启；人工验收待完成。 |
 | 2026-11-12 | W6 视觉语言落地（源码）：按 docs/design/mockups 合入文档感 CSS 与组件——顶部下划线 tabs、720 文档列 + 280 Change Set rail、section/行解剖与对齐、36px 虚线空态、40/16/16 skeleton、quietlink/notice、依赖图 px 几何 + 紧凑 inspector；492/492 + final gate PASS；CDP 截图 320/850/1440，root/document 横向溢出 0，图形区 320/850 隐藏、1440 可见，字号 10/14/22 节点文本无裁切；冻结稿并排评审与人工验收仍待完成。 |
 | 2026-11-12 | 视觉语言冻结（文档感）：style tile + clean 首屏 / 脏态 rail / 依赖关系图三份高保真稿入库 `docs/design/mockups/`（含 `mockup.css` 参考实现与 `tokens.css` 宿主 token 快照）；新增 §4.9 视觉冻结与 §5.7 依赖图规格；更新 §4.5/§4.7/§5.1/§5.2/§5.6/§8.3、D1/D5 决策与 W6 实施阶段；区域导航定为顶部下划线 tabs（去左侧纵向导航）。 |

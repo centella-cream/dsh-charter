@@ -121,7 +121,6 @@ export interface GraphLayout {
 export interface BuildRelationGraphInput {
   readonly committed: readonly GraphInputItem[]
   readonly projected: readonly GraphInputItem[]
-  readonly ops?: readonly unknown[]
   readonly showSupersedes?: boolean
 }
 

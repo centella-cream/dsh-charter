@@ -1,9 +1,9 @@
 # `dsh-charter` 依赖关系图形化视图设计（提案）
 
-> **状态：** `Implemented — pending release acceptance`——源码已实现并通过 source gates；真实浏览器/AT
-> 与 W0-1/2/3 人工门禁仍待完成，本文不描述已发布行为。进入发布前仍以[版本路线](version-roadmap.zh.md)为准
+> **状态：** `Implemented — pending release acceptance`——0.3.1 已完成方向箭头、泳道标题、沿边命中区和历史线型；
+> 真实浏览器自动化已记录，真实 AT/VoiceOver 人工门禁仍待完成。进入发布前仍以[版本路线](version-roadmap.zh.md)为准
 > （[charter-workspace-v2.zh.md](charter-workspace-v2.zh.md) §1.1）。
-> **版本范围：** `0.2.2`（已确认，纯客户端）。源码实现已完成；发布前仍需完成真实浏览器/AT 门禁（§3.10）。
+> **版本范围：** `0.2.2` / `0.3.1`（纯客户端）。源码实现已完成；发布前仍需完成真实 AT 人工门禁（§3.10）。
 > **形态：** **A —— 图形增强，语义列表常驻且为权威操作面**（已确认，§0.2）。
 > **基准：** 2026-11-09，基于已发布 `0.2.1` 之后的开发树。
 > **权威边界：** 版本范围由[版本路线](version-roadmap.zh.md)决定；不变量由 [v1 核心设计](charter-design-v1.zh.md)
