@@ -113,6 +113,9 @@ and the remaining full-design gates must be recorded separately before declaring
   captured at 1440 from synthetic staged rows. Empty/Applied/Conflict states and the frozen-mockup side-by-side
   are still missing.
 
+
+- Final-build special evidence (2026-11-13): forced-colors, reduced-motion and page-scale-2 screenshots were recaptured from `w6-final` at 1440: Pane mounted, no horizontal overflow, three tabs; media emulation matched. Evidence: `.tmp/gui-acceptance/2026-11-13/final-special/`. This is a page-scale proxy, not a full 200% text-layout or keyboard/AT audit.
+
 - Ten-version source matrix (2026-11-12): all declared DSH versions `0.1.7-rc.2` … `0.2.2-rc.2` pass
   typecheck, build, and tests; run with `--allow-new-release` because rc.2 is inside the pnpm 24-hour
   `minimumReleaseAge` window. The tracked rc.2 compatibility lockfile was generated and added. Evidence:

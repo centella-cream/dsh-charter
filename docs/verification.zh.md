@@ -85,6 +85,9 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
   `.tmp/gui-acceptance/2026-11-13/matrix-final/`。这替换了 Review/Diagnostics 子集的旧 W6 前矩阵；另从合成暂存行重采了最终构建的脏态与依赖图各一张（1440）。
   空/已应用/冲突状态与冻结稿并排对照仍缺。
 
+
+- 最终构建专项证据（2026-11-13）：从 `w6-final` 在 1440 重采 forced-colors、reduced-motion 与 page-scale-2 截图；Pane 已挂载、无横向溢出、3 个 tabs，媒体模拟命中。证据：`.tmp/gui-acceptance/2026-11-13/final-special/`。page-scale-2 是缩放代理，不等于完整 200% 文本布局、键盘或 AT 走查。
+
 - 十版本源码矩阵（2026-11-12）：全部声明版本 `0.1.7-rc.2` … `0.2.2-rc.2` 通过 typecheck、build 与测试；
   因 rc.2 仍在 pnpm 24 小时 `minimumReleaseAge` 窗口内，矩阵以 `--allow-new-release` 运行；已生成并跟踪 rc.2
   的兼容 lockfile。证据：`.tmp/compat-matrix-0.3.0.json`。

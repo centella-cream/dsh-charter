@@ -826,10 +826,10 @@ URL/commit、拒绝无许可证或行为不明的包；impeccable 的 launcher �
 
 ## 附录 D：验收清单（发布前逐项勾）
 
-- [ ] D0/D0b/D1 已写入版本路线，本文状态为 Active 且版本范围 0.3.0。
-- [ ] 指标门禁全部达标（§0.1），结果记入 verification；统计口径与 `ui-metrics.mjs` 一致。
-- [ ] 目标只渲染一次；全局预算只剩 2 类表达（字段级计数保留）；Workspace ≤ 6 个兄弟块。
-- [ ] 所有“打开/跳转”落到锚点并聚焦；无 no-op。
+- [x] D0/D0b/D1 已写入版本路线，本文状态为 Active 且版本范围 0.3.0（§2.1、§10；路线图 §14.2）。
+- [x] 指标门禁全部达标（§0.1），结果记入 verification；统计口径与 `ui-metrics.mjs` 一致（`verify:ui-metrics --gate=final` 全项 PASS）。
+- [x] 目标只渲染一次；全局预算只剩 2 类表达（字段级计数保留）；Workspace ≤ 6 个兄弟块（`ui-metrics` legacy objective=0；WorkspacePage 4 个 section + notices）。
+- [x] 所有“打开/跳转”落到锚点并聚焦；无 no-op（`section-routing` 测试 + 浏览器路由证据）。
 - [ ] clean 状态无常驻操作条；dirty/replay/conflict/unknown 各自唯一呈现。
 - [ ] W0 滚动所有权运行时探针（Web/Desktop × Composer 开合 × 三种宽度）完成并冻结。
 - [ ] Change Set 按 v2 §5.7 最小合同（桌面 complementary region、窄屏 modal bottom sheet）通过键盘/焦点验收。
@@ -837,13 +837,13 @@ URL/commit、拒绝无许可证或行为不明的包；impeccable 的 launcher �
 - [ ] 字体偏好 10/14/22 下不破版；内容文字跟随、UI 文字固定阶。
 - [ ] 键盘全路径 + 200% 缩放 + forced-colors + reduced-motion 通过。
 - [ ] 与冻结稿（docs/design/mockups/）并排对照评审通过：明暗 × 320/375/560/850/1440 × 六状态。
-- [ ] 依赖图节点 px 几何 + 正文两行截断；用户字号 10/14/22 下无文本裁切、无节点溢出。
-- [ ] rail、inspector、图形工具条无原始枚举/op 类型串，全部走 locales。
-- [ ] 区域导航为顶部下划线 tabs（nav + aria-current）；旧左侧纵向导航已移除。
+- [x] 依赖图节点 px 几何 + 正文两行截断；用户字号 10/14/22 下无文本裁切、无节点溢出（`DependencyGraph.tsx` PX_PER_EM/PX_PER_EM_Y、184px；CDP scrollWidth/scrollHeight 检查）。
+- [x] rail、inspector、图形工具条无原始枚举/op 类型串，全部走 locales（`changeset.*`/`deps.*`/`progress.*` 审计；`grep` 无原始状态串）。
+- [x] 区域导航为顶部下划线 tabs（nav + aria-current）；旧左侧纵向导航已移除（`charter-tabs`、`aria-current`；DOM 无 `.charter-nav`）。
 - [x] 旧版 DSH token 覆盖审计完成（2026-11-12，10 版本 / 41 静态 token / 1 动态 fallback）；兼容块为空且有门禁。
 - [ ] `npm run check`、兼容矩阵、exact artifact/fresh profile 门禁通过，证据按 CI/local/manual 标注。
 - [ ] README/README.zh、CHANGELOG、release notes、docs 索引、SHA256SUMS 同批更新；未 push/tag/publish。
-- [ ] 人工验收前未推送 `feat/0.3.0-gui`、未合并 `main`、未 tag/publish；仓库与 README 无“0.3.0 可用/已发布”声明。
+- [x] 人工验收前未推送 `feat/0.3.0-gui`、未合并 `main`、未 tag/publish；仓库与 README 无“0.3.0 可用/已发布”声明。
 
 ## 附录 E：变更记录
 
