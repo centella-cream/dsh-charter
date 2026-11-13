@@ -248,11 +248,95 @@ export function summarizeCharterRead(events, activeSnapshots = []) {
   }
 }
 
+/**
+ * Summarize charter_propose calls and rejections without runtime instrumentation.
+ * @param {readonly any[]} events
+ * @returns {any}
+ */
+export function summarizeCharterPropose(events) {
+  const ordered = [...events].sort((left, right) => left.seq - right.seq)
+  const calls = []
+  const callsBySeq = new Map()
+  for (const event of ordered) {
+    if (event.type !== 'tool/call' || event.data?.name !== 'charter_propose') continue
+    let parsed
+    try {
+      parsed = typeof event.data.arguments === 'string' ? JSON.parse(event.data.arguments) : event.data.arguments
+    } catch { parsed = undefined }
+    const call = {
+      seq: event.seq,
+      turn: event.data?.turn,
+      step: event.data?.step,
+      callId: event.data?.callId,
+      items: Array.isArray(parsed?.items) ? parsed.items.length : 0,
+      rejected: false,
+      resultBytes: undefined,
+      displayKeyRejects: 0,
+      unknownIdRejects: 0,
+      rejectionValues: [],
+    }
+    calls.push(call)
+    callsBySeq.set(call.seq, call)
+  }
+  const legacyKeys = new Map()
+  for (const call of calls) {
+    const key = `${call.turn}:${call.step}:${call.callId}`
+    const list = legacyKeys.get(key) ?? []
+    list.push(call)
+    legacyKeys.set(key, list)
+  }
+  for (const event of ordered) {
+    if (event.type !== 'tool/result') continue
+    const data = event.data ?? {}
+    const message = data.message ?? {}
+    const source = Object.hasOwn(event, 'sourceEventSeqs') ? event.sourceEventSeqs : Object.hasOwn(data, 'sourceEventSeqs') ? data.sourceEventSeqs : undefined
+    let matched
+    if (Array.isArray(source) && source.length > 0) {
+      const refs = source.map(seq => callsBySeq.get(seq)).filter(Boolean)
+      if (refs.length !== 1 || source.length !== 1) continue
+      matched = refs[0]
+    } else {
+      const key = `${data.turn}:${data.step}:${message.toolCallId ?? message.source?.callId}`
+      const candidates = legacyKeys.get(key) ?? []
+      if (candidates.length !== 1) continue
+      matched = candidates[0]
+    }
+    if (matched === undefined || matched.resultBytes !== undefined) continue
+    const resultText = textOfContent(message.content)
+    matched.resultBytes = Buffer.byteLength(resultText, 'utf8')
+    const marker = 'charter_propose requires must reference current active deliverables:'
+    const markerAt = resultText.indexOf(marker)
+    if (markerAt >= 0) {
+      matched.rejected = true
+      const values = resultText.slice(markerAt + marker.length).split(',').map(value => value.trim()).filter(Boolean)
+      matched.rejectionValues = values
+      for (const value of values) {
+        if (/^D\d+$/u.test(value)) matched.displayKeyRejects += 1
+        else matched.unknownIdRejects += 1
+      }
+    }
+  }
+  const results = calls.filter(call => call.resultBytes !== undefined)
+  const rejected = calls.filter(call => call.rejected)
+  return {
+    calls: calls.length,
+    paired: results.length,
+    accepted: results.length - rejected.length,
+    rejected: rejected.length,
+    displayKeyRejects: rejected.reduce((sum, call) => sum + call.displayKeyRejects, 0),
+    unknownIdRejects: rejected.reduce((sum, call) => sum + call.unknownIdRejects, 0),
+    resultBytes: results.reduce((sum, call) => sum + call.resultBytes, 0),
+    rejectionValues: [...new Set(rejected.flatMap(call => call.rejectionValues))].slice(0, 20),
+    callDetails: calls,
+  }
+}
+
 /** Summarize model attempts, usage, runtime snapshots, and charter_read traffic. */
 export function summarizeTraffic(events) {
   const ordered = [...events].filter(event => event.type !== 'session').sort((left, right) => left.seq - right.seq)
   const runtime = summarizeRuntimeSnapshots(ordered)
   const read = summarizeCharterRead(ordered, runtime.active)
+  const propose = summarizeCharterPropose(ordered)
   const attempts = []
   const groups = new Map()
   let stepCount = 0
@@ -362,10 +446,13 @@ export function summarizeTraffic(events) {
     notes.push(`historical runtime snapshots shadowed by surface replacement: ${runtime.shadowedCount}`)
   }
   const activeCharterSnapshots = runtime.active.filter(snapshot => snapshot.charterDigest !== undefined)
+  const activeCharterSurfaces = activeCharterSnapshots.map(snapshot => ({ seq: snapshot.seq, bytes: snapshot.charterBytes, digest: snapshot.charterDigest }))
   if (activeCharterSnapshots.length > 1) {
     const distinct = new Set(activeCharterSnapshots.map(snapshot => snapshot.charterDigest)).size
     warnings.push(`active-surface charter snapshots repeated: ${activeCharterSnapshots.length} (${distinct} distinct)`)
   }
+  if (propose.rejected > 0) notes.push(`charter_propose rejected: ${propose.rejected}; display-key=${propose.displayKeyRejects}; unknown-id=${propose.unknownIdRejects}`)
+  if (propose.displayKeyRejects > 0) warnings.push(`charter_propose used display keys as require references: ${propose.displayKeyRejects}`)
   const totalRuntimeBytes = runtime.active.reduce((sum, snapshot) => sum + snapshot.bytes, 0)
   const historicalRuntimeBytes = runtime.historical.reduce((sum, snapshot) => sum + snapshot.bytes, 0)
   const activeCharterBytes = runtime.active.reduce((sum, snapshot) => sum + snapshot.charterBytes, 0)
@@ -393,6 +480,8 @@ export function summarizeTraffic(events) {
       historicalPayloadBytes: historicalRuntimeBytes,
       activeSurfacePayloadBytes: totalRuntimeBytes,
       duplicateBytes: runtime.active.length === 0 ? 0 : totalRuntimeBytes - runtime.active.at(-1).bytes,
+      duplicateRate: totalRuntimeBytes === 0 ? 0 : (totalRuntimeBytes - runtime.active.at(-1).bytes) / totalRuntimeBytes,
+      activeCharterSurfaces,
       activeCharterPayloadBytes: activeCharterBytes,
       activeLatestCharterBytes: runtime.active.filter(snapshot => snapshot.charterDigest !== undefined).at(-1)?.charterBytes ?? 0,
       charterDuplicateBytes: activeCharterBytes - (runtime.active.filter(snapshot => snapshot.charterDigest !== undefined).at(-1)?.charterBytes ?? 0),
@@ -416,6 +505,7 @@ export function summarizeTraffic(events) {
       attempts,
     },
     charterRead: read,
+    charterPropose: propose,
     warnings,
     notes,
   }

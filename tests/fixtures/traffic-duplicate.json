@@ -1,0 +1,8 @@
+[
+  { "type": "user/message", "seq": 1, "data": { "content": [{ "type": "text", "text": "runtime one" }], "source": { "kind": "runtime-context", "sections": [{ "name": "charter:standing", "text": "same standing charter" }] } } },
+  { "type": "user/message", "seq": 2, "data": { "content": [{ "type": "text", "text": "runtime two" }], "source": { "kind": "runtime-context", "sections": [{ "name": "charter:standing", "text": "same standing charter" }] } } },
+  { "type": "tool/call", "seq": 3, "data": { "name": "charter_read", "turn": 1, "step": 1, "callId": "read-1", "arguments": "{\"view\":\"standing\"}" } },
+  { "type": "tool/result", "seq": 4, "data": { "turn": 1, "step": 1, "message": { "toolCallId": "read-1", "content": [{ "type": "text", "text": "{\"items\":[]}" }] } } },
+  { "type": "tool/call", "seq": 5, "data": { "name": "charter_propose", "turn": 1, "step": 2, "callId": "propose-1", "arguments": "{\"items\":[]}" } },
+  { "type": "tool/result", "seq": 6, "data": { "turn": 1, "step": 2, "message": { "toolCallId": "propose-1", "content": [{ "type": "text", "text": "charter_propose requires must reference current active deliverables: D1, item-missing" }] } } }
+]

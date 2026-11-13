@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { summarizeCharterRead, summarizeRuntimeSnapshots, summarizeTraffic } from '../../scripts/verify/traffic-checks.mjs'
+import duplicateFixture from '../fixtures/traffic-duplicate.json' with { type: 'json' }
 
 function runtime(seq: number, charter: string, text = `runtime ${seq}`): Record<string, unknown> {
   return {
@@ -216,5 +217,17 @@ describe('rc.6 traffic checks', () => {
     expect(report.paired).toBe(1)
     expect(report.resultBytes).toBe(2)
     expect(report.ambiguous).toBe(1)
+  })
+})
+
+describe('traffic duplicate fixture', () => {
+  it('reports identical charter surfaces and propose rejection categories', () => {
+    const report = summarizeTraffic(duplicateFixture)
+    expect(report.runtime.activeSurface.snapshots).toBe(2)
+    expect(report.runtime.activeCharterSurfaces).toHaveLength(2)
+    expect(new Set(report.runtime.activeCharterSurfaces.map((surface: { digest: string }) => surface.digest)).size).toBe(1)
+    expect(report.charterPropose.rejected).toBe(1)
+    expect(report.charterPropose.displayKeyRejects).toBe(1)
+    expect(report.charterPropose.unknownIdRejects).toBe(1)
   })
 })
