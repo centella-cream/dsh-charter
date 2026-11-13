@@ -88,6 +88,9 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 
 - 最终构建专项证据（2026-11-13）：从 `w6-final` 在 1440 重采 forced-colors、reduced-motion 与 page-scale-2 截图；Pane 已挂载、无横向溢出、3 个 tabs，媒体模拟命中。证据：`.tmp/gui-acceptance/2026-11-13/final-special/`。page-scale-2 是缩放代理，不等于完整 200% 文本布局、键盘或 AT 走查。
 
+
+- 机械并排对照（2026-11-13）：`.tmp/gui-acceptance/2026-11-13/side-by-side/` 下用冻结稿与 `w6-final` 构建合成了 dirty/graph 两张对照图；这是参考材料，不等于人工并排评审，empty/applied/conflict 截图仍缺。
+
 - 十版本源码矩阵（2026-11-12）：全部声明版本 `0.1.7-rc.2` … `0.2.2-rc.2` 通过 typecheck、build 与测试；
   因 rc.2 仍在 pnpm 24 小时 `minimumReleaseAge` 窗口内，矩阵以 `--allow-new-release` 运行；已生成并跟踪 rc.2
   的兼容 lockfile。证据：`.tmp/compat-matrix-0.3.0.json`。
