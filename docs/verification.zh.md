@@ -68,6 +68,11 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 - 隔离 profile 证据：当前树的 WIP artifact 曾安装到 `DSH_HOME=/tmp/dsh-w4-home`，安装后 `lib/client.js`
   hash 与仓库 build 一致；该开发包曾命名为 `dsh-charter-0.2.2.tgz`，因与已发布不可变 0.2.2 的
   artifact/digest 冲突，**审查后已删除**。今后 dev pack 必须先 bump 版本（如 `0.3.0`）再打包。
+- 正式发布（2026-11-13）：候选 run `43360673386`，producer commit
+  `0613ead1ffbf73b47c54a767aa09c3c5d257bf32`；release commit `4331cbc21f46be910e74e7b65c6a76bffcbebb88`；
+  提升 run `43361855799`。已发布 artifact `dsh-charter-0.3.0.tgz`，SHA-256
+  `31daf17dbc823837c1b0c1ba7bc1033444db1059a2f2cd6f1a481f8d330b5d78`；npm `latest`/`next` 均为 `0.3.0`，
+  GitHub Release `v0.3.0` 已公开且不可变。安装以该发布 artifact 取代本地 `w6-final` 开发包。
 - 本地验收部署（2026-11-12）：W6 验收构建为 `dist/dsh-charter-0.3.0-w6-final.tgz`
   （SHA-256 `ab74591c…`，client `986f8403…`）。已安装到本地 `web` 与 `desktop` profile，包版本 `0.3.0`，
   `engines.dsh` 为有界 0.2 线范围。另按用户要求恢复 Pane 页头版本 chip（`v0.3.0`）。

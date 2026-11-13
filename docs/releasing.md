@@ -12,8 +12,8 @@ tagging.
 
 ## Current state (2026-11-13)
 
-- **Publishing:** `0.3.0` — GUI redesign; candidate is built by `release-candidate.yml` and promoted only by
-  `release-promote.yml`.
+- **Published:** `0.3.0` — npm `latest`/`next`, GitHub Release `v0.3.0`; exact artifact
+  `dsh-charter-0.3.0.tgz`, SHA-256 `31daf17dbc823837c1b0c1ba7bc1033444db1059a2f2cd6f1a481f8d330b5d78`.
 - **Previous release:** `0.2.2` — npm `latest`/`next`, GitHub Release `v0.2.2`.
 - **Earlier release:** `0.2.1`.
 - **Post-release diagnostics:** real-model compaction and 512-item core performance both passed.

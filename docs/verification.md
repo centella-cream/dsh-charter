@@ -92,6 +92,11 @@ and the remaining full-design gates must be recorded separately before declaring
   `DSH_HOME=/tmp/dsh-w4-home` and its `lib/client.js` hash matched the repo build; the dev tarball named
   `dsh-charter-0.2.2.tgz` was **deleted** after review because it collided with the published immutable 0.2.2
   artifact/digest. Future dev packs must bump the version (e.g. `0.3.0`) before packing.
+- Release publication (2026-11-13): candidate run `43360673386` at producer commit
+  `0613ead1ffbf73b47c54a767aa09c3c5d257bf32`; release commit `4331cbc21f46be910e74e7b65c6a76bffcbebb88`; promotion
+  run `43361855799`. Published artifact `dsh-charter-0.3.0.tgz` SHA-256
+  `31daf17dbc823837c1b0c1ba7bc1033444db1059a2f2cd6f1a481f8d330b5d78`; npm `latest`/`next` both `0.3.0`, GitHub
+  Release `v0.3.0` public and immutable. This supersedes the local `w6-final` development artifact for installation.
 - Local acceptance deployment (2026-11-12): the W6 acceptance build is
   `dist/dsh-charter-0.3.0-w6-final.tgz` (SHA-256 `ab74591c…`, client `986f8403…`). It is installed in both local
   `web` and `desktop` profiles, with the bounded `engines.dsh` range and package version `0.3.0`. Also updated:

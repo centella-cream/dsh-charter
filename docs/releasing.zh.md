@@ -11,8 +11,8 @@ tag、不删除已发布 Release、不在打 tag 后重建字节。
 
 ## 当前状态（2026-11-13）
 
-- **发布中：** `0.3.0` — GUI 重构版本；候选由 `release-candidate.yml` 构建，只能由
-  `release-promote.yml` 提升。
+- **已发布：** `0.3.0` — npm `latest`/`next`，GitHub Release `v0.3.0`；精确产物
+  `dsh-charter-0.3.0.tgz`，SHA-256 `31daf17dbc823837c1b0c1ba7bc1033444db1059a2f2cd6f1a481f8d330b5d78`。
 - **上一版本：** `0.2.2` — npm `latest`/`next`，GitHub Release `v0.2.2`。
 - **更早版本：** `0.2.1`。
 - **发布后诊断：** 真实模型 compaction 和 512 条 core 性能均已通过。
