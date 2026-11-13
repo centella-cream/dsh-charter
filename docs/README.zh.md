@@ -48,9 +48,9 @@
 | 文档 | 状态 | 版本范围 | 说明 |
 | --- | --- | --- | --- |
 | [design/charter-design-v1.md](design/charter-design-v1.md) | Active | 0.1 核心；不变量适用于 0.2 | Charter 核心不变量与 v1 产品基线。 |
-| [design/charter-workspace-v2.zh.md](design/charter-workspace-v2.zh.md) | Active | 0.2.0 / 0.3.0 | 工作区、提案时间线、依赖；专题范围。 |
-| [design/charter-dependency-graph-v1.zh.md](design/charter-dependency-graph-v1.zh.md) | Active | 0.2.2 | 客户端依赖关系图形视图；源码已在 0.2.2 落地，真实浏览器/AT 与 W0-1/2/3 门禁证据仍待完成。 |
-| [design/charter-gui-v1.zh.md](design/charter-gui-v1.zh.md) | Active | 0.3.0 | 全栏目 GUI 全面重构：设计系统、IA/路由、Change Set 合同、Pane/store 拆分、证据门禁；视觉语言已冻结（文档感）：[design/mockups/](design/mockups/README.md)。 |
+| [design/charter-workspace-v2.zh.md](design/charter-workspace-v2.zh.md) | Active | 0.2.0 / 0.3.0 / 0.3.1 | 工作区、提案时间线、依赖；专题范围。 |
+| [design/charter-dependency-graph-v1.zh.md](design/charter-dependency-graph-v1.zh.md) | Active | 0.2.2 / 0.3.1 | 客户端依赖关系图形视图；源码已在 0.2.2 落地，真实浏览器/AT 与 W0-1/2/3 门禁证据仍待完成。 |
+| [design/charter-gui-v1.zh.md](design/charter-gui-v1.zh.md) | Active | 0.3.0 / 0.3.1 | 全栏目 GUI 全面重构：设计系统、IA/路由、Change Set 合同、Pane/store 拆分、证据门禁；视觉语言已冻结（文档感）：[design/mockups/](design/mockups/README.md)。 |
 | [design/version-roadmap.md](design/version-roadmap.md) | Active | 全版本线 | 范围与版本权威；中文为 normative。 |
 | [design/compatibility.md](design/compatibility.md) | Active | 已声明 DSH 版本 | 兼容声明与矩阵。 |
 | [history/2026-10-19-charter-design-v1-review.md](history/2026-10-19-charter-design-v1-review.md) | Historical | 0.1 | 冻结的 v1 设计评审。 |
