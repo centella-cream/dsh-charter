@@ -75,6 +75,24 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
   提升 run `43361855799`。已发布 artifact `dsh-charter-0.3.0.tgz`，SHA-256
   `31daf17dbc823837c1b0c1ba7bc1033444db1059a2f2cd6f1a481f8d330b5d78`；npm `latest`/`next` 均为 `0.3.0`，
   GitHub Release `v0.3.0` 已公开且不可变。安装以该发布 artifact 取代本地 `w6-final` 开发包。
+- 0.3.1 GUI 收敛候选（2026-11-13）：`npm run check` 41 文件 / **499 测试** PASS；
+  token 覆盖 41 static + 1 dynamic、10 个声明 DSH 版本 PASS。共享 standing-envelope 构造函数由 Host 与
+  Diagnostics 共用；64 个交付物、生产长度 id 的 fixture 证明 id 开销恰为 49 B/交付物且 envelope 不超过 32 KiB。
+- 依赖图浏览器审计（2026-11-13，Chromium 1440×1000，合成 applied session）：泳道标题、5 个箭头 marker、
+  230×44 px 沿边命中 capsule、`max-height: none`；860/900/1000/1100/1200/1440 与 200% 页面缩放均无横向
+  溢出。1100 视口下 app shell 内容容器为 813 px，低于 880 px 折叠阈值，图形区保持折叠但语义列表可用；
+  记录为布局观察，不宣称 W0-1 双栏通过。真实 VoiceOver/AT 仍是人工门禁。
+- 流量取证（2026-11-13）：`traffic-check` 增加 `charter_propose` 调用/拒绝统计、display-key/unknown-id 分类
+  和 active charter surface hash；`traffic-diff` 对比前后 JSON 基线。纯本地只读，无运行时埋点/上报。
+- Diagnostics envelope UI（2026-11-13）：显示精确估算字节、32 KiB cap、条目/交付物数、`maxPromptBytes`、
+  id 开销和 80%/超限三态。
+- 0.3.1 README 截图由精确本地构建注入运行中的 Web app 后重采：
+  `docs/assets/charter-pane-0.3.1.png`、`charter-pane-0.3.1.zh.png`、`charter-graph-0.3.1.zh.png`。
+- 本地验收 artifact（2026-11-13）：`dist/dsh-charter-0.3.1.tgz` SHA-256
+  `6920b23a8e86a11321976b745c4d4feb722e096a96e5130b96813bd521f2df3b`；exact-artifact package smoke 与 packed
+  recovery smoke PASS。`dist/dsh-charter-0.3.1-local.tgz`（同一字节）已安装到本地 `web` 与 `desktop` profile；
+  两端 client 均为 `f7700f02…`。Host 版本 chip 在干净重启 Host 后更新。
+- 0.3.1 尚未发布；人工验收前不构造 candidate/promotion 证据。
 - 本地验收部署（2026-11-12）：W6 验收构建为 `dist/dsh-charter-0.3.0-w6-final.tgz`
   （SHA-256 `ab74591c…`，client `986f8403…`）。已安装到本地 `web` 与 `desktop` profile，包版本 `0.3.0`，
   `engines.dsh` 为有界 0.2 线范围。另按用户要求恢复 Pane 页头版本 chip（`v0.3.0`）。

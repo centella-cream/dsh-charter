@@ -3,10 +3,10 @@
 English | [中文](verification.zh.md)
 
 > **Status:** Active — current operating record.
-> **Version scope:** `0.2.2` released 2026-11-11.
-> **Baseline:** 2026-11-11
+> **Version scope:** `0.3.1` development candidate (0.3.0 published 2026-11-13).
+> **Baseline:** 2026-11-13
 
-Verification date: 2026-11-11. Current source version: `0.2.2` (published 2026-11-11). This is the current evidence record; historical per-commit narratives live in Git
+Verification date: 2026-11-13. Current source version: `0.3.1` development candidate; latest published release is `0.3.0`. This is the current evidence record; historical per-commit narratives live in Git
 history and the Changelog. Temporary directories, profiles, tarballs, and fetched HTML live under `.tmp/` and are
 excluded from the published package.
 
@@ -98,6 +98,28 @@ and the remaining full-design gates must be recorded separately before declaring
   run `43361855799`. Published artifact `dsh-charter-0.3.0.tgz` SHA-256
   `31daf17dbc823837c1b0c1ba7bc1033444db1059a2f2cd6f1a481f8d330b5d78`; npm `latest`/`next` both `0.3.0`, GitHub
   Release `v0.3.0` public and immutable. This supersedes the local `w6-final` development artifact for installation.
+- 0.3.1 GUI convergence candidate (2026-11-13): `npm run check` 41 files / **499 tests** PASS;
+  token coverage 41 static + 1 dynamic over 10 declared DSH versions PASS. Shared standing-envelope builder
+  (`src/core/standing-envelope.ts`) is used by both Host and Diagnostics; a 64-deliverable fixture with
+  production-length ids proves the id cost is exactly 49 B/deliverable and the envelope stays under 32 KiB.
+- Graph browser audit (2026-11-13, Chromium 1440×1000, synthetic applied session): lane headings, 5 arrow
+  markers, a 230×44 px edge hit capsule, `max-height: none`, and no horizontal overflow at 860/900/1000/1100/1200/1440
+  or at 200% page scale. At 1100 the app shell's content container is 813 px, below the 880 px graph-fold
+  threshold, so the graph stays folded while the semantic list remains available; recorded as a layout
+  observation, not a two-column W0-1 pass. Real VoiceOver/AT remains a manual gate.
+- Traffic forensics (2026-11-13): `traffic-check` now counts `charter_propose` calls/rejections and classifies
+  raw rejection values as display-key vs unknown-id, and reports active charter-surface hashes; `traffic-diff`
+  compares before/after JSON baselines. This is local, read-only tooling; no runtime telemetry or upload exists.
+- Diagnostics envelope UI (2026-11-13): shows exact estimated bytes, 32 KiB cap, item/deliverable counts,
+  `maxPromptBytes`, id overhead, and 80%/over-cap states. Screenshot:
+  `.tmp/gui-acceptance/2026-11-13/diagnostics-envelope-031.png`.
+- 0.3.1 README screenshots were recaptured from the exact local build injected into the running Web app:
+  `docs/assets/charter-pane-0.3.1.png`, `charter-pane-0.3.1.zh.png`, `charter-graph-0.3.1.zh.png`.
+- Local acceptance artifact (2026-11-13): `dist/dsh-charter-0.3.1.tgz` SHA-256
+  `6920b23a8e86a11321976b745c4d4feb722e096a96e5130b96813bd521f2df3b`; exact-artifact package smoke and packed
+  recovery smoke PASS. `dist/dsh-charter-0.3.1-local.tgz` (same bytes) is installed in local `web` and `desktop`
+  profiles; both resolve client `f7700f02…`. The Host version chip updates after a clean Host restart.
+- 0.3.1 is not published; candidate/promotion evidence is intentionally absent until human acceptance.
 - Local acceptance deployment (2026-11-12): the W6 acceptance build is
   `dist/dsh-charter-0.3.0-w6-final.tgz` (SHA-256 `ab74591c…`, client `986f8403…`). It is installed in both local
   `web` and `desktop` profiles, with the bounded `engines.dsh` range and package version `0.3.0`. Also updated:

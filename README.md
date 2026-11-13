@@ -4,7 +4,7 @@
 [![GitHub](https://img.shields.io/badge/GitHub-centella--cream%2Fdsh--charter-181717?logo=github)](https://github.com/centella-cream/dsh-charter)
 [![DSH](https://img.shields.io/badge/DSH-10%20verified%20versions-4b6bfb)](docs/design/compatibility.md)
 [![Node](https://img.shields.io/badge/node-%5E22.19%20%7C%7C%20%3E%3D24-339933)](package.json)
-[![Status: 0.3.0](https://img.shields.io/badge/status-0.3.0-brightgreen)](#status)
+[![Status: 0.3.1](https://img.shields.io/badge/status-0.3.1-brightgreen)](#status)
 
 English | [中文](README.zh.md)
 
@@ -14,15 +14,15 @@ English | [中文](README.zh.md)
 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). Goals, hard constraints,
 deliverables, evidence, and dependency relationships survive compaction and remain visible and editable.
 
-![Charter Pane in the 0.3.0 document-feel layout](docs/assets/charter-pane-0.3.0.png)
+![Charter Pane in the 0.3.1 document-feel layout](docs/assets/charter-pane-0.3.1.png)
 
-> The **0.3.0** Pane in a local Web profile: underline area tabs, a 720px document column, aligned document
+> The **0.3.1** Pane in a local Web profile: underline area tabs, a 720px document column, aligned document
 > rows, and a compact execution-path disclosure. Screenshot uses synthetic demo values only.
 
-![Dependency graph in the 0.3.0 Pane](docs/assets/charter-graph-0.3.0.zh.png)
+![Dependency graph in the 0.3.1 Pane](docs/assets/charter-graph-0.3.1.zh.png)
 
-> The execution-path dependency graph: fixed-px nodes, three-layer node anatomy, status language, and a static
-> edge legend. The semantic list remains the authoritative surface.
+> The execution-path dependency graph: lane headings, directional arrows, path-sized edge hit targets, and a
+> state/type legend. The semantic list remains the authoritative surface.
 
 ## Contents
 
@@ -44,14 +44,15 @@ deliverables, evidence, and dependency relationships survive compaction and rema
 
 ## Status
 
-- **Current release:** `0.3.0` — the GUI redesign release. It ships the frozen document-feel Pane across
+- **Current development candidate:** `0.3.1` — the GUI convergence release. It keeps the frozen document-feel Pane and closes
+  the dependency-graph audit and standing-envelope observability gaps. It ships the document-feel Pane across
   Workspace, Review Center, and Diagnostics; the dependency graph; the bounded DSH compatibility declaration;
-  and the Host tool fix that exposes deliverable ids to `charter_propose.requires`.
+  and the Host tool fix that exposes deliverable ids to `charter_propose.requires`. **Not published yet;** latest published release is `0.3.0`.
 - **Previous release:** `0.2.2` — dependency-graph workspace view, compact dependency list, and explicit
   dependency-conflict confirmation.
 - **Earlier release:** `0.2.1`; **primary DSH baseline:** `0.2.2-rc.2`; ten declared DSH versions are
   source-matrix verified.
-- Versioning from `0.2.0` onward uses plain increments (`0.2.0`, `0.2.1`, `0.2.2`, `0.3.0`), never an `rc`
+- Versioning from `0.2.0` onward uses plain increments (`0.2.0`, `0.2.1`, `0.2.2`, `0.3.0`, `0.3.1`), never an `rc`
   suffix.
 
 ### 0.3 headline: document-feel Pane
@@ -67,7 +68,16 @@ deliverables, evidence, and dependency relationships survive compaction and rema
 - **The graph is a real view, not a second authority.** The execution-path disclosure renders a px-geometry
   graph with fixed 184px nodes, two-line truncation, status anatomy, edge states, and a compact inspector; the
   semantic list remains authoritative.
-- **Version visible.** The Pane header carries the approved `v0.3.0` chip, revision, and prompt meter together.
+- **Version visible.** The Pane header carries the current `v0.3.1` chip, revision, and prompt meter together.
+
+### 0.3.1 convergence
+
+- **Graph audit:** lane headings, directional SVG arrows, path-sized 44px edge hit targets, a dot-dash history
+  line, an adaptive-height canvas, and removal of the unused graph `ops` input.
+- **Standing envelope warning:** Diagnostics estimates the exact `charter_read standing` result against the
+  32 KiB cap, with `<80%` / `>=80%` / over-cap states and the included id overhead.
+- **Traffic forensics:** the local `traffic-check` reports `charter_propose` rejection categories and active
+  charter-surface hashes; `traffic-diff` compares before/after baselines. No runtime telemetry or upload is added.
 
 ### Other 0.3 capabilities
 
@@ -182,17 +192,17 @@ storage.
 
 ## Install
 
-The latest public release is `0.3.0`. Install the exact version for a reproducible profile:
+The latest published release is `0.3.0`:
 
 ```bash
 dsh plugin --profile web add dsh-charter@0.3.0
 ```
 
-For air-gapped machines or exact-artifact verification, install the published tarball:
+The `0.3.1` development candidate is not published. Build/accept it from the working tree:
 
 ```bash
-npm pack dsh-charter@0.3.0
-dsh plugin --profile web add ./dsh-charter-0.3.0.tgz
+npm pack
+dsh plugin --profile web add ./dsh-charter-0.3.1.tgz
 ```
 
 For Desktop, use **Desktop → Plugins → Install/Update**, or import the same local tarball if your Desktop build

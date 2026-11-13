@@ -3,4 +3,4 @@
  * bundle carries the value; `tests/version.spec.ts` fails if it drifts from
  * `package.json`.
  */
-export const CHARTER_VERSION = '0.3.0'
+export const CHARTER_VERSION = '0.3.1'

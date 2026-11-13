@@ -5,6 +5,34 @@ English | [中文](CHANGELOG.zh.md)
 All notable changes to `dsh-charter` are recorded here. The project follows a pre-1.0 version line while the
 DSH plugin ABI is still moving.
 
+## 0.3.1 — 2026-11-13
+
+GUI convergence patch for the dependency graph, standing-envelope observability, and local traffic forensics.
+No record-schema, Remote-wire, or prompt-projection change.
+
+### Added
+
+- Graph lane headings for execution/candidate/history, directional SVG arrows, a fourth history line style, and
+  path-sized 44px edge hit targets.
+- Diagnostics standing-envelope estimate: exact `charter_read standing` bytes against the 32 KiB cap, item and
+  deliverable counts, `maxPromptBytes`, id overhead, and `<80%` / `>=80%` / over-cap states.
+- `traffic-check` `charter_propose` call/rejection counts with display-key vs unknown-id classification, active
+  charter-surface hashes, and a `traffic-diff` baseline comparator. Local diagnostics only; no telemetry.
+
+### Changed
+
+- Removed the unused `BuildRelationGraphInput.ops` input and the graph viewport's fixed `max-height`; the graph
+  canvas grows with its layout.
+- The frozen graph mockup/spec now documents lane headings, arrows, history line style, and the 44px edge hit
+  contract.
+
+### Verification
+
+- `npm run check`: 41 files / **499 tests** PASS; ten-version token coverage PASS.
+- Browser audit covers lane headings, arrow markers, 44px edge hit targets, adaptive viewport, no horizontal
+  overflow at 860–1440, and 200% page scale; real AT/VoiceOver remains a separate manual gate.
+- `verify:ui-metrics -- --gate=final` and the 0.3.1 source gates run on the final tree.
+
 ## 0.3.0 — 2026-11-13
 
 Document-feel GUI release across Workspace, Review Center, and Diagnostics & Maintenance. No record-schema,

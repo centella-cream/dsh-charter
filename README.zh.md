@@ -4,7 +4,7 @@
 [![GitHub](https://img.shields.io/badge/GitHub-centella--cream%2Fdsh--charter-181717?logo=github)](https://github.com/centella-cream/dsh-charter)
 [![DSH](https://img.shields.io/badge/DSH-10%20verified%20versions-4b6bfb)](docs/design/compatibility.zh.md)
 [![Node](https://img.shields.io/badge/node-%5E22.19%20%7C%7C%20%3E%3D24-339933)](package.json)
-[![Status: 0.3.0](https://img.shields.io/badge/status-0.3.0-brightgreen)](#状态)
+[![Status: 0.3.1](https://img.shields.io/badge/status-0.3.1-brightgreen)](#状态)
 
 [English](README.md) | 中文
 
@@ -13,12 +13,12 @@
 `dsh-charter` 是 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的持久化、用户所有的
 会话契约插件。目标、硬约束、交付物、证据和依赖关系在上下文压缩后仍然保留，并且始终可查看、可编辑。
 
-![0.3.0 文档感布局中的会话契约页](docs/assets/charter-pane-0.3.0.zh.png)
+![0.3.1 文档感布局中的会话契约页](docs/assets/charter-pane-0.3.1.zh.png)
 
-> 本地 Web profile 中 **0.3.0** Pane：顶部下划线 tabs、720px 文档列、对齐的文档行和可折叠执行路径。
+> 本地 Web profile 中 **0.3.1** Pane：顶部下划线 tabs、720px 文档列、对齐的文档行和可折叠执行路径。
 > 截图仅使用合成演示数据。
 
-![0.3.0 Pane 中的依赖关系图](docs/assets/charter-graph-0.3.0.zh.png)
+![0.3.1 Pane 中的依赖关系图](docs/assets/charter-graph-0.3.1.zh.png)
 
 > 执行路径中的依赖关系图：固定 px 节点、三层节点解剖、状态语言和静态边 legend；语义列表始终是权威操作面。
 
@@ -42,12 +42,12 @@
 
 ## 状态
 
-- **当前版本：**`0.3.0` — GUI 重构版本。Workspace、Review Center、Diagnostics & Maintenance 统一到冻结的
-  文档感 Pane；包含依赖关系图、有界 DSH 兼容声明，以及让 `charter_propose.requires` 可用交付物 id 的
-  Host 工具修复。
+- **当前开发候选：**`0.3.1` — GUI 收敛版本。保留冻结的文档感 Pane，并关闭依赖图审计和 standing envelope 可观测性缺口。
+  包含文档感 Pane、依赖关系图、有界 DSH 兼容声明，以及让 `charter_propose.requires` 可用交付物 id 的
+  Host 工具修复。**尚未发布**；最新已发布版本为 `0.3.0`。
 - **上一版本：**`0.2.2` — 依赖关系图形视图、紧凑依赖列表和依赖冲突二次确认。
 - **更早版本：**`0.2.1`；**主要 DSH 基线：**`0.2.2-rc.2`；十个声明版本通过源码矩阵验证。
-- 从 `0.2.0` 起版本号使用普通递增（`0.2.0`、`0.2.1`、`0.2.2`、`0.3.0`），不再使用 `rc` 后缀。
+- 从 `0.2.0` 起版本号使用普通递增（`0.2.0`、`0.2.1`、`0.2.2`、`0.3.0`、`0.3.1`），不再使用 `rc` 后缀。
 
 ### 0.3 核心亮点：文档感 Pane
 
@@ -61,7 +61,16 @@
   margin note，不再套一层卡片。
 - **依赖图是增强视图，不是第二权威。** 执行路径 disclosure 内是 px 几何依赖图：固定 184px 节点、两行截断、
   状态解剖、边状态和紧凑 inspector；语义列表始终是权威操作面。
-- **版本可见。** Pane 页头同时显示已批准的 `v0.3.0` chip、revision 和 prompt meter。
+- **版本可见。** Pane 页头同时显示当前 `v0.3.1` chip、revision 和 prompt meter。
+
+### 0.3.1 收敛项
+
+- **依赖图审计：** 泳道标题、SVG 方向箭头、沿边展开的 44px 命中区、点划线历史边、自适应画布高度，并移除
+  未使用的 graph `ops` 输入。
+- **Standing envelope 预警：** Diagnostics 按 32 KiB cap 精确估算 `charter_read standing` 结果，显示
+  `<80%` / `>=80%` / 超 cap 三态，并计入 id 开销。
+- **流量取证：** 本地 `traffic-check` 增加 `charter_propose` 拒绝分类和 active charter surface hash；
+  `traffic-diff` 对比前后基线。不新增运行时埋点、不上报。
 
 ### 其他 0.3 能力
 
@@ -158,17 +167,17 @@ compaction summary 返回只读草案，不写 storage。
 
 ## 安装
 
-当前公开版本是 `0.3.0`。可复现 profile 请安装精确版本：
+最新已发布版本是 `0.3.0`：
 
 ```bash
 dsh plugin --profile web add dsh-charter@0.3.0
 ```
 
-离线机器或需要精确验证 artifact 时，安装已发布 tarball：
+`0.3.1` 开发候选尚未发布；从工作区构建并验收：
 
 ```bash
-npm pack dsh-charter@0.3.0
-dsh plugin --profile web add ./dsh-charter-0.3.0.tgz
+npm pack
+dsh plugin --profile web add ./dsh-charter-0.3.1.tgz
 ```
 
 Desktop 请使用 **Desktop → Plugins → Install/Update**；若 Desktop 构建支持本地插件导入，也可导入同一

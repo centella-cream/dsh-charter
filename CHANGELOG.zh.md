@@ -4,6 +4,31 @@
 
 记录 `dsh-charter` 的重要变更。DSH 插件 ABI 仍在演进，项目保持 pre-1.0 版本线。
 
+## 0.3.1 — 2026-11-13
+
+依赖图、standing envelope 可观测性与本地流量取证的 GUI 收敛补丁。不改变 record schema、Remote wire 或
+prompt 投影。
+
+### 新增
+
+- 依赖图新增执行/候选/历史泳道标题、SVG 方向箭头、历史点划线，以及沿边展开的 44px 命中区。
+- Diagnostics 增加 standing envelope 估算：按 32 KiB cap 精确计算 `charter_read standing` 字节，显示条目/
+  交付物数、`maxPromptBytes`、id 开销和 `<80%` / `>=80%` / 超 cap 三态。
+- `traffic-check` 增加 `charter_propose` 调用/拒绝统计与 display-key/unknown-id 分类、active charter surface
+  hash；新增 `traffic-diff` 基线对比。仅本地诊断，不上报、不埋点。
+
+### 变更
+
+- 移除未使用的 `BuildRelationGraphInput.ops` 输入，以及依赖图 viewport 的固定 `max-height`；画布随布局增长。
+- 冻结稿/规格补充泳道标题、箭头、历史线型和 44px 边命中合同。
+
+### 验证
+
+- `npm run check`：41 文件 / **499 测试** PASS；十版本 token 覆盖 PASS。
+- 浏览器审计覆盖泳道标题、箭头 marker、44px 命中区、自适应 viewport、860–1440 无横向溢出与 200% 页面
+  缩放；真实 AT/VoiceOver 仍是独立人工门禁。
+- `verify:ui-metrics -- --gate=final` 与 0.3.1 源码门禁在最终树运行。
+
 ## 0.3.0 — 2026-11-13
 
 Workspace、审阅中心、诊断与维护统一到文档感 GUI。不改变 record schema、Remote wire 或 prompt 投影。
