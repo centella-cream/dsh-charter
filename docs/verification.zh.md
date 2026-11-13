@@ -84,6 +84,10 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
   记录为布局观察，不宣称 W0-1 双栏通过。真实 VoiceOver/AT 仍是人工门禁。
 - 流量取证（2026-11-13）：`traffic-check` 增加 `charter_propose` 调用/拒绝统计、display-key/unknown-id 分类
   和 active charter surface hash；`traffic-diff` 对比前后 JSON 基线。纯本地只读，无运行时埋点/上报。
+- 旧版流量基线样本（2026-11-13）：一个 65,491 events / 234 turns 的 0.3 前会话报告 4 次 `charter_read`
+  （共 182 B）、0 次 `charter_propose`；10 份 active `charter:standing` 全部字节相同（630 B），整个 active
+  runtime 的重复率 95.3%。该样本只用于确定 0.3.x 基线，不据此断言重复由插件造成或构成回归。报告：
+  `.tmp/traffic-baseline/session-0651-0.2x.json`（本地，不随包发布）。
 - Diagnostics envelope UI（2026-11-13）：显示精确估算字节、32 KiB cap、条目/交付物数、`maxPromptBytes`、
   id 开销和 80%/超限三态。
 - 0.3.1 README 截图由精确本地构建注入运行中的 Web app 后重采：

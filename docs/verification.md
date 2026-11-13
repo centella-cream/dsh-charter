@@ -110,6 +110,11 @@ and the remaining full-design gates must be recorded separately before declaring
 - Traffic forensics (2026-11-13): `traffic-check` now counts `charter_propose` calls/rejections and classifies
   raw rejection values as display-key vs unknown-id, and reports active charter-surface hashes; `traffic-diff`
   compares before/after JSON baselines. This is local, read-only tooling; no runtime telemetry or upload exists.
+- Legacy traffic baseline sample (2026-11-13): a 65,491-event / 234-turn pre-0.3 session reports 4
+  `charter_read` calls (182 B total), 0 `charter_propose` calls, and 10 active `charter:standing` surfaces all
+  byte-identical at 630 B (whole active runtime duplicate rate 95.3%). This is a 0.2.x sample used only to shape
+  the 0.3.x baseline; it does not attribute duplicates to the plugin or claim a regression. Report:
+  `.tmp/traffic-baseline/session-0651-0.2x.json` (local, not shipped).
 - Diagnostics envelope UI (2026-11-13): shows exact estimated bytes, 32 KiB cap, item/deliverable counts,
   `maxPromptBytes`, id overhead, and 80%/over-cap states. Screenshot:
   `.tmp/gui-acceptance/2026-11-13/diagnostics-envelope-031.png`.
