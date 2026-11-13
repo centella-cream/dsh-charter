@@ -97,7 +97,7 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
   `docs/assets/charter-pane-0.3.1.png`、`charter-pane-0.3.1.zh.png`、`charter-graph-0.3.1.zh.png`。
 - 本地验收 artifact（2026-11-13）：`dist/dsh-charter-0.3.1.tgz` SHA-256
   `9f779443fd83c8e320d94d1981c18dc896d9d5905a7cc3f7dc8673f307806860`；exact-artifact package smoke 与 packed
-  recovery smoke PASS。`dist/dsh-charter-0.3.1-final.tgz`（同一字节）已安装到本地 `web` 与 `desktop` profile；
+  recovery smoke PASS。`dist/dsh-charter-0.3.1.tgz`（同一字节）已安装到本地 `web` 与 `desktop` profile；
   两端 client 均为 `fcd56a48…`。Host 版本 chip 在干净重启 Host 后更新。
 - 0.3.1 尚未发布；人工验收前不构造 candidate/promotion 证据。
 - 本地验收部署（2026-11-12）：W6 验收构建为 `dist/dsh-charter-0.3.0-w6-final.tgz`

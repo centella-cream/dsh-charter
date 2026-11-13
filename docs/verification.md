@@ -126,7 +126,7 @@ and the remaining full-design gates must be recorded separately before declaring
   `docs/assets/charter-pane-0.3.1.png`, `charter-pane-0.3.1.zh.png`, `charter-graph-0.3.1.zh.png`.
 - Local acceptance artifact (2026-11-13): `dist/dsh-charter-0.3.1.tgz` SHA-256
   `9f779443fd83c8e320d94d1981c18dc896d9d5905a7cc3f7dc8673f307806860`; exact-artifact package smoke and packed
-  recovery smoke PASS. `dist/dsh-charter-0.3.1-final.tgz` (same bytes) is installed in local `web` and `desktop`
+  recovery smoke PASS. `dist/dsh-charter-0.3.1.tgz` (same bytes) is installed in local `web` and `desktop`
   profiles; both resolve client `fcd56a48…`. The Host version chip updates after a clean Host restart.
 - 0.3.1 is not published; candidate/promotion evidence is intentionally absent until human acceptance.
 - Local acceptance deployment (2026-11-12): the W6 acceptance build is
