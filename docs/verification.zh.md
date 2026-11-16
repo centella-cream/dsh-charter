@@ -3,10 +3,10 @@
 [English](verification.md) | 中文
 
 > **状态：** Active — 当前操作记录。
-> **版本范围：** `0.2.2`，2026-11-11 已发布。
-> **基准：** 2026-11-11
+> **版本范围：** `0.3.1` 已于 2026-11-13 发布；`0.3.2` 为无障碍/证据候选。
+> **基准：** 2026-11-16
 
-验证日期：2026-11-11。当前源码版本：`0.2.2`（2026-11-11 已发布）。本文件是当前证据记录；历史逐提交的叙事保留在 Git 历史和 Changelog。临时目录、profile、
+验证日期：2026-11-16。当前源码版本：`0.3.2` 候选；最新已发布版本为 `0.3.1`。本文件是当前证据记录；历史逐提交的叙事保留在 Git 历史和 Changelog。临时目录、profile、
 tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 
 环境：macOS，Node `v22.23.1`，npm `12.0.2`，pnpm `12.3.4`。本地 DSH 开发基线：`0.2.2-rc.3`（当前 npm
@@ -22,6 +22,10 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 - 当前源码门禁：`npm run check`（最终 0.3.2 树 42 文件 / 500 测试）、token 覆盖 41 static + 1 dynamic、
   11 个声明 DSH 版本，以及 `verify:ui-metrics --gate=final`。
 - 兼容矩阵：11 个声明版本在候选证据 run `43445530821` 中验证通过。
+- 0.3.2 候选 artifact：`dist/dsh-charter-0.3.2.tgz` SHA-256
+  `9ff018d9139a39a553abe46d9bc350200f41af6f5f5e9bee9db59d44bdcdb842`（client `6ef68d25…`）；`dist/` 只保留
+  这一个候选文件名，旧的 0.3.1 同名开发包已删除，本地 profile 指向该文件。根 `SHA256SUMS` 在 0.3.2
+  release candidate 前仍记录已发布 0.3.1。exact-artifact package smoke 与 packed recovery smoke PASS。
 - 0.3.2 根字号证据：根字号 16/24/32 px 时图形画布整体缩放 1/1.5/2；实测文本无新增裁切，viewport 在 200%
   下可横向滚动。证据：`docs/assets/charter-graph-root-text-200-0.3.2.png`。
 - 真实 AT/VoiceOver、最终六状态截图、Desktop 原生窗口矩阵、W0-1/W0-2 实测和 0.3.2 candidate/promotion
@@ -31,9 +35,9 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 
 | 区域 | 当前状态 | 证据 / 下一步 |
 | --- | --- | --- |
-| A1 200% 根字号 | 已实现并实测 | 画布 scale 1/1.5/2；文本 scroll 指标不变；200% 下横向滚动 |
+| A1 200% 根字号 | 已实现并实测（CDP 强制根字号） | 画布 scale 1/1.5/2；文本 scroll 指标不变；真实浏览器字号/最小字号设置并入 A2 人工走查 |
 | A2 VoiceOver/NVDA | 未完成 | 真实 AT 走查 tabs/sheet/graph/meter/notice；不能用 AX-tree 代替 |
-| A3 六状态 + media | 未完成 | 最终构建的 empty/applied/conflict + forced-colors/reduced-motion 截图（`docs/assets/charter-state-forced-colors-0.3.2.png`、`docs/assets/charter-state-reduced-motion-0.3.2.png`） |
+| A3 六状态 + media | 部分完成 | 已采 empty/staged/applied/conflict-confirmation + forced-colors/reduced-motion；unknown/replay 待补（`docs/assets/charter-state-*-0.3.2.png`） |
 | A4 冻结稿并排 | 未完成 | 人工并排评审记录 |
 | A5 Desktop 原生窗口 | 未完成 | Electron 窗口/ABI 矩阵 |
 | A6 W0-1/W0-2 | 未完成 | px 化后的断点/栏宽与行容量实测 |
@@ -282,7 +286,7 @@ rm -rf .tmp
   `docs/assets/charter-graph-root-text-200-0.3.2.png`。
 - A3 状态/媒体证据：空/暂存/已应用/冲突确认（`docs/assets/charter-state-empty-0.3.2.png`、`docs/assets/charter-state-staged-0.3.2.png`、
   `docs/assets/charter-state-applied-0.3.2.png`、`docs/assets/charter-state-conflict-0.3.2.png`）以及 forced-colors/reduced-motion 截图（`docs/assets/charter-state-forced-colors-0.3.2.png`、`docs/assets/charter-state-reduced-motion-0.3.2.png`）；
-  已截取冲突确认态；unknown/replay 仍需最终复核。
+  已截取冲突确认态；unknown/replay 仍需最终复核。staged 截图已重采，画面不含前置编辑器或残留 bootstrap notice。
 - A6 断点：860/900/1000/1100/1200/1440 无横向溢出、无节点重叠、列表行无溢出；1100 下 graphcard
   因 app shell 内容容器窄于 880px 折叠，语义列表仍可用，记为 layout observation。
 - B：GUI 方案状态头、附录 D 对账、dependency-graph 状态、verification 当前状态、roadmap/docs index

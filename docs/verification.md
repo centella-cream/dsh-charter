@@ -24,6 +24,11 @@ Environment: macOS, Node `v22.23.1`, npm `12.0.2`, pnpm `12.3.4`. Local DSH deve
 - Source gates on the current tree: `npm run check` (42 files / 500 tests on the final 0.3.2 tree),
   token coverage 41 static + 1 dynamic over 11 declared DSH versions, and `verify:ui-metrics --gate=final`.
 - Compatibility: eleven declared DSH versions are matrix-verified in candidate evidence run `43445530821`.
+- 0.3.2 candidate artifact: `dist/dsh-charter-0.3.2.tgz` SHA-256
+  `9ff018d9139a39a553abe46d9bc350200f41af6f5f5e9bee9db59d44bdcdb842` (client `6ef68d25…`); only this
+  candidate name remains in `dist/`, the stale 0.3.1-name dev tarball was removed, and local profiles point to
+  this exact file. Root `SHA256SUMS` still records published `0.3.1` until a 0.3.2 release candidate exists.
+  Exact-artifact package smoke and packed recovery smoke PASS.
 - 0.3.2 root-text evidence: graph canvas scales as a unit at root font 16/24/32 px (scale 1/1.5/2); measured
   text has no new clipping and the viewport becomes horizontally scrollable. Evidence:
   `docs/assets/charter-graph-root-text-200-0.3.2.png`.
@@ -34,9 +39,9 @@ Environment: macOS, Node `v22.23.1`, npm `12.0.2`, pnpm `12.3.4`. Local DSH deve
 
 | Area | Current status | Evidence / next action |
 | --- | --- | --- |
-| A1 200% root text | implemented + measured | canvas scale 1/1.5/2; text scroll metrics unchanged; horizontal scroll at 200% |
+| A1 200% root text | implemented + measured (CDP-forced root font) | canvas scale 1/1.5/2; text scroll metrics unchanged; real browser font-size/min-font settings join A2 manual walk |
 | A2 VoiceOver/NVDA | open | real AT walk of tabs/sheet/graph/meter/notice; not replaced by AX-tree checks |
-| A3 six states + media | open | final-build empty/applied/conflict + forced-colors/reduced-motion capture |
+| A3 six states + media | partial | empty/staged/applied/conflict-confirmation + forced-colors/reduced-motion captured; unknown/replay pending |
 | A4 frozen mockup review | open | side-by-side human review record |
 | A5 Desktop native window | open | Electron window/ABI matrix |
 | A6 W0-1/W0-2 | open | breakpoint/column and line-capacity measurements after px geometry |
@@ -330,7 +335,7 @@ rm -rf .tmp
   new clipping; the viewport is horizontally scrollable at 200%. Evidence:
   `docs/assets/charter-graph-root-text-200-0.3.2.png`.
 - A3 state/media evidence: empty/staged/applied/conflict-confirmation captures (`docs/assets/charter-state-empty-0.3.2.png`,
-  `docs/assets/charter-state-staged-0.3.2.png`, `docs/assets/charter-state-applied-0.3.2.png`, `docs/assets/charter-state-conflict-0.3.2.png`) plus forced-colors and reduced-motion captures (`docs/assets/charter-state-forced-colors-0.3.2.png`, `docs/assets/charter-state-reduced-motion-0.3.2.png`). The conflict-confirmation state is captured; the unknown/replay state still needs a final pass.
+  `docs/assets/charter-state-staged-0.3.2.png`, `docs/assets/charter-state-applied-0.3.2.png`, `docs/assets/charter-state-conflict-0.3.2.png`) plus forced-colors and reduced-motion captures (`docs/assets/charter-state-forced-colors-0.3.2.png`, `docs/assets/charter-state-reduced-motion-0.3.2.png`). The conflict-confirmation state is captured; the unknown/replay state still needs a final pass. The staged capture was re-taken with no prerequisite editor or stale bootstrap notice visible.
 - A6 breakpoints: no horizontal page overflow, node overlap, or row overflow at 860/900/1000/1100/1200/1440;
   at 1100 the graphcard is folded because the app shell content container is below 880px, while the semantic
   list remains available — recorded as a layout observation.
