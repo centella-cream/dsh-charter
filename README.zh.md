@@ -43,12 +43,10 @@
 
 ## 状态
 
-- **当前开发候选：**`0.3.2` — 无障碍/证据收敛补丁。增加根字号图形缩放、最终构建的六状态/media 证据，并对账 0.3.x 文档门禁。**尚未发布**；最新已发布版本为 `0.3.1`。
-  包含文档感 Pane、依赖关系图、有界 DSH 兼容声明，以及让 `charter_propose.requires` 可用交付物 id 的
-  Host 工具修复。
-- **上一版本：**`0.2.2` — 依赖关系图形视图、紧凑依赖列表和依赖冲突二次确认。
-- **更早版本：**`0.2.1`；**主要 DSH 基线：**`0.2.2-rc.3`；十一个声明版本通过源码矩阵验证。
-- 从 `0.2.0` 起版本号使用普通递增（`0.2.0`、`0.2.1`、`0.2.2`、`0.3.0`、`0.3.1`），不再使用 `rc` 后缀。
+- **当前版本：**`0.3.2` — 无障碍/证据收敛补丁。增加根字号图形缩放、最终构建的状态/media 证据，并对账 0.3.x 文档门禁；人工证据缺口已在 release notes 中显式列出。
+- **上一版本：**`0.3.1` — 依赖图与 standing envelope 收敛；`0.3.0` 是更早的 GUI 重构基线。
+  **主要 DSH 基线：**`0.2.2-rc.3`；十一个声明版本通过源码矩阵验证。
+- 从 `0.2.0` 起版本号使用普通递增（`0.2.0`、`0.2.1`、`0.2.2`、`0.3.0`、`0.3.1`、`0.3.2`），不再使用 `rc` 后缀。
 
 ## 核心能力
 
@@ -178,18 +176,17 @@ compaction summary 返回只读草案，不写 storage。
 
 ## 安装
 
-最新已发布版本是 `0.3.1`。可复现 profile 请安装：
+最新版本是 `0.3.2`：
 
 ```bash
-dsh plugin --profile web add dsh-charter@0.3.1
+dsh plugin --profile web add dsh-charter@0.3.2
 ```
 
-`0.3.2` 候选尚未发布；从工作区构建并验收：
+离线机器或需要精确验证 artifact 时：
 
 ```bash
-npm pack
+npm pack dsh-charter@0.3.2
 dsh plugin --profile web add ./dsh-charter-0.3.2.tgz
-dsh plugin --profile web add ./dsh-charter-0.3.1.tgz
 ```
 
 Desktop 请使用 **Desktop → Plugins → Install/Update**；若 Desktop 构建支持本地插件导入，也可导入同一

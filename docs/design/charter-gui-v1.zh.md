@@ -847,7 +847,7 @@ URL/commit、拒绝无许可证或行为不明的包；impeccable 的 launcher �
 - [x] rail、inspector、图形工具条无原始枚举/op 类型串，全部走 locales（`changeset.*`/`deps.*`/`progress.*` 审计；`grep` 无原始状态串）。
 - [x] 区域导航为顶部下划线 tabs（nav + aria-current）；旧左侧纵向导航已移除（`charter-tabs`、`aria-current`；DOM 无 `.charter-nav`）。
 - [x] 旧版 DSH token 覆盖审计完成（2026-11-13，11 版本 / 41 静态 token / 1 动态 fallback）；兼容块为空且有门禁。
-- [x] `npm run check`、兼容矩阵、exact artifact/fresh profile 门禁通过，证据按 CI/local/manual 标注（0.3.1 candidate/promotion run）。
+- [x] `npm run check`、兼容矩阵、exact artifact/fresh profile 门禁通过，证据按 CI/local/manual 标注（0.3.2 candidate/promotion run）。
 - [x] README/README.zh、CHANGELOG、release notes、docs 索引、SHA256SUMS 同批更新；0.3.1 已 push/tag/publish。
 - [x] 0.3.0/0.3.1 发布分支、tag、npm 和 GitHub Release 已由保护流程完成；历史 tag 不可变。
 
@@ -856,7 +856,7 @@ URL/commit、拒绝无许可证或行为不明的包；impeccable 的 launcher �
 | 附录 D 项 | 状态 | 后续动作 |
 | --- | --- | --- |
 | 指标门禁、路由、单次目标、locale/token 门禁 | 已完成 | 0.3.1 回归证据 |
-| 发布元数据、tag、npm、SHA | 已完成（0.3.0/0.3.1） | 0.3.2 走同一 candidate/promotion 流程 |
+| 发布元数据、tag、npm、SHA | 已完成（0.3.0/0.3.1/0.3.2） | 0.3.2 candidate/promotion 已完成 |
 | 六状态截图、forced-colors、reduced-motion、200% | 未完成 | 0.3.2 A1/A3 |
 | 真实 VoiceOver/NVDA、W0-3 SVG 焦点 | 未完成 | 0.3.2 A2 |
 | 冻结稿人工并排、Desktop 原生窗口 | 未完成 | 0.3.2 A4/A5 |

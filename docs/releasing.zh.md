@@ -9,12 +9,12 @@
 这是当前发布清单，取代早期按 rc 编写的暂存说明。已发布的 tag、GitHub Release 和 npm 版本不可变：不移动
 tag、不删除已发布 Release、不在打 tag 后重建字节。
 
-## 当前状态（2026-11-13）
+## 当前状态（2026-11-16）
 
-- **开发候选：** `0.3.2` — 无障碍/证据收敛；未推送/未 tag/未发布。
-- **已发布：** `0.3.1` — npm `latest`/`next`，GitHub Release `v0.3.1`；精确产物
-  `dsh-charter-0.3.1.tgz`，SHA-256 `62fd230209dbf5c58aed09f0870775aa6d0d69feb4eff18aebf83f9803f28353`。
-- **上一版本：** `0.3.0` — GitHub Release `v0.3.0`。
+- **已发布：** `0.3.2` — npm `latest`/`next`，GitHub Release `v0.3.2`；精确产物
+  `dsh-charter-0.3.2.tgz`，SHA-256 `9dcb82ae34eaaeb6d266bb98f3e1f92f3a0798042ce3dc282abe9173ff79e056`。
+- **上一版本：** `0.3.1` — GitHub Release `v0.3.1`。
+- **更早版本：** `0.3.0` — GitHub Release `v0.3.0`。
 - **更早版本：** `0.2.1`。
 - **发布后诊断：** 真实模型 compaction 和 512 条 core 性能均已通过。
 - 不得手动 publish，也不得绕过受保护门禁。

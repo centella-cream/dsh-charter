@@ -3,10 +3,10 @@
 English | [中文](verification.zh.md)
 
 > **Status:** Active — current operating record.
-> **Version scope:** `0.3.1` released 2026-11-13; `0.3.2` accessibility/evidence candidate.
+> **Version scope:** `0.3.2` released 2026-11-16 as the accessibility/evidence patch; manual AT/Desktop gaps documented.
 > **Baseline:** 2026-11-16
 
-Verification date: 2026-11-16. Current source version: `0.3.2` candidate; latest published release is `0.3.1`. This is the current evidence record; historical per-commit narratives live in Git
+Verification date: 2026-11-16. Current source version: `0.3.2` released; latest published release is `0.3.2`. This is the current evidence record; historical per-commit narratives live in Git
 history and the Changelog. Temporary directories, profiles, tarballs, and fetched HTML live under `.tmp/` and are
 excluded from the published package.
 
@@ -15,25 +15,24 @@ Environment: macOS, Node `v22.23.1`, npm `12.0.2`, pnpm `12.3.4`. Local DSH deve
 
 ## 1. Current status (2026-11-16)
 
-- Latest published release: `0.3.1` (npm `latest`/`next`, GitHub Release `v0.3.1`, artifact SHA-256
-  `62fd230209dbf5c58aed09f0870775aa6d0d69feb4eff18aebf83f9803f28353`).
-- Previous releases: `0.3.0`, `0.2.2`; published tags and bytes are immutable.
-- Current source line: `0.3.2` accessibility/evidence patch (not yet published). It changes the client
+- Latest published release: `0.3.2` (npm `latest`/`next`, GitHub Release `v0.3.2`, artifact SHA-256
+  `9dcb82ae34eaaeb6d266bb98f3e1f92f3a0798042ce3dc282abe9173ff79e056`).
+- Previous releases: `0.3.1`, `0.3.0`, `0.2.2`; published tags and bytes are immutable.
+- Current source line: `0.3.2` accessibility/evidence patch (published with documented manual gaps). It changes the client
   graph presentation/readme docs only; record schema remains 2, Remote remains 18 methods, prompt projection
   is unchanged.
 - Source gates on the current tree: `npm run check` (42 files / 500 tests on the final 0.3.2 tree),
   token coverage 41 static + 1 dynamic over 11 declared DSH versions, and `verify:ui-metrics --gate=final`.
-- Compatibility: eleven declared DSH versions are matrix-verified in candidate evidence run `43445530821`.
-- 0.3.2 candidate artifact: `dist/dsh-charter-0.3.2.tgz` SHA-256
-  `9ff018d9139a39a553abe46d9bc350200f41af6f5f5e9bee9db59d44bdcdb842` (client `6ef68d25…`); only this
-  candidate name remains in `dist/`, the stale 0.3.1-name dev tarball was removed, and local profiles point to
-  this exact file. Root `SHA256SUMS` still records published `0.3.1` until a 0.3.2 release candidate exists.
+- Compatibility: eleven declared DSH versions are matrix-verified in release candidate run `43851182655`.
+- Published artifact: `dsh-charter-0.3.2.tgz` SHA-256
+  `9dcb82ae34eaaeb6d266bb98f3e1f92f3a0798042ce3dc282abe9173ff79e056` (client `6ef68d25…`); tag/GitHub
+  Release `v0.3.2` is public. Root `SHA256SUMS` matches; local professional profiles point to the same artifact.
   Exact-artifact package smoke and packed recovery smoke PASS.
 - 0.3.2 root-text evidence: graph canvas scales as a unit at root font 16/24/32 px (scale 1/1.5/2); measured
   text has no new clipping and the viewport becomes horizontally scrollable. Evidence:
   `docs/assets/charter-graph-root-text-200-0.3.2.png`.
-- Real AT/VoiceOver, final six-state screenshots, Desktop native-window matrix, W0-1/W0-2 measurements, and
-  the 0.3.2 candidate/promotion runs remain open gates. They are tracked below rather than described as done.
+- Real AT/VoiceOver, final six-state screenshots, Desktop native-window matrix, and W0-1/W0-2 measurements
+  remain known gaps. The 0.3.2 candidate/promotion completed.
 
 ### 0.3.2 residual gates
 
@@ -327,7 +326,7 @@ rm -rf .tmp
 
 `.tmp/` is excluded from Git and the npm package.
 
-## 1.3 0.3.2 accessibility/evidence candidate (2026-11-16, in progress)
+## 1.3 0.3.2 accessibility/evidence release (2026-11-16, published with known gaps)
 
 - Source: `npm run check` 42 files / **500 tests** PASS; token coverage PASS over 11 declared DSH versions;
   `verify:ui-metrics -- --gate=final` PASS; eleven-version source matrix PASS (`.tmp/compat-032-release.json`, source commit `0425a06`).

@@ -4,7 +4,7 @@
 
 记录 `dsh-charter` 的重要变更。DSH 插件 ABI 仍在演进，项目保持 pre-1.0 版本线。
 
-## 0.3.2 — 2026-11-16（开发候选）
+## 0.3.2 — 2026-11-16
 
 0.3.x 的无障碍/证据收敛补丁。不改变 record schema、Remote wire 或 prompt。
 

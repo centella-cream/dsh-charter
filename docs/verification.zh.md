@@ -3,10 +3,10 @@
 [English](verification.md) | 中文
 
 > **状态：** Active — 当前操作记录。
-> **版本范围：** `0.3.1` 已于 2026-11-13 发布；`0.3.2` 为无障碍/证据候选。
+> **版本范围：** `0.3.2` 已于 2026-11-16 发布为无障碍/证据补丁；真实 AT/Desktop 人工缺口已公开记录。
 > **基准：** 2026-11-16
 
-验证日期：2026-11-16。当前源码版本：`0.3.2` 候选；最新已发布版本为 `0.3.1`。本文件是当前证据记录；历史逐提交的叙事保留在 Git 历史和 Changelog。临时目录、profile、
+验证日期：2026-11-16。当前源码版本：`0.3.2` 已发布；最新已发布版本为 `0.3.2`。本文件是当前证据记录；历史逐提交的叙事保留在 Git 历史和 Changelog。临时目录、profile、
 tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 
 环境：macOS，Node `v22.23.1`，npm `12.0.2`，pnpm `12.3.4`。本地 DSH 开发基线：`0.2.2-rc.3`（当前 npm
@@ -14,22 +14,21 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 
 ## 1. 当前状态（2026-11-16）
 
-- 最新已发布版本：`0.3.1`（npm `latest`/`next`，GitHub Release `v0.3.1`，artifact SHA-256
-  `62fd230209dbf5c58aed09f0870775aa6d0d69feb4eff18aebf83f9803f28353`）。
-- 更早发布：`0.3.0`、`0.2.2`；已发布 tag 与字节不可变。
-- 当前源码线：`0.3.2` 无障碍/证据补丁（尚未发布）。只改客户端图形呈现与 README/文档；record schema 仍为 2，
+- 最新已发布版本：`0.3.2`（npm `latest`/`next`，GitHub Release `v0.3.2`，artifact SHA-256
+  `9dcb82ae34eaaeb6d266bb98f3e1f92f3a0798042ce3dc282abe9173ff79e056`）。
+- 更早发布：`0.3.1`、`0.3.0`、`0.2.2`；已发布 tag 与字节不可变。
+- 当前源码线：`0.3.2` 无障碍/证据补丁（已发布，人工缺口公开记录）。只改客户端图形呈现与 README/文档；record schema 仍为 2，
   Remote 仍为 18 个方法，prompt 投影未变。
 - 当前源码门禁：`npm run check`（最终 0.3.2 树 42 文件 / 500 测试）、token 覆盖 41 static + 1 dynamic、
   11 个声明 DSH 版本，以及 `verify:ui-metrics --gate=final`。
-- 兼容矩阵：11 个声明版本在候选证据 run `43445530821` 中验证通过。
-- 0.3.2 候选 artifact：`dist/dsh-charter-0.3.2.tgz` SHA-256
-  `9ff018d9139a39a553abe46d9bc350200f41af6f5f5e9bee9db59d44bdcdb842`（client `6ef68d25…`）；`dist/` 只保留
-  这一个候选文件名，旧的 0.3.1 同名开发包已删除，本地 profile 指向该文件。根 `SHA256SUMS` 在 0.3.2
-  release candidate 前仍记录已发布 0.3.1。exact-artifact package smoke 与 packed recovery smoke PASS。
+- 兼容矩阵：11 个声明版本在发布候选 run `43851182655` 中验证通过。
+- 已发布 artifact：`dsh-charter-0.3.2.tgz` SHA-256
+  `9dcb82ae34eaaeb6d266bb98f3e1f92f3a0798042ce3dc282abe9173ff79e056`（client `6ef68d25…`）；tag/GitHub
+  Release `v0.3.2` 已公开。根 `SHA256SUMS` 匹配，本地 profile 指向同一 artifact。exact-artifact package smoke
+  与 packed recovery smoke PASS。
 - 0.3.2 根字号证据：根字号 16/24/32 px 时图形画布整体缩放 1/1.5/2；实测文本无新增裁切，viewport 在 200%
   下可横向滚动。证据：`docs/assets/charter-graph-root-text-200-0.3.2.png`。
-- 真实 AT/VoiceOver、最终六状态截图、Desktop 原生窗口矩阵、W0-1/W0-2 实测和 0.3.2 candidate/promotion
-  仍未完成；这些在下方按门禁跟踪，不写成已完成。
+- 真实 AT/VoiceOver、最终六状态截图、Desktop 原生窗口矩阵、W0-1/W0-2 实测仍为已知缺口；0.3.2 candidate/promotion 已完成。
 
 ### 0.3.2 残留门禁
 
@@ -277,7 +276,7 @@ rm -rf .tmp
 
 `.tmp/` 不进入 Git 和 npm 包。
 
-## 1.3 0.3.2 无障碍/证据候选（2026-11-16，进行中）
+## 1.3 0.3.2 无障碍/证据发布（2026-11-16，带已知缺口发布）
 
 - 源码：`npm run check` 42 文件 / **500 测试** PASS；11 个声明 DSH 版本 token 覆盖 PASS；
   `verify:ui-metrics -- --gate=final` PASS；十一版本源码矩阵 PASS（`.tmp/compat-032-release.json`，source commit `0425a06`）。

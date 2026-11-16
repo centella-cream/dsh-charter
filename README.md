@@ -45,16 +45,12 @@ deliverables, evidence, and dependency relationships survive compaction and rema
 
 ## Status
 
-- **Current development candidate:** `0.3.2` — the accessibility/evidence convergence patch. It adds root-text
-  graph scaling, final-build state/media evidence, and reconciles the 0.3.x documentation gates. **Not published
-  yet;** latest published release is `0.3.1`. It ships the document-feel Pane across
-  Workspace, Review Center, and Diagnostics; the dependency graph; the bounded DSH compatibility declaration;
-  and the Host tool fix that exposes deliverable ids to `charter_propose.requires`.
-- **Previous release:** `0.2.2` — dependency-graph workspace view, compact dependency list, and explicit
-  dependency-conflict confirmation.
-- **Earlier release:** `0.2.1`; **primary DSH baseline:** `0.2.2-rc.3`; eleven declared DSH versions are
-  source-matrix verified.
-- Versioning from `0.2.0` onward uses plain increments (`0.2.0`, `0.2.1`, `0.2.2`, `0.3.0`, `0.3.1`), never an `rc`
+- **Current release:** `0.3.2` — the accessibility/evidence convergence patch. It adds root-text graph scaling,
+  final-build state/media evidence, and reconciles the 0.3.x documentation gates. Known manual evidence gaps are
+  explicitly listed in its release notes.
+- **Previous release:** `0.3.1` — dependency-graph and standing-envelope convergence; `0.3.0` is the earlier GUI
+  redesign baseline. **Primary DSH baseline:** `0.2.2-rc.3`; eleven declared DSH versions are source-matrix verified.
+- Versioning from `0.2.0` onward uses plain increments (`0.2.0`, `0.2.1`, `0.2.2`, `0.3.0`, `0.3.1`, `0.3.2`), never an `rc`
   suffix.
 
 ## Core capabilities
@@ -89,7 +85,7 @@ deliverables, evidence, and dependency relationships survive compaction and rema
   (up to 200%) so node text, edges, lanes, and hit targets stay aligned; the viewport becomes scrollable rather
   than clipping the graph.
 - **Final-build evidence:** empty, staged, applied, and conflict-confirmation states, forced-colors and
-  reduced-motion captures, plus breakpoint/scaling measurements are recorded for the 0.3.2 candidate.
+  reduced-motion captures, plus breakpoint/scaling measurements are recorded for the 0.3.2 release.
 - **Known manual gates:** real VoiceOver/NVDA and native Desktop-window evidence are not claimed by automated
   AX-tree or renderer screenshots.
 
@@ -202,18 +198,17 @@ storage.
 
 ## Install
 
-The latest published release is `0.3.1`. Install it for a reproducible profile:
+The latest release is `0.3.2`:
 
 ```bash
-dsh plugin --profile web add dsh-charter@0.3.1
+dsh plugin --profile web add dsh-charter@0.3.2
 ```
 
-The `0.3.2` candidate is not published; build/accept it from the working tree:
+For air-gapped machines or exact-artifact verification:
 
 ```bash
-npm pack
+npm pack dsh-charter@0.3.2
 dsh plugin --profile web add ./dsh-charter-0.3.2.tgz
-dsh plugin --profile web add ./dsh-charter-0.3.1.tgz
 ```
 
 For Desktop, use **Desktop → Plugins → Install/Update**, or import the same local tarball if your Desktop build
