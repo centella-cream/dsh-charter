@@ -21,7 +21,9 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
   Remote 仍为 18 个方法，prompt 投影未变。
 - 当前源码门禁：`npm run check`（最终 0.3.2 树 42 文件 / 500 测试）、token 覆盖 41 static + 1 dynamic、
   11 个声明 DSH 版本，以及 `verify:ui-metrics --gate=final`。
-- 兼容矩阵：11 个声明版本在发布候选 run `43851182655` 中验证通过。
+- 兼容矩阵：11 个声明版本在发布候选 run `43851182655` 中验证通过（producer `2d8004e`，release `7ca51a6`）。
+- 发布后在隔离 `DSH_HOME` 做 exact CLI 安装，npm 解析到 `dsh-charter@0.3.2`，client `6ef68d25…` 与已发布
+  artifact 一致。
 - 已发布 artifact：`dsh-charter-0.3.2.tgz` SHA-256
   `9dcb82ae34eaaeb6d266bb98f3e1f92f3a0798042ce3dc282abe9173ff79e056`（client `6ef68d25…`）；tag/GitHub
   Release `v0.3.2` 已公开。根 `SHA256SUMS` 匹配，本地 profile 指向同一 artifact。exact-artifact package smoke

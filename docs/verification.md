@@ -23,7 +23,10 @@ Environment: macOS, Node `v22.23.1`, npm `12.0.2`, pnpm `12.3.4`. Local DSH deve
   is unchanged.
 - Source gates on the current tree: `npm run check` (42 files / 500 tests on the final 0.3.2 tree),
   token coverage 41 static + 1 dynamic over 11 declared DSH versions, and `verify:ui-metrics --gate=final`.
-- Compatibility: eleven declared DSH versions are matrix-verified in release candidate run `43851182655`.
+- Compatibility: eleven declared DSH versions are matrix-verified in release candidate run `43851182655`
+  (producer `2d8004e`, release `7ca51a6`).
+- Post-release fresh exact CLI install in an isolated `DSH_HOME` resolved `dsh-charter@0.3.2` from npm and
+  loaded client `6ef68d25…`, matching the published artifact.
 - Published artifact: `dsh-charter-0.3.2.tgz` SHA-256
   `9dcb82ae34eaaeb6d266bb98f3e1f92f3a0798042ce3dc282abe9173ff79e056` (client `6ef68d25…`); tag/GitHub
   Release `v0.3.2` is public. Root `SHA256SUMS` matches; local professional profiles point to the same artifact.
