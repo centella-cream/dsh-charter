@@ -280,7 +280,7 @@ rm -rf .tmp
 ## 1.3 0.3.2 无障碍/证据候选（2026-11-16，进行中）
 
 - 源码：`npm run check` 42 文件 / **500 测试** PASS；11 个声明 DSH 版本 token 覆盖 PASS；
-  `verify:ui-metrics -- --gate=final` PASS；十一版本源码矩阵 PASS（`.tmp/compat-032-head.json`，source commit `8a8b79a`）。
+  `verify:ui-metrics -- --gate=final` PASS；十一版本源码矩阵 PASS（`.tmp/compat-032-release.json`，source commit `0425a06`）。
 - A1 根字号：根字号 16/24/32px 时图形画布整体 scale 1/1.5/2；节点文本 scrollWidth/clientWidth 与
   scrollHeight/clientHeight 未新增裁切；viewport 在 200% 下可横向滚动。证据：
   `docs/assets/charter-graph-root-text-200-0.3.2.png`。
