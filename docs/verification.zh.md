@@ -12,42 +12,32 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 环境：macOS，Node `v22.23.1`，npm `12.0.2`，pnpm `12.3.4`。本地 DSH 开发基线：`0.2.2-rc.3`（当前 npm
 `next`）。
 
-## 1. 当前结论
+## 1. 当前状态（2026-11-16）
 
-当前发布状态（2026-11-11）：
+- 最新已发布版本：`0.3.1`（npm `latest`/`next`，GitHub Release `v0.3.1`，artifact SHA-256
+  `62fd230209dbf5c58aed09f0870775aa6d0d69feb4eff18aebf83f9803f28353`）。
+- 更早发布：`0.3.0`、`0.2.2`；已发布 tag 与字节不可变。
+- 当前源码线：`0.3.2` 无障碍/证据补丁（尚未发布）。只改客户端图形呈现与 README/文档；record schema 仍为 2，
+  Remote 仍为 18 个方法，prompt 投影未变。
+- 当前源码门禁：`npm run check`（最终 0.3.2 树 42 文件 / 500 测试）、token 覆盖 41 static + 1 dynamic、
+  11 个声明 DSH 版本，以及 `verify:ui-metrics --gate=final`。
+- 兼容矩阵：11 个声明版本在候选证据 run `43445530821` 中验证通过。
+- 0.3.2 根字号证据：根字号 16/24/32 px 时图形画布整体缩放 1/1.5/2；实测文本无新增裁切，viewport 在 200%
+  下可横向滚动。证据：`docs/assets/charter-graph-root-text-200-0.3.2.png`。
+- 真实 AT/VoiceOver、最终六状态截图、Desktop 原生窗口矩阵、W0-1/W0-2 实测和 0.3.2 candidate/promotion
+  仍未完成；这些在下方按门禁跟踪，不写成已完成。
 
-- 已发布：`0.2.2`（npm `latest`/`next`；精确 SHA-256 `ccb094342ceda030b77c2c3555bc2838ee8a4f6ef2efe4f1ac80a9d39fca7875`）。GitHub Release `v0.2.2` 已公开且不可变。
-- `0.2.1`：上一公开版本；GitHub Release `v0.2.1` 保持不可变。
-- `0.2.0`：更早的公开版本；GitHub Release `v0.2.0` 保持不可变。
-- `0.1.0-rc.6`：更早的公开版本；使用 recovery tag `v0.1.0-rc.6-republished`。
-- 从 0.2.0 起版本号使用普通递增，不使用 `rc` 后缀。
-- 当前源码证据：0.2.2 最终树在源码提交 `f9d93c0` 上通过 37 个测试文件 / 475 个测试；九版本矩阵在该树上 475/475 通过（Node `v22.23.1` / pnpm `12.3.4`，证据 `.tmp/0.2.2-final-matrix2.json`）。
-- 发布后诊断：真实模型 compaction PASS（session `session-da7e7b0d-f0b0-49a2-8391-148b4782892c`）；512 条性能于 2026-11-06 PASS（core read/planning p95，见下）。
+### 0.3.2 残留门禁
 
-| 项目 | 结果 |
-| --- | --- |
-| TypeScript 严格检查 | 当前树通过 |
-| Vitest | 37 个测试文件 / 475 个测试通过（`npm test`，先 build） |
-| Host ESM 构建 + 浏览器 factory bundle | 通过 |
-| Remote 契约与 client smoke | 通过 |
-| 普通 package smoke | 通过 |
-| exact-artifact package smoke | 对已发布 `0.2.1` `.tgz` 字节（`d4ae14e1…`）通过，不重建 |
-| packed recovery smoke | 通过：export、删除 target、restore、receipt replay、两次 restart、健康目标拒绝、packed fault 子集 |
-| 真实 `TypertGatewayService` | 精确 artifact 在隔离的 DSH `0.2.1-rc.3` / `rc.4` 依赖图上通过 |
-| 兼容 sentinel | `0.1.7-rc.2`、`0.2.1-rc.2`、`0.2.1-rc.4`、`0.2.1-rc.5`、`0.2.2-rc.1` 通过 |
-| Fresh Web profile matrix (historical rc.6) | PASS：历史 rc.6 artifact 曾在 DSH `0.1.7-rc.2`、`0.2.0-rc.2`、`0.2.1-rc.2`、`0.2.1-rc.4`、`0.2.1-rc.5` 上安装并启动 |
-| Fresh Web（历史 0.2.2 DSH / 0.2.0 插件） | 2026-11-05 PASS：全新 `DSH_HOME` + `dsh@0.2.2-rc.1 plugin --profile web add` 安装 `dsh-charter-0.2.0.tgz`（SHA-256 `fde5531d457effc713f4423f8b46c8f0e591770e59c55e19956f000c11bdeffc`）；Web 启动、页面 HTTP 200、charter bundle HTTP 200；boot graph 含 `dsh-charter`，页面 index 含 `dsh-charter/client.js` |
-| 0.2.2 promotion | 2026-11-11 PASS：候选 run `43024720739`（C `51789db`），checksum-only C+1 `d65a4d6`，promotion run `43026165062`；npm `latest`/`next` 均为 `0.2.2`，GitHub Release `v0.2.2` 已公开并带 tarball、`SHA256SUMS`、`release-evidence.json`。 |
-| 0.2.2 精确 artifact smoke | 2026-11-11 PASS：已发布 `dsh-charter-0.2.2.tgz`（98 个文件，SHA-256 `ccb094342ceda030b77c2c3555bc2838ee8a4f6ef2efe4f1ac80a9d39fca7875`）；package smoke 在空 consumer 中安装精确字节，packed recovery smoke 的 export/restore/两次重启/故障检查全部通过。 |
-| 九版本全量 rerun | tracked `compat-matrix --versions all --allow-new-release` 通过（每版本 475/475） |
-| 未跟踪 `0.2.2-alpha.2` probe | strict-peer install fails because DSH requires Cordis ~4.0.6-alpha.1 while rc.6 pins 4.0.5; no tests run；rc.6 明确不支持 |
-| 本地 Web + Desktop profile | 0.2.0 开发 artifact 已装入本地 web/desktop profile；Desktop app 为 `0.2.2-rc.1`，真实 Electron ABI/交互仍需人工门禁 |
-| 真实浏览器恢复 | 受保护的人工 evidence gate；未自动化 |
-| 真实模型 compaction | 2026-10-22 记录 PASS；仍是人工发布门禁 |
-| 0.2.2 兼容矩阵 | 2026-11-11 PASS：源码 `f9d93c031eabfe5e44cf17e302729eb7093d7e94`，Node `v22.23.1` / pnpm `12.3.4`；九个声明 DSH 版本全部通过 typecheck、build 和 475/475 测试（`.tmp/0.2.2-final-matrix2.json`）。 |
-| 0.2.2 全新 profile 安装 | 2026-11-11 PASS：隔离 `DSH_HOME=/tmp/dsh-charter-fresh-022-home` 初始化全新 Web profile，安装精确本地 `dsh-charter-0.2.2.tgz`；`dsh web` 提供 Pane 入口（HTTP 303 token redirect）。已验证 CLI/tarball 路径；Desktop、真实 Pane 交互和中英切换仍需人工。 |
-| 0.2.2 依赖图源码 | 2026-11-11 PASS：`npm run check` 37 个文件 / 475 个测试；W0-0 原型 41/41（旧契约；无边孤立节点网格例外由 `tests/client/relation-graph.spec.ts` 的产品测试覆盖）；Web Pane 在 3 条 active + 4 条 pending 交付物的 Session 上渲染图形、候选泳道、inspector 和常驻语义列表；浏览器 console 无错误。UI 自测（2026-11-11）：三节点孤立图 + 空提示、紧凑列表、添加依赖/隐藏/显示、本地 key 前置摘要均正常，无 console 错误。W0-1/2/3 与真实 AT/人工门禁仍待完成。 |
-| 0.2.2 依赖图 bundle | 2026-11-11 以 `d362d6f` 为基线，按统一预算方法 `gzip -9 -c lib/client.js | wc -c` 实测：113,990 → 130,474 B（+16,484 B），`<40 KB` gzip 预算通过。raw 仅作诊断：`lib/client.js` 591,936 → 670,173 字节（+78,237 B），CSS output 47,230 → 55,540 B（+8,310 B）；raw 不作为预算口径。 |
+| 区域 | 当前状态 | 证据 / 下一步 |
+| --- | --- | --- |
+| A1 200% 根字号 | 已实现并实测 | 画布 scale 1/1.5/2；文本 scroll 指标不变；200% 下横向滚动 |
+| A2 VoiceOver/NVDA | 未完成 | 真实 AT 走查 tabs/sheet/graph/meter/notice；不能用 AX-tree 代替 |
+| A3 六状态 + media | 未完成 | 最终构建的 empty/applied/conflict + forced-colors/reduced-motion 截图（`docs/assets/charter-state-forced-colors-0.3.2.png`、`docs/assets/charter-state-reduced-motion-0.3.2.png`） |
+| A4 冻结稿并排 | 未完成 | 人工并排评审记录 |
+| A5 Desktop 原生窗口 | 未完成 | Electron 窗口/ABI 矩阵 |
+| A6 W0-1/W0-2 | 未完成 | px 化后的断点/栏宽与行容量实测 |
+| B1–B6 文档/治理 | 本次处理 | 状态头、附录 D 对账、verification/index/tag 清理 |
 
 ## 1.2 0.3.0 GUI 正式版本（2026-11-13 已发布）
 
@@ -282,3 +272,21 @@ rm -rf .tmp
 ```
 
 `.tmp/` 不进入 Git 和 npm 包。
+
+## 1.3 0.3.2 无障碍/证据候选（2026-11-16，进行中）
+
+- 源码：`npm run check` 42 文件 / **500 测试** PASS；11 个声明 DSH 版本 token 覆盖 PASS；
+  `verify:ui-metrics -- --gate=final` PASS；十一版本源码矩阵 PASS。
+- A1 根字号：根字号 16/24/32px 时图形画布整体 scale 1/1.5/2；节点文本 scrollWidth/clientWidth 与
+  scrollHeight/clientHeight 未新增裁切；viewport 在 200% 下可横向滚动。证据：
+  `docs/assets/charter-graph-root-text-200-0.3.2.png`。
+- A3 状态/媒体证据：空/暂存/已应用/冲突确认（`docs/assets/charter-state-empty-0.3.2.png`、`docs/assets/charter-state-staged-0.3.2.png`、
+  `docs/assets/charter-state-applied-0.3.2.png`、`docs/assets/charter-state-conflict-0.3.2.png`）以及 forced-colors/reduced-motion 截图（`docs/assets/charter-state-forced-colors-0.3.2.png`、`docs/assets/charter-state-reduced-motion-0.3.2.png`）；
+  已截取冲突确认态；unknown/replay 仍需最终复核。
+- A6 断点：860/900/1000/1100/1200/1440 无横向溢出、无节点重叠、列表行无溢出；1100 下 graphcard
+  因 app shell 内容容器窄于 880px 折叠，语义列表仍可用，记为 layout observation。
+- B：GUI 方案状态头、附录 D 对账、dependency-graph 状态、verification 当前状态、roadmap/docs index
+  pending 措辞已清理；本地已 fetch `v0.3.0`/`v0.3.1` tag。
+- A2/A4/A5 仍待人工/受环境阻塞：VoiceOver 可启动但 Apple Events/辅助功能授权缺失，不能声称真实 AT 已跑；
+  冻结稿并排签收仍是人工门禁；Desktop 原生截图被 macOS Screen Recording 权限阻塞（`screencapture` 报
+  `could not create image from display`）。未有证据前不标记完成。

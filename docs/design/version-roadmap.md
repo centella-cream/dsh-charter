@@ -6,7 +6,7 @@ English | [中文](version-roadmap.zh.md)
 >
 > **Status:** Active — version and scope authority.
 > **Version scope:** 0.1 history, the published 0.2 line, and the 0.3 GUI line and the published 0.3.1 convergence patch.
-> **Baseline:** 2026-11-13; `0.2.2` and `0.3.0` are published; `0.3.1` is the published GUI convergence patch; `0.4.0` is the next candidate line.
+> **Baseline:** 2026-11-13; `0.2.2` and `0.3.0` are published; `0.3.1` is the published GUI convergence patch; `0.3.2` is the current accessibility/evidence candidate; `0.4.0` is the next feature line.
 > **Authority:** Chinese [version-roadmap.zh.md](version-roadmap.zh.md) is normative for scope.
 > **Supersedes / Superseded by:** none / none
 

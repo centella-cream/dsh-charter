@@ -3,56 +3,44 @@
 English | [中文](verification.zh.md)
 
 > **Status:** Active — current operating record.
-> **Version scope:** `0.3.1` development candidate (0.3.0 published 2026-11-13).
-> **Baseline:** 2026-11-13
+> **Version scope:** `0.3.1` released 2026-11-13; `0.3.2` accessibility/evidence candidate.
+> **Baseline:** 2026-11-16
 
-Verification date: 2026-11-13. Current source version: `0.3.1` development candidate; latest published release is `0.3.0`. This is the current evidence record; historical per-commit narratives live in Git
+Verification date: 2026-11-16. Current source version: `0.3.2` candidate; latest published release is `0.3.1`. This is the current evidence record; historical per-commit narratives live in Git
 history and the Changelog. Temporary directories, profiles, tarballs, and fetched HTML live under `.tmp/` and are
 excluded from the published package.
 
 Environment: macOS, Node `v22.23.1`, npm `12.0.2`, pnpm `12.3.4`. Local DSH development baseline:
 `0.2.2-rc.3` (the current npm `next`).
 
-## 1. Current conclusion
+## 1. Current status (2026-11-16)
 
-Current release state (2026-11-11):
+- Latest published release: `0.3.1` (npm `latest`/`next`, GitHub Release `v0.3.1`, artifact SHA-256
+  `62fd230209dbf5c58aed09f0870775aa6d0d69feb4eff18aebf83f9803f28353`).
+- Previous releases: `0.3.0`, `0.2.2`; published tags and bytes are immutable.
+- Current source line: `0.3.2` accessibility/evidence patch (not yet published). It changes the client
+  graph presentation/readme docs only; record schema remains 2, Remote remains 18 methods, prompt projection
+  is unchanged.
+- Source gates on the current tree: `npm run check` (42 files / 500 tests on the final 0.3.2 tree),
+  token coverage 41 static + 1 dynamic over 11 declared DSH versions, and `verify:ui-metrics --gate=final`.
+- Compatibility: eleven declared DSH versions are matrix-verified in candidate evidence run `43445530821`.
+- 0.3.2 root-text evidence: graph canvas scales as a unit at root font 16/24/32 px (scale 1/1.5/2); measured
+  text has no new clipping and the viewport becomes horizontally scrollable. Evidence:
+  `docs/assets/charter-graph-root-text-200-0.3.2.png`.
+- Real AT/VoiceOver, final six-state screenshots, Desktop native-window matrix, W0-1/W0-2 measurements, and
+  the 0.3.2 candidate/promotion runs remain open gates. They are tracked below rather than described as done.
 
-- Published: `0.2.2` (npm `latest`/`next`; exact SHA-256 `ccb094342ceda030b77c2c3555bc2838ee8a4f6ef2efe4f1ac80a9d39fca7875`). GitHub Release `v0.2.2` is public and immutable.
-- `0.2.1`: previous public release; GitHub Release `v0.2.1` remains immutable.
-- `0.2.0`: earlier public release; GitHub Release `v0.2.0` remains immutable.
-- `0.1.0-rc.6`: earlier public release; recovery tag `v0.1.0-rc.6-republished`.
-- Versioning from 0.2.0 onward uses plain increments and never an `rc` suffix.
-- Current source evidence: 37 files / 475 tests on the final 0.2.2 tree at `f9d93c0`; the nine-version matrix passes 475/475 on that tree (Node `v22.23.1` / pnpm `12.3.4`, evidence `.tmp/0.2.2-final-matrix2.json`).
-- Post-release diagnostics: real-model compaction PASS (session `session-da7e7b0d-f0b0-49a2-8391-148b4782892c`); 512-item performance PASS on 2026-11-06 (core read/planning p95, see below).
+### 0.3.2 residual gates
 
-| Item | Result |
-| --- | --- |
-| Strict TypeScript check | Pass on the current tree |
-| Vitest | 37 files / 475 tests pass (`npm test`, which builds first) |
-| Host ESM build + browser factory bundle | Pass |
-| Remote contract and client smoke | Pass |
-| Normal package smoke | Pass |
-| Exact-artifact package smoke | Pass on the published `0.2.1` `.tgz` bytes (`d4ae14e1…`) from the root `SHA256SUMS`, without rebuild |
-| Packed-artifact recovery smoke | Pass: export, target removal, restore, receipt replay, two restarts, healthy-target refusal, packed fault subset |
-| Real `TypertGatewayService` | Pass on exact artifact with isolated DSH `0.2.1-rc.3` and `rc.4` graphs |
-| Compatibility sentinels | Pass on `0.1.7-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4`, `0.2.1-rc.5` |
-| 0.2.2 promotion | PASS on 2026-11-11: release candidate run `43024720739` (C `51789db`), checksum-only C+1 `d65a4d6`, promotion run `43026165062`; npm `latest`/`next` both `0.2.2`, GitHub Release `v0.2.2` public with tarball `SHA256SUMS` and `release-evidence.json`. |
-| 0.2.2 exact artifact smoke | PASS on 2026-11-11: published `dsh-charter-0.2.2.tgz` (98 files, SHA-256 `ccb094342ceda030b77c2c3555bc2838ee8a4f6ef2efe4f1ac80a9d39fca7875`); package smoke installed the exact bytes in an empty consumer and the packed recovery smoke passed all export/restore/two-restart/fault checks. |
-| Nine-version full rerun | Pass via tracked `compat-matrix --versions all --allow-new-release` (475/475 each) |
-| Fresh Web profile matrix (historical rc.6) | PASS: local rc.6 artifact (pre-withdrawal) installed and served on DSH `0.1.7-rc.2`, `0.2.0-rc.2`, `0.2.1-rc.2`, `0.2.1-rc.4`, `0.2.1-rc.5` |
-| Fresh Web profile (historical 0.2.2 DSH / 0.2.0 plugin) | PASS on 2026-11-05: fresh `DSH_HOME` + `dsh@0.2.2-rc.1 plugin --profile web add` of `dsh-charter-0.2.0.tgz` (SHA-256 `fde5531d457effc713f4423f8b46c8f0e591770e59c55e19956f000c11bdeffc`); Web boot, page HTTP 200, charter bundle HTTP 200; boot graph contains `dsh-charter` and the page index contains `dsh-charter/client.js` |
-| Untracked `0.2.2-alpha.2` / `0.2.2-alpha.3` probes | strict-peer install fails because these alpha lines require a Cordis 4.0.6 alpha graph; the 0.2.2-rc.1 line pins Cordis 4.1.0; no tests run; explicitly unsupported. |
-| 0.2.1 real Web Pane | PASS on 2026-11-06: local Web profile installed the `0.2.1` candidate artifact; Pane reports `v0.2.1`, diagnostics/recovery cache and the editable message proposal render, and the browser console is clean. |
-| 0.2.1 local human acceptance | PASS on 2026-11-06: user completed local acceptance of the 0.2.1 UI/interaction batch. |
-| 0.2.1 Desktop ABI | PASS on 2026-11-06: Desktop profile installed the exact candidate, the Electron process was restarted, and the Pane/tab ABI was confirmed. |
-| 0.2.2 compatibility matrix | PASS on 2026-11-11: source `f9d93c031eabfe5e44cf17e302729eb7093d7e94`, Node `v22.23.1` / pnpm `12.3.4`; all nine declared DSH versions passed typecheck, build, and 475/475 tests (`.tmp/0.2.2-final-matrix2.json`). |
-| 0.2.2 fresh profile install | PASS on 2026-11-11: isolated `DSH_HOME=/tmp/dsh-charter-fresh-022-home` initialized a fresh Web profile and installed the exact local `dsh-charter-0.2.2.tgz`; `dsh web` served the Pane entry (HTTP 303 token redirect). CLI/tarball path verified; Desktop, real Pane interaction, and zh/en switch remain manual. |
-| 0.2.2 dependency graph source | PASS on 2026-11-11: `npm run check` 37 files / 475 tests; W0-0 prototype 41/41 (pre-isolated-grid contract; product isolated-grid tests are in `tests/client/relation-graph.spec.ts`); Web Pane rendered the graph, candidate lane, inspector, and always-present semantic list for a session with 3 active + 4 pending deliverables; browser console clean. UI self-check on 2026-11-11: isolated three-node graph + empty hint, compact list, add-edge/hide/show, and local-key prerequisite summary all rendered without console errors. W0-1/2/3 and real AT/manual gates remain pending. |
-| 0.2.2 dependency graph bundle | Measured on 2026-11-11 against `d362d6f` with the standardized budget method `gzip -9 -c lib/client.js | wc -c`: 113,990 → 130,474 B (+16,484 B), so the `<40 KB` gzip budget passes. Raw diagnostic: `lib/client.js` 591,936 → 670,173 B (+78,237 B); raw CSS output 47,230 → 55,540 B (+8,310 B). Raw bytes are not the budget channel. |
-| Real-model compaction | PASS on 2026-11-06 for `session-da7e7b0d-f0b0-49a2-8391-148b4782892c`: latest compaction seq 32610–32614, post-compaction snapshot seq 32623, `charter_read` call/result seq 32631/32632; injected, digest match, injection-after-compaction, survival, authenticated standing read, and no-checkpoint-leak all pass. |
-| 512-item performance | PASS on 2026-11-06, local Node `22.23.1`: 512 pending items, 300 warm-ups then 30 samples; full pagination query p95 5.2 ms and 5-op Change Set planning p95 0.6 ms against the 100 ms budget. This measures the pure core read/planning path, not UI/network. |
-| Real browser diagnostics | Local manual checks recorded; not a release gate |
-| Real-model compaction | Separately recorded PASS (2026-10-22); still a manual release gate |
+| Area | Current status | Evidence / next action |
+| --- | --- | --- |
+| A1 200% root text | implemented + measured | canvas scale 1/1.5/2; text scroll metrics unchanged; horizontal scroll at 200% |
+| A2 VoiceOver/NVDA | open | real AT walk of tabs/sheet/graph/meter/notice; not replaced by AX-tree checks |
+| A3 six states + media | open | final-build empty/applied/conflict + forced-colors/reduced-motion capture |
+| A4 frozen mockup review | open | side-by-side human review record |
+| A5 Desktop native window | open | Electron window/ABI matrix |
+| A6 W0-1/W0-2 | open | breakpoint/column and line-capacity measurements after px geometry |
+| B1–B6 docs/governance | this change | status headers, appendix D reconciliation, verification/index/tag cleanup |
 
 ### 1.1 0.2.0 development acceptance
 
@@ -333,3 +321,22 @@ rm -rf .tmp
 ```
 
 `.tmp/` is excluded from Git and the npm package.
+
+## 1.3 0.3.2 accessibility/evidence candidate (2026-11-16, in progress)
+
+- Source: `npm run check` 42 files / **500 tests** PASS; token coverage PASS over 11 declared DSH versions;
+  `verify:ui-metrics -- --gate=final` PASS; eleven-version source matrix PASS.
+- A1 root text: graph canvas scales 1/1.5/2 at root font 16/24/32px; node text scroll/client metrics show no
+  new clipping; the viewport is horizontally scrollable at 200%. Evidence:
+  `docs/assets/charter-graph-root-text-200-0.3.2.png`.
+- A3 state/media evidence: empty/staged/applied/conflict-confirmation captures (`docs/assets/charter-state-empty-0.3.2.png`,
+  `docs/assets/charter-state-staged-0.3.2.png`, `docs/assets/charter-state-applied-0.3.2.png`, `docs/assets/charter-state-conflict-0.3.2.png`) plus forced-colors and reduced-motion captures (`docs/assets/charter-state-forced-colors-0.3.2.png`, `docs/assets/charter-state-reduced-motion-0.3.2.png`). The conflict-confirmation state is captured; the unknown/replay state still needs a final pass.
+- A6 breakpoints: no horizontal page overflow, node overlap, or row overflow at 860/900/1000/1100/1200/1440;
+  at 1100 the graphcard is folded because the app shell content container is below 880px, while the semantic
+  list remains available — recorded as a layout observation.
+- B: GUI design status/Appendix D reconciliation, dependency-graph status, verification current status,
+  roadmap/docs-index pending wording, and local v0.3.0/v0.3.1 tags are cleaned up.
+- A2/A4/A5 remain manual/blocked: VoiceOver launches but Apple Events/Accessibility authorization is absent, so
+  no real AT claim is made; the frozen-mockup side-by-side sign-off is still human; native Desktop capture is
+  blocked by macOS Screen Recording permission (`screencapture` reports `could not create image from display`).
+  These gates are not marked complete without evidence.
