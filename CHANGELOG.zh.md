@@ -4,6 +4,29 @@
 
 记录 `dsh-charter` 的重要变更。DSH 插件 ABI 仍在演进，项目保持 pre-1.0 版本线。
 
+## 0.3.2 — 2026-11-16（开发候选）
+
+0.3.x 的无障碍/证据收敛补丁。不改变 record schema、Remote wire 或 prompt。
+
+### 新增
+
+- 根字号图形缩放：根字号大于 16px 时，整个画布等比缩放（最多 200%），viewport 可滚动，避免节点文本新增裁切。
+- 图形 44px 命中路径的源码度量，以及 `graphTextScale` 纯函数测试。
+- 最终构建的空/暂存/已应用/冲突确认、forced-colors、reduced-motion 和断点/根字号测量证据。
+
+### 变更
+
+- 将 0.3.0 GUI 设计状态头和附录 D 与 0.3.0/0.3.1 已发布事实对账；未完成的人工门禁显式转入 0.3.2。
+- 依赖图文档转为 Active，并把真实 AT 与根字号缺口标为公开已知缺口。
+- verification 当前状态节刷新到 0.3.1/0.3.2，清理 roadmap/docs index 的 pending 措辞。
+
+### 验证
+
+- `npm run check`：42 文件 / **500 测试** PASS；11 个声明 DSH 版本 token 覆盖 PASS；
+  `verify:ui-metrics -- --gate=final` PASS。
+- 0.3.2 树的十一版本源码矩阵 PASS。
+- 仍待人工：真实 VoiceOver/NVDA、Desktop 原生窗口矩阵、冻结稿并排人工签收。
+
 ## 0.3.1 — 2026-11-13
 
 依赖图、standing envelope 可观测性与本地流量取证的 GUI 收敛补丁。不改变 record schema、Remote wire 或

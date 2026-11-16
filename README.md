@@ -4,7 +4,7 @@
 [![GitHub](https://img.shields.io/badge/GitHub-centella--cream%2Fdsh--charter-181717?logo=github)](https://github.com/centella-cream/dsh-charter)
 [![DSH](https://img.shields.io/badge/DSH-11%20verified%20versions-4b6bfb)](docs/design/compatibility.md)
 [![Node](https://img.shields.io/badge/node-%5E22.19%20%7C%7C%20%3E%3D24-339933)](package.json)
-[![Status: 0.3.1](https://img.shields.io/badge/status-0.3.1-brightgreen)](#status)
+[![Status: 0.3.2](https://img.shields.io/badge/status-0.3.2-brightgreen)](#status)
 
 English | [中文](README.zh.md)
 
@@ -45,8 +45,9 @@ deliverables, evidence, and dependency relationships survive compaction and rema
 
 ## Status
 
-- **Current release:** `0.3.1` — the GUI convergence release. It keeps the frozen document-feel Pane and closes
-  the dependency-graph audit and standing-envelope observability gaps. It ships the document-feel Pane across
+- **Current development candidate:** `0.3.2` — the accessibility/evidence convergence patch. It adds root-text
+  graph scaling, final-build state/media evidence, and reconciles the 0.3.x documentation gates. **Not published
+  yet;** latest published release is `0.3.1`. It ships the document-feel Pane across
   Workspace, Review Center, and Diagnostics; the dependency graph; the bounded DSH compatibility declaration;
   and the Host tool fix that exposes deliverable ids to `charter_propose.requires`.
 - **Previous release:** `0.2.2` — dependency-graph workspace view, compact dependency list, and explicit
@@ -81,6 +82,16 @@ deliverables, evidence, and dependency relationships survive compaction and rema
   32 KiB cap, with `<80%` / `>=80%` / over-cap states and the included id overhead.
 - **Traffic forensics:** the local `traffic-check` reports `charter_propose` rejection categories and active
   charter-surface hashes; `traffic-diff` compares before/after baselines. No runtime telemetry or upload is added.
+
+### Accessibility and evidence convergence
+
+- **Root-text graph scaling:** when the root text size is larger than 16px, the graph canvas scales as a unit
+  (up to 200%) so node text, edges, lanes, and hit targets stay aligned; the viewport becomes scrollable rather
+  than clipping the graph.
+- **Final-build evidence:** empty, staged, applied, and conflict-confirmation states, forced-colors and
+  reduced-motion captures, plus breakpoint/scaling measurements are recorded for the 0.3.2 candidate.
+- **Known manual gates:** real VoiceOver/NVDA and native Desktop-window evidence are not claimed by automated
+  AX-tree or renderer screenshots.
 
 ### Compatibility and runtime
 
@@ -191,16 +202,17 @@ storage.
 
 ## Install
 
-The latest release is `0.3.1`. Install the exact version for a reproducible profile:
+The latest published release is `0.3.1`. Install it for a reproducible profile:
 
 ```bash
 dsh plugin --profile web add dsh-charter@0.3.1
 ```
 
-For air-gapped machines or exact-artifact verification:
+The `0.3.2` candidate is not published; build/accept it from the working tree:
 
 ```bash
-npm pack dsh-charter@0.3.1
+npm pack
+dsh plugin --profile web add ./dsh-charter-0.3.2.tgz
 dsh plugin --profile web add ./dsh-charter-0.3.1.tgz
 ```
 

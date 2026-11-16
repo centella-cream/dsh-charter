@@ -5,6 +5,33 @@ English | [中文](CHANGELOG.zh.md)
 All notable changes to `dsh-charter` are recorded here. The project follows a pre-1.0 version line while the
 DSH plugin ABI is still moving.
 
+## 0.3.2 — 2026-11-16 (development candidate)
+
+Accessibility/evidence convergence patch for the 0.3.x line. No record-schema, Remote-wire, or prompt change.
+
+### Added
+
+- Root-text graph scaling: when the root font size exceeds 16px, the whole graph canvas scales as a unit
+  (capped at 200%) and the viewport becomes scrollable, avoiding new node-text clipping.
+- A source metric for the graph's 44px path hit target and a pure `graphTextScale` test.
+- Final-build evidence for empty/staged/applied/conflict-confirmation, forced-colors, reduced-motion, and
+  breakpoint/root-font measurements.
+
+### Changed
+
+- Reconciled the 0.3.0 GUI design header and Appendix D against the published 0.3.0/0.3.1 releases; carried
+  unfinished manual gates explicitly into 0.3.2.
+- Marked the dependency-graph design Active with real AT and root-text gaps as public known gaps.
+- Refreshed verification's current-status section for 0.3.1/0.3.2 and cleaned roadmap/docs-index pending wording.
+
+### Verification
+
+- `npm run check`: 42 files / **500 tests** PASS; token coverage over 11 declared DSH versions PASS;
+  `verify:ui-metrics -- --gate=final` PASS.
+- Eleven-version source matrix PASS on the 0.3.2 tree.
+- Manual gates still open: real VoiceOver/NVDA, native Desktop window matrix, and final human sign-off on the
+  frozen mockup side-by-side review.
+
 ## 0.3.1 — 2026-11-13
 
 GUI convergence patch for the dependency graph, standing-envelope observability, and local traffic forensics.

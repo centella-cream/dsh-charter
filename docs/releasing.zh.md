@@ -11,6 +11,7 @@ tag、不删除已发布 Release、不在打 tag 后重建字节。
 
 ## 当前状态（2026-11-13）
 
+- **开发候选：** `0.3.2` — 无障碍/证据收敛；未推送/未 tag/未发布。
 - **已发布：** `0.3.1` — npm `latest`/`next`，GitHub Release `v0.3.1`；精确产物
   `dsh-charter-0.3.1.tgz`，SHA-256 `62fd230209dbf5c58aed09f0870775aa6d0d69feb4eff18aebf83f9803f28353`。
 - **上一版本：** `0.3.0` — GitHub Release `v0.3.0`。

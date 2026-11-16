@@ -4,7 +4,7 @@
 [![GitHub](https://img.shields.io/badge/GitHub-centella--cream%2Fdsh--charter-181717?logo=github)](https://github.com/centella-cream/dsh-charter)
 [![DSH](https://img.shields.io/badge/DSH-11%20verified%20versions-4b6bfb)](docs/design/compatibility.zh.md)
 [![Node](https://img.shields.io/badge/node-%5E22.19%20%7C%7C%20%3E%3D24-339933)](package.json)
-[![Status: 0.3.1](https://img.shields.io/badge/status-0.3.1-brightgreen)](#状态)
+[![Status: 0.3.2](https://img.shields.io/badge/status-0.3.2-brightgreen)](#状态)
 
 [English](README.md) | 中文
 
@@ -43,7 +43,7 @@
 
 ## 状态
 
-- **当前版本：**`0.3.1` — GUI 收敛版本。保留冻结的文档感 Pane，并关闭依赖图审计和 standing envelope 可观测性缺口。
+- **当前开发候选：**`0.3.2` — 无障碍/证据收敛补丁。增加根字号图形缩放、最终构建的六状态/media 证据，并对账 0.3.x 文档门禁。**尚未发布**；最新已发布版本为 `0.3.1`。
   包含文档感 Pane、依赖关系图、有界 DSH 兼容声明，以及让 `charter_propose.requires` 可用交付物 id 的
   Host 工具修复。
 - **上一版本：**`0.2.2` — 依赖关系图形视图、紧凑依赖列表和依赖冲突二次确认。
@@ -74,6 +74,15 @@
   `<80%` / `>=80%` / 超 cap 三态，并计入 id 开销。
 - **流量取证：** 本地 `traffic-check` 增加 `charter_propose` 拒绝分类和 active charter surface hash；
   `traffic-diff` 对比前后基线。不新增运行时埋点、不上报。
+
+### 无障碍与证据收敛
+
+- **根字号图形缩放：** 根字号大于 16px 时，画布作为整体等比缩放（最多 200%），节点文本、边、泳道和命中区
+  保持对齐；viewport 改为可滚动，而不是裁切图形。
+- **最终构建证据：** 空/暂存/已应用/冲突确认状态、forced-colors 与 reduced-motion 截图，以及断点/缩放
+  测量记录在 0.3.2 候选中。
+- **仍待人工门禁：** 真实 VoiceOver/NVDA 与 Desktop 原生窗口证据；自动化 AX-tree 或 renderer 截图不计为
+  已通过。
 
 ### 兼容性与运行时
 
@@ -169,16 +178,17 @@ compaction summary 返回只读草案，不写 storage。
 
 ## 安装
 
-最新版本是 `0.3.1`。可复现 profile 请安装精确版本：
+最新已发布版本是 `0.3.1`。可复现 profile 请安装：
 
 ```bash
 dsh plugin --profile web add dsh-charter@0.3.1
 ```
 
-离线机器或需要精确验证 artifact 时：
+`0.3.2` 候选尚未发布；从工作区构建并验收：
 
 ```bash
-npm pack dsh-charter@0.3.1
+npm pack
+dsh plugin --profile web add ./dsh-charter-0.3.2.tgz
 dsh plugin --profile web add ./dsh-charter-0.3.1.tgz
 ```
 

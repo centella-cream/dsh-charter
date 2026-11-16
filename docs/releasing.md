@@ -12,6 +12,7 @@ tagging.
 
 ## Current state (2026-11-13)
 
+- **Development candidate:** `0.3.2` — accessibility/evidence convergence; not pushed/tagged/published.
 - **Published:** `0.3.1` — npm `latest`/`next`, GitHub Release `v0.3.1`; exact artifact
   `dsh-charter-0.3.1.tgz`, SHA-256 `62fd230209dbf5c58aed09f0870775aa6d0d69feb4eff18aebf83f9803f28353`.
 - **Previous release:** `0.3.0` — GitHub Release `v0.3.0`.
