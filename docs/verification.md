@@ -325,7 +325,7 @@ rm -rf .tmp
 ## 1.3 0.3.2 accessibility/evidence candidate (2026-11-16, in progress)
 
 - Source: `npm run check` 42 files / **500 tests** PASS; token coverage PASS over 11 declared DSH versions;
-  `verify:ui-metrics -- --gate=final` PASS; eleven-version source matrix PASS.
+  `verify:ui-metrics -- --gate=final` PASS; eleven-version source matrix PASS (`.tmp/compat-032-head.json`, source commit `8a8b79a`).
 - A1 root text: graph canvas scales 1/1.5/2 at root font 16/24/32px; node text scroll/client metrics show no
   new clipping; the viewport is horizontally scrollable at 200%. Evidence:
   `docs/assets/charter-graph-root-text-200-0.3.2.png`.
