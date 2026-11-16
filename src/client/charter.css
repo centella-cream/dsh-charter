@@ -4387,3 +4387,14 @@ charter-graph__help { display: none; }
 .charter-envelope__status.is-over {
   color: var(--dsw-alias-state-error-primary);
 }
+
+/* 0.3.2: root-text scaling scales the graph canvas as a unit, never clips text. */
+.charter-graph__scalebox {
+  position: relative;
+  min-width: 0;
+}
+
+.charter-graph__viewport {
+  overflow: auto;
+  overscroll-behavior: contain;
+}

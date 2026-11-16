@@ -23,6 +23,13 @@ export interface DependencyGraphProps {
 const PX_PER_EM = 18.4
 const PX_PER_EM_Y = 22
 const GRAPH_PAD = 18
+const GRAPH_BASE_ROOT_FONT_PX = 16
+
+/** Scale the whole graph canvas when the user enlarges the root text size. */
+export function graphTextScale(rootFontPx: number): number {
+  if (!Number.isFinite(rootFontPx) || rootFontPx <= 0) return 1
+  return Math.min(2, Math.max(1, rootFontPx / GRAPH_BASE_ROOT_FONT_PX))
+}
 
 function nodeName(node: PlacedNode, t: DependencyGraphProps['t']): string {
   if (node.lane === 'execution') {
@@ -131,6 +138,23 @@ export function DependencyGraph({
 
   const executionNodes = useMemo(() => layout.nodes.filter(node => node.lane === 'execution'), [layout.nodes])
   const availableNodes = useMemo(() => model.nodes.filter(node => node.lane === 'execution'), [model.nodes])
+  const [textScale, setTextScale] = useState(1)
+  useEffect(() => {
+    if (typeof document === 'undefined' || typeof window === 'undefined') return
+    const update = (): void => {
+      const px = Number.parseFloat(getComputedStyle(document.documentElement).fontSize)
+      setTextScale(graphTextScale(px))
+    }
+    update()
+    const observer = typeof MutationObserver === 'undefined' ? undefined : new MutationObserver(update)
+    observer?.observe(document.documentElement, { attributes: true, attributeFilter: ['style', 'class'] })
+    window.addEventListener('resize', update)
+    return () => {
+      observer?.disconnect()
+      window.removeEventListener('resize', update)
+    }
+  }, [])
+
   const lanes = useMemo(() => ([
     ['execution', layout.nodes.filter(node => node.lane === 'execution')],
     ['candidate', layout.nodes.filter(node => node.lane === 'candidate')],
@@ -251,6 +275,7 @@ export function DependencyGraph({
       {layout.degraded.supersedesHidden && showSupersedes && <div className="charter-notice" role="status">{t('deps.graphDegradedSupersedes')}</div>}
       {layout.degraded.isolatedTooMany && <div className="charter-notice" role="status">{t('deps.graphIsolatedTooMany')}</div>}
       {layout.degraded.depthReduced && <div className="charter-notice" role="status">{t('deps.graphDegradedDepth')}</div>}
+      {textScale > 1 && <div className="charter-notice" role="status">{t('deps.textScaleHint', { percent: Math.round(textScale * 100) })}</div>}
       {layout.degraded.hidden && !layout.degraded.isolatedTooMany && (
         <div className="charter-notice charter-notice--warning" role="status">
           {t('deps.graphTooDense', { count: layout.navigables })}
@@ -273,13 +298,21 @@ export function DependencyGraph({
             }}
           >
             <div
+              className="charter-graph__scalebox"
+              data-graph-text-scale={textScale}
+              style={{
+                width: `${(Math.max(layout.width, 1) * PX_PER_EM + GRAPH_PAD * 2) * textScale * zoom}px`,
+                height: `${Math.max(layout.height * PX_PER_EM_Y + GRAPH_PAD * 2, 360) * textScale * zoom}px`,
+              }}
+            >
+            <div
               className="charter-graph__canvas"
               role="img"
               aria-label={t('deps.graphAria')}
               style={{
                 width: `${Math.max(layout.width, 1) * PX_PER_EM + GRAPH_PAD * 2}px`,
                 height: `${Math.max(layout.height * PX_PER_EM_Y + GRAPH_PAD * 2, 360)}px`,
-                transform: `scale(${zoom})`,
+                transform: `scale(${textScale * zoom})`,
                 transformOrigin: 'top left',
               }}
             >
@@ -393,6 +426,7 @@ export function DependencyGraph({
                   onClick={() => handleActivate(edge.key)}
                 />
               ))}
+            </div>
             </div>
           </div>
           <div className="charter-graph__legend">

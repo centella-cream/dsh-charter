@@ -1,11 +1,10 @@
 # `dsh-charter` 0.3.0 GUI 全面重构方案（所有栏目统一）
 
-> **状态：** `Active` —— 0.3.0 开发范围与设计权威（W0–W6 源码实现完成，人工验收待完成）。未发布；人工验收
-> 通过前不得声称 0.3.0 可用或已发布，不得推送开发分支。
-> **版本范围：** `0.3.0`（W0–W6，所有栏目统一重构；纯客户端，不改 record/Remote/prompt/模型能力；仅做 DSH 版本声明维护，见 §2）。
+> **状态：** `Active` —— 0.3.0/0.3.1 已发布；0.3.2 无障碍与证据收敛进行中。
+> 0.3.0/0.3.1 的发布树和 tag 不可重写；0.3.2 的人工 AT、200% 根字号和截图对账完成前不发布。
+> **版本范围：** `0.3.0` / `0.3.1` 已发布；`0.3.2` 为当前纯客户端无障碍/证据补丁（不改 record/Remote/prompt/模型能力）。
 > 版本决策见 §2.1。
-> **基准：** 2026-11-12，基于已发布 `0.2.2` 发布树（client 源码最后变更 `f9d93c0`，发布证据见
-> [0.2.2 发布说明](../release-notes/0.2.2.md)）。本文所有度量均在 `main` @ `433bdce` 的工作树上重测。
+> **基准：** 2026-11-16，基于已发布的 `0.3.1` 发布树；0.3.2 证据在 `feat/0.3.2-a11y` 上采集。
 > **权威边界：** 版本范围由[版本路线](version-roadmap.zh.md)决定；产品不变量由
 > [v1 核心设计](charter-design-v1.zh.md)决定；Workspace/Proposal/依赖语义由
 > [charter-workspace-v2.zh.md](charter-workspace-v2.zh.md) §5、§6 决定。本文只细化 GUI 呈现、交互状态与验证证据；
@@ -17,8 +16,7 @@
 > record schema、迁移、Host service、Remote/wire、prompt 投影、模型工具面；DSH 兼容维护仅限版本声明，见 §2。
 > **调研快照：** 2026-11-11；宿主 DSH `0.2.2-rc.1` 的设计 token 事实与社区插件/skill 榜单见附录 A–C。
 > **评审修订：** 2026-11-11 独立评审的 4 个 P1、11 个 P2 与 2 个外围修正已全部并入（见附录 E）。
-> **执行边界：** 本地分支 `feat/0.3.0-gui`（未推送）；人工验收前不合并 `main`、不 tag/release/publish、
-> 不声称 0.3.0 可用或已发布。
+> **执行边界：** `0.3.0`/`0.3.1` 已发布且不可变；`0.3.2` 仅在本地分支开发，人工验收前不合并/不发布。
 
 ## 0. 摘要
 
@@ -563,6 +561,9 @@ canonical diff、reconcile 状态）。若 D0 选择改为内联卡片，则必�
   键盘语义与焦点。节点层在其上方，点击边不会遮挡节点；键盘仍通过图形区单 Tab + roving tab 访问。
 - **画布高度**：不设固定 `max-height`；画布随布局高度增长，窄屏仍由 disclosure 折叠；200% 页面缩放下
   由宿主滚动承载，不在图形区制造第二套固定像素视口。
+- **根字号文本缩放（0.3.2）**：当根字号大于 16px 时，整个画布按 `min(2, rootFontPx / 16)` 等比缩放，
+  节点几何、文本、边、泳道和 44px 命中路径一起缩放；viewport 在放大后允许横向滚动，语义列表仍保持
+  正常文档流。200% 根字号实测由 0.3.2 证据记录，不再把 page-scale 的证据当作根字号证据。
 - **inspector**：画布下方一行式区域（顶部发丝分隔）：选中节点 `Dn + 正文 + 进度 chip` /
   依赖与被依赖 outline chips / 暂存变更 chip / 右侧 [编辑][+ 依赖] ghost sm。不使用重面板。
 - **边界**：语义列表始终是权威操作面；<880px 图形区随 disclosure 默认折叠且不渲染画布；节点为
@@ -835,20 +836,32 @@ URL/commit、拒绝无许可证或行为不明的包；impeccable 的 launcher �
 - [x] 指标门禁全部达标（§0.1），结果记入 verification；统计口径与 `ui-metrics.mjs` 一致（`verify:ui-metrics --gate=final` 全项 PASS）。
 - [x] 目标只渲染一次；全局预算只剩 2 类表达（字段级计数保留）；Workspace ≤ 6 个兄弟块（`ui-metrics` legacy objective=0；WorkspacePage 4 个 section + notices）。
 - [x] 所有“打开/跳转”落到锚点并聚焦；无 no-op（`section-routing` 测试 + 浏览器路由证据）。
-- [ ] clean 状态无常驻操作条；dirty/replay/conflict/unknown 各自唯一呈现。
-- [ ] W0 滚动所有权运行时探针（Web/Desktop × Composer 开合 × 三种宽度）完成并冻结。
-- [ ] Change Set 按 v2 §5.7 最小合同（桌面 complementary region、窄屏 modal bottom sheet）通过键盘/焦点验收。
-- [ ] 明暗 × 中英 × 320/375/560/850/1440 × 六状态截图完成，主截图来自验收构建且使用合成数据。
-- [ ] 字体偏好 10/14/22 下不破版；内容文字跟随、UI 文字固定阶。
-- [ ] 键盘全路径 + 200% 缩放 + forced-colors + reduced-motion 通过。
-- [ ] 与冻结稿（docs/design/mockups/）并排对照评审通过：明暗 × 320/375/560/850/1440 × 六状态。
+- [x] clean 状态无常驻操作条；dirty/replay/conflict/unknown 各自唯一呈现（0.3.1 发布构建截图与 DOM 测试；六状态截图仍见 0.3.2 对账）。
+- [ ] W0 滚动所有权运行时探针（Web/Desktop × Composer 开合 × 三种宽度）完成并冻结 → **0.3.2 跟踪项 A6**。
+- [x] Change Set 按 v2 §5.7 最小合同（桌面 complementary region、窄屏 modal bottom sheet）通过键盘/焦点验收（现有 Pane 测试；真实 AT 仍见 A2）。
+- [ ] 明暗 × 中英 × 320/375/560/850/1440 × 六状态截图完成，主截图来自验收构建且使用合成数据 → **0.3.2 跟踪项 A3**。
+- [x] 字体偏好 10/14/22 下不破版；内容文字跟随、UI 文字固定阶（0.3.0/0.3.1 CDP 证据）。
+- [ ] 键盘全路径 + 200% 缩放 + forced-colors + reduced-motion 通过 → **0.3.2 跟踪项 A1/A2/A3**。
+- [ ] 与冻结稿（docs/design/mockups/）并排对照评审通过：明暗 × 320/375/560/850/1440 × 六状态 → **0.3.2 跟踪项 A4**。
 - [x] 依赖图节点 px 几何 + 正文两行截断；用户字号 10/14/22 下无文本裁切、无节点溢出（`DependencyGraph.tsx` PX_PER_EM/PX_PER_EM_Y、184px；CDP scrollWidth/scrollHeight 检查）。
 - [x] rail、inspector、图形工具条无原始枚举/op 类型串，全部走 locales（`changeset.*`/`deps.*`/`progress.*` 审计；`grep` 无原始状态串）。
 - [x] 区域导航为顶部下划线 tabs（nav + aria-current）；旧左侧纵向导航已移除（`charter-tabs`、`aria-current`；DOM 无 `.charter-nav`）。
-- [x] 旧版 DSH token 覆盖审计完成（2026-11-12，10 版本 / 41 静态 token / 1 动态 fallback）；兼容块为空且有门禁。
-- [ ] `npm run check`、兼容矩阵、exact artifact/fresh profile 门禁通过，证据按 CI/local/manual 标注。
-- [ ] README/README.zh、CHANGELOG、release notes、docs 索引、SHA256SUMS 同批更新；未 push/tag/publish。
-- [x] 人工验收前未推送 `feat/0.3.0-gui`、未合并 `main`、未 tag/publish；仓库与 README 无“0.3.0 可用/已发布”声明。
+- [x] 旧版 DSH token 覆盖审计完成（2026-11-13，11 版本 / 41 静态 token / 1 动态 fallback）；兼容块为空且有门禁。
+- [x] `npm run check`、兼容矩阵、exact artifact/fresh profile 门禁通过，证据按 CI/local/manual 标注（0.3.1 candidate/promotion run）。
+- [x] README/README.zh、CHANGELOG、release notes、docs 索引、SHA256SUMS 同批更新；0.3.1 已 push/tag/publish。
+- [x] 0.3.0/0.3.1 发布分支、tag、npm 和 GitHub Release 已由保护流程完成；历史 tag 不可变。
+
+### 0.3.2 对账（2026-11-16）
+
+| 附录 D 项 | 状态 | 后续动作 |
+| --- | --- | --- |
+| 指标门禁、路由、单次目标、locale/token 门禁 | 已完成 | 0.3.1 回归证据 |
+| 发布元数据、tag、npm、SHA | 已完成（0.3.0/0.3.1） | 0.3.2 走同一 candidate/promotion 流程 |
+| 六状态截图、forced-colors、reduced-motion、200% | 未完成 | 0.3.2 A1/A3 |
+| 真实 VoiceOver/NVDA、W0-3 SVG 焦点 | 未完成 | 0.3.2 A2 |
+| 冻结稿人工并排、Desktop 原生窗口 | 未完成 | 0.3.2 A4/A5 |
+| W0-1 断点/栏宽、W0-2 行容量实测 | 未完成 | 0.3.2 A6 |
+
 
 ## 附录 E：变更记录
 
