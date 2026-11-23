@@ -42,12 +42,12 @@ const OBJECTIVE_LABEL = /^(?:latest correction|latest|original|原始|最新修�
 const USER_WANTS_LABEL = /^(?:user wants|user requests|用户希望|用户要求)\s*[:：]?$/i
 const CONSTRAINT = /(?:^|\s)(?:must|never|only|do not|don't|required|ensure|keep|should not|shall|always|no\s)|必须|禁止|不得|不要|只能|仅|保持|确保|需要/i
 
-interface Section {
+export interface Section {
   readonly title: string
   readonly lines: readonly string[]
 }
 
-function splitSections(text: string): Section[] {
+export function splitSections(text: string): Section[] {
   const sections: Section[] = []
   let title = ''
   let lines: string[] = []
@@ -65,7 +65,7 @@ function splitSections(text: string): Section[] {
   return sections
 }
 
-function sectionKind(title: string): 'primary' | 'critical' | 'pending' | 'other' {
+export function sectionKind(title: string): 'primary' | 'critical' | 'pending' | 'other' {
   const value = title.toLowerCase()
   if (/primary request|request and intent|user request|用户请求|主要请求|原始目标|^目标$/.test(value)) return 'primary'
   if (/critical context|key constraints|constraints|约束|关键上下文|注意事项/.test(value)) return 'critical'
@@ -86,7 +86,7 @@ function unquote(value: string): string {
   return result
 }
 
-function cleanLine(raw: string): string | null {
+export function cleanLine(raw: string): string | null {
   let value = raw.replace(BULLET, '$1').trim()
   if (value.length === 0) return null
   value = value
@@ -100,7 +100,7 @@ function cleanLine(raw: string): string | null {
   return value
 }
 
-function bulletLines(lines: readonly string[]): string[] {
+export function bulletLines(lines: readonly string[]): string[] {
   const values: string[] = []
   for (const line of lines) {
     if (!BULLET.test(line)) continue
@@ -110,7 +110,7 @@ function bulletLines(lines: readonly string[]): string[] {
   return values
 }
 
-function paragraphLines(lines: readonly string[]): string[] {
+export function paragraphLines(lines: readonly string[]): string[] {
   const values: string[] = []
   for (const line of lines) {
     if (BULLET.test(line)) continue
@@ -255,6 +255,27 @@ export function bootstrapFromSummary(
   return { objective, invariants, deliverables }
 }
 
+/** Parse one compaction summary event into reviewable text plus its bounded source. */
+export function compactionSummaryEvent(
+  event: CompactionSummaryEvent,
+): { readonly text: string; readonly source: BootstrapSource } | undefined {
+  if (event.type !== 'compaction/summary') return undefined
+  const parsed = compactionSummaryDataSchema.safeParse(event.data)
+  if (!parsed.success) return undefined
+  const text = parsed.data.summary.map(part => part.text).join('\n').trim()
+  if (text.length === 0) return undefined
+  return {
+    text,
+    source: {
+      summarySeq: event.seq,
+      at: event.time,
+      ...(parsed.data.shadowedTokenCount === undefined
+        ? {}
+        : { shadowedTokens: parsed.data.shadowedTokenCount }),
+    },
+  }
+}
+
 /**
  * Find the latest non-empty compaction summary and extract a draft from it.
  * Returns undefined when the log has no usable summary.
@@ -265,23 +286,12 @@ export function bootstrapFromEvents(
 ): BootstrapExtraction | undefined {
   for (let index = events.length - 1; index >= 0; index -= 1) {
     const event = events[index]
-    if (event === undefined || event.type !== 'compaction/summary') continue
-    const parsed = compactionSummaryDataSchema.safeParse(event.data)
-    if (!parsed.success) continue
-    const text = parsed.data.summary.map(part => part.text).join('\n').trim()
-    if (text.length === 0) continue
-    const draft = bootstrapFromSummary(text, limits)
+    if (event === undefined) continue
+    const parsed = compactionSummaryEvent(event)
+    if (parsed === undefined) continue
+    const draft = bootstrapFromSummary(parsed.text, limits)
     if (draft.objective === null && draft.invariants.length === 0 && draft.deliverables.length === 0) continue
-    return {
-      draft,
-      source: {
-        summarySeq: event.seq,
-        at: event.time,
-        ...(parsed.data.shadowedTokenCount === undefined
-          ? {}
-          : { shadowedTokens: parsed.data.shadowedTokenCount }),
-      },
-    }
+    return { draft, source: parsed.source }
   }
   return undefined
 }
