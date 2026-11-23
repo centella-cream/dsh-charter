@@ -4,7 +4,7 @@
 [![GitHub](https://img.shields.io/badge/GitHub-centella--cream%2Fdsh--charter-181717?logo=github)](https://github.com/centella-cream/dsh-charter)
 [![DSH](https://img.shields.io/badge/DSH-11%20verified%20versions-4b6bfb)](docs/design/compatibility.zh.md)
 [![Node](https://img.shields.io/badge/node-%5E22.19%20%7C%7C%20%3E%3D24-339933)](package.json)
-[![Status: 0.3.2](https://img.shields.io/badge/status-0.3.2-brightgreen)](#状态)
+[![Status: 0.3.3](https://img.shields.io/badge/status-0.3.3-brightgreen)](#状态)
 
 [English](README.md) | 中文
 
@@ -43,10 +43,10 @@
 
 ## 状态
 
-- **当前版本：**`0.3.2` — 无障碍/证据收敛补丁。增加根字号图形缩放、最终构建的状态/media 证据，并对账 0.3.x 文档门禁；人工证据缺口已在 release notes 中显式列出。
-- **上一版本：**`0.3.1` — 依赖图与 standing envelope 收敛；`0.3.0` 是更早的 GUI 重构基线。
+- **当前开发候选：**`0.3.3` — 结构化契约草案抽取、自动中英文语言归一、相似重复折叠与稳定候选 ref。已本地实现并测试，**尚未发布**；最新已发布版本为 `0.3.2`。
+- **上一版本：**`0.3.2` — 无障碍/证据收敛；`0.3.1`、`0.3.0` 是更早基线。
   **主要 DSH 基线：**`0.2.2-rc.3`；十一个声明版本通过源码矩阵验证。
-- 从 `0.2.0` 起版本号使用普通递增（`0.2.0`、`0.2.1`、`0.2.2`、`0.3.0`、`0.3.1`、`0.3.2`），不再使用 `rc` 后缀。
+- 从 `0.2.0` 起版本号使用普通递增（`0.2.0`、`0.2.1`、`0.2.2`、`0.3.0`、`0.3.1`、`0.3.2`、`0.3.3`），不再使用 `rc` 后缀。
 
 ## 核心能力
 
@@ -81,6 +81,14 @@
   测量记录在 0.3.2 候选中。
 - **仍待人工门禁：** 真实 VoiceOver/NVDA 与 Desktop 原生窗口证据；自动化 AX-tree 或 renderer 截图不计为
   已通过。
+
+### 结构化草案抽取与语言跟随
+
+- **语义保全：**只按句边界切分；超长句整段保留并标记，不再硬切成碎片；显式截断记录原始字节数。
+- **相似重复折叠：**全等/保守前缀重复折叠为代表条目，并保留折叠计数与成员 ref。
+- **语言跟随：**草案语言与 DSH 界面语言（`zh`/`en`）不一致时，Host 通过当前会话模型做一次有界、严格 JSON
+  的翻译调用；模型不可用或响应不合格时保留原文草案并显示降级提示，不阻断审阅。自动调用会把压缩草案/当前契约
+  文本发送到该会话配置的模型；插件不保存 API key，也不新增遥测或上传。
 
 ### 兼容性与运行时
 
@@ -176,7 +184,7 @@ compaction summary 返回只读草案，不写 storage。
 
 ## 安装
 
-最新版本是 `0.3.2`：
+最新已发布版本是 `0.3.2`：
 
 ```bash
 dsh plugin --profile web add dsh-charter@0.3.2
@@ -187,6 +195,12 @@ dsh plugin --profile web add dsh-charter@0.3.2
 ```bash
 npm pack dsh-charter@0.3.2
 dsh plugin --profile web add ./dsh-charter-0.3.2.tgz
+```
+`0.3.3` 是当前开发候选（结构化草案 + 自动语言跟随），尚未发布；从工作区构建安装：
+
+```bash
+npm pack
+dsh plugin --profile web add ./dsh-charter-0.3.3.tgz
 ```
 
 Desktop 请使用 **Desktop → Plugins → Install/Update**；若 Desktop 构建支持本地插件导入，也可导入同一

@@ -4,7 +4,7 @@
 [![GitHub](https://img.shields.io/badge/GitHub-centella--cream%2Fdsh--charter-181717?logo=github)](https://github.com/centella-cream/dsh-charter)
 [![DSH](https://img.shields.io/badge/DSH-11%20verified%20versions-4b6bfb)](docs/design/compatibility.md)
 [![Node](https://img.shields.io/badge/node-%5E22.19%20%7C%7C%20%3E%3D24-339933)](package.json)
-[![Status: 0.3.2](https://img.shields.io/badge/status-0.3.2-brightgreen)](#status)
+[![Status: 0.3.3](https://img.shields.io/badge/status-0.3.3-brightgreen)](#status)
 
 English | [中文](README.zh.md)
 
@@ -45,12 +45,12 @@ deliverables, evidence, and dependency relationships survive compaction and rema
 
 ## Status
 
-- **Current release:** `0.3.2` — the accessibility/evidence convergence patch. It adds root-text graph scaling,
-  final-build state/media evidence, and reconciles the 0.3.x documentation gates. Known manual evidence gaps are
-  explicitly listed in its release notes.
-- **Previous release:** `0.3.1` — dependency-graph and standing-envelope convergence; `0.3.0` is the earlier GUI
-  redesign baseline. **Primary DSH baseline:** `0.2.2-rc.3`; eleven declared DSH versions are source-matrix verified.
-- Versioning from `0.2.0` onward uses plain increments (`0.2.0`, `0.2.1`, `0.2.2`, `0.3.0`, `0.3.1`, `0.3.2`), never an `rc`
+- **Current development candidate:** `0.3.3` — structured draft extraction with automatic zh/en language
+  normalization, duplicate folding, and stable candidate refs. It is implemented and tested locally but **not
+  published yet**; latest published release is `0.3.2`.
+- **Previous release:** `0.3.2` — accessibility/evidence convergence; `0.3.1` and `0.3.0` are earlier baselines.
+  **Primary DSH baseline:** `0.2.2-rc.3`; eleven declared DSH versions are source-matrix verified.
+- Versioning from `0.2.0` onward uses plain increments (`0.2.0`, `0.2.1`, `0.2.2`, `0.3.0`, `0.3.1`, `0.3.2`, `0.3.3`), never an `rc`
   suffix.
 
 ## Core capabilities
@@ -88,6 +88,18 @@ deliverables, evidence, and dependency relationships survive compaction and rema
   reduced-motion captures, plus breakpoint/scaling measurements are recorded for the 0.3.2 release.
 - **Known manual gates:** real VoiceOver/NVDA and native Desktop-window evidence are not claimed by automated
   AX-tree or renderer screenshots.
+
+### Structured draft extraction and language following
+
+- **Semantic extraction:** candidates are split only at sentence boundaries; an oversized sentence is kept
+  whole and marked instead of being cut into fragments, and explicit truncation records the original byte count.
+- **Duplicate folding:** exact and conservative prefix duplicates are folded into one representative with a
+  fold count and member refs, so repeated constraints do not flood the review.
+- **Language following:** when the reviewed draft language differs from the DSH UI language (`zh`/`en`), the
+  Host makes one bounded, strict-JSON translation call through the configured session model. If no model is
+  available or the response is invalid, the source-language draft remains fully usable with a visible fallback notice.
+  The automatic call sends the compaction draft/current-charter text to that configured model; the plugin stores no
+  API key and adds no telemetry or upload path.
 
 ### Compatibility and runtime
 
@@ -198,7 +210,7 @@ storage.
 
 ## Install
 
-The latest release is `0.3.2`:
+The latest published release is `0.3.2`:
 
 ```bash
 dsh plugin --profile web add dsh-charter@0.3.2
@@ -209,6 +221,13 @@ For air-gapped machines or exact-artifact verification:
 ```bash
 npm pack dsh-charter@0.3.2
 dsh plugin --profile web add ./dsh-charter-0.3.2.tgz
+```
+`0.3.3` is the current development candidate (structured draft + automatic language following), not
+published yet. Build it from the working tree:
+
+```bash
+npm pack
+dsh plugin --profile web add ./dsh-charter-0.3.3.tgz
 ```
 
 For Desktop, use **Desktop → Plugins → Install/Update**, or import the same local tarball if your Desktop build

@@ -3,10 +3,10 @@
 English | [中文](verification.zh.md)
 
 > **Status:** Active — current operating record.
-> **Version scope:** `0.3.2` released 2026-11-16 as the accessibility/evidence patch; manual AT/Desktop gaps documented.
-> **Baseline:** 2026-11-16
+> **Version scope:** `0.3.3` structured-draft/language candidate (implemented locally, not published); latest published `0.3.2`.
+> **Baseline:** 2026-11-23
 
-Verification date: 2026-11-16. Current source version: `0.3.2` released; latest published release is `0.3.2`. This is the current evidence record; historical per-commit narratives live in Git
+Verification date: 2026-11-23. Current source version: `0.3.3` candidate; latest published release is `0.3.2`. This is the current evidence record; historical per-commit narratives live in Git
 history and the Changelog. Temporary directories, profiles, tarballs, and fetched HTML live under `.tmp/` and are
 excluded from the published package.
 
@@ -347,3 +347,11 @@ rm -rf .tmp
   no real AT claim is made; the frozen-mockup side-by-side sign-off is still human; native Desktop capture is
   blocked by macOS Screen Recording permission (`screencapture` reports `could not create image from display`).
   These gates are not marked complete without evidence.
+
+## 1.4 0.3.3 structured draft and language following (2026-11-23, candidate)
+
+- Source gates: `npm run check` = 44 files / 512 tests PASS; token coverage PASS; `verify:ui-metrics --gate=final` PASS.
+- Structured extraction: sentence-boundary-only splits, oversized retention, >4x explicit truncation, exact/prefix folding, language tags, stable `d-*` refs; added to `tests/core/structured-bootstrap.spec.ts`.
+- Host apply: `charter/bootstrapDraft` + `d-*` refs + objective `clientRef`; legacy `charter/bootstrap` and legacy clientRefs remain covered by the existing composition suite.
+- Automatic language following: Host resolves the current session model, calls `ctx.llm` once with local streamed-text assembly, requires a complete strict-JSON `{items:[{ref,text}]}` response, and falls back to source text with an explicit `language.status` when the model is absent or invalid. Unit tests cover success, malformed output, max-tokens, and missing refs; composition test covers fake-model translation + translated apply.
+- Candidate artifact `dist/dsh-charter-0.3.3.tgz` SHA-256 `444f43d2baaf7f75f9606ad74c6fa1314e419700694a9b1b17f643b93784597b`; exact-artifact package smoke and packed recovery smoke PASS. Eleven-version matrix PASS (`.tmp/compat-033-final6.json`); local Web UI reports `v0.3.3`. The candidate is not published; real-model/manual translation acceptance remains a release gate.

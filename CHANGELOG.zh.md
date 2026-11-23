@@ -4,6 +4,23 @@
 
 记录 `dsh-charter` 的重要变更。DSH 插件 ABI 仍在演进，项目保持 pre-1.0 版本线。
 
+## 0.3.3 — 2026-11-23（开发候选）
+
+结构化契约草案抽取与自动中英文语言跟随；不改变 record schema、prompt 投影或模型工具面。
+
+### 新增
+
+- `charter/bootstrapDraft`：带稳定 ref、语言标注、重复折叠和 oversized/截断标记的结构化候选。
+- 只按句边界做语义保全切分，不再静默硬切碎片。
+- 全等/保守前缀重复折叠为代表条目，并保留折叠计数与成员 ref。
+- 自动中英文归一：草案语言与 DSH 界面语言不一致时，Host 通过当前会话模型做一次有界、严格 JSON 的翻译调用；模型缺失或响应不合格时保留原文草案并显示降级提示。
+- `objective.initialize.clientRef` additive 字段与结构化 `applyBootstrap` 校验；legacy `charter/bootstrap` / `applyBootstrap` 行为保持字节兼容。
+
+### 验证
+
+- 最终树需通过 `npm run check`、结构化/翻译测试、兼容矩阵和 UI 指标门禁。
+- 本候选未发布；`0.3.2` 仍是最新已发布版本。
+
 ## 0.3.2 — 2026-11-16
 
 0.3.x 的无障碍/证据收敛补丁。不改变 record schema、Remote wire 或 prompt。

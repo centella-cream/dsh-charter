@@ -12,6 +12,7 @@ tagging.
 
 ## Current state (2026-11-16)
 
+- **Development candidate:** `0.3.3` — structured draft extraction + automatic zh/en language following; implemented/tested locally, not pushed/tagged/published.
 - **Published:** `0.3.2` — npm `latest`/`next`, GitHub Release `v0.3.2`; exact artifact
   `dsh-charter-0.3.2.tgz`, SHA-256 `9dcb82ae34eaaeb6d266bb98f3e1f92f3a0798042ce3dc282abe9173ff79e056`.
 - **Previous release:** `0.3.1` — GitHub Release `v0.3.1`.

@@ -5,6 +5,23 @@ English | [中文](CHANGELOG.zh.md)
 All notable changes to `dsh-charter` are recorded here. The project follows a pre-1.0 version line while the
 DSH plugin ABI is still moving.
 
+## 0.3.3 — 2026-11-23 (development candidate)
+
+Structured draft extraction and automatic zh/en language following. No record-schema, prompt-projection, or model-tool change.
+
+### Added
+
+- `charter/bootstrapDraft`: structured candidates with stable refs, language tags, duplicate folding, and oversized/truncated markers.
+- Sentence-boundary-only semantic splitting; no silent hard-split fragments.
+- Exact and conservative prefix duplicate folding with representative, fold count, and member refs.
+- Automatic zh/en normalization: when the draft language differs from the DSH UI locale, the Host performs one bounded strict-JSON translation call through the session model; missing/invalid models fall back to the source draft with a visible notice.
+- Additive `objective.initialize.clientRef` and structured `applyBootstrap` validation; legacy `charter/bootstrap` and `applyBootstrap` behavior stays byte-compatible.
+
+### Verification
+
+- Source gates and new structured/translation tests are expected on the final tree; run the full `npm run check` before release.
+- This candidate is not published; `0.3.2` remains the latest published release.
+
 ## 0.3.2 — 2026-11-16
 
 Accessibility/evidence convergence patch for the 0.3.x line. No record-schema, Remote-wire, or prompt change.

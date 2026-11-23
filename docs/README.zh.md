@@ -51,6 +51,8 @@
 | [design/charter-workspace-v2.zh.md](design/charter-workspace-v2.zh.md) | Active | 0.2.0 / 0.3.0 / 0.3.1 / 0.3.2 | 工作区、提案时间线、依赖；专题范围。 |
 | [design/charter-dependency-graph-v1.zh.md](design/charter-dependency-graph-v1.zh.md) | Active | 0.2.2 / 0.3.1 / 0.3.2 | 客户端依赖关系图形视图；源码已在 0.2.2 落地，真实浏览器证据已记录；真实 AT 与 W0-1/2/3 仍属 0.3.2 门禁。 |
 | [design/charter-gui-v1.zh.md](design/charter-gui-v1.zh.md) | Active | 0.3.0 / 0.3.1 / 0.3.2 | 全栏目 GUI 全面重构：设计系统、IA/路由、Change Set 合同、Pane/store 拆分、证据门禁；视觉语言已冻结（文档感）：[design/mockups/](design/mockups/README.md)。 |
+| [design/charter-draft-extraction-v1.zh.md](design/charter-draft-extraction-v1.zh.md) | Implemented — pending release acceptance | 0.3.3 | 契约草案抽取质量与自动中英文语言跟随：语义保全切分、近重复折叠、结构化候选与稳定 ref、宿主模型单轮翻译与回退；已本地实现，待发布验收。 |
+| [design/charter-draft-calibration-v1.zh.md](design/charter-draft-calibration-v1.zh.md) | Proposed | 0.4.0 候选 | 后续高级草案校准：语义聚合、原文 diff 审阅、质量 A/B；宿主托管 `ctx.llm` opt-in，零 record schema 变更；依赖已实现的 0.3.3 抽取层。 |
 | [design/version-roadmap.md](design/version-roadmap.md) | Active | 全版本线 | 范围与版本权威；中文为 normative。 |
 | [design/compatibility.md](design/compatibility.md) | Active | 已声明 DSH 版本 | 兼容声明与矩阵。 |
 | [history/2026-10-19-charter-design-v1-review.md](history/2026-10-19-charter-design-v1-review.md) | Historical | 0.1 | 冻结的 v1 设计评审。 |

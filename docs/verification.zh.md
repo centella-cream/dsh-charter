@@ -3,10 +3,10 @@
 [English](verification.md) | 中文
 
 > **状态：** Active — 当前操作记录。
-> **版本范围：** `0.3.2` 已于 2026-11-16 发布为无障碍/证据补丁；真实 AT/Desktop 人工缺口已公开记录。
-> **基准：** 2026-11-16
+> **版本范围：** `0.3.3` 结构化草案/语言跟随候选（本地实现，未发布）；最新已发布 `0.3.2`。
+> **基准：** 2026-11-23
 
-验证日期：2026-11-16。当前源码版本：`0.3.2` 已发布；最新已发布版本为 `0.3.2`。本文件是当前证据记录；历史逐提交的叙事保留在 Git 历史和 Changelog。临时目录、profile、
+验证日期：2026-11-23。当前源码版本：`0.3.3` 候选；最新已发布版本为 `0.3.2`。本文件是当前证据记录；历史逐提交的叙事保留在 Git 历史和 Changelog。临时目录、profile、
 tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 
 环境：macOS，Node `v22.23.1`，npm `12.0.2`，pnpm `12.3.4`。本地 DSH 开发基线：`0.2.2-rc.3`（当前 npm
@@ -295,3 +295,11 @@ rm -rf .tmp
 - A2/A4/A5 仍待人工/受环境阻塞：VoiceOver 可启动但 Apple Events/辅助功能授权缺失，不能声称真实 AT 已跑；
   冻结稿并排签收仍是人工门禁；Desktop 原生截图被 macOS Screen Recording 权限阻塞（`screencapture` 报
   `could not create image from display`）。未有证据前不标记完成。
+
+## 1.4 0.3.3 结构化草案与语言跟随（2026-11-23，候选）
+
+- 源码门禁：`npm run check` = 44 文件 / 512 测试 PASS；token coverage PASS；`verify:ui-metrics --gate=final` PASS。
+- 结构化抽取：只按句边界切分、超长保留、>4x 显式截断、全等/前缀折叠、语言标注、稳定 `d-*` ref；见 `tests/core/structured-bootstrap.spec.ts`。
+- Host apply：`charter/bootstrapDraft` + `d-*` ref + objective `clientRef`；legacy `charter/bootstrap` 与旧 clientRef 由既有 composition 测试继续覆盖。
+- 自动语言跟随：Host 解析当前会话模型，经 `ctx.llm` 做一次严格 JSON 调用（本地流式文本组装）；模型缺失/输出不合格时回退原文并返回显式 `language.status`。单测覆盖成功、malformed、max-tokens、缺 ref；composition 测试覆盖假模型翻译与翻译后 apply。
+- 候选 artifact `dist/dsh-charter-0.3.3.tgz` SHA-256 `444f43d2baaf7f75f9606ad74c6fa1314e419700694a9b1b17f643b93784597b`；exact-artifact package smoke 与 packed recovery smoke PASS。11 版本矩阵 PASS（`.tmp/compat-033-final6.json`）；本地 Web UI 显示 `v0.3.3`。当前候选未发布；真实模型翻译的人工验收仍未完成，不在本节宣称完成。
