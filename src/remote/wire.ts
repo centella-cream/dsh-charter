@@ -515,6 +515,7 @@ export const charterBootstrapResultSchema = z.discriminatedUnion('available', [
 export const charterBootstrapDraftRequestSchema = z.object({
   sessionId: z.string().min(1).max(256),
   targetLanguage: z.enum(['zh', 'en']).optional(),
+  awaitTranslation: z.boolean().optional(),
 }).strict()
 
 const charterBootstrapDraftMemberSchema = z.object({
@@ -536,7 +537,7 @@ const charterBootstrapDraftItemSchema = z.object({
 
 const charterBootstrapLanguageSchema = z.object({
   requested: z.enum(['zh', 'en']).nullable(),
-  status: z.enum(['source', 'translated', 'unavailable', 'failed', 'disabled']),
+  status: z.enum(['source', 'translated', 'pending', 'unavailable', 'failed', 'disabled']),
   reason: z.string().max(512).optional(),
   provider: z.string().max(256).optional(),
   model: z.string().max(256).optional(),
@@ -637,7 +638,7 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
       sessionId: SessionId,
     ) => Promise<RemoteResult<CharterBootstrapResult>>
     'charter/bootstrapDraft': (
-      request: { readonly sessionId: SessionId; readonly targetLanguage?: 'zh' | 'en' },
+      request: { readonly sessionId: SessionId; readonly targetLanguage?: 'zh' | 'en'; readonly awaitTranslation?: boolean },
     ) => Promise<RemoteResult<CharterBootstrapDraftResult>>
     'charter/exportRecord': (
       sessionId: SessionId,
@@ -699,7 +700,7 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
         sessionId: SessionId,
       ) => Promise<RemoteResult<CharterBootstrapResult>>
       bootstrapDraft: (
-        request: { readonly sessionId: SessionId; readonly targetLanguage?: 'zh' | 'en' },
+        request: { readonly sessionId: SessionId; readonly targetLanguage?: 'zh' | 'en'; readonly awaitTranslation?: boolean },
       ) => Promise<RemoteResult<CharterBootstrapDraftResult>>
       exportRecord: (
         sessionId: SessionId,

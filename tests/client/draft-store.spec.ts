@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type { CharterEditRequest, CharterItem } from '../../src/core/schemas.js'
 import type {
+  CharterBootstrapDraftResult,
   CharterBootstrapResult,
   CharterEditResult,
   CharterRecordOperationResult,
@@ -70,6 +71,7 @@ function committedInvariant(
 function source(handlers: {
   edit: (request: CharterEditRequest) => Promise<CharterEditResult>
   bootstrap?: () => Promise<CharterBootstrapResult>
+  localizeBootstrap?: () => Promise<CharterBootstrapDraftResult | undefined>
   applyBootstrap?: (request: import('../../src/core/schemas.js').CharterBootstrapApplyRequest) => Promise<CharterEditResult>
   previewChangeSet?: (request: CharterEditRequest) => Promise<import('../../src/host/types.js').CharterChangeSetPreviewResult>
   snapshot?: () => ReturnType<CharterSessionSource['getSnapshot']>
@@ -78,6 +80,7 @@ function source(handlers: {
     sessionId,
     edit: handlers.edit,
     bootstrap: handlers.bootstrap ?? (async () => ({ available: false, reason: 'unavailable' })),
+    ...(handlers.localizeBootstrap === undefined ? {} : { localizeBootstrap: handlers.localizeBootstrap }),
     ...(handlers.applyBootstrap === undefined ? {} : { applyBootstrap: handlers.applyBootstrap }),
     ...(handlers.previewChangeSet === undefined ? {} : { previewChangeSet: handlers.previewChangeSet }),
     accept: () => undefined,
@@ -371,6 +374,59 @@ describe('per-Session draft ownership', () => {
       { type: 'objective.initialize', clientRef: 'd-obj-0' },
       { type: 'item.add', item: { clientRef: 'd-inv-0' } },
     ])
+  })
+
+  it('shows the source draft first and replaces it when deferred translation settles', async () => {
+    const fake = source({
+      edit: async () => ({ ok: false, code: 'UNAVAILABLE', message: 'unused' }),
+      bootstrap: async () => ({
+        available: true,
+        proposal: {
+          objective: 'Source objective',
+          invariants: ['Source invariant'],
+          deliverables: [],
+          source: { summarySeq: 8, at: 10 },
+          extractorVersion: 2,
+          draftLang: 'zh',
+          language: { requested: 'en', status: 'pending', provider: 'p', model: 'm' },
+          draftItems: [
+            { ref: 'd-obj-0', kind: 'objective', text: 'Source objective', lang: 'zh', oversized: false },
+            { ref: 'd-inv-0', kind: 'invariant', text: 'Source invariant', lang: 'zh', oversized: false },
+          ],
+          items: [
+            { ref: 'd-obj-0', kind: 'objective', text: 'Source objective', lang: 'zh', oversized: false },
+            { ref: 'd-inv-0', kind: 'invariant', text: 'Source invariant', lang: 'zh', oversized: false },
+          ],
+        },
+      }),
+      localizeBootstrap: async () => ({
+        available: true,
+        proposal: {
+          objective: 'Translated objective',
+          invariants: ['Translated invariant'],
+          deliverables: [],
+          source: { summarySeq: 8, at: 10 },
+          extractorVersion: 2,
+          draftLang: 'en',
+          language: { requested: 'en', status: 'translated', provider: 'p', model: 'm' },
+          draftItems: [
+            { ref: 'd-obj-0', kind: 'objective', text: 'Translated objective', lang: 'en', oversized: false },
+            { ref: 'd-inv-0', kind: 'invariant', text: 'Translated invariant', lang: 'en', oversized: false },
+          ],
+          items: [
+            { ref: 'd-obj-0', kind: 'objective', text: 'Translated objective', lang: 'en', oversized: false },
+            { ref: 'd-inv-0', kind: 'invariant', text: 'Translated invariant', lang: 'en', oversized: false },
+          ],
+        },
+      }),
+    })
+    const draft = new CharterDraft(sessionId, () => fake)
+    draft.bindLifecycle('life-localized')
+    draft.ensureBootstrap(view(0), true)
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(draft.getSnapshot().bootstrapLanguage?.status).toBe('translated')
+    expect(draft.getSnapshot().bootstrapObjective).toBe('Translated objective')
+    expect(draft.getSnapshot().bootstrapItems[0]?.text).toBe('Translated invariant')
   })
 
   it('rejects bootstrap edits while the save request is in flight', async () => {

@@ -196,9 +196,9 @@ export class CharterRemoteService extends TypertRemoteService {
     },
   })
   bootstrapDraft(
-    request: { readonly sessionId: SessionId; readonly targetLanguage?: 'zh' | 'en' },
+    request: { readonly sessionId: SessionId; readonly targetLanguage?: 'zh' | 'en'; readonly awaitTranslation?: boolean },
   ): Promise<CharterBootstrapDraftResult> {
-    return this.ctx.charter.bootstrapDraft(request.sessionId, request.targetLanguage)
+    return this.ctx.charter.bootstrapDraft(request.sessionId, request.targetLanguage, request.awaitTranslation)
   }
 
   @remoteMethod({

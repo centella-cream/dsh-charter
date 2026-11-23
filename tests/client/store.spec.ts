@@ -1003,8 +1003,10 @@ describe('structured bootstrap fallback', () => {
     }
     ;(source as unknown as { remote: unknown }).remote = remote
     const result = await source.bootstrap()
-    expect(requests).toEqual([{ sessionId: 'structured-fr' }])
+    expect(requests).toEqual([{ sessionId: 'structured-fr', awaitTranslation: false }])
     expect(result).toMatchObject({ available: true, proposal: { draftItems: draftResult.proposal.draftItems } })
+    expect(await source.localizeBootstrap()).toMatchObject({ available: true })
+    expect(requests).toEqual([{ sessionId: 'structured-fr', awaitTranslation: false }, { sessionId: 'structured-fr', awaitTranslation: true }])
     await source.dispose()
   })
 

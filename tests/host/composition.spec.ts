@@ -2346,6 +2346,52 @@ describe('automatic draft language follow', () => {
     expect(draft.proposal.items.some(item => item.kind === 'deliverable')).toBe(true)
   })
 
+  it('returns the source draft immediately while language normalization is deferred', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-language-deferred-'))
+    roots.push(root)
+    const ctx = await mount(root)
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('language-deferred'), {
+      meta: { cwd: root, createdAt: 1_700_000_003_100 },
+    })
+    await waitForReady(service, session)
+    const fakeAgent = {
+      id: session.id,
+      session,
+      model: { current: () => ({ provider: 'fake', model: 'fake-model' }) },
+    } as unknown as Agent
+    await ctx.agents.register(fakeAgent)
+    let calls = 0
+    const llm = {
+      async *stream() {
+        calls += 1
+        const output = JSON.stringify({ items: [
+          { ref: 'd-obj-0', text: 'Verify the English draft.' },
+          { ref: 'd-del-0', text: 'Verify the English draft.' },
+        ] })
+        yield { type: 'block-start', index: 0, blockType: 'text' }
+        yield { type: 'text-delta', index: 0, text: output }
+        yield { type: 'block-end', index: 0, block: { type: 'text', text: output } }
+        yield { type: 'finish', reason: { kind: 'stop' } }
+      },
+    }
+    ctx.provide('llm', llm as never)
+    const append = session as unknown as { append(type: string, data: unknown): unknown }
+    append.append('compaction/summary', {
+      summary: [{ type: 'text', text: '## Pending Jobs\n- 验证中文草案。\n' }],
+    })
+    const immediate = await service.bootstrapDraft(session.id, 'en', false)
+    expect(immediate.available).toBe(true)
+    if (!immediate.available) return
+    expect(immediate.proposal.language).toMatchObject({ requested: 'en', status: 'pending' })
+    expect(calls).toBe(0)
+    const localized = await service.bootstrapDraft(session.id, 'en', true)
+    expect(localized.available).toBe(true)
+    if (!localized.available) return
+    expect(localized.proposal.language).toMatchObject({ requested: 'en', status: 'translated' })
+    expect(calls).toBe(1)
+  })
+
   it('translates an extracted draft with the session model and the host llm service', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-charter-language-'))
     roots.push(root)

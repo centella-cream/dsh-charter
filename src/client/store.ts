@@ -114,6 +114,7 @@ export class CharterSessionSource implements CharterSource {
   private attachGeneration = 0
   /** A Host without bootstrapDraft (or one that failed method-level) stays on the legacy path for this source. */
   private structuredBootstrapUnavailable = false
+  private draftTargetLanguage: 'zh' | 'en' | undefined
   private connection = 0
   private readonly connectionListeners = new Set<() => void>()
   private watchdog: ReturnType<typeof setTimeout> | undefined
@@ -161,10 +162,12 @@ export class CharterSessionSource implements CharterSource {
     })()
     const base = active?.toLowerCase().split(/[-_]/u)[0]
     const targetLanguage = base === 'zh' || base === 'en' ? base : undefined
+    this.draftTargetLanguage = targetLanguage
     const draft = (remote as unknown as {
       bootstrapDraft?: (request: {
         readonly sessionId: SessionId
         readonly targetLanguage?: 'zh' | 'en'
+        readonly awaitTranslation?: boolean
       }) => Promise<{ ok: true; value: CharterBootstrapDraftResult } | { ok: false; error: unknown }>
     }).bootstrapDraft
     if (!this.structuredBootstrapUnavailable && typeof draft === 'function') {
@@ -173,6 +176,7 @@ export class CharterSessionSource implements CharterSource {
         response = await draft({
           sessionId: this.sessionId,
           ...(targetLanguage === undefined ? {} : { targetLanguage }),
+          awaitTranslation: false,
         })
       } catch {
         // Method-level transport/shape failure: permanently fall back for this source.
@@ -189,6 +193,36 @@ export class CharterSessionSource implements CharterSource {
     const result = await remote.bootstrap(this.sessionId)
     if (!result.ok) throw result.error
     return result.value
+  }
+
+  /**
+   * Resolve the deferred language normalization for the current draft.
+   *
+   * The initial `bootstrap` returns the source draft immediately; the Pane
+   * calls this in the background and replaces the draft only while it is still
+   * pristine. Old Hosts without this method return undefined.
+   */
+  readonly localizeBootstrap = async (): Promise<CharterBootstrapDraftResult | undefined> => {
+    const remote = this.remote
+    if (remote === undefined) return undefined
+    const draft = (remote as unknown as {
+      bootstrapDraft?: (request: {
+        readonly sessionId: SessionId
+        readonly targetLanguage?: 'zh' | 'en'
+        readonly awaitTranslation?: boolean
+      }) => Promise<{ ok: true; value: CharterBootstrapDraftResult } | { ok: false; error: unknown }>
+    }).bootstrapDraft
+    if (typeof draft !== 'function' || this.structuredBootstrapUnavailable) return undefined
+    try {
+      const response = await draft({
+        sessionId: this.sessionId,
+        ...(this.draftTargetLanguage === undefined ? {} : { targetLanguage: this.draftTargetLanguage }),
+        awaitTranslation: true,
+      })
+      return response.ok ? response.value : undefined
+    } catch {
+      return undefined
+    }
   }
 
   readonly edit = async (request: CharterEditRequest): Promise<CharterEditResult> => {

@@ -1215,55 +1215,105 @@ export class CharterDraft {
         return
       }
       const proposal = outcome.proposal
-      const structuredItems = proposal.draftItems
-      this.update({
-        bootstrapPhase: 'draft',
-        bootstrap: proposal,
-        // Freeze the revision the extraction was requested against: the
-        // eventual Apply must use it, never a newer view revision.
-        bootstrapBaseRevision: requestedRevision,
-        bootstrapObjective: proposal.objective ?? '',
-        bootstrapItems: structuredItems === undefined
-          ? [
-              ...proposal.invariants.map((text, index) => ({
-                id: `inv-${index}`,
-                kind: 'invariant' as const,
-                text,
-                selected: false,
-              })),
-              ...proposal.deliverables.map((text, index) => ({
-                id: `del-${index}`,
-                kind: 'deliverable' as const,
-                text,
-                selected: false,
-              })),
-            ]
-          : structuredItems
-            .filter(item => item.kind !== 'objective')
-            .map(item => ({
-              id: item.ref,
-              clientRef: item.ref,
-              kind: item.kind as 'invariant' | 'deliverable',
-              text: item.text,
-              selected: false,
-              lang: item.lang,
-              oversized: item.oversized,
-              originalText: item.text,
-              ...(item.truncatedFrom === undefined ? {} : { truncatedFrom: item.truncatedFrom }),
-              ...(item.foldCount === undefined ? {} : { foldCount: item.foldCount }),
-            })),
-        bootstrapVisibleCount: 40,
-        bootstrapProblem: null,
-        ...(proposal.language === undefined ? {} : { bootstrapLanguage: proposal.language }),
-        ...(proposal.draftLang === undefined ? {} : { bootstrapDraftLang: proposal.draftLang }),
-        // Do not steal the user's current section while they are working.
-        ...(this.userBusy ? {} : { section: 'history' as const }),
-      })
+      this.acceptBootstrapProposal(proposal, requestedRevision)
+      if (proposal.language?.status === 'pending') {
+        void this.localizeBootstrapProposal(source, proposal, requestedRevision, current)
+      }
+
     } catch (error) {
       if (!current()) return
       console.error('charter: bootstrap request failed', error)
       this.update({ bootstrapPhase: 'failed', bootstrapProblem: { kind: 'request-failed' } })
     }
+  }
+
+  /** Materialize the review draft; shared by the initial and localized responses. */
+  private acceptBootstrapProposal(proposal: import('../host/types.js').CharterBootstrapProposal, requestedRevision: number): void {
+    const structuredItems = (proposal as import('../host/types.js').CharterBootstrapDraftProposal).draftItems
+    this.update({
+      bootstrapPhase: 'draft',
+      bootstrap: proposal,
+      // Freeze the revision the extraction was requested against: the
+      // eventual Apply must use it, never a newer view revision.
+      bootstrapBaseRevision: requestedRevision,
+      bootstrapObjective: proposal.objective ?? '',
+      bootstrapItems: structuredItems === undefined
+        ? [
+            ...proposal.invariants.map((text, index) => ({
+              id: `inv-${index}`,
+              kind: 'invariant' as const,
+              text,
+              selected: false,
+            })),
+            ...proposal.deliverables.map((text, index) => ({
+              id: `del-${index}`,
+              kind: 'deliverable' as const,
+              text,
+              selected: false,
+            })),
+          ]
+        : structuredItems
+          .filter(item => item.kind !== 'objective')
+          .map(item => ({
+            id: item.ref,
+            clientRef: item.ref,
+            kind: item.kind as 'invariant' | 'deliverable',
+            text: item.text,
+            selected: false,
+            lang: item.lang,
+            oversized: item.oversized,
+            originalText: item.text,
+            ...(item.truncatedFrom === undefined ? {} : { truncatedFrom: item.truncatedFrom }),
+            ...(item.foldCount === undefined ? {} : { foldCount: item.foldCount }),
+          })),
+      bootstrapVisibleCount: 40,
+      bootstrapProblem: null,
+      ...(proposal.language === undefined ? {} : { bootstrapLanguage: proposal.language }),
+      ...(proposal.draftLang === undefined ? {} : { bootstrapDraftLang: proposal.draftLang }),
+      // Do not steal the user's current section while they are working.
+      ...(this.userBusy ? {} : { section: 'history' as const }),
+    })
+  }
+
+  /**
+   * The first extraction returns source text immediately. Resolve the
+   * deferred model translation in the background and replace the draft only
+   * while it is still pristine, so a fast reviewer never gets an edited draft
+   * overwritten under their hands.
+   */
+  private async localizeBootstrapProposal(
+    source: import('./store.js').CharterSessionSource,
+    initialProposal: import('../host/types.js').CharterBootstrapProposal,
+    requestedRevision: number,
+    current: () => boolean,
+  ): Promise<void> {
+    const localized = await source.localizeBootstrap()
+    if (!current()) return
+    if (this.state.bootstrapPhase !== 'draft' || this.state.bootstrap !== initialProposal) return
+    if (this.state.bootstrapSaving || this.state.bootstrapNeedsStale || this.state.ops.length > 0) return
+    const pristine = this.state.bootstrapObjective === (initialProposal.objective ?? '')
+      && !this.state.bootstrapItems.some(item => item.selected)
+    if (!pristine) {
+      this.update({
+        bootstrapLanguage: {
+          ...(initialProposal.language ?? { requested: null, status: 'source' as const }),
+          status: 'failed',
+          reason: 'The draft was edited while translation was running; source text was kept.',
+        },
+      })
+      return
+    }
+    if (localized === undefined || !localized.available) {
+      this.update({
+        bootstrapLanguage: {
+          ...(initialProposal.language ?? { requested: null, status: 'source' as const }),
+          status: 'failed',
+          reason: 'Language normalization request failed; source text was kept.',
+        },
+      })
+      return
+    }
+    this.acceptBootstrapProposal(localized.proposal, requestedRevision)
   }
 
   /** Explicit dismissal: one full cleanup of the draft and any replay evidence. */

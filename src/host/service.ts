@@ -916,6 +916,7 @@ export class CharterService extends Service {
   async bootstrapDraft(
     sessionId: SessionIdType,
     requestedLanguage?: string,
+    awaitTranslation = true,
   ): Promise<CharterBootstrapDraftResult> {
     if (this.globalFailure !== undefined) {
       return { available: false, reason: 'unavailable', message: this.globalFailure }
@@ -962,6 +963,14 @@ export class CharterService extends Service {
           if (cached !== undefined) {
             items = cached
             language = { requested: target, status: 'translated', provider: model.provider, model: model.model }
+          } else if (!awaitTranslation) {
+            language = {
+              requested: target,
+              status: 'pending',
+              reason: 'Language normalization is running after this draft is shown.',
+              provider: model.provider,
+              model: model.model,
+            }
           } else {
             try {
               const translated = await translateDraftItems(model.llm, model, target, extraction.items, undefined, this.config.languageFollowTimeoutMs)
