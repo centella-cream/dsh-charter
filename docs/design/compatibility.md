@@ -4,11 +4,11 @@ English | [中文](compatibility.zh.md)
 
 > **Status:** Active — compatibility claims for the declared DSH versions.
 > **Version scope:** all declared DSH versions.
-> **Baseline:** 2026-11-05
+> **Baseline:** 2026-11-23
 > **Authority:** [version roadmap](version-roadmap.md) for release scope; the matrix below for compatibility.
 > **Supersedes / Superseded by:** none / none
 
-Research/verification baseline: 2026-10-30.
+Research/verification baseline: 2026-11-23.
 
 This document answers three questions:
 
@@ -30,20 +30,26 @@ This document answers three questions:
 | `0.2.1-rc.5` | Supported | same |
 | `0.2.2-rc.1` | Supported (previous baseline) | same + real Web profile install/startup, boot graph, bundle HTTP |
 | `0.2.2-rc.2` | Supported | typecheck, build, Vitest suite, remote/client smoke |
-| `0.2.2-rc.3` | Supported (primary development baseline) | typecheck, build, Vitest suite, remote/client smoke, eleven-version source matrix |
+| `0.2.2-rc.3` | Supported | typecheck, build, Vitest suite, remote/client smoke, source matrix |
+| `0.2.2-rc.4` | Supported | typecheck, build, Vitest suite, remote/client smoke, thirteen-version source matrix |
+| `0.2.2-rc.5` | Supported (primary development baseline) | typecheck, build, Vitest suite, remote/client smoke, thirteen-version source matrix |
 | `0.1.5-rc.1` / `0.1.5-rc.2` / `0.1.5-rc.3` | Not supported | contract differences too large; see section 4 |
 | `0.1.6-alpha.x` | Not supported | same generation as 0.1.5; not individually verified |
 | `0.2.2-alpha.2` / `0.2.2-alpha.3` | Not supported | strict-peer install fails because these alpha lines require a Cordis 4.0.6 alpha graph; the 0.2.2-rc.1 line pins Cordis 4.1.0. No tests run. |
 | `0.3.x` | Not declared | major upgrade requires re-verification |
 
-The DSH peer ranges and `engines.dsh` in `package.json` cover exactly the eleven verified versions:
+Upgrade-guide review for `0.2.2-rc.3`/`0.2.2-rc.4` → `0.2.2-rc.5`: the only documented changes are the
+DeepSeek content-refusal error code and default web-search provider. The plugin consumes neither surface, so no
+migration is required. The local source matrix directly exercises the latest graph.
+
+The DSH peer ranges and `engines.dsh` in `package.json` cover exactly the thirteen verified versions:
 
 ```text
 engines.dsh:
   0.1.7-rc.2 || >=0.2.0-rc.1 <0.3.0-0
 
 verified peer ranges / dsh.compatibility.dshReleases:
-  0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2 || 0.2.1-rc.3 || 0.2.1-rc.4 || 0.2.1-rc.5 || 0.2.2-rc.1 || 0.2.2-rc.2 || 0.2.2-rc.3
+  0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2 || 0.2.1-rc.3 || 0.2.1-rc.4 || 0.2.1-rc.5 || 0.2.2-rc.1 || 0.2.2-rc.2 || 0.2.2-rc.3 || 0.2.2-rc.4 || 0.2.2-rc.5
 ```
 
 Token compatibility (0.3.0): the Pane consumes 41 static host design tokens plus one runtime

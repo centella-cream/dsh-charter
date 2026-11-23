@@ -9,19 +9,17 @@
 验证日期：2026-11-23。当前源码版本：`0.3.3` 候选；最新已发布版本为 `0.3.2`。本文件是当前证据记录；历史逐提交的叙事保留在 Git 历史和 Changelog。临时目录、profile、
 tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 
-环境：macOS，Node `v22.23.1`，npm `12.0.2`，pnpm `12.3.4`。本地 DSH 开发基线：`0.2.2-rc.3`（当前 npm
-`next`）。
+环境：macOS，Node `v22.23.1`，npm `12.0.2`，pnpm `12.3.4`。本地 DSH 开发基线：`0.2.2-rc.5`（当前 npm `latest`/`next`）。
 
-## 1. 当前状态（2026-11-16）
+## 1. 当前状态（2026-11-23）
 
 - 最新已发布版本：`0.3.2`（npm `latest`/`next`，GitHub Release `v0.3.2`，artifact SHA-256
   `9dcb82ae34eaaeb6d266bb98f3e1f92f3a0798042ce3dc282abe9173ff79e056`）。
 - 更早发布：`0.3.1`、`0.3.0`、`0.2.2`；已发布 tag 与字节不可变。
-- 当前源码线：`0.3.2` 无障碍/证据补丁（已发布，人工缺口公开记录）。只改客户端图形呈现与 README/文档；record schema 仍为 2，
-  Remote 仍为 18 个方法，prompt 投影未变。
-- 当前源码门禁：`npm run check`（最终 0.3.2 树 42 文件 / 500 测试）、token 覆盖 41 static + 1 dynamic、
-  11 个声明 DSH 版本，以及 `verify:ui-metrics --gate=final`。
-- 兼容矩阵：11 个声明版本在发布候选 run `43851182655` 中验证通过（producer `2d8004e`，release `7ca51a6`）。
+- 当前源码线：`0.3.3` 结构化草案/语言跟随候选，未发布。新增 additive draft Remote/objective ref 与自动语言跟随；record schema 仍为 2，prompt 投影未变。
+- 当前源码门禁：`npm run check`（44 文件 / 518 测试）、token 覆盖 41 static + 1 dynamic、
+  13 个声明 DSH 版本，以及 `verify:ui-metrics --gate=final`。
+- 兼容矩阵：13 个声明版本通过本地矩阵（`.tmp/compat-13.json`）；最新 DSH `0.2.2-rc.5` 为主基线。这是本地证据，不是 CI 结论。
 - 发布后在隔离 `DSH_HOME` 做 exact CLI 安装，npm 解析到 `dsh-charter@0.3.2`，client `6ef68d25…` 与已发布
   artifact 一致。
 - 已发布 artifact：`dsh-charter-0.3.2.tgz` SHA-256

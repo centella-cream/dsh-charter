@@ -15,6 +15,7 @@ Structured draft extraction and automatic zh/en language following. No record-sc
 - Sentence-boundary-only semantic splitting; no silent hard-split fragments.
 - Exact and conservative prefix duplicate folding with representative, fold count, and member refs.
 - Automatic zh/en normalization: when the draft language differs from the DSH UI locale, the Host performs one bounded strict-JSON translation call through the session model; missing/invalid models fall back to the source draft with a visible notice.
+- Compatibility: DSH `0.2.2-rc.4` and `0.2.2-rc.5` added to `engines`/peer/`dshReleases`; thirteen-version local matrix covers the latest `0.2.2-rc.5` baseline.
 - Additive `objective.initialize.clientRef` and structured `applyBootstrap` validation; legacy `charter/bootstrap` and `applyBootstrap` behavior stays byte-compatible.
 
 ### Verification

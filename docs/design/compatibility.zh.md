@@ -4,11 +4,11 @@
 
 > **状态：** Active — 已声明 DSH 版本的兼容声明。
 > **版本范围：** 所有已声明 DSH 版本。
-> **基准：** 2026-11-03
+> **基准：** 2026-11-23
 > **权威：** 发布范围见[版本路线](version-roadmap.zh.md)；兼容性以下方矩阵为准。
 > **替代/被替代：** 无 / 无
 
-调研与验证基准日：2026-10-30。
+调研与验证基准日：2026-11-23。
 
 本文回答三个问题：
 
@@ -30,20 +30,25 @@
 | `0.2.1-rc.5` | 支持 | 同上 |
 | `0.2.2-rc.1` | 支持（上一基线） | 同上 + typecheck/build/Vitest/remote/client smoke + 真实 Web profile 安装/启动、boot graph、bundle HTTP |
 | `0.2.2-rc.2` | 支持 | typecheck/build/Vitest/remote/client smoke |
-| `0.2.2-rc.3` | 支持（主开发基线） | typecheck/build/Vitest/remote/client smoke + 十一版本源码矩阵 |
+| `0.2.2-rc.3` | 支持 | typecheck/build/Vitest/remote/client smoke + 源码矩阵 |
+| `0.2.2-rc.4` | 支持 | typecheck/build/Vitest/remote/client smoke + 十三版本源码矩阵 |
+| `0.2.2-rc.5` | 支持（主开发基线） | typecheck/build/Vitest/remote/client smoke + 十三版本源码矩阵 |
 | `0.1.5-rc.1` / `0.1.5-rc.2` / `0.1.5-rc.3` | 不支持 | 契约差异过大，见第 4 节 |
 | `0.1.6-alpha.x` | 不支持 | 与 0.1.5 同代，未逐一验证 |
 | `0.2.2-alpha.2` / `0.2.2-alpha.3` | 不支持 | strict-peer 安装失败：这些 alpha 版本要求 Cordis 4.0.6 alpha 图；0.2.2-rc.1 线固定 Cordis 4.1.0，不进入测试 |
 | `0.3.x` | 未声明 | 大版本升级需要重新核验 |
 
-`package.json` 的 DSH peer 范围与 `engines.dsh` 覆盖已验证的十一个精确版本：
+对 `0.2.2-rc.3`/`0.2.2-rc.4` → `0.2.2-rc.5` 的升级指南已核对：文档化变更只有 DeepSeek 内容拒答错误码与
+默认 web-search provider；插件不消费这两个面，因此无需迁移。本地源码矩阵直接覆盖最新依赖图。
+
+`package.json` 的 DSH peer 范围与 `engines.dsh` 覆盖已验证的十三个精确版本：
 
 ```text
 engines.dsh:
   0.1.7-rc.2 || >=0.2.0-rc.1 <0.3.0-0
 
 已验证的 peer ranges / dsh.compatibility.dshReleases:
-  0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2 || 0.2.1-rc.3 || 0.2.1-rc.4 || 0.2.1-rc.5 || 0.2.2-rc.1 || 0.2.2-rc.2 || 0.2.2-rc.3
+  0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2 || 0.2.1-rc.3 || 0.2.1-rc.4 || 0.2.1-rc.5 || 0.2.2-rc.1 || 0.2.2-rc.2 || 0.2.2-rc.3 || 0.2.2-rc.4 || 0.2.2-rc.5
 ```
 
 Token 兼容（0.3.0）：Pane 使用 41 个静态宿主设计 token 和 1 个运行时变量

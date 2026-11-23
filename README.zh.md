@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![GitHub](https://img.shields.io/badge/GitHub-centella--cream%2Fdsh--charter-181717?logo=github)](https://github.com/centella-cream/dsh-charter)
-[![DSH](https://img.shields.io/badge/DSH-11%20verified%20versions-4b6bfb)](docs/design/compatibility.zh.md)
+[![DSH](https://img.shields.io/badge/DSH-13%20verified%20versions-4b6bfb)](docs/design/compatibility.zh.md)
 [![Node](https://img.shields.io/badge/node-%5E22.19%20%7C%7C%20%3E%3D24-339933)](package.json)
 [![Status: 0.3.3](https://img.shields.io/badge/status-0.3.3-brightgreen)](#状态)
 
@@ -45,7 +45,7 @@
 
 - **当前开发候选：**`0.3.3` — 结构化契约草案抽取、自动中英文语言归一、相似重复折叠与稳定候选 ref。已本地实现并测试，**尚未发布**；最新已发布版本为 `0.3.2`。
 - **上一版本：**`0.3.2` — 无障碍/证据收敛；`0.3.1`、`0.3.0` 是更早基线。
-  **主要 DSH 基线：**`0.2.2-rc.3`；十一个声明版本通过源码矩阵验证。
+  **主要 DSH 基线：**`0.2.2-rc.5`；十三个声明版本通过源码矩阵验证。
 - 从 `0.2.0` 起版本号使用普通递增（`0.2.0`、`0.2.1`、`0.2.2`、`0.3.0`、`0.3.1`、`0.3.2`、`0.3.3`），不再使用 `rc` 后缀。
 
 ## 核心能力
@@ -94,7 +94,7 @@
 
 ### 兼容性与运行时
 
-- DSH `0.2.2-rc.3` 声明与有界 `engines.dsh` 0.2 线范围；精确 `dshReleases`/peer 列表仍是十一版本矩阵已验证支持集。
+- DSH `0.2.2-rc.5` 声明与有界 `engines.dsh` 0.2 线范围；精确 `dshReleases`/peer 列表仍是十三版本矩阵已验证支持集。
 - `charter_read standing` 现在返回交付物稳定 id，模型可以提出真实 `requires` 引用；`D<n>` 明确只是展示标签，
   非法引用显式失败。
 - Desktop/Web 插件通过 Host profile 重组 + client HMR 热更新；CSS 按归属 style tag upsert，重载后替换旧样式，
@@ -210,8 +210,8 @@ tarball。`dsh plugin --profile desktop` 会被拥有该 profile 的 Electron �
 
 ### 要求
 
-- DSH：仅支持[兼容矩阵](docs/design/compatibility.zh.md)中列出的版本；`0.2.1+` 才具备 per-Peer Remote
-  resource authorization。
+- DSH：仅支持[兼容矩阵](docs/design/compatibility.zh.md)中列出的版本；当前主基线是 `0.2.2-rc.5`
+  （十三版本本地矩阵）；`0.2.1+` 才具备 per-Peer Remote resource authorization。
 - Node.js **`^22.19.0 || >=24.0.0`**。
 - Web 或 Desktop profile。
 
@@ -291,7 +291,7 @@ active-count 失败。
 | `0.1.7-rc.2` | 支持（最低版本） |
 | `0.2.0-rc.1` / `0.2.0-rc.2` | 支持 |
 | `0.2.1-rc.1` / `0.2.1-rc.2` / `0.2.1-rc.3` / `0.2.1-rc.4` / `0.2.1-rc.5` | 支持 |
-| `0.2.2-rc.1` / `0.2.2-rc.2` / `0.2.2-rc.3` | 支持（主基线：`0.2.2-rc.3`） |
+| `0.2.2-rc.1` / `0.2.2-rc.2` / `0.2.2-rc.3` / `0.2.2-rc.4` / `0.2.2-rc.5` | 支持（主基线：`0.2.2-rc.5`） |
 | `0.3.x` | 验证前不声明 |
 
 `engines.dsh` 使用有界的 0.2 线范围（`0.1.7-rc.2 || >=0.2.0-rc.1 <0.3.0-0`），DSH gate 会按 prerelease

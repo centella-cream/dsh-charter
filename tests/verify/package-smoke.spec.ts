@@ -40,6 +40,8 @@ describe('published DSH compatibility metadata', () => {
     '0.2.2-rc.1',
     '0.2.2-rc.2',
     '0.2.2-rc.3',
+    '0.2.2-rc.4',
+    '0.2.2-rc.5',
   ].join(' || ')
   // DSH's compatibility gate evaluates `engines.dsh` with includePrerelease and,
   // when present, ignores peer ranges for admission. The bounded 0.2-line range
