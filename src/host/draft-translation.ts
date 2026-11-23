@@ -21,7 +21,8 @@ export interface DraftLlmRuntime {
       readonly role: 'user'
       readonly content: readonly { readonly type: 'text'; readonly text: string }[]
     }[]
-    readonly temperature: number
+    readonly temperature?: number
+    readonly reasoningEffort?: string
     readonly maxTokens: number
     readonly signal: AbortSignal
   }): AsyncIterable<DraftStreamChunk>
@@ -43,7 +44,7 @@ export interface DraftTranslationResult {
 
 const PROMPT_VERSION = 'draft-language-v1'
 const MAX_TRANSLATION_TOKENS = 8_192
-const DEFAULT_TIMEOUT_MS = 10_000
+const DEFAULT_TIMEOUT_MS = 60_000
 // One JSON response for hundreds of candidates can exceed an output-token cap.
 // Batch by count and source bytes, then merge the validated ref maps.
 const MAX_BATCH_ITEMS = 12
@@ -201,6 +202,8 @@ async function translateBatch(
     system: `You are a contract-draft language normalizer (${PROMPT_VERSION}).`,
     messages: [{ role: 'user' as const, content: [{ type: 'text' as const, text: prompt(target, batch) }] }],
     temperature: 0.1,
+    // DeepSeek routes accept `off`; translation has no reasoning need.
+    ...(model.provider.startsWith('deepseek') ? { reasoningEffort: 'off' } : {}),
     maxTokens: MAX_TRANSLATION_TOKENS,
     signal,
   }

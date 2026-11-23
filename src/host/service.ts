@@ -135,7 +135,7 @@ export const DEFAULT_CHARTER_CONFIG: CharterConfig = {
   ...DEFAULT_CHARTER_LIMITS,
   contextOrder: 130,
   languageFollow: true,
-  languageFollowTimeoutMs: 10_000,
+  languageFollowTimeoutMs: 60_000,
 }
 
 export const Config: Schema<CharterConfig> = Schema.object({
@@ -154,7 +154,7 @@ export const Config: Schema<CharterConfig> = Schema.object({
   maxProposalBatches: Schema.number().step(1).min(1).default(DEFAULT_CHARTER_CONFIG.maxProposalBatches ?? 64),
   contextOrder: Schema.number().default(DEFAULT_CHARTER_CONFIG.contextOrder),
   languageFollow: Schema.boolean().default(DEFAULT_CHARTER_CONFIG.languageFollow),
-  languageFollowTimeoutMs: Schema.number().step(1).min(1_000).max(120_000).default(DEFAULT_CHARTER_CONFIG.languageFollowTimeoutMs),
+  languageFollowTimeoutMs: Schema.number().step(1).min(1_000).max(300_000).default(DEFAULT_CHARTER_CONFIG.languageFollowTimeoutMs),
 })
 
 function lifecycleFingerprint(identity: CharterIdentity): string {
