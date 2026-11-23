@@ -11,7 +11,7 @@ tag、不删除已发布 Release、不在打 tag 后重建字节。
 
 ## 当前状态（2026-11-16）
 
-- **开发候选：** `0.3.3` — 结构化草案抽取 + 自动中英文语言归一；本地实现/测试，未推送、未 tag、未发布。
+- **发布候选：** `0.3.3` — 结构化草案抽取 + 非阻塞中英文语言跟随；本地 candidate artifact `6f987d7b…`，源码门禁与 profile 验收完成。尚未推送、未 tag、未发布；C+1 checksum 与 promotion 等待明确的发布执行。
 - **已发布：** `0.3.2` — npm `latest`/`next`，GitHub Release `v0.3.2`；精确产物
   `dsh-charter-0.3.2.tgz`，SHA-256 `9dcb82ae34eaaeb6d266bb98f3e1f92f3a0798042ce3dc282abe9173ff79e056`。
 - **上一版本：** `0.3.1` — GitHub Release `v0.3.1`。
