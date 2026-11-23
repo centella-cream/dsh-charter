@@ -245,7 +245,7 @@ objective，逐字相等规则不变）。详见校准方案 §6/§7；本文的
 - 自动调用会向用户配置的模型发送压缩摘要/契约草案文本；profile 配置 `languageFollow: false` 可关闭自动
   翻译（结构化抽取仍生效）；README/user-guide/release notes 必须披露；record/Remote/模型工具面不变。
 - **非阻塞：** 首屏草案不等待模型；语言归一在客户端首屏之后的后台请求中完成，
-  `languageFollowTimeoutMs` 默认 10s 且有配置上限；超时/失败回退源语言。
+  `languageFollowTimeoutMs` 默认 60s 且有配置上限；超时/失败回退源语言。
 
 ## 5. UI（遵循 gui-v1 §4.9 冻结视觉语言）
 

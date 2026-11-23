@@ -244,7 +244,7 @@ Defaults live in `cordis.patch.yml`. Override the same keys in the profile's `co
     maxItemBytes: 1024
     contextOrder: 130
     languageFollow: true
-    languageFollowTimeoutMs: 10000
+    languageFollowTimeoutMs: 60000
 ```
 
 | Field | Default | Meaning |
@@ -261,7 +261,7 @@ Defaults live in `cordis.patch.yml`. Override the same keys in the profile's `co
 | `mutationLimit` | 128 | recent mutation receipts |
 | `contextOrder` | 130 | runtime-context order; after sandbox/approval/subagent by default |
 | `languageFollow` | true | normalize a review draft to the active `zh`/`en` DSH language through the session model; set `false` to disable the automatic model call |
-| `languageFollowTimeoutMs` | 10000 | upper bound for the background language-normalization phase; on timeout the source draft remains usable |
+| `languageFollowTimeoutMs` | 60000 | upper bound for the background language-normalization phase; on timeout the source draft remains usable |
 
 The only model-visible capacity is `maxPromptBytes`; active item counts are not capped separately. Storage is
 bounded by `maxItems`, `maxPendingItems`, and `maxRecordBytes`. Values that would make a Session ready but

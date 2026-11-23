@@ -225,7 +225,7 @@ Change Set 引入或加重依赖冲突时，Review/Apply 会列出受影响交�
     maxItemBytes: 1024
     contextOrder: 130
     languageFollow: true
-    languageFollowTimeoutMs: 10000
+    languageFollowTimeoutMs: 60000
 ```
 
 | 字段 | 默认 | 说明 |
@@ -242,7 +242,7 @@ Change Set 引入或加重依赖冲突时，Review/Apply 会列出受影响交�
 | `mutationLimit` | 128 | 近期 mutation 回执上限 |
 | `contextOrder` | 130 | runtime context 排序；默认在 sandbox/approval/subagent 之后 |
 | `languageFollow` | true | 按当前 `zh`/`en` DSH 界面语言，通过后续模型归一草案；设为 `false` 可关闭自动模型调用 |
-| `languageFollowTimeoutMs` | 10000 | 后台自动语言归一的等待上限；超时保留源语言草案 |
+| `languageFollowTimeoutMs` | 60000 | 后台自动语言归一的等待上限；超时保留源语言草案 |
 
 模型可见容量只有 `maxPromptBytes`；active 条目数不再单独设上限。存储由 `maxItems`、`maxPendingItems` 和
 `maxRecordBytes` 约束。会让 Session 处于 ready 但永久不可编辑的配置值会被抬到文档化最小值，并由 Host 记录 warning。
@@ -263,7 +263,7 @@ Change Set 引入或加重依赖冲突时，Review/Apply 会列出受影响交�
 
 启用 `languageFollow` 且草案语言与 DSH 界面语言不一致时，先立即显示源语言草案；Host 再在后台把当前候选
 分批发送给会话模型，并在草案仍未被操作时替换。可在 profile 设置 `languageFollow: false` 保留源语言并关闭
-该自动调用；确定性抽取仍然生效。`languageFollowTimeoutMs` 限制后台等待（默认 10 秒）。
+该自动调用；确定性抽取仍然生效。`languageFollowTimeoutMs` 限制后台等待（默认 60 秒）。
 
 会话契约需要更多空间时，可在 profile 中调高预算。
 
