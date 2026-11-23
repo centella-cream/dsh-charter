@@ -5,7 +5,7 @@
   },
   "cases": [
     {
-      "name": "mixed-headings",
+      "name": "legacy-case-1",
       "summary": "## Primary Request and Intent\n- Original: \"Build a durable charter.\"\n- Latest correction: \"Keep the tab last.\"\n## Critical Context\n- Must preserve the public API.\n- 必须保持公开 API。\n## Pending Jobs\n- Run the full check.\n- Run the full check.\n",
       "expected": {
         "objective": "Keep the tab last.",
@@ -19,7 +19,7 @@
       }
     },
     {
-      "name": "oversized-clause-hard-split",
+      "name": "legacy-case-2",
       "summary": "## Primary Request and Intent\n- 界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界\n## Pending Jobs\n- step-0 step-1 step-2 step-3 step-4 step-5 step-6 step-7 step-8 step-9 step-10 step-11 step-12 step-13 step-14 step-15 step-16 step-17 step-18 step-19 step-20 step-21 step-22 step-23 step-24 step-25 step-26 step-27 step-28 step-29 step-30 step-31 step-32 step-33 step-34 step-35 step-36 step-37 step-38 step-39 step-40 step-41 step-42 step-43 step-44 step-45 step-46 step-47 step-48 step-49 step-50 step-51 step-52 step-53 step-54 step-55 step-56 step-57 step-58 step-59 step-60 step-61 step-62 step-63 step-64 step-65 step-66 step-67 step-68 step-69 step-70 step-71 step-72 step-73 step-74 step-75 step-76 step-77 step-78 step-79\n",
       "expected": {
         "objective": "界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界",
@@ -39,7 +39,7 @@
       }
     },
     {
-      "name": "crlf-nfd-label",
+      "name": "legacy-case-3",
       "summary": "## Primary Request and Intent\r\n- Original: CaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCafé\r\n## Critical Context\r\n- Do not modify migrations/.\r\n",
       "expected": {
         "objective": "CaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCaféCafé",
@@ -47,6 +47,99 @@
           "Do not modify migrations/."
         ],
         "deliverables": []
+      }
+    },
+    {
+      "name": "legacy-case-4",
+      "summary": "## Primary Request and Intent\n- Build an offline-first editor.\n## Key Technical Concepts\n- storage-domain records\n- DSH session projections\n## Pending Jobs\n- Write the migration tests.\n",
+      "expected": {
+        "objective": "Build an offline-first editor.",
+        "invariants": [],
+        "deliverables": [
+          "Write the migration tests."
+        ]
+      }
+    },
+    {
+      "name": "legacy-case-5",
+      "summary": "## Primary Request and Intent\n- 保持桌面端和 Web 端行为一致。\n## Critical Context\n- 不得修改迁移目录。\n- 必须保留恢复路径。\n## Pending Jobs\n- 完成中英文文档。\n",
+      "expected": {
+        "objective": "保持桌面端和 Web 端行为一致。",
+        "invariants": [
+          "不得修改迁移目录。",
+          "必须保留恢复路径。"
+        ],
+        "deliverables": [
+          "完成中英文文档。"
+        ]
+      }
+    },
+    {
+      "name": "legacy-case-6",
+      "summary": "## Primary Request and Intent\n- Original: \"Old goal\"\n- Latest correction: \"New goal\"\n## Critical Context\n- Keep it backward compatible.\n## Pending Jobs\n- Check compatibility.\n- Check compatibility.\n",
+      "expected": {
+        "objective": "New goal",
+        "invariants": [
+          "Keep it backward compatible."
+        ],
+        "deliverables": [
+          "Check compatibility."
+        ]
+      }
+    },
+    {
+      "name": "legacy-case-7",
+      "summary": "## Pending Jobs\n- First pending item.\n- Second pending item.\n## Next Step\n- Run tests.\n",
+      "expected": {
+        "objective": "First pending item.",
+        "invariants": [],
+        "deliverables": [
+          "First pending item.",
+          "Second pending item.",
+          "Run tests."
+        ]
+      }
+    },
+    {
+      "name": "legacy-case-8",
+      "summary": "## Primary Request and Intent\n- AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n## Pending Jobs\n- BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\n",
+      "expected": {
+        "objective": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "invariants": [
+          "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "AAAAAAAAAAAAAAAAAAAA"
+        ],
+        "deliverables": [
+          "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+          "BBBBBBBBBBBB"
+        ]
+      }
+    },
+    {
+      "name": "legacy-case-9",
+      "summary": "## Primary Request and Intent\n- Original: \"Build\"\n## Critical Context\n- Must keep logging.\n- Must keep logging.\n- Do not change config.\n## Pending Jobs\n- Write docs.\n",
+      "expected": {
+        "objective": "Build",
+        "invariants": [
+          "Must keep logging.",
+          "Do not change config."
+        ],
+        "deliverables": [
+          "Write docs."
+        ]
+      }
+    },
+    {
+      "name": "legacy-case-10",
+      "summary": "## Primary Request and Intent\n- 目标：完成发布前检查。\n## Critical Context\n- 不得跳过人工验收。\n## Pending Jobs\n- 运行 npm run check。\n",
+      "expected": {
+        "objective": "完成发布前检查。",
+        "invariants": [
+          "不得跳过人工验收。"
+        ],
+        "deliverables": [
+          "运行 npm run check。"
+        ]
       }
     }
   ]

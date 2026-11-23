@@ -42,7 +42,7 @@ export interface DraftTranslationResult {
 
 const PROMPT_VERSION = 'draft-language-v1'
 const MAX_TRANSLATION_TOKENS = 4_096
-const TIMEOUT_MS = 30_000
+const DEFAULT_TIMEOUT_MS = 10_000
 
 function prompt(target: 'zh' | 'en', items: readonly CharterBootstrapDraftItem[]): string {
   const lines = items.map(item => JSON.stringify({ ref: item.ref, kind: item.kind, text: item.text }))
@@ -120,11 +120,12 @@ export async function translateDraftItems(
   target: 'zh' | 'en',
   items: readonly CharterBootstrapDraftItem[],
   signal?: AbortSignal,
+  timeoutMs = DEFAULT_TIMEOUT_MS,
 ): Promise<DraftTranslationResult> {
   const active = items.filter(item => item.kind !== 'objective' || item.ref === 'd-obj-0')
   if (active.length === 0) return { items, provider: model.provider, model: model.model }
   const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(new Error('calibration timeout')), TIMEOUT_MS)
+  const timer = setTimeout(() => controller.abort(new Error('calibration timeout')), timeoutMs)
   const relay = (): void => controller.abort(signal?.reason)
   signal?.addEventListener('abort', relay, { once: true })
   try {

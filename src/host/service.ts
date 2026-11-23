@@ -127,12 +127,15 @@ export interface CharterConfig extends CharterLimits {
   readonly contextOrder: number
   /** Automatically normalize a review draft to the DSH UI language via the session model. */
   readonly languageFollow: boolean
+  /** Bound one automatic language-normalization call; the draft stays usable on timeout. */
+  readonly languageFollowTimeoutMs: number
 }
 
 export const DEFAULT_CHARTER_CONFIG: CharterConfig = {
   ...DEFAULT_CHARTER_LIMITS,
   contextOrder: 130,
   languageFollow: true,
+  languageFollowTimeoutMs: 10_000,
 }
 
 export const Config: Schema<CharterConfig> = Schema.object({
@@ -151,6 +154,7 @@ export const Config: Schema<CharterConfig> = Schema.object({
   maxProposalBatches: Schema.number().step(1).min(1).default(DEFAULT_CHARTER_CONFIG.maxProposalBatches ?? 64),
   contextOrder: Schema.number().default(DEFAULT_CHARTER_CONFIG.contextOrder),
   languageFollow: Schema.boolean().default(DEFAULT_CHARTER_CONFIG.languageFollow),
+  languageFollowTimeoutMs: Schema.number().step(1).min(1_000).max(120_000).default(DEFAULT_CHARTER_CONFIG.languageFollowTimeoutMs),
 })
 
 function lifecycleFingerprint(identity: CharterIdentity): string {
@@ -960,7 +964,7 @@ export class CharterService extends Service {
             language = { requested: target, status: 'translated', provider: model.provider, model: model.model }
           } else {
             try {
-              const translated = await translateDraftItems(model.llm, model, target, extraction.items)
+              const translated = await translateDraftItems(model.llm, model, target, extraction.items, undefined, this.config.languageFollowTimeoutMs)
               items = translated.items.map(item => this.withTranslatedItem(item, target))
               this.translatedItems.set(cacheKey, items)
               this.trimMap(this.translatedItems, 32)
