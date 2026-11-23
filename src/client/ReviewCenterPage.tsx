@@ -356,6 +356,7 @@ export function ReviewCenterPage({ scope }: { readonly scope: PaneScope }): Reac
                         {t('bootstrap.languageFallback', {
                           language: bootstrapLanguage.requested === 'zh' ? t('locale.zh') : t('locale.en'),
                         })}
+                        <ErrorDetails detail={bootstrapLanguage.reason} t={t}/>
                       </div>
                     )}
                     {bootstrapDraftLang !== undefined && bootstrapLanguage?.status !== 'translated' && (
