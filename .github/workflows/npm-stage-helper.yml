@@ -1,0 +1,48 @@
+name: npm stage helper
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Exact version to approve from the npm staging area
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  approve:
+    runs-on: ubuntu-latest
+    environment: release
+    env:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22.19.0'
+      - name: Approve the staged version
+        run: |
+          set -euo pipefail
+          npm install --global npm@11.21.0
+          test "$(npm --version)" = "11.21.0"
+          npm config set //registry.npmjs.org/:_authToken "$NPM_TOKEN"
+          echo '--- whoami ---'
+          npm whoami || true
+          echo '--- staged ---'
+          npm stage list dsh-charter --json > staged.json || true
+          cat staged.json || true
+          node - <<'NODE'
+          const fs = require('fs')
+          const raw = fs.readFileSync('staged.json', 'utf8').trim()
+          if (raw.length === 0) throw new Error('no staged list output')
+          const data = JSON.parse(raw)
+          const rows = Array.isArray(data) ? data : (data.staged ?? data.versions ?? [])
+          const match = rows.find(row => String(row.version ?? row.pkg?.version ?? '') === process.env.VERSION)
+          if (!match) throw new Error(`no staged entry for ${process.env.VERSION}`)
+          console.log(`stage-id=${match.id ?? match.stageId ?? match['stage-id']}`)
+          fs.writeFileSync('stage-id.txt', String(match.id ?? match.stageId ?? match['stage-id']))
+          NODE
+          STAGE_ID=$(cat stage-id.txt)
+          echo "approving stage $STAGE_ID"
+          npm stage approve "$STAGE_ID"
