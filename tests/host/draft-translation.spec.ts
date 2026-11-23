@@ -37,28 +37,36 @@ describe('draft translation', () => {
     expect(result.provider).toBe('p')
   })
 
-  it('rejects an incomplete or malformed model response', async () => {
-    await expect(translateDraftItems(
+  it('keeps source refs when a model response is incomplete or malformed', async () => {
+    const incomplete = await translateDraftItems(
       fakeLlm(JSON.stringify({ items: [{ ref: 'd-inv-0', text: 'Only one' }] })),
       { provider: 'p', model: 'm' },
       'en',
       [item('d-obj-0', '编写测试。', 'objective'), item('d-inv-0', '保持 API 稳定。')],
-    )).rejects.toThrow(/count/u)
-    await expect(translateDraftItems(
+    )
+    expect(incomplete.translatedRefs).toEqual(['d-inv-0'])
+    expect(incomplete.failedRefs).toEqual(['d-obj-0'])
+    expect(incomplete.items.map(entry => entry.text)).toEqual(['编写测试。', 'Only one'])
+    const malformed = await translateDraftItems(
       fakeLlm('not json'),
       { provider: 'p', model: 'm' },
       'en',
       [item('d-inv-0', '保持 API 稳定。')],
-    )).rejects.toThrow(/JSON/u)
+    )
+    expect(malformed.translatedRefs).toEqual([])
+    expect(malformed.failedRefs).toEqual(['d-inv-0'])
   })
 
-  it('rejects a max-token finish instead of accepting a partial translation', async () => {
-    await expect(translateDraftItems(
+  it('keeps a max-token batch as source instead of accepting partial text', async () => {
+    const result = await translateDraftItems(
       fakeLlm(JSON.stringify({ items: [{ ref: 'd-inv-0', text: 'Keep stable.' }] }), 'max-tokens'),
       { provider: 'p', model: 'm' },
       'en',
       [item('d-inv-0', '保持稳定。')],
-    )).rejects.toThrow(/max-tokens/u)
+    )
+    expect(result.translatedRefs).toEqual([])
+    expect(result.failedRefs).toEqual(['d-inv-0'])
+    expect(result.items[0]?.text).toBe('保持稳定。')
   })
 })
 

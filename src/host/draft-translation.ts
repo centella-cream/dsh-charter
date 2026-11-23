@@ -38,18 +38,21 @@ interface DraftStreamChunk {
 
 export interface DraftTranslationResult {
   readonly items: readonly CharterBootstrapDraftItem[]
+  readonly translatedRefs: readonly string[]
+  readonly failedRefs: readonly string[]
   readonly provider: string
   readonly model: string
 }
 
 const PROMPT_VERSION = 'draft-language-v1'
-const MAX_TRANSLATION_TOKENS = 8_192
+const MAX_TRANSLATION_TOKENS = 4_096
 const DEFAULT_TIMEOUT_MS = 60_000
 // One JSON response for hundreds of candidates can exceed an output-token cap.
 // Batch by count and source bytes, then merge the validated ref maps.
-const MAX_BATCH_ITEMS = 12
-const MAX_BATCH_BYTES = 6_000
-const MAX_CONCURRENT_BATCHES = 4
+const MAX_BATCH_ITEMS = 8
+const MAX_BATCH_BYTES = 3_200
+const MAX_CONCURRENT_BATCHES = 2
+const MAX_SPLIT_RETRIES = 1
 
 function prompt(target: 'zh' | 'en', items: readonly CharterBootstrapDraftItem[]): string {
   const lines = items.map(item => JSON.stringify({ ref: item.ref, kind: item.kind, text: item.text }))
@@ -130,44 +133,75 @@ export async function translateDraftItems(
   timeoutMs = DEFAULT_TIMEOUT_MS,
 ): Promise<DraftTranslationResult> {
   const active = items.filter(item => item.kind !== 'objective' || item.ref === 'd-obj-0')
-  if (active.length === 0) return { items, provider: model.provider, model: model.model }
+  if (active.length === 0) {
+    return { items, translatedRefs: [], failedRefs: [], provider: model.provider, model: model.model }
+  }
   const batches = translationBatches(active)
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(new Error('calibration timeout')), timeoutMs)
-  const relay = (): void => controller.abort(signal?.reason)
-  signal?.addEventListener('abort', relay, { once: true })
-  try {
-    const translated = await mapLimit(batches, MAX_CONCURRENT_BATCHES, async batch => {
-      try {
-        return await translateBatch(llm, model, target, batch, controller.signal)
-      } catch (error) {
-        controller.abort(error)
-        throw error
+  const outcomes = await mapLimit(batches, MAX_CONCURRENT_BATCHES, batch =>
+    translateResilient(llm, model, target, batch, signal, timeoutMs, MAX_SPLIT_RETRIES),
+  )
+  const translations = new Map<string, string>()
+  const failedRefs: string[] = []
+  for (const outcome of outcomes) {
+    for (const [ref, text] of outcome.translations) translations.set(ref, text)
+    failedRefs.push(...outcome.failedRefs)
+  }
+  return {
+    items: items.map(item => {
+      const translated = translations.get(item.ref)
+      if (translated === undefined) return item
+      const members = item.foldMembers === undefined
+        ? undefined
+        : translateMembers(item.foldMembers, translations)
+      return {
+        ...item,
+        text: translated,
+        ...(members === undefined ? {} : { foldMembers: members }),
       }
-    })
-    const translations = new Map<string, string>()
-    for (const batch of translated) {
-      for (const [ref, text] of batch) translations.set(ref, text)
-    }
+    }),
+    translatedRefs: [...translations.keys()],
+    failedRefs,
+    provider: model.provider,
+    model: model.model,
+  }
+}
+
+interface BatchOutcome {
+  readonly translations: Map<string, string>
+  readonly failedRefs: readonly string[]
+}
+
+/** One batch with a bounded timeout; a timeout or bad response splits once before giving up. */
+async function translateResilient(
+  llm: DraftLlmRuntime,
+  model: DraftTranslationModel,
+  target: 'zh' | 'en',
+  batch: readonly CharterBootstrapDraftItem[],
+  signal: AbortSignal | undefined,
+  timeoutMs: number,
+  splitsLeft: number,
+): Promise<BatchOutcome> {
+  try {
     return {
-      items: items.map(item => {
-        const translatedItem = translations.get(item.ref)
-        if (translatedItem === undefined) return item
-        const members = item.foldMembers === undefined
-          ? undefined
-          : translateMembers(item.foldMembers, translations)
-        return {
-          ...item,
-          text: translatedItem,
-          ...(members === undefined ? {} : { foldMembers: members }),
-        }
-      }),
-      provider: model.provider,
-      model: model.model,
+      translations: await translateBatch(llm, model, target, batch, signal, timeoutMs),
+      failedRefs: [],
     }
-  } finally {
-    clearTimeout(timer)
-    signal?.removeEventListener('abort', relay)
+  } catch (error) {
+    if (splitsLeft <= 0 || batch.length <= 1) {
+      return { translations: new Map(), failedRefs: batch.map(item => item.ref) }
+    }
+    const middle = Math.ceil(batch.length / 2)
+    const halves = await Promise.all([
+      translateResilient(llm, model, target, batch.slice(0, middle), signal, timeoutMs, splitsLeft - 1),
+      translateResilient(llm, model, target, batch.slice(middle), signal, timeoutMs, splitsLeft - 1),
+    ])
+    const translations = new Map<string, string>()
+    const failedRefs: string[] = []
+    for (const half of halves) {
+      for (const [ref, text] of half.translations) translations.set(ref, text)
+      failedRefs.push(...half.failedRefs)
+    }
+    return { translations, failedRefs }
   }
 }
 
@@ -194,29 +228,45 @@ async function translateBatch(
   model: DraftTranslationModel,
   target: 'zh' | 'en',
   batch: readonly CharterBootstrapDraftItem[],
-  signal: AbortSignal,
+  signal: AbortSignal | undefined,
+  timeoutMs: number,
 ): Promise<Map<string, string>> {
-  const options = {
-    provider: model.provider,
-    model: model.model,
-    system: `You are a contract-draft language normalizer (${PROMPT_VERSION}).`,
-    messages: [{ role: 'user' as const, content: [{ type: 'text' as const, text: prompt(target, batch) }] }],
-    temperature: 0.1,
-    // DeepSeek routes accept `off`; translation has no reasoning need.
-    ...(model.provider.startsWith('deepseek') ? { reasoningEffort: 'off' } : {}),
-    maxTokens: MAX_TRANSLATION_TOKENS,
-    signal,
+  const controller = new AbortController()
+  let timedOut = false
+  const timer = setTimeout(() => {
+    timedOut = true
+    controller.abort(new Error('translation timeout'))
+  }, timeoutMs)
+  const relay = (): void => controller.abort(signal?.reason)
+  signal?.addEventListener('abort', relay, { once: true })
+  try {
+    const options = {
+      provider: model.provider,
+      model: model.model,
+      system: `You are a contract-draft language normalizer (${PROMPT_VERSION}).`,
+      messages: [{ role: 'user' as const, content: [{ type: 'text' as const, text: prompt(target, batch) }] }],
+      temperature: 0.1,
+      // DeepSeek routes accept `off`; translation has no reasoning need.
+      ...(model.provider.startsWith('deepseek') ? { reasoningEffort: 'off' } : {}),
+      maxTokens: MAX_TRANSLATION_TOKENS,
+      signal: controller.signal,
+    }
+    const chunks: DraftStreamChunk[] = []
+    for await (const chunk of llm.stream(options)) {
+      if (chunk.type === 'tool-call-delta') throw new Error('translation returned an unexpected tool call')
+      chunks.push(chunk)
+    }
+    const finish = [...chunks].reverse().find(chunk => chunk.type === 'finish')
+    if (finish?.type !== 'finish' || finish.reason?.kind !== 'stop') {
+      throw new Error(timedOut
+        ? `translation timed out after ${timeoutMs}ms`
+        : `translation finished with ${finish?.type === 'finish' ? finish.reason?.kind : 'no-finish'}`)
+    }
+    return parseTranslation(assembleText(chunks), batch.map(item => item.ref))
+  } finally {
+    clearTimeout(timer)
+    signal?.removeEventListener('abort', relay)
   }
-  const chunks: DraftStreamChunk[] = []
-  for await (const chunk of llm.stream(options)) {
-    if (chunk.type === 'tool-call-delta') throw new Error('translation returned an unexpected tool call')
-    chunks.push(chunk)
-  }
-  const finish = [...chunks].reverse().find(chunk => chunk.type === 'finish')
-  if (finish?.type !== 'finish' || finish.reason?.kind !== 'stop') {
-    throw new Error(`translation finished with ${finish?.type === 'finish' ? finish.reason?.kind : 'no-finish'}`)
-  }
-  return parseTranslation(assembleText(chunks), batch.map(item => item.ref))
 }
 
 /** Run at most `limit` async jobs concurrently while preserving result order. */

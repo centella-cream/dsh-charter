@@ -129,6 +129,9 @@ export interface CharterConfig extends CharterLimits {
   readonly languageFollow: boolean
   /** Bound one automatic language-normalization call; the draft stays usable on timeout. */
   readonly languageFollowTimeoutMs: number
+  /** Optional dedicated translation route; both fields must be set to override the session model. */
+  readonly languageFollowProvider?: string
+  readonly languageFollowModel?: string
 }
 
 export const DEFAULT_CHARTER_CONFIG: CharterConfig = {
@@ -155,6 +158,8 @@ export const Config: Schema<CharterConfig> = Schema.object({
   contextOrder: Schema.number().default(DEFAULT_CHARTER_CONFIG.contextOrder),
   languageFollow: Schema.boolean().default(DEFAULT_CHARTER_CONFIG.languageFollow),
   languageFollowTimeoutMs: Schema.number().step(1).min(1_000).max(300_000).default(DEFAULT_CHARTER_CONFIG.languageFollowTimeoutMs),
+  languageFollowProvider: Schema.string(),
+  languageFollowModel: Schema.string(),
 })
 
 function lifecycleFingerprint(identity: CharterIdentity): string {
@@ -289,7 +294,7 @@ export class CharterService extends Service {
 
   private readonly config: CharterConfig
   private readonly localizedDrafts = new Map<string, CharterBootstrapDraftProposal>()
-  private readonly translatedItems = new Map<string, readonly CharterBootstrapDraftItem[]>()
+  private readonly translatedItems = new Map<string, { readonly items: readonly CharterBootstrapDraftItem[]; readonly language: CharterBootstrapLanguage }>()
   private sessionsTable: KvTable<SessionIdType, CharterRecord> | undefined
   private archivesTable: KvTable<string, CharterArchiveCacheEntry> | undefined
   private archivesDomain: { close(): Promise<void> } | undefined
@@ -961,8 +966,8 @@ export class CharterService extends Service {
           const cacheKey = sha256Json({ sourceKey, target, provider: model.provider, model: model.model })
           const cached = this.translatedItems.get(cacheKey)
           if (cached !== undefined) {
-            items = cached
-            language = { requested: target, status: 'translated', provider: model.provider, model: model.model }
+            items = cached.items
+            language = cached.language
           } else if (!awaitTranslation) {
             language = {
               requested: target,
@@ -974,10 +979,29 @@ export class CharterService extends Service {
           } else {
             try {
               const translated = await translateDraftItems(model.llm, model, target, extraction.items, undefined, this.config.languageFollowTimeoutMs)
-              items = translated.items.map(item => this.withTranslatedItem(item, target))
-              this.translatedItems.set(cacheKey, items)
-              this.trimMap(this.translatedItems, 32)
-              language = { requested: target, status: 'translated', provider: model.provider, model: model.model }
+              const translatedRefs = new Set(translated.translatedRefs)
+              items = translated.items.map(item => translatedRefs.has(item.ref)
+                ? this.withTranslatedItem(item, target)
+                : item)
+              if (translated.failedRefs.length === 0) {
+                language = { requested: target, status: 'translated', provider: model.provider, model: model.model }
+              } else if (translated.translatedRefs.length === 0) {
+                language = {
+                  requested: target,
+                  status: 'failed',
+                  reason: 'Translation failed for every candidate; source text was kept.',
+                }
+              } else {
+                language = {
+                  requested: target,
+                  status: 'partial',
+                  reason: `${translated.failedRefs.length} candidate(s) kept source text after translation failed.`,
+                }
+              }
+              if (language.status !== 'failed') {
+                this.translatedItems.set(cacheKey, { items, language })
+                this.trimMap(this.translatedItems, 32)
+              }
             } catch (error) {
               language = {
                 requested: target,
@@ -999,7 +1023,11 @@ export class CharterService extends Service {
       deliverables,
       source: extraction.source,
       items,
-      draftLang: language.status === 'translated' && target !== null ? target : extraction.draftLang,
+      draftLang: language.status === 'translated' && target !== null
+        ? target
+        : language.status === 'partial'
+          ? 'mixed'
+          : extraction.draftLang,
       language,
       extractorVersion: STRUCTURED_EXTRACTOR_VERSION,
     }
@@ -1018,8 +1046,11 @@ export class CharterService extends Service {
   private translationModel(sessionId: SessionIdType): { readonly llm: DraftLlmRuntime; readonly provider: string; readonly model: string } | undefined {
     const llm = this.ctx.get('llm') as unknown as DraftLlmRuntime | undefined
     if (llm === undefined) return undefined
-    const agent = this.ctx.agents.get(sessionId) as unknown as { readonly model?: { current(): { provider: string; model: string; reasoningEffort?: string } | undefined } } | undefined
-    const selection = agent?.model?.current()
+    const overrideProvider = this.config.languageFollowProvider?.trim()
+    const overrideModel = this.config.languageFollowModel?.trim()
+    const selection = overrideProvider !== undefined && overrideProvider !== '' && overrideModel !== undefined && overrideModel !== ''
+      ? { provider: overrideProvider, model: overrideModel }
+      : (this.ctx.agents.get(sessionId) as unknown as { readonly model?: { current(): { provider: string; model: string } | undefined } } | undefined)?.model?.current()
     if (selection === undefined) return undefined
     return {
       llm,

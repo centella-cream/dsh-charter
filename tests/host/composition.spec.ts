@@ -36,7 +36,7 @@ function installToolExecutor(ctx: Context): void {
 
 async function mount(
   root: string,
-  config: Partial<Record<string, number | boolean>> = {},
+  config: Partial<Record<string, number | boolean | string>> = {},
   options: { readonly autoStartup?: boolean } = {},
 ): Promise<Context> {
   const ctx = new Context()
@@ -2390,6 +2390,87 @@ describe('automatic draft language follow', () => {
     if (!localized.available) return
     expect(localized.proposal.language).toMatchObject({ requested: 'en', status: 'translated' })
     expect(calls).toBe(1)
+  })
+
+  it('keeps successful candidates and marks a partial translation', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-language-partial-'))
+    roots.push(root)
+    const ctx = await mount(root)
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('language-partial'), {
+      meta: { cwd: root, createdAt: 1_700_000_003_160 },
+    })
+    await waitForReady(service, session)
+    const fakeAgent = {
+      id: session.id,
+      session,
+      model: { current: () => ({ provider: 'fake', model: 'fake-model' }) },
+    } as unknown as Agent
+    await ctx.agents.register(fakeAgent)
+    const llm = {
+      async *stream() {
+        const output = JSON.stringify({ items: [{ ref: 'd-del-0', text: 'Verify the English draft.' }] })
+        yield { type: 'block-start', index: 0, blockType: 'text' }
+        yield { type: 'text-delta', index: 0, text: output }
+        yield { type: 'block-end', index: 0, block: { type: 'text', text: output } }
+        yield { type: 'finish', reason: { kind: 'stop' } }
+      },
+    }
+    ctx.provide('llm', llm as never)
+    const append = session as unknown as { append(type: string, data: unknown): unknown }
+    append.append('compaction/summary', {
+      summary: [{ type: 'text', text: '## Pending Jobs\n- 验证中文草案。\n' }],
+    })
+    const draft = await service.bootstrapDraft(session.id, 'en')
+    expect(draft.available).toBe(true)
+    if (!draft.available) return
+    expect(draft.proposal.language).toMatchObject({ requested: 'en', status: 'partial' })
+    expect(draft.proposal.draftLang).toBe('mixed')
+    expect(draft.proposal.items.find(item => item.ref === 'd-obj-0')?.text).toContain('验证')
+    expect(draft.proposal.items.find(item => item.ref === 'd-del-0')?.text).toBe('Verify the English draft.')
+  })
+
+  it('uses the configured dedicated translation route instead of the session model', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-language-route-'))
+    roots.push(root)
+    const ctx = await mount(root, {
+      languageFollowProvider: 'fast-provider',
+      languageFollowModel: 'fast-model',
+    })
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('language-route'), {
+      meta: { cwd: root, createdAt: 1_700_000_003_150 },
+    })
+    await waitForReady(service, session)
+    let seen = { provider: '', model: '' }
+    const llm = {
+      async *stream(options: { provider?: string; model?: string }) {
+        seen = { provider: options.provider ?? '', model: options.model ?? '' }
+        const output = JSON.stringify({ items: [
+          { ref: 'd-obj-0', text: 'Verify the English draft.' },
+          { ref: 'd-del-0', text: 'Verify the English draft.' },
+        ] })
+        yield { type: 'block-start', index: 0, blockType: 'text' }
+        yield { type: 'text-delta', index: 0, text: output }
+        yield { type: 'block-end', index: 0, block: { type: 'text', text: output } }
+        yield { type: 'finish', reason: { kind: 'stop' } }
+      },
+    }
+    ctx.provide('llm', llm as never)
+    const append = session as unknown as { append(type: string, data: unknown): unknown }
+    append.append('compaction/summary', {
+      summary: [{ type: 'text', text: '## Pending Jobs\n- 验证中文草案。\n' }],
+    })
+    const draft = await service.bootstrapDraft(session.id, 'en')
+    expect(draft.available).toBe(true)
+    if (!draft.available) return
+    expect(seen).toEqual({ provider: 'fast-provider', model: 'fast-model' })
+    expect(draft.proposal.language).toMatchObject({
+      requested: 'en',
+      status: 'translated',
+      provider: 'fast-provider',
+      model: 'fast-model',
+    })
   })
 
   it('translates an extracted draft with the session model and the host llm service', async () => {

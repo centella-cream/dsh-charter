@@ -537,7 +537,7 @@ const charterBootstrapDraftItemSchema = z.object({
 
 const charterBootstrapLanguageSchema = z.object({
   requested: z.enum(['zh', 'en']).nullable(),
-  status: z.enum(['source', 'translated', 'pending', 'unavailable', 'failed', 'disabled']),
+  status: z.enum(['source', 'translated', 'partial', 'pending', 'unavailable', 'failed', 'disabled']),
   reason: z.string().max(512).optional(),
   provider: z.string().max(256).optional(),
   model: z.string().max(256).optional(),
