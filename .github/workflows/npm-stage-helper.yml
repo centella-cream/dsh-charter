@@ -32,6 +32,13 @@ jobs:
           echo '--- staged ---'
           npm stage list dsh-charter --json > staged.json || true
           cat staged.json || true
+          echo '--- staged text ---'
+          npm stage list dsh-charter || true
+          echo '--- staged all json ---'
+          npm stage list --json || true
+          echo '--- versions ---'
+          npm view dsh-charter versions --json || true
+          exit 0
           node - <<'NODE'
           const fs = require('fs')
           const raw = fs.readFileSync('staged.json', 'utf8').trim()
