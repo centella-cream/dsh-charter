@@ -8,5 +8,14 @@
     "phase": "install",
     "peer": "@deepseek-ai/cordis",
     "reason": "DSH 0.2.2-alpha.3 requires Cordis ~4.0.6-alpha.2; this branch pins Cordis 4.1.0. Strict-peer install rejects the generation before tests run."
+  },
+  "0.2.3-alpha.1": {
+    "phase": "build",
+    "reason": "DSH 0.2.3-alpha.1 Typert/Remote ABI rejects the current Remote contribution during client smoke; install/typecheck/tests pass but the build gate fails."
+  },
+  "0.2.3-alpha.2": {
+    "phase": "install",
+    "peer": "@deepseek-ai/cordis",
+    "reason": "DSH 0.2.3-alpha.2 requires an incompatible Cordis generation; strict-peer install rejects it before tests run."
   }
 }

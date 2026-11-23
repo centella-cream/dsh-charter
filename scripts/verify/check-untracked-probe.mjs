@@ -17,6 +17,14 @@ if (expected.phase === 'install') {
   console.log(`KNOWN UNSUPPORTED DSH ${version}: ${expected.reason}`)
   process.exit(0)
 }
+if (expected.phase === 'build') {
+  for (const phase of ['install', 'typecheck']) {
+    if (evidence[phase]?.code !== 0) throw new Error(`DSH ${version} failed at ${phase}; expected build failure`)
+  }
+  if (evidence.build?.code === 0) throw new Error(`DSH ${version} build result is inconsistent`)
+  console.log(`KNOWN UNSUPPORTED DSH ${version}: ${expected.reason}`)
+  process.exit(0)
+}
 for (const phase of ['install', 'typecheck', 'build']) {
   if (evidence[phase]?.code !== 0) throw new Error(`DSH ${version} failed at ${phase}; expected phase is ${expected.phase}`)
 }
