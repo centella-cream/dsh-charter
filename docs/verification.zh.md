@@ -302,4 +302,4 @@ rm -rf .tmp
 - 结构化抽取：只按句边界切分、超长保留、>4x 显式截断、全等/前缀折叠、语言标注、稳定 `d-*` ref；见 `tests/core/structured-bootstrap.spec.ts`。
 - Host apply：`charter/bootstrapDraft` + `d-*` ref + objective `clientRef`；legacy `charter/bootstrap` 与旧 clientRef 由既有 composition 测试继续覆盖。
 - 自动语言跟随：Host 解析当前会话模型，经 `ctx.llm` 做一次严格 JSON 调用（本地流式文本组装）；模型缺失/输出不合格时回退原文并返回显式 `language.status`。单测覆盖成功、malformed、max-tokens、缺 ref；composition 测试覆盖假模型翻译与翻译后 apply。
-- 候选 artifact `dist/dsh-charter-0.3.3.tgz` SHA-256 `444f43d2baaf7f75f9606ad74c6fa1314e419700694a9b1b17f643b93784597b`；exact-artifact package smoke 与 packed recovery smoke PASS。11 版本矩阵 PASS（`.tmp/compat-033-final6.json`）；本地 Web UI 显示 `v0.3.3`。当前候选未发布；真实模型翻译的人工验收仍未完成，不在本节宣称完成。
+- 候选 artifact `dist/dsh-charter-0.3.3.tgz` SHA-256 `e9fbe2bb22dd0f556ecc7ee1ab45b59110542f9db31aaf4fe94d981303c8d1a9`；exact-artifact package smoke 与 packed recovery smoke PASS。11 版本矩阵 PASS（`.tmp/compat-033-committed.json`，source `1df9a63`）；本地 profile 安装精确候选，Web UI 显示 `v0.3.3`。当前候选未发布；真实模型翻译的人工验收仍未完成，不在本节宣称完成。
