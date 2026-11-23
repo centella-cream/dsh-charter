@@ -37,6 +37,18 @@ describe('draft translation', () => {
     expect(result.provider).toBe('p')
   })
 
+  it('normalizes English source text to Chinese', async () => {
+    const result = await translateDraftItems(
+      fakeLlm(JSON.stringify({ items: [{ ref: 'd-inv-0', text: '保持 API 稳定。' }] })),
+      { provider: 'p', model: 'm' },
+      'zh',
+      [item('d-inv-0', 'Keep the API stable.', 'invariant')],
+    )
+    expect(result.translatedRefs).toEqual(['d-inv-0'])
+    expect(result.failedRefs).toEqual([])
+    expect(result.items[0]?.text).toBe('保持 API 稳定。')
+  })
+
   it('keeps source refs when a model response is incomplete or malformed', async () => {
     const incomplete = await translateDraftItems(
       fakeLlm(JSON.stringify({ items: [{ ref: 'd-inv-0', text: 'Only one' }] })),

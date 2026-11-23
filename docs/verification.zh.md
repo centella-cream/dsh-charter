@@ -17,7 +17,7 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
   `9dcb82ae34eaaeb6d266bb98f3e1f92f3a0798042ce3dc282abe9173ff79e056`）。
 - 更早发布：`0.3.1`、`0.3.0`、`0.2.2`；已发布 tag 与字节不可变。
 - 当前源码线：`0.3.3` 结构化草案/语言跟随候选，未发布。新增 additive draft Remote/objective ref 与自动语言跟随；record schema 仍为 2，prompt 投影未变。
-- 当前源码门禁：`npm run check`（44 文件 / 523 测试）、token 覆盖 41 static + 1 dynamic、
+- 当前源码门禁：`npm run check`（44 文件 / 524 测试）、token 覆盖 41 static + 1 dynamic、
   13 个声明 DSH 版本，以及 `verify:ui-metrics --gate=final`。
 - 兼容矩阵：13 个声明版本通过本地矩阵（`.tmp/compat-13-adaptive-final.json`）；最新 DSH `0.2.2-rc.5` 为主基线。这是本地证据，不是 CI 结论。
 - 发布后在隔离 `DSH_HOME` 做 exact CLI 安装，npm 解析到 `dsh-charter@0.3.2`，client `6ef68d25…` 与已发布
@@ -296,9 +296,10 @@ rm -rf .tmp
 
 ## 1.4 0.3.3 结构化草案与语言跟随（2026-11-23，候选）
 
-- 源码门禁：`npm run check` = 44 文件 / 523 测试 PASS；token coverage PASS；`verify:ui-metrics --gate=final` PASS。
+- 源码门禁：`npm run check` = 44 文件 / 524 测试 PASS；token coverage PASS；`verify:ui-metrics --gate=final` PASS。
 - 结构化抽取：只按句边界切分、超长保留、>4x 显式截断、全等/前缀折叠、语言标注、稳定 `d-*` ref；见 `tests/core/structured-bootstrap.spec.ts`。
 - Host apply：`charter/bootstrapDraft` + `d-*` ref + objective `clientRef`；legacy `charter/bootstrap` 与旧 clientRef 由既有 composition 测试继续覆盖。
 - 自动语言跟随：首个 `bootstrapDraft` 请求即返回源语言草案（`language.status=pending`）；客户端立即渲染后再发 `awaitTranslation:true` 请求，由 Host 解析当前会话模型，经 `ctx.llm` 做有界分批严格 JSON 调用（本地流式文本组装）；模型缺失/输出不合格时回退原文并返回显式 `language.status`。每批独立超时并允许一次拆分重试；失败批保留源文并返回 `language.status=partial`；可选 `languageFollowProvider`/`languageFollowModel` 覆盖会话模型。单测覆盖成功、malformed、max-tokens、缺 ref、多批合并与 partial 合并；composition 测试覆盖假模型翻译、翻译后 apply、自定义翻译路由、partial 状态和 `languageFollow: false`；client 测试覆盖非 zh/en 结构化 bootstrap、方法缺失/失败回退和业务错误上抛。legacy golden fixture 锁定 0.3.2 抽取输出。
+- 人工验收（2026-11-23）：用户在自适应翻译修改后确认 39 条 en→zh Desktop 草案可用；zh→en 由用户明确放弃人工验收，改由自动化 target-zh 翻译测试覆盖。README Pane/依赖图截图已从实时 `v0.3.3` Desktop 视图重拍。
 - legacy golden fixture 为 10 条合成摘要（对方案“≥10 条真实摘要”目标记为接受偏差；当前无可安全提交的真实摘要语料）。
-- 候选 artifact `dist/dsh-charter-0.3.3.tgz` SHA-256 `6411ad6e81a0468715be72728f530a349d88a202122032d6de75324796e9ddc1`；exact-artifact package smoke 与 packed recovery smoke PASS。13 版本矩阵 PASS（`.tmp/compat-13-adaptive-final.json`，source `e67de59`；含 DSH 最新 `0.2.2-rc.5`）；Web/Desktop profile 安装同一 `6411ad…` artifact，143 个包文件逐字节相同；Web profile 由 DSH `0.2.2-rc.5` CLI 启动并显示 Pane `v0.3.3`；Desktop app 为 `0.2.2-rc.5`，profile 由 Electron 独占，原生窗口仍为人工门禁。当前候选未发布；真实模型翻译的人工验收仍未完成。一个 39 条 / 7589 B 的真实摘要此前在 10s 后台超时下返回 `translation finished with aborted`；分批 + 每批超时/拆分重试 + partial 合并 + 60s 后台窗口 + 可选专用翻译路由 + DeepSeek `reasoningEffort: off` 是修复，需重跑该人工用例。
+- 候选 artifact `dist/dsh-charter-0.3.3.tgz` SHA-256 `6411ad6e81a0468715be72728f530a349d88a202122032d6de75324796e9ddc1`；exact-artifact package smoke 与 packed recovery smoke PASS。13 版本矩阵 PASS（`.tmp/compat-13-adaptive-final.json`，source `e67de59`；含 DSH 最新 `0.2.2-rc.5`）；Web/Desktop profile 安装同一 `6411ad…` artifact，143 个包文件逐字节相同；Web profile 由 DSH `0.2.2-rc.5` CLI 启动并显示 Pane `v0.3.3`；Desktop app 为 `0.2.2-rc.5`，profile 由 Electron 独占，原生窗口仍为人工门禁。当前候选未发布。真实 en→zh 已由用户确认；zh→en 按用户决定仅做自动化覆盖。一个 39 条 / 7589 B 的真实摘要此前在 10s 后台超时下返回 `translation finished with aborted`；分批 + 每批超时/拆分重试 + partial 合并 + 60s 后台窗口 + 可选专用翻译路由 + DeepSeek `reasoningEffort: off` 是修复，需重跑该人工用例。

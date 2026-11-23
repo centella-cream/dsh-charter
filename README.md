@@ -14,12 +14,12 @@ English | [中文](README.zh.md)
 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). Goals, hard constraints,
 deliverables, evidence, and dependency relationships survive compaction and remain visible and editable.
 
-![Charter Pane in the document-feel layout](docs/assets/charter-pane-0.3.1.png)
+![Charter Pane in the document-feel layout](docs/assets/charter-pane-0.3.3.png)
 
 > The Pane in a local Web profile: underline area tabs, a 720px document column, aligned document
 > rows, and a compact execution-path disclosure. Screenshot uses synthetic demo values only.
 
-![Dependency graph in the Pane](docs/assets/charter-graph-0.3.1.png)
+![Dependency graph in the Pane](docs/assets/charter-graph-0.3.3.png)
 
 > The execution-path dependency graph: lane headings, the three-column execution grid, and the state/type
 > legend. Edge arrows and hit targets appear when dependencies exist. The semantic list remains authoritative.
@@ -45,9 +45,10 @@ deliverables, evidence, and dependency relationships survive compaction and rema
 
 ## Status
 
-- **Current development candidate:** `0.3.3` — structured draft extraction with automatic zh/en language
-  normalization, duplicate folding, and stable candidate refs. It is implemented and tested locally but **not
-  published yet**; latest published release is `0.3.2`.
+- **Current release candidate:** `0.3.3` — structured draft extraction with automatic zh/en language
+  normalization, duplicate folding, stable candidate refs, deferred non-blocking translation, and adaptive
+  batch handling for custom model latency. The release build is prepared and awaiting the release workflow;
+  latest published release is `0.3.2`.
 - **Previous release:** `0.3.2` — accessibility/evidence convergence; `0.3.1` and `0.3.0` are earlier baselines.
   **Primary DSH baseline:** `0.2.2-rc.5`; thirteen declared DSH versions are source-matrix verified.
 - Versioning from `0.2.0` onward uses plain increments (`0.2.0`, `0.2.1`, `0.2.2`, `0.3.0`, `0.3.1`, `0.3.2`, `0.3.3`), never an `rc`
@@ -102,7 +103,7 @@ deliverables, evidence, and dependency relationships survive compaction and rema
   The automatic call sends the compaction draft/current-charter text to that configured model; the plugin stores no
   API key and adds no telemetry or upload path. Set `languageFollow: false` in the profile config to disable the
   automatic model call; deterministic extraction/folding still runs and the source-language draft remains usable.
-  `languageFollowTimeoutMs` bounds the background wait (default 60s); the draft card no longer blocks on it.
+  `languageFollowTimeoutMs` bounds each background batch (default 60s); failed batches split/retry and successful candidates are kept. Custom-API users can set `languageFollowProvider`/`languageFollowModel` to pin normalization to a dedicated model.
 
 ### Compatibility and runtime
 
@@ -225,8 +226,8 @@ For air-gapped machines or exact-artifact verification:
 npm pack dsh-charter@0.3.2
 dsh plugin --profile web add ./dsh-charter-0.3.2.tgz
 ```
-`0.3.3` is the current development candidate (structured draft + automatic language following), not
-published yet. Build it from the working tree:
+`0.3.3` is the current release candidate (structured draft + automatic language following), not published
+yet. Build the exact candidate from the working tree:
 
 ```bash
 npm pack
