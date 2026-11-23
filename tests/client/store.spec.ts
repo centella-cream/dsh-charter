@@ -1022,6 +1022,29 @@ describe('structured bootstrap fallback', () => {
     await source.dispose()
   })
 
+  it('does not degrade a business error from bootstrapDraft into legacy silently', async () => {
+    let draftCalls = 0
+    let legacyCalls = 0
+    const source = new CharterSessionSource({} as never, SessionId('business-error'))
+    ;(source as unknown as { remote: unknown }).remote = {
+      bootstrapDraft: async () => {
+        draftCalls += 1
+        return { ok: false as const, error: new Error('INVALID_ARGUMENT') }
+      },
+      bootstrap: async () => {
+        legacyCalls += 1
+        return { ok: true, value: { available: false as const, reason: 'unavailable' as const } }
+      },
+    }
+    await expect(source.bootstrap()).rejects.toThrow('INVALID_ARGUMENT')
+    expect(legacyCalls).toBe(0)
+    expect(draftCalls).toBe(1)
+    await expect(source.bootstrap()).rejects.toThrow('INVALID_ARGUMENT')
+    expect(draftCalls).toBe(2)
+    expect(legacyCalls).toBe(0)
+    await source.dispose()
+  })
+
   it('falls back once when a new-client/old-host method is missing or fails', async () => {
     let legacyCalls = 0
     const source = new CharterSessionSource({} as never, SessionId('old-host'))

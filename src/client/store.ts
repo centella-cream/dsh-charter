@@ -168,18 +168,22 @@ export class CharterSessionSource implements CharterSource {
       }) => Promise<{ ok: true; value: CharterBootstrapDraftResult } | { ok: false; error: unknown }>
     }).bootstrapDraft
     if (!this.structuredBootstrapUnavailable && typeof draft === 'function') {
+      let response: { ok: true; value: CharterBootstrapDraftResult } | { ok: false; error: unknown }
       try {
-        const response = await draft({
+        response = await draft({
           sessionId: this.sessionId,
           ...(targetLanguage === undefined ? {} : { targetLanguage }),
         })
-        if (response.ok) {
-          if (!response.value.available) return response.value
-          return { available: true, proposal: response.value.proposal }
-        }
       } catch {
         // Method-level transport/shape failure: permanently fall back for this source.
+        this.structuredBootstrapUnavailable = true
+        response = { ok: false, error: undefined }
       }
+      if (response.ok) {
+        if (!response.value.available) return response.value
+        return { available: true, proposal: response.value.proposal }
+      }
+      if (response.error !== undefined) throw response.error
       this.structuredBootstrapUnavailable = true
     }
     const result = await remote.bootstrap(this.sessionId)

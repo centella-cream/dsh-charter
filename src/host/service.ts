@@ -947,33 +947,33 @@ export class CharterService extends Service {
       } else {
         const model = this.translationModel(sessionId)
         if (model === undefined) {
-        language = {
-          requested: target,
-          status: 'unavailable',
-          reason: 'No configured model is available to normalize the draft language.',
-        }
-      } else {
-        const cacheKey = sha256Json({ sourceKey, target, provider: model.provider, model: model.model })
-        const cached = this.translatedItems.get(cacheKey)
-        if (cached !== undefined) {
-          items = cached
-          language = { requested: target, status: 'translated', provider: model.provider, model: model.model }
+          language = {
+            requested: target,
+            status: 'unavailable',
+            reason: 'No configured model is available to normalize the draft language.',
+          }
         } else {
-          try {
-            const translated = await translateDraftItems(model.llm, model, target, extraction.items)
-            items = translated.items.map(item => this.withTranslatedItem(item, target))
-            this.translatedItems.set(cacheKey, items)
-            this.trimMap(this.translatedItems, 32)
+          const cacheKey = sha256Json({ sourceKey, target, provider: model.provider, model: model.model })
+          const cached = this.translatedItems.get(cacheKey)
+          if (cached !== undefined) {
+            items = cached
             language = { requested: target, status: 'translated', provider: model.provider, model: model.model }
-          } catch (error) {
-            language = {
-              requested: target,
-              status: 'failed',
-              reason: (error instanceof Error ? error.message : String(error)).slice(0, 512),
+          } else {
+            try {
+              const translated = await translateDraftItems(model.llm, model, target, extraction.items)
+              items = translated.items.map(item => this.withTranslatedItem(item, target))
+              this.translatedItems.set(cacheKey, items)
+              this.trimMap(this.translatedItems, 32)
+              language = { requested: target, status: 'translated', provider: model.provider, model: model.model }
+            } catch (error) {
+              language = {
+                requested: target,
+                status: 'failed',
+                reason: (error instanceof Error ? error.message : String(error)).slice(0, 512),
+              }
             }
           }
         }
-      }
       }
     }
     const objectiveItem = items.find(item => item.kind === 'objective')
