@@ -19,7 +19,7 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 - 当前源码线：`0.3.3` 结构化草案/语言跟随候选，未发布。新增 additive draft Remote/objective ref 与自动语言跟随；record schema 仍为 2，prompt 投影未变。
 - 当前源码门禁：`npm run check`（44 文件 / 519 测试）、token 覆盖 41 static + 1 dynamic、
   13 个声明 DSH 版本，以及 `verify:ui-metrics --gate=final`。
-- 兼容矩阵：13 个声明版本通过本地矩阵（`.tmp/compat-13-batch.json`）；最新 DSH `0.2.2-rc.5` 为主基线。这是本地证据，不是 CI 结论。
+- 兼容矩阵：13 个声明版本通过本地矩阵（`.tmp/compat-13-batch-final.json`）；最新 DSH `0.2.2-rc.5` 为主基线。这是本地证据，不是 CI 结论。
 - 发布后在隔离 `DSH_HOME` 做 exact CLI 安装，npm 解析到 `dsh-charter@0.3.2`，client `6ef68d25…` 与已发布
   artifact 一致。
 - 已发布 artifact：`dsh-charter-0.3.2.tgz` SHA-256
@@ -301,4 +301,4 @@ rm -rf .tmp
 - Host apply：`charter/bootstrapDraft` + `d-*` ref + objective `clientRef`；legacy `charter/bootstrap` 与旧 clientRef 由既有 composition 测试继续覆盖。
 - 自动语言跟随：Host 解析当前会话模型，经 `ctx.llm` 做有界分批严格 JSON 调用（本地流式文本组装）；模型缺失/输出不合格时回退原文并返回显式 `language.status`。翻译按数量和源字节分批（12 条 / 6000 B，最多 4 路并发），避免 39 条草案被单次响应上限截断。单测覆盖成功、malformed、max-tokens、缺 ref 与多批合并；composition 测试覆盖假模型翻译、翻译后 apply、`languageFollow: false`；client 测试覆盖非 zh/en 结构化 bootstrap、方法缺失/失败回退和业务错误上抛。legacy golden fixture 锁定 0.3.2 抽取输出。
 - legacy golden fixture 为 10 条合成摘要（对方案“≥10 条真实摘要”目标记为接受偏差；当前无可安全提交的真实摘要语料）。
-- 候选 artifact `dist/dsh-charter-0.3.3.tgz` SHA-256 `1bdf72ab686c6c7bd7d33c0356739d14b74576aef1e1a8dade2cf6f5727f60fd`；exact-artifact package smoke 与 packed recovery smoke PASS。13 版本矩阵 PASS（`.tmp/compat-13-batch.json`，source `d8da6b1`；含 DSH 最新 `0.2.2-rc.5`）；Web/Desktop profile 安装同一 `1bdf72…` artifact，143 个包文件逐字节相同；Web profile 由 DSH `0.2.2-rc.5` CLI 启动并显示 Pane `v0.3.3`；Desktop app 为 `0.2.2-rc.5`，profile 由 Electron 独占，原生窗口仍为人工门禁。当前候选未发布；真实模型翻译的人工验收仍未完成。一个 39 条 / 7589 B 的真实摘要此前走了单次 4096 token 上限并触发回退；分批路径是修复，需重跑该人工用例。
+- 候选 artifact `dist/dsh-charter-0.3.3.tgz` SHA-256 `b790d9e384da703b1fd371a6587e11b3c3bac57f801b9c01f6259f740cd3f875`；exact-artifact package smoke 与 packed recovery smoke PASS。13 版本矩阵 PASS（`.tmp/compat-13-batch-final.json`，source `db7682b`；含 DSH 最新 `0.2.2-rc.5`）；Web/Desktop profile 安装同一 `b790d9…` artifact，143 个包文件逐字节相同；Web profile 由 DSH `0.2.2-rc.5` CLI 启动并显示 Pane `v0.3.3`；Desktop app 为 `0.2.2-rc.5`，profile 由 Electron 独占，原生窗口仍为人工门禁。当前候选未发布；真实模型翻译的人工验收仍未完成。一个 39 条 / 7589 B 的真实摘要此前走了单次 4096 token 上限并触发回退；分批路径是修复，需重跑该人工用例。
