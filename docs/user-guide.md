@@ -245,6 +245,9 @@ Defaults live in `cordis.patch.yml`. Override the same keys in the profile's `co
     contextOrder: 130
     languageFollow: true
     languageFollowTimeoutMs: 60000
+    # Optional dedicated translation route; omit to use the session model.
+    languageFollowProvider: your-provider
+    languageFollowModel: your-fast-model
 ```
 
 | Field | Default | Meaning |
@@ -261,7 +264,9 @@ Defaults live in `cordis.patch.yml`. Override the same keys in the profile's `co
 | `mutationLimit` | 128 | recent mutation receipts |
 | `contextOrder` | 130 | runtime-context order; after sandbox/approval/subagent by default |
 | `languageFollow` | true | normalize a review draft to the active `zh`/`en` DSH language through the session model; set `false` to disable the automatic model call |
-| `languageFollowTimeoutMs` | 60000 | upper bound for the background language-normalization phase; on timeout the source draft remains usable |
+| `languageFollowTimeoutMs` | 60000 | upper bound for one background translation call; failed batches split and keep source text |
+| `languageFollowProvider` | unset | optional dedicated translation provider; requires `languageFollowModel` |
+| `languageFollowModel` | unset | optional dedicated translation model; omit both to use the current session model |
 
 The only model-visible capacity is `maxPromptBytes`; active item counts are not capped separately. Storage is
 bounded by `maxItems`, `maxPendingItems`, and `maxRecordBytes`. Values that would make a Session ready but
@@ -288,7 +293,7 @@ The tab shows a live context meter and per-field byte counters. Nothing is silen
 When `languageFollow` is enabled and the draft language differs from the DSH UI language, the source draft renders
 first; the Host then sends active candidates to the session model in bounded background calls and replaces the
 draft if it is still untouched. Set `languageFollow: false` in the profile to keep the source language and avoid
-that automatic call; the deterministic extraction still runs.
+that automatic call; the deterministic extraction still runs. For custom APIs with very different latency, set the optional `languageFollowProvider`/`languageFollowModel` pair so translation uses a known fast model instead of the session default.
 
 Raise the budgets in the profile when your charter needs more room.
 

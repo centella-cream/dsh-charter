@@ -262,6 +262,9 @@ active-count 失败。
     contextOrder: 130
     languageFollow: true
     languageFollowTimeoutMs: 60000
+    # 可选：专用翻译路由；省略则使用当前会话模型
+    languageFollowProvider: your-provider
+    languageFollowModel: your-fast-model
 ```
 
 | 字段 | 默认值 | 含义 |
@@ -280,7 +283,9 @@ active-count 失败。
 | `maxRecoveryBytes` | 4194304 | 完整 recovery archive 预算 |
 | `contextOrder` | 130 | runtime-context 顺序 |
 | `languageFollow` | true | 按当前 `zh`/`en` DSH 界面语言通过模型归一草案；设为 `false` 关闭自动调用 |
-| `languageFollowTimeoutMs` | 60000 | 后台自动语言归一等待上限；超时保留源语言草案 |
+| `languageFollowTimeoutMs` | 60000 | 单批后台翻译等待上限；失败批会拆分并保留源文 |
+| `languageFollowProvider` | 未设置 | 可选专用翻译 provider；需同时设置 model |
+| `languageFollowModel` | 未设置 | 可选专用翻译模型；两者都不设时使用当前会话模型 |
 
 模型可见容量只有 `maxPromptBytes`；`maxItems` 和 `maxPendingItems` 约束存储。
 

@@ -228,7 +228,8 @@ objective，逐字相等规则不变）。详见校准方案 §6/§7；本文的
   只要方法存在就调用 `charter/bootstrapDraft`（折叠/oversized/ref 不因语言退化）；仅 zh/en 时传
   `targetLanguage`，其他 locale 传 undefined 并保留源语言草案。
 - Host 先在确定性结构化抽取后立即返回源语言草案；若语言一致则不调用模型。不一致时：
-  - `ctx.get('llm')` 可选解析；模型选择取当前 Session 的 `agent.model.current()`；
+  - `ctx.get('llm')` 可选解析；默认取当前 Session 的 `agent.model.current()`；可通过
+  `languageFollowProvider`/`languageFollowModel` 配置专用翻译路由（两者都设置时覆盖）；
   - 默认第一批 `bootstrapDraft` 请求（`awaitTranslation:false`）只返回源语言草案，`language.status='pending'`；
     客户端先渲染草案，再在后台发第二个 `awaitTranslation:true` 请求（最多等待 `languageFollowTimeoutMs`）；
   - 通过 `ctx.llm` 做有界分批 hand-built one-shot（本地流式文本组装）；只取 text block，丢弃 reasoning；

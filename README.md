@@ -294,6 +294,9 @@ Defaults live in `cordis.patch.yml`. Override them in the profile patch:
     contextOrder: 130
     languageFollow: true
     languageFollowTimeoutMs: 60000
+    # Optional dedicated translation route; omit to use the session model.
+    languageFollowProvider: your-provider
+    languageFollowModel: your-fast-model
 ```
 
 | Field | Default | Meaning |
@@ -312,7 +315,9 @@ Defaults live in `cordis.patch.yml`. Override them in the profile patch:
 | `maxRecoveryBytes` | 4194304 | full recovery-archive budget |
 | `contextOrder` | 130 | runtime-context order |
 | `languageFollow` | true | normalize a review draft to the active `zh`/`en` DSH language through the session model; set `false` to disable the automatic call |
-| `languageFollowTimeoutMs` | 60000 | upper bound for the background language-normalization phase; timeout keeps the source draft usable |
+| `languageFollowTimeoutMs` | 60000 | upper bound for one background translation call; per-batch failures split and keep source text |
+| `languageFollowProvider` | unset | optional provider route for language normalization; requires `languageFollowModel` |
+| `languageFollowModel` | unset | optional model for language normalization; omit both to use the current session model |
 
 The only model-visible capacity is `maxPromptBytes`; `maxItems` and `maxPendingItems` bound storage.
 
