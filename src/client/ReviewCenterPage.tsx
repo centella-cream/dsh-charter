@@ -351,7 +351,7 @@ export function ReviewCenterPage({ scope }: { readonly scope: PaneScope }): Reac
                         language: bootstrapLanguage.requested === 'zh' ? t('locale.zh') : t('locale.en'),
                       })}</span>
                     )}
-                    {(bootstrapLanguage?.status === 'unavailable' || bootstrapLanguage?.status === 'failed') && (
+                    {(bootstrapLanguage?.status === 'unavailable' || bootstrapLanguage?.status === 'failed' || bootstrapLanguage?.status === 'disabled') && (
                       <div className="charter-notice charter-notice--warning" role="status">
                         {t('bootstrap.languageFallback', {
                           language: bootstrapLanguage.requested === 'zh' ? t('locale.zh') : t('locale.en'),

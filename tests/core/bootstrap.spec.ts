@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { bootstrapFromEvents, bootstrapFromSummary } from '../../src/core/bootstrap.js'
 
@@ -145,5 +146,19 @@ describe('bootstrapFromEvents', () => {
       { type: 'compaction/summary', seq: 2, time: 2, data: { summary: [{ type: 'text', text: '   ' }] } },
     ], limits)
     expect(extraction).toBeUndefined()
+  })
+})
+
+
+describe('legacy extraction golden fixture', () => {
+  it('keeps the 0.3.2 bootstrap output byte-for-byte stable', () => {
+    const fixture = JSON.parse(readFileSync(new URL('../fixtures/legacy-bootstrap-golden.json', import.meta.url), 'utf8')) as {
+      readonly limits: { readonly maxObjectiveBytes: number; readonly maxItemBytes: number }
+      readonly cases: readonly { readonly name: string; readonly summary: string; readonly expected: unknown }[]
+    }
+    for (const testCase of fixture.cases) {
+      const actual = bootstrapFromSummary(testCase.summary, fixture.limits)
+      expect(JSON.stringify(actual), testCase.name).toBe(JSON.stringify(testCase.expected))
+    }
   })
 })

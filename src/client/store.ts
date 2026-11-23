@@ -112,6 +112,8 @@ export class CharterSessionSource implements CharterSource {
   /** Attach that has been requested but does not own the stream yet (an earlier dispose is pending). */
   private pendingRemote: CharterRemote | undefined
   private attachGeneration = 0
+  /** A Host without bootstrapDraft (or one that failed method-level) stays on the legacy path for this source. */
+  private structuredBootstrapUnavailable = false
   private connection = 0
   private readonly connectionListeners = new Set<() => void>()
   private watchdog: ReturnType<typeof setTimeout> | undefined
@@ -157,24 +159,28 @@ export class CharterSessionSource implements CharterSource {
         return undefined
       }
     })()
-    const targetLanguage = active?.toLowerCase().split(/[-_]/u)[0]
-    if (targetLanguage === 'zh' || targetLanguage === 'en') {
-      const draft = (remote as unknown as {
-        bootstrapDraft?: (request: {
-          readonly sessionId: SessionId
-          readonly targetLanguage?: 'zh' | 'en'
-        }) => Promise<{ ok: true; value: CharterBootstrapDraftResult } | { ok: false; error: unknown }>
-      }).bootstrapDraft
-      if (typeof draft === 'function') {
-        const response = await draft({ sessionId: this.sessionId, targetLanguage })
+    const base = active?.toLowerCase().split(/[-_]/u)[0]
+    const targetLanguage = base === 'zh' || base === 'en' ? base : undefined
+    const draft = (remote as unknown as {
+      bootstrapDraft?: (request: {
+        readonly sessionId: SessionId
+        readonly targetLanguage?: 'zh' | 'en'
+      }) => Promise<{ ok: true; value: CharterBootstrapDraftResult } | { ok: false; error: unknown }>
+    }).bootstrapDraft
+    if (!this.structuredBootstrapUnavailable && typeof draft === 'function') {
+      try {
+        const response = await draft({
+          sessionId: this.sessionId,
+          ...(targetLanguage === undefined ? {} : { targetLanguage }),
+        })
         if (response.ok) {
           if (!response.value.available) return response.value
           return { available: true, proposal: response.value.proposal }
         }
-        // A method-level transport failure on an older host is the only case
-        // worth falling back to the legacy extraction; business failures are real.
-        if (!String(response.error).includes('not a function')) throw response.error
+      } catch {
+        // Method-level transport/shape failure: permanently fall back for this source.
       }
+      this.structuredBootstrapUnavailable = true
     }
     const result = await remote.bootstrap(this.sessionId)
     if (!result.ok) throw result.error

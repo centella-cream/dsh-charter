@@ -976,3 +976,69 @@ describe('client charter source', () => {
     await controller.dispose()
   })
 })
+
+describe('structured bootstrap fallback', () => {
+  it('uses bootstrapDraft for any locale and only sends zh/en targets', async () => {
+    const requests: unknown[] = []
+    const source = new CharterSessionSource(
+      { locale: { getLocale: () => ({ active: 'fr' }) } } as never,
+      SessionId('structured-fr'),
+    )
+    const draftResult = {
+      available: true as const,
+      proposal: {
+        objective: null,
+        invariants: ['Keep it'],
+        deliverables: [],
+        source: { summarySeq: 1, at: 1 },
+        extractorVersion: 2 as const,
+        draftLang: 'en' as const,
+        language: { requested: null, status: 'source' as const },
+        draftItems: [{ ref: 'd-inv-0', kind: 'invariant' as const, text: 'Keep it', lang: 'en' as const, oversized: false }],
+      },
+    }
+    const remote = {
+      bootstrapDraft: async (request: unknown) => { requests.push(request); return { ok: true, value: draftResult } },
+      bootstrap: async () => ({ ok: true, value: { available: false as const, reason: 'unavailable' as const } }),
+    }
+    ;(source as unknown as { remote: unknown }).remote = remote
+    const result = await source.bootstrap()
+    expect(requests).toEqual([{ sessionId: 'structured-fr' }])
+    expect(result).toMatchObject({ available: true, proposal: { draftItems: draftResult.proposal.draftItems } })
+    await source.dispose()
+  })
+
+  it('falls back when a new client talks to an old Host without bootstrapDraft', async () => {
+    let legacyCalls = 0
+    const source = new CharterSessionSource({} as never, SessionId('absent-method'))
+    ;(source as unknown as { remote: unknown }).remote = {
+      bootstrap: async () => {
+        legacyCalls += 1
+        return { ok: true, value: { available: false as const, reason: 'no-summary' as const } }
+      },
+    }
+    expect(await source.bootstrap()).toEqual({ available: false, reason: 'no-summary' })
+    expect(legacyCalls).toBe(1)
+    await source.dispose()
+  })
+
+  it('falls back once when a new-client/old-host method is missing or fails', async () => {
+    let legacyCalls = 0
+    const source = new CharterSessionSource({} as never, SessionId('old-host'))
+    const remote = {
+      bootstrapDraft: async () => { throw new Error('method not available') },
+      bootstrap: async () => {
+        legacyCalls += 1
+        return { ok: true, value: { available: true as const, proposal: {
+          objective: null, invariants: ['Legacy'], deliverables: [], source: { summarySeq: 1, at: 1 },
+        } } }
+      },
+    }
+    ;(source as unknown as { remote: unknown }).remote = remote
+    expect(await source.bootstrap()).toMatchObject({ available: true, proposal: { invariants: ['Legacy'] } })
+    expect(legacyCalls).toBe(1)
+    expect(await source.bootstrap()).toMatchObject({ available: true, proposal: { invariants: ['Legacy'] } })
+    expect(legacyCalls).toBe(2)
+    await source.dispose()
+  })
+})

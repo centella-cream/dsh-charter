@@ -125,11 +125,14 @@ import type { SessionStartSource as StartSource } from '@deepseek-ai/dsh-agent'
 
 export interface CharterConfig extends CharterLimits {
   readonly contextOrder: number
+  /** Automatically normalize a review draft to the DSH UI language via the session model. */
+  readonly languageFollow: boolean
 }
 
 export const DEFAULT_CHARTER_CONFIG: CharterConfig = {
   ...DEFAULT_CHARTER_LIMITS,
   contextOrder: 130,
+  languageFollow: true,
 }
 
 export const Config: Schema<CharterConfig> = Schema.object({
@@ -147,6 +150,7 @@ export const Config: Schema<CharterConfig> = Schema.object({
   maxRecoveryBytes: Schema.number().step(1).min(1).default(DEFAULT_CHARTER_CONFIG.maxRecoveryBytes),
   maxProposalBatches: Schema.number().step(1).min(1).default(DEFAULT_CHARTER_CONFIG.maxProposalBatches ?? 64),
   contextOrder: Schema.number().default(DEFAULT_CHARTER_CONFIG.contextOrder),
+  languageFollow: Schema.boolean().default(DEFAULT_CHARTER_CONFIG.languageFollow),
 })
 
 function lifecycleFingerprint(identity: CharterIdentity): string {
@@ -934,8 +938,15 @@ export class CharterService extends Service {
       status: 'source',
     }
     if (target !== null && (extraction.draftLang !== target || extraction.items.some(item => item.lang !== target))) {
-      const model = this.translationModel(sessionId)
-      if (model === undefined) {
+      if (!this.config.languageFollow) {
+        language = {
+          requested: target,
+          status: 'disabled',
+          reason: 'Automatic draft language following is disabled by the profile configuration.',
+        }
+      } else {
+        const model = this.translationModel(sessionId)
+        if (model === undefined) {
         language = {
           requested: target,
           status: 'unavailable',
@@ -962,6 +973,7 @@ export class CharterService extends Service {
             }
           }
         }
+      }
       }
     }
     const objectiveItem = items.find(item => item.kind === 'objective')
@@ -990,7 +1002,7 @@ export class CharterService extends Service {
     return this.localizedDrafts.get(handle)
   }
 
-  private translationModel(sessionId: SessionIdType): { readonly llm: DraftLlmRuntime; readonly provider: string; readonly model: string; readonly effort?: string } | undefined {
+  private translationModel(sessionId: SessionIdType): { readonly llm: DraftLlmRuntime; readonly provider: string; readonly model: string } | undefined {
     const llm = this.ctx.get('llm') as unknown as DraftLlmRuntime | undefined
     if (llm === undefined) return undefined
     const agent = this.ctx.agents.get(sessionId) as unknown as { readonly model?: { current(): { provider: string; model: string; reasoningEffort?: string } | undefined } } | undefined
@@ -1000,7 +1012,6 @@ export class CharterService extends Service {
       llm,
       provider: selection.provider,
       model: selection.model,
-      ...(selection.reasoningEffort === undefined ? {} : { effort: selection.reasoningEffort }),
     }
   }
 

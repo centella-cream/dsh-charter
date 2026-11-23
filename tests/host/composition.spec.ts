@@ -36,7 +36,7 @@ function installToolExecutor(ctx: Context): void {
 
 async function mount(
   root: string,
-  config: Partial<Record<string, number>> = {},
+  config: Partial<Record<string, number | boolean>> = {},
   options: { readonly autoStartup?: boolean } = {},
 ): Promise<Context> {
   const ctx = new Context()
@@ -2328,6 +2328,24 @@ describe('structured bootstrap draft', () => {
 })
 
 describe('automatic draft language follow', () => {
+  it('can disable automatic language following without blocking drafts', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-language-disabled-'))
+    roots.push(root)
+    const ctx = await mount(root, { languageFollow: false })
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('language-disabled'), {
+      meta: { cwd: root, createdAt: 1_700_000_003_100 },
+    })
+    await waitForReady(service, session)
+    const append = session as unknown as { append(type: string, data: unknown): unknown }
+    append.append('compaction/summary', { summary: [{ type: 'text', text: '## Pending Jobs\n- 验证中文草案。\n' }] })
+    const draft = await service.bootstrapDraft(session.id, 'en')
+    expect(draft.available).toBe(true)
+    if (!draft.available) return
+    expect(draft.proposal.language).toMatchObject({ requested: 'en', status: 'disabled' })
+    expect(draft.proposal.items.some(item => item.kind === 'deliverable')).toBe(true)
+  })
+
   it('translates an extracted draft with the session model and the host llm service', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-charter-language-'))
     roots.push(root)

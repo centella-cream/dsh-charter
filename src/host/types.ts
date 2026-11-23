@@ -283,7 +283,7 @@ export interface CharterBootstrapDraftItem {
   readonly foldMembers?: readonly CharterBootstrapDraftMember[]
 }
 
-export type CharterLanguageStatus = 'source' | 'translated' | 'unavailable' | 'failed'
+export type CharterLanguageStatus = 'source' | 'translated' | 'unavailable' | 'failed' | 'disabled'
 
 export interface CharterBootstrapLanguage {
   readonly requested: 'zh' | 'en' | null
