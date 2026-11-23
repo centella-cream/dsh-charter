@@ -3,10 +3,10 @@
 English | [中文](verification.zh.md)
 
 > **Status:** Active — current operating record.
-> **Version scope:** `0.3.3` structured-draft/language candidate (implemented locally, not published); latest published `0.3.2`.
+> **Version scope:** `0.3.3` structured-draft/language release (published 2026-11-24); previous published `0.3.2`.
 > **Baseline:** 2026-11-23
 
-Verification date: 2026-11-23. Current source version: `0.3.3` candidate; latest published release is `0.3.2`. This is the current evidence record; historical per-commit narratives live in Git
+Verification date: 2026-11-24. Current source version: `0.3.3`; latest published release is `0.3.3` (previous `0.3.2`). This is the current evidence record; historical per-commit narratives live in Git
 history and the Changelog. Temporary directories, profiles, tarballs, and fetched HTML live under `.tmp/` and are
 excluded from the published package.
 
@@ -15,8 +15,8 @@ Environment: macOS, Node `v22.23.1`, npm `12.0.2`, pnpm `12.3.4`. Local DSH deve
 
 ## 1. Current status (2026-11-23)
 
-- Latest published release: `0.3.2` (npm `latest`/`next`, GitHub Release `v0.3.2`, artifact SHA-256
-  `9dcb82ae34eaaeb6d266bb98f3e1f92f3a0798042ce3dc282abe9173ff79e056`).
+- Latest published release: `0.3.3` (npm `latest`/`next`, GitHub Release `v0.3.3`; exact artifact digest is recorded in the C+1 checksum commit and release evidence).
+- Previous published release: `0.3.2` (SHA-256 `9dcb82ae34eaaeb6d266bb98f3e1f92f3a0798042ce3dc282abe9173ff79e056`).
 - Previous releases: `0.3.1`, `0.3.0`, `0.2.2`; published tags and bytes are immutable.
 - Current source line: `0.3.3` structured-draft/language candidate, not published. It adds additive draft Remote/objective refs and automatic language following; record schema remains 2 and prompt projection is unchanged.
 - Source gates on the current tree: `npm run check` (44 files / 524 tests), token coverage 41 static + 1 dynamic over 13 declared DSH versions, and `verify:ui-metrics --gate=final`.

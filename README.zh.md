@@ -43,7 +43,7 @@
 
 ## 状态
 
-- **当前发布候选：**`0.3.3` — 结构化契约草案抽取、自动中英文语言归一、相似重复折叠、稳定候选 ref、非阻塞后台翻译，以及针对自定义模型延迟的自适应分批。发布构建已准备，等待发布流程；最新已发布版本为 `0.3.2`。
+- **当前发布：**`0.3.3` — 结构化契约草案抽取、自动中英文语言归一、相似重复折叠、稳定候选 ref、非阻塞后台翻译，以及针对自定义模型延迟的自适应分批。已发布到 npm `latest`/`next` 和 GitHub Release `v0.3.3`。
 - **上一版本：**`0.3.2` — 无障碍/证据收敛；`0.3.1`、`0.3.0` 是更早基线。
   **主要 DSH 基线：**`0.2.2-rc.5`；十三个声明版本通过源码矩阵验证。
 - 从 `0.2.0` 起版本号使用普通递增（`0.2.0`、`0.2.1`、`0.2.2`、`0.3.0`、`0.3.1`、`0.3.2`、`0.3.3`），不再使用 `rc` 后缀。
@@ -186,22 +186,16 @@ compaction summary 返回只读草案，不写 storage。
 
 ## 安装
 
-最新已发布版本是 `0.3.2`：
+当前发布版本是 `0.3.3`：
 
 ```bash
-dsh plugin --profile web add dsh-charter@0.3.2
+dsh plugin --profile web add dsh-charter@0.3.3
 ```
 
 离线机器或需要精确验证 artifact 时：
 
 ```bash
-npm pack dsh-charter@0.3.2
-dsh plugin --profile web add ./dsh-charter-0.3.2.tgz
-```
-`0.3.3` 是当前发布候选（结构化草案 + 自动语言跟随），尚未发布；从工作区构建精确构建后安装：
-
-```bash
-npm pack
+npm pack dsh-charter@0.3.3
 dsh plugin --profile web add ./dsh-charter-0.3.3.tgz
 ```
 

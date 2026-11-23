@@ -5,7 +5,7 @@ English | [中文](CHANGELOG.zh.md)
 All notable changes to `dsh-charter` are recorded here. The project follows a pre-1.0 version line while the
 DSH plugin ABI is still moving.
 
-## 0.3.3 — 2026-11-23 (development candidate)
+## 0.3.3 — 2026-11-24 (released)
 
 Structured draft extraction and automatic zh/en language following. No record-schema, prompt-projection, or model-tool change.
 

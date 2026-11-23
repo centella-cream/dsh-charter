@@ -45,10 +45,9 @@ deliverables, evidence, and dependency relationships survive compaction and rema
 
 ## Status
 
-- **Current release candidate:** `0.3.3` — structured draft extraction with automatic zh/en language
-  normalization, duplicate folding, stable candidate refs, deferred non-blocking translation, and adaptive
-  batch handling for custom model latency. The release build is prepared and awaiting the release workflow;
-  latest published release is `0.3.2`.
+- **Current release:** `0.3.3` — structured draft extraction with automatic zh/en language normalization,
+  duplicate folding, stable candidate refs, deferred non-blocking translation, and adaptive batch handling for
+  custom model latency. Published to npm `latest`/`next` and GitHub Release `v0.3.3`.
 - **Previous release:** `0.3.2` — accessibility/evidence convergence; `0.3.1` and `0.3.0` are earlier baselines.
   **Primary DSH baseline:** `0.2.2-rc.5`; thirteen declared DSH versions are source-matrix verified.
 - Versioning from `0.2.0` onward uses plain increments (`0.2.0`, `0.2.1`, `0.2.2`, `0.3.0`, `0.3.1`, `0.3.2`, `0.3.3`), never an `rc`
@@ -214,23 +213,16 @@ storage.
 
 ## Install
 
-The latest published release is `0.3.2`:
+The current release is `0.3.3`:
 
 ```bash
-dsh plugin --profile web add dsh-charter@0.3.2
+dsh plugin --profile web add dsh-charter@0.3.3
 ```
 
 For air-gapped machines or exact-artifact verification:
 
 ```bash
-npm pack dsh-charter@0.3.2
-dsh plugin --profile web add ./dsh-charter-0.3.2.tgz
-```
-`0.3.3` is the current release candidate (structured draft + automatic language following), not published
-yet. Build the exact candidate from the working tree:
-
-```bash
-npm pack
+npm pack dsh-charter@0.3.3
 dsh plugin --profile web add ./dsh-charter-0.3.3.tgz
 ```
 
