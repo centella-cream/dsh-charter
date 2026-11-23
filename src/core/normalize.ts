@@ -84,7 +84,11 @@ function normalizeRequires(requires: readonly string[]): string[] {
 function normalizeOp(op: CharterOp): CharterOp {
   switch (op.type) {
     case 'objective.initialize':
-      return { type: op.type, text: normalizeUserText(op.text, 'objective') }
+      return {
+        type: op.type,
+        text: normalizeUserText(op.text, 'objective'),
+        ...(op.clientRef === undefined ? {} : { clientRef: op.clientRef }),
+      }
     case 'objective.redirect':
       return {
         type: op.type,

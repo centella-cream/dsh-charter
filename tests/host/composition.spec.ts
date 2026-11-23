@@ -2231,3 +2231,169 @@ describe('charter bootstrap', () => {
     expect(exactObjective).toMatchObject({ ok: true })
   })
 })
+
+describe('structured bootstrap draft', () => {
+  it('returns folded structured candidates and applies their stable refs', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-structured-'))
+    roots.push(root)
+    const ctx = await mount(root)
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('structured'), {
+      meta: { cwd: root, createdAt: 1_700_000_002_000 },
+    })
+    await waitForReady(service, session)
+    const append = session as unknown as { append(type: string, data: unknown): unknown }
+    append.append('compaction/summary', {
+      summary: [{ type: 'text', text: '## Pending Jobs\n- 验证中文草案。\n- 验证中文草案。\n' }],
+      shadowedTokenCount: 2,
+    })
+    const draft = await service.bootstrapDraft(session.id, 'zh')
+    expect(draft.available).toBe(true)
+    if (!draft.available) return
+    expect(draft.proposal.draftLang).toBe('zh')
+    expect(draft.proposal.language).toMatchObject({ requested: 'zh', status: 'source' })
+    const deliverable = draft.proposal.items.find(item => item.kind === 'deliverable')
+    expect(deliverable?.ref).toBe('d-del-0')
+    expect(deliverable?.foldCount).toBe(2)
+    expect(deliverable?.foldMembers).toHaveLength(1)
+    const applied = await service.applyBootstrap({
+      sessionId: session.id,
+      mutationId: 'structured-apply',
+      baseRevision: 0,
+      draftHandle: draft.proposal.draftHandle!,
+      ops: [{
+        type: 'item.propose',
+        item: {
+          clientRef: deliverable!.ref,
+          kind: 'deliverable',
+          text: deliverable!.text,
+          order: 0,
+          progress: 'not-started',
+        },
+      }],
+    })
+    expect(applied).toMatchObject({ ok: true })
+    expect(service.view(session).items.map(item => item.text)).toContain('验证中文草案。')
+  })
+
+  it('falls back to source language when no model is available', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-structured-fallback-'))
+    roots.push(root)
+    const ctx = await mount(root)
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('structured-fallback'), {
+      meta: { cwd: root, createdAt: 1_700_000_002_100 },
+    })
+    await waitForReady(service, session)
+    const append = session as unknown as { append(type: string, data: unknown): unknown }
+    append.append('compaction/summary', {
+      summary: [{ type: 'text', text: '## Pending Jobs\n- 验证中文草案。\n' }],
+    })
+    const draft = await service.bootstrapDraft(session.id, 'en')
+    expect(draft.available).toBe(true)
+    if (!draft.available) return
+    expect(draft.proposal.language.status).toBe('unavailable')
+    expect(draft.proposal.items[0]?.text).toBe('验证中文草案。')
+  })
+
+  it('rejects an oversized candidate until it is edited', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-structured-oversized-'))
+    roots.push(root)
+    const ctx = await mount(root, { maxItemBytes: 24 })
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('structured-oversized'), {
+      meta: { cwd: root, createdAt: 1_700_000_002_200 },
+    })
+    await waitForReady(service, session)
+    const append = session as unknown as { append(type: string, data: unknown): unknown }
+    append.append('compaction/summary', {
+      summary: [{ type: 'text', text: `## Pending Jobs\n- ${'界'.repeat(40)}。\n` }],
+    })
+    const draft = await service.bootstrapDraft(session.id, 'zh')
+    if (!draft.available) throw new Error('draft unavailable')
+    const item = draft.proposal.items.find(entry => entry.kind === 'deliverable')!
+    expect(item.oversized).toBe(true)
+    const request = {
+      sessionId: session.id,
+      mutationId: 'structured-oversized-apply',
+      baseRevision: 0,
+      draftHandle: draft.proposal.draftHandle!,
+      ops: [{
+        type: 'item.propose' as const,
+        item: { clientRef: item.ref, kind: 'deliverable' as const, text: item.text, order: 0, progress: 'not-started' as const },
+      }],
+    }
+    expect(await service.applyBootstrap(request)).toMatchObject({ ok: false, code: 'INVALID_ARGUMENT' })
+  })
+})
+
+describe('automatic draft language follow', () => {
+  it('translates an extracted draft with the session model and the host llm service', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-language-'))
+    roots.push(root)
+    const ctx = await mount(root)
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('language-follow'), {
+      meta: { cwd: root, createdAt: 1_700_000_003_000 },
+    })
+    await waitForReady(service, session)
+    const fakeAgent = {
+      id: session.id,
+      session,
+      model: { current: () => ({ provider: 'fake', model: 'fake-model' }) },
+    } as unknown as Agent
+    await ctx.agents.register(fakeAgent)
+    const llm = {
+      async *stream() {
+        const output = JSON.stringify({ items: [
+          { ref: 'd-obj-0', text: 'Verify the English draft.' },
+          { ref: 'd-del-0', text: 'Verify the English draft.' },
+        ] })
+        yield { type: 'block-start', index: 0, blockType: 'text' }
+        yield { type: 'text-delta', index: 0, text: output }
+        yield { type: 'block-end', index: 0, block: { type: 'text', text: output } }
+        yield { type: 'finish', reason: { kind: 'stop' } }
+      },
+    }
+    ctx.provide('llm', llm as never)
+    expect(ctx.get('llm')).toBe(llm)
+    const liveAgent = ctx.agents.get(session.id) as unknown as { readonly model?: { current(): unknown } } | undefined
+    expect(liveAgent?.model?.current()).toEqual({ provider: 'fake', model: 'fake-model' })
+    const append = session as unknown as { append(type: string, data: unknown): unknown }
+    append.append('compaction/summary', {
+      summary: [{ type: 'text', text: '## Pending Jobs\n- 验证中文草案。\n' }],
+    })
+    const draft = await service.bootstrapDraft(session.id, 'en')
+    expect(draft.available).toBe(true)
+    if (!draft.available) return
+    expect(draft.proposal.language).toMatchObject({
+      requested: 'en',
+      status: 'translated',
+      provider: 'fake',
+      model: 'fake-model',
+    })
+    expect(draft.proposal.draftLang).toBe('en')
+    const deliverable = draft.proposal.items.find(item => item.kind === 'deliverable')!
+    expect(deliverable.text).toBe('Verify the English draft.')
+    const applied = await service.applyBootstrap({
+      sessionId: session.id,
+      mutationId: 'language-apply',
+      baseRevision: 0,
+      draftHandle: draft.proposal.draftHandle!,
+      ops: [{
+        type: 'item.propose',
+        item: {
+          clientRef: deliverable.ref,
+          kind: 'deliverable',
+          text: deliverable.text,
+          order: 0,
+          progress: 'not-started',
+        },
+      }],
+    })
+    expect(applied).toMatchObject({ ok: true })
+    expect(service.view(session).items.find(item => item.text === 'Verify the English draft.')).toMatchObject({
+      review: 'pending',
+    })
+  })
+})

@@ -15,12 +15,15 @@ import {
   type CharterErrorCode,
 } from '../core/errors.js'
 import { bootstrapFromEvents } from '../core/bootstrap.js'
+import { structuredFromEvents, STRUCTURED_EXTRACTOR_VERSION } from '../core/structured-bootstrap.js'
+import { translateDraftItems, targetLanguageOf, type DraftLlmRuntime } from './draft-translation.js'
 import { readSessionEvents } from './session-events.js'
 import { assertEditAuthorized } from '../core/authorization.js'
 import {
   clampCharterLimits,
   DEFAULT_CHARTER_LIMITS,
   type CharterLimits,
+  utf8Bytes,
 } from '../core/limits.js'
 import { queryItems, type ItemQueryRequest } from '../core/query.js'
 import { changeSetPreviewDigest, planChangeSet, type PlannedChangeSet } from '../core/change-set.js'
@@ -99,6 +102,10 @@ import type {
   CharterListener,
   CharterToolView,
   CharterBootstrapResult,
+  CharterBootstrapDraftResult,
+  CharterBootstrapDraftItem,
+  CharterBootstrapDraftProposal,
+  CharterBootstrapLanguage,
   CharterRecordExport,
   CharterRecordOperationResult,
   CharterRecordState,
@@ -273,6 +280,8 @@ export class CharterService extends Service {
   static Config = Config
 
   private readonly config: CharterConfig
+  private readonly localizedDrafts = new Map<string, CharterBootstrapDraftProposal>()
+  private readonly translatedItems = new Map<string, readonly CharterBootstrapDraftItem[]>()
   private sessionsTable: KvTable<SessionIdType, CharterRecord> | undefined
   private archivesTable: KvTable<string, CharterArchiveCacheEntry> | undefined
   private archivesDomain: { close(): Promise<void> } | undefined
@@ -893,6 +902,134 @@ export class CharterService extends Service {
         draftHandle: this.bootstrapDraftHandle(proposal),
       },
     }
+  }
+
+  /** Extract a structured, duplicate-folded draft and follow the requested UI language. */
+  async bootstrapDraft(
+    sessionId: SessionIdType,
+    requestedLanguage?: string,
+  ): Promise<CharterBootstrapDraftResult> {
+    if (this.globalFailure !== undefined) {
+      return { available: false, reason: 'unavailable', message: this.globalFailure }
+    }
+    const session = this.ctx.sessions.get(sessionId)
+    if (session === undefined) return { available: false, reason: 'not-live' }
+    const events = readSessionEvents(session).map(event => ({
+      type: event.type,
+      seq: event.seq,
+      time: event.time,
+      data: event.data,
+    }))
+    const extraction = structuredFromEvents(events, this.config)
+    if (extraction === undefined) return { available: false, reason: 'no-summary' }
+    const target = targetLanguageOf(requestedLanguage)
+    const sourceKey = sha256Json({
+      version: STRUCTURED_EXTRACTOR_VERSION,
+      source: extraction.source,
+      items: extraction.items.map(item => ({ ref: item.ref, text: item.text })),
+    })
+    let items: readonly CharterBootstrapDraftItem[] = extraction.items
+    let language: CharterBootstrapLanguage = {
+      requested: target,
+      status: 'source',
+    }
+    if (target !== null && (extraction.draftLang !== target || extraction.items.some(item => item.lang !== target))) {
+      const model = this.translationModel(sessionId)
+      if (model === undefined) {
+        language = {
+          requested: target,
+          status: 'unavailable',
+          reason: 'No configured model is available to normalize the draft language.',
+        }
+      } else {
+        const cacheKey = sha256Json({ sourceKey, target, provider: model.provider, model: model.model })
+        const cached = this.translatedItems.get(cacheKey)
+        if (cached !== undefined) {
+          items = cached
+          language = { requested: target, status: 'translated', provider: model.provider, model: model.model }
+        } else {
+          try {
+            const translated = await translateDraftItems(model.llm, model, target, extraction.items)
+            items = translated.items.map(item => this.withTranslatedItem(item, target))
+            this.translatedItems.set(cacheKey, items)
+            this.trimMap(this.translatedItems, 32)
+            language = { requested: target, status: 'translated', provider: model.provider, model: model.model }
+          } catch (error) {
+            language = {
+              requested: target,
+              status: 'failed',
+              reason: (error instanceof Error ? error.message : String(error)).slice(0, 512),
+            }
+          }
+        }
+      }
+    }
+    const objectiveItem = items.find(item => item.kind === 'objective')
+    const objective = objectiveItem?.text ?? null
+    const invariants = items.filter(item => item.kind === 'invariant').map(item => item.text)
+    const deliverables = items.filter(item => item.kind === 'deliverable').map(item => item.text)
+    const proposalBase = {
+      objective,
+      invariants,
+      deliverables,
+      source: extraction.source,
+      items,
+      draftLang: language.status === 'translated' && target !== null ? target : extraction.draftLang,
+      language,
+      extractorVersion: STRUCTURED_EXTRACTOR_VERSION,
+    }
+    const draftHandle = this.structuredDraftHandle(proposalBase)
+    const proposal: CharterBootstrapDraftProposal = { ...proposalBase, draftHandle }
+    this.localizedDrafts.set(draftHandle, proposal)
+    this.trimMap(this.localizedDrafts, 32)
+    return { available: true, proposal }
+  }
+
+  /** The validated localized draft used by applyBootstrap for structured refs. */
+  private structuredDraftForHandle(handle: string): CharterBootstrapDraftProposal | undefined {
+    return this.localizedDrafts.get(handle)
+  }
+
+  private translationModel(sessionId: SessionIdType): { readonly llm: DraftLlmRuntime; readonly provider: string; readonly model: string; readonly effort?: string } | undefined {
+    const llm = this.ctx.get('llm') as unknown as DraftLlmRuntime | undefined
+    if (llm === undefined) return undefined
+    const agent = this.ctx.agents.get(sessionId) as unknown as { readonly model?: { current(): { provider: string; model: string; reasoningEffort?: string } | undefined } } | undefined
+    const selection = agent?.model?.current()
+    if (selection === undefined) return undefined
+    return {
+      llm,
+      provider: selection.provider,
+      model: selection.model,
+      ...(selection.reasoningEffort === undefined ? {} : { effort: selection.reasoningEffort }),
+    }
+  }
+
+  private withTranslatedItem(item: CharterBootstrapDraftItem, target: 'zh' | 'en'): CharterBootstrapDraftItem {
+    const oversized = item.kind === 'objective'
+      ? utf8Bytes(item.text) > this.config.maxObjectiveBytes
+      : utf8Bytes(item.text) > this.config.maxItemBytes
+    return {
+      ...item,
+      lang: target,
+      oversized,
+    }
+  }
+
+  private trimMap<K, V>(map: Map<K, V>, limit: number): void {
+    while (map.size > limit) {
+      const first = map.keys().next().value
+      if (first === undefined) return
+      map.delete(first)
+    }
+  }
+
+  private structuredDraftHandle(proposal: Pick<CharterBootstrapDraftProposal, 'source' | 'items' | 'draftLang'>): string {
+    return sha256Json({
+      version: STRUCTURED_EXTRACTOR_VERSION,
+      source: proposal.source,
+      draftLang: proposal.draftLang,
+      items: proposal.items.map(item => ({ ref: item.ref, kind: item.kind, text: item.text })),
+    })
   }
 
   private bootstrapDraftHandle(proposal: import('./types.js').CharterBootstrapProposal): string {
@@ -1703,11 +1840,32 @@ export class CharterService extends Service {
       return unavailableResult(error instanceof CharterError ? error.code : 'INVALID_ARGUMENT',
         error instanceof Error ? error.message : String(error))
     }
-    const extraction = this.bootstrap(normalized.sessionId as SessionIdType)
-    if (!extraction.available) {
+
+    const refs = normalized.ops.flatMap(op => {
+      if (op.type === 'item.add' || op.type === 'item.propose') return [op.item.clientRef]
+      if (op.type === 'objective.initialize' && op.clientRef !== undefined) return [op.clientRef]
+      return []
+    })
+    const structuredRefs = refs.filter(ref => ref.startsWith('d-'))
+    const usesStructured = structuredRefs.length > 0
+      || normalized.ops.some(op => op.type === 'objective.initialize' && op.clientRef?.startsWith('d-obj-') === true)
+    if (normalized.ops.some(op => (op.type === 'item.add' || op.type === 'item.propose') && op.item.clientRef.startsWith('d-'))
+      && normalized.ops.some(op => (op.type === 'item.add' || op.type === 'item.propose') && !op.item.clientRef.startsWith('d-'))) {
+      return unavailableResult('INVALID_ARGUMENT', 'bootstrap apply cannot mix structured and legacy candidate refs')
+    }
+
+    const legacyExtraction = usesStructured ? undefined : this.bootstrap(normalized.sessionId as SessionIdType)
+    if (usesStructured) {
+      const proposal = this.structuredDraftForHandle(parsedRequest.data.draftHandle)
+      if (proposal === undefined) {
+        return unavailableResult('INVALID_ARGUMENT', 'structured bootstrap draft expired; request a new draft')
+      }
+      return this.applyStructuredBootstrap(normalized, parsedRequest.data.draftHandle, proposal, actor)
+    }
+    if (legacyExtraction === undefined || !legacyExtraction.available) {
       return unavailableResult('INVALID_ARGUMENT', 'No reviewable compaction draft is available for this Session')
     }
-    if (parsedRequest.data.draftHandle !== this.bootstrapDraftHandle(extraction.proposal)) {
+    if (parsedRequest.data.draftHandle !== this.bootstrapDraftHandle(legacyExtraction.proposal)) {
       return unavailableResult('INVALID_ARGUMENT', 'bootstrap draft handle does not match the current extraction')
     }
     const allowedKinds = new Map<string, Set<'invariant' | 'deliverable'>>()
@@ -1716,8 +1874,99 @@ export class CharterService extends Service {
       kinds.add(kind)
       allowedKinds.set(text, kinds)
     }
-    for (const text of extraction.proposal.invariants) addAllowed(text, 'invariant')
-    for (const text of extraction.proposal.deliverables) addAllowed(text, 'deliverable')
+    for (const text of legacyExtraction.proposal.invariants) addAllowed(text, 'invariant')
+    for (const text of legacyExtraction.proposal.deliverables) addAllowed(text, 'deliverable')
+    const stripModified = (item: import('../core/schemas.js').NewItemInput): import('../core/schemas.js').NewItemInput => {
+      const { contentModified: _modified, ...rest } = item
+      return rest as import('../core/schemas.js').NewItemInput
+    }
+    const withModified = (
+      item: import('../core/schemas.js').NewItemInput,
+      modified: boolean,
+    ): import('../core/schemas.js').NewItemInput => modified
+      ? { ...stripModified(item), contentModified: true }
+      : stripModified(item)
+    const ops: import('../core/schemas.js').CharterOp[] = []
+    for (const op of normalized.ops) {
+      if (op.type === 'objective.initialize' && op.clientRef !== undefined) {
+        return unavailableResult('INVALID_ARGUMENT', 'legacy bootstrap does not accept structured objective refs')
+      }
+      if (op.type === 'objective.propose') {
+        return unavailableResult('INVALID_ARGUMENT', 'bootstrap apply cannot create objective proposals')
+      }
+      if (op.type === 'objective.initialize') {
+        if (legacyExtraction.proposal.objective === null || op.text !== legacyExtraction.proposal.objective) {
+          return unavailableResult('INVALID_ARGUMENT', 'bootstrap objective.initialize must match the reviewed extraction')
+        }
+        ops.push(op)
+        continue
+      }
+      if (op.type === 'objective.redirect') {
+        return unavailableResult('INVALID_ARGUMENT', 'bootstrap apply cannot redirect an objective')
+      }
+      if (op.type === 'item.add' || op.type === 'item.propose') {
+        const activeRef = /^bootstrap-(inv|del)-(\d+)$/u.exec(op.item.clientRef)
+        if (activeRef !== null) {
+          const expectedKind = activeRef[1] === 'inv' ? 'invariant' : 'deliverable'
+          const index = Number(activeRef[2])
+          const candidates = expectedKind === 'invariant'
+            ? legacyExtraction.proposal.invariants
+            : legacyExtraction.proposal.deliverables
+          if (op.item.kind !== expectedKind || !Number.isSafeInteger(index) || index < 0 || index >= candidates.length) {
+            return unavailableResult('INVALID_ARGUMENT', 'bootstrap candidate reference is invalid')
+          }
+          ops.push({ ...op, item: withModified(op.item, op.item.text !== candidates[index]) })
+          continue
+        }
+        if (op.type === 'item.add') {
+          return unavailableResult('INVALID_ARGUMENT', 'bootstrap candidate must reference the reviewed extraction')
+        }
+        const kinds = allowedKinds.get(op.item.text)
+        if (kinds === undefined || !kinds.has(op.item.kind)) {
+          return unavailableResult('INVALID_ARGUMENT', 'bootstrap proposal does not match the reviewed extraction')
+        }
+        ops.push({ ...op, item: stripModified(op.item) })
+        continue
+      }
+      if (op.type !== 'item.supersede') {
+        ops.push(op)
+        continue
+      }
+      ops.push({ ...op, replacement: stripModified(op.replacement) })
+    }
+    const sourceDigest = compactionProjectionDigest({
+      sessionId: normalized.sessionId,
+      summarySeq: legacyExtraction.proposal.source.summarySeq,
+      projectionVersion: 1,
+    }, legacyExtraction.proposal)
+    const applyRequest = { ...normalized, ops }
+    return this.edit(applyRequest, actor, {
+      kind: 'compaction-summary',
+      summarySeq: legacyExtraction.proposal.source.summarySeq,
+      at: legacyExtraction.proposal.source.at,
+      sessionId: normalized.sessionId,
+      projectionVersion: 1,
+      digest: compactionProjectionDigest({
+        sessionId: normalized.sessionId,
+        summarySeq: legacyExtraction.proposal.source.summarySeq,
+        projectionVersion: 1,
+      }, legacyExtraction.proposal),
+    }, { allowContentModified: true, dedupeSourceDigest: sourceDigest })
+  }
+
+  private applyStructuredBootstrap(
+    normalized: CharterEditRequest,
+    draftHandle: string,
+    proposal: CharterBootstrapDraftProposal,
+    actor: CharterActor,
+  ): Promise<CharterEditResult> {
+    const candidates = new Map<string, { readonly kind: 'objective' | 'invariant' | 'deliverable'; readonly text: string; readonly oversized: boolean }>()
+    for (const item of proposal.items) {
+      candidates.set(item.ref, { kind: item.kind, text: item.text, oversized: item.oversized })
+      for (const member of item.foldMembers ?? []) {
+        candidates.set(member.ref, { kind: item.kind, text: member.text, oversized: false })
+      }
+    }
     const stripModified = (item: import('../core/schemas.js').NewItemInput): import('../core/schemas.js').NewItemInput => {
       const { contentModified: _modified, ...rest } = item
       return rest as import('../core/schemas.js').NewItemInput
@@ -1731,81 +1980,54 @@ export class CharterService extends Service {
     const ops: import('../core/schemas.js').CharterOp[] = []
     for (const op of normalized.ops) {
       if (op.type === 'objective.propose') {
-        return unavailableResult('INVALID_ARGUMENT', 'bootstrap apply cannot create objective proposals')
+        return Promise.resolve(unavailableResult('INVALID_ARGUMENT', 'bootstrap apply cannot create objective proposals'))
       }
       if (op.type === 'objective.initialize') {
-        if (extraction.proposal.objective === null || op.text !== extraction.proposal.objective) {
-          return unavailableResult('INVALID_ARGUMENT', 'bootstrap objective.initialize must match the reviewed extraction')
+        const expected = proposal.items.find(item => item.kind === 'objective')
+        if (expected === undefined) {
+          return Promise.resolve(unavailableResult('INVALID_ARGUMENT', 'structured draft has no objective candidate'))
+        }
+        if (op.clientRef !== undefined && op.clientRef !== expected.ref) {
+          return Promise.resolve(unavailableResult('INVALID_ARGUMENT', 'structured objective ref does not match the draft'))
+        }
+        if (op.text !== expected.text) {
+          return Promise.resolve(unavailableResult('INVALID_ARGUMENT', 'structured objective.initialize must match the reviewed draft'))
         }
         ops.push(op)
         continue
       }
       if (op.type === 'objective.redirect') {
-        return unavailableResult('INVALID_ARGUMENT', 'bootstrap apply cannot redirect an objective')
+        return Promise.resolve(unavailableResult('INVALID_ARGUMENT', 'bootstrap apply cannot redirect an objective'))
       }
-      if (op.type === 'item.add') {
-        const activeRef = /^bootstrap-(inv|del)-(\d+)$/u.exec(op.item.clientRef)
-        if (activeRef === null) {
-          return unavailableResult('INVALID_ARGUMENT', 'bootstrap active item must reference the reviewed extraction')
+      if (op.type === 'item.add' || op.type === 'item.propose') {
+        const candidate = candidates.get(op.item.clientRef)
+        if (candidate === undefined || candidate.kind === 'objective' || op.item.kind !== candidate.kind) {
+          return Promise.resolve(unavailableResult('INVALID_ARGUMENT', 'bootstrap candidate reference is invalid'))
         }
-        const expectedKind = activeRef[1] === 'inv' ? 'invariant' : 'deliverable'
-        const index = Number(activeRef[2])
-        const candidates = expectedKind === 'invariant'
-          ? extraction.proposal.invariants
-          : extraction.proposal.deliverables
-        if (op.item.kind !== expectedKind || !Number.isSafeInteger(index) || index < 0 || index >= candidates.length) {
-          return unavailableResult('INVALID_ARGUMENT', 'bootstrap active candidate reference is invalid')
+        if (candidate.oversized && op.item.text === candidate.text) {
+          return Promise.resolve(unavailableResult('INVALID_ARGUMENT', 'oversized bootstrap candidate must be edited or split before apply'))
         }
-        ops.push({ ...op, item: withModified(op.item, op.item.text !== candidates[index]) })
+        ops.push({ ...op, item: withModified(op.item, op.item.text !== candidate.text) })
         continue
       }
-      if (op.type !== 'item.propose') {
-        ops.push(op.type === 'item.supersede'
-          ? { ...op, replacement: stripModified(op.replacement) }
-          : op)
+      if (op.type === 'item.supersede') {
+        ops.push({ ...op, replacement: stripModified(op.replacement) })
         continue
       }
-      const candidateRef = /^bootstrap-(inv|del)-(\d+)$/u.exec(op.item.clientRef)
-      if (candidateRef !== null) {
-        const expectedKind = candidateRef[1] === 'inv' ? 'invariant' : 'deliverable'
-        const index = Number(candidateRef[2])
-        const candidates = expectedKind === 'invariant'
-          ? extraction.proposal.invariants
-          : extraction.proposal.deliverables
-        if (op.item.kind !== expectedKind || !Number.isSafeInteger(index) || index < 0 || index >= candidates.length) {
-          return unavailableResult('INVALID_ARGUMENT', 'bootstrap proposal candidate reference is invalid')
-        }
-        // The reviewed candidate may be edited; provenance remains the extraction.
-        ops.push({ ...op, item: withModified(op.item, op.item.text !== candidates[index]) })
-        continue
-      }
-      const kinds = allowedKinds.get(op.item.text)
-      if (kinds === undefined || !kinds.has(op.item.kind)) {
-        return unavailableResult(
-          'INVALID_ARGUMENT',
-          'bootstrap proposal does not match the reviewed extraction',
-        )
-      }
-      ops.push({ ...op, item: stripModified(op.item) })
+      ops.push(op)
     }
-    const sourceDigest = compactionProjectionDigest({
-      sessionId: normalized.sessionId,
-      summarySeq: extraction.proposal.source.summarySeq,
-      projectionVersion: 1,
-    }, extraction.proposal)
-    const applyRequest = { ...normalized, ops }
-    return this.edit(applyRequest, actor, {
-      kind: 'compaction-summary',
-      summarySeq: extraction.proposal.source.summarySeq,
-      at: extraction.proposal.source.at,
+    const source = {
+      kind: 'compaction-summary' as const,
+      summarySeq: proposal.source.summarySeq,
+      at: proposal.source.at,
       sessionId: normalized.sessionId,
       projectionVersion: 1,
-      digest: compactionProjectionDigest({
-        sessionId: normalized.sessionId,
-        summarySeq: extraction.proposal.source.summarySeq,
-        projectionVersion: 1,
-      }, extraction.proposal),
-    }, { allowContentModified: true, dedupeSourceDigest: sourceDigest })
+      digest: sha256Json({ structured: true, draftHandle, source: proposal.source, items: proposal.items.map(item => ({ ref: item.ref, text: item.text })) }),
+    }
+    return this.edit({ ...normalized, ops }, actor, source, {
+      allowContentModified: true,
+      dedupeSourceDigest: sha256Json({ structured: true, draftHandle, source: proposal.source }),
+    })
   }
 
   previewChangeSet(

@@ -10,6 +10,7 @@ import type {
 } from '../core/schemas.js'
 import type {
   CharterBootstrapResult,
+  CharterBootstrapDraftResult,
   CharterEditResult,
   CharterRecordExport,
   CharterRecordOperationResult,
@@ -187,6 +188,17 @@ export class CharterRemoteService extends TypertRemoteService {
   })
   bootstrap(sessionId: SessionId): Promise<CharterBootstrapResult> {
     return Promise.resolve(this.ctx.charter.bootstrap(sessionId))
+  }
+
+  @remoteMethod({
+    resources: {
+      session: (request: { readonly sessionId: SessionId }): SessionId => request.sessionId,
+    },
+  })
+  bootstrapDraft(
+    request: { readonly sessionId: SessionId; readonly targetLanguage?: 'zh' | 'en' },
+  ): Promise<CharterBootstrapDraftResult> {
+    return this.ctx.charter.bootstrapDraft(request.sessionId, request.targetLanguage)
   }
 
   @remoteMethod({

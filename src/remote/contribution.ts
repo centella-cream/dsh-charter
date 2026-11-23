@@ -2,6 +2,8 @@ import type { TypertRemoteContribution } from '@deepseek-ai/dsh-typert-protocol'
 import { z } from 'zod'
 import {
   charterBootstrapResultSchema,
+  charterBootstrapDraftRequestSchema,
+  charterBootstrapDraftResultSchema,
   charterEditRequestSchema,
   charterBootstrapApplyRequestSchema,
   charterEditResultSchema,
@@ -115,6 +117,27 @@ export const charterRemoteContribution: TypertRemoteContribution = {
       mode: 'strict',
       typeSymbol: 'dsh-charter/CharterBootstrapResult',
       create: () => charterBootstrapResultSchema,
+    },
+  }, {
+    id: 'dsh-charter#charter/bootstrapDraft',
+    service: 'charterRemote',
+    namespace: 'charter',
+    method: 'bootstrapDraft',
+    invocation: { kind: 'direct' },
+    parameters: [{
+      name: 'request',
+      wire: 'request',
+      source: 'json',
+      codec: {
+        mode: 'strict',
+        typeSymbol: 'dsh-charter/CharterBootstrapDraftRequest',
+        create: () => charterBootstrapDraftRequestSchema,
+      },
+    }],
+    result: {
+      mode: 'strict',
+      typeSymbol: 'dsh-charter/CharterBootstrapDraftResult',
+      create: () => charterBootstrapDraftResultSchema,
     },
   }, {
     id: 'dsh-charter#charter/edit',

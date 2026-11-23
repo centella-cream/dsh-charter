@@ -12,6 +12,7 @@ import {
   charterRecordArchiveSchema,
   charterRestoreRequestSchema,
   proposalCandidateRefSchema,
+  clientRefSchema,
   objectiveProposalSchema,
 } from '../core/schemas.js'
 import type {
@@ -22,6 +23,7 @@ import type {
 } from '../core/schemas.js'
 import type {
   CharterBootstrapResult,
+  CharterBootstrapDraftResult,
   CharterEditResult,
   CharterRecordExport,
   CharterRecordOperationResult,
@@ -266,7 +268,7 @@ export const charterItemQueryResultSchema = z.union([
 ])
 
 export const charterProposalQueryRequestSchema = z.object({
-  limit: z.number().int().positive().max(64).optional(),
+  limit: z.number().int().positive().max(512).optional(),
   cursor: z.string().optional(),
   sourceKind: z.enum(['manual', 'message', 'compaction-summary', 'agent-tool', 'fork', 'legacy-unknown']).optional(),
   review: z.enum(['pending', 'accepted', 'rejected']).optional(),
@@ -510,6 +512,64 @@ export const charterBootstrapResultSchema = z.discriminatedUnion('available', [
   }).strict(),
 ])
 
+export const charterBootstrapDraftRequestSchema = z.object({
+  sessionId: z.string().min(1).max(256),
+  targetLanguage: z.enum(['zh', 'en']).optional(),
+}).strict()
+
+const charterBootstrapDraftMemberSchema = z.object({
+  ref: clientRefSchema,
+  text: z.string(),
+}).strict()
+
+const charterBootstrapDraftItemSchema = z.object({
+  ref: clientRefSchema,
+  kind: z.enum(['objective', 'invariant', 'deliverable']),
+  text: z.string(),
+  lang: z.enum(['zh', 'en', 'mixed']),
+  oversized: z.boolean(),
+  truncatedFrom: z.number().int().positive().optional(),
+  kindConfidence: z.enum(['high', 'low']).optional(),
+  foldCount: z.number().int().min(2).optional(),
+  foldMembers: z.array(charterBootstrapDraftMemberSchema).max(512).optional(),
+}).strict()
+
+const charterBootstrapLanguageSchema = z.object({
+  requested: z.enum(['zh', 'en']).nullable(),
+  status: z.enum(['source', 'translated', 'unavailable', 'failed']),
+  reason: z.string().max(512).optional(),
+  provider: z.string().max(256).optional(),
+  model: z.string().max(256).optional(),
+}).strict()
+
+const charterBootstrapDraftProposalSchema = z.object({
+  draftHandle: z.string().optional(),
+  objective: z.string().nullable(),
+  invariants: z.array(z.string()),
+  deliverables: z.array(z.string()),
+  source: z.object({
+    summarySeq: z.number().int().nonnegative(),
+    at: z.number().int().nonnegative(),
+    shadowedTokens: z.number().int().nonnegative().optional(),
+  }).strict(),
+  items: z.array(charterBootstrapDraftItemSchema),
+  draftLang: z.enum(['zh', 'en', 'mixed']),
+  language: charterBootstrapLanguageSchema,
+  extractorVersion: z.literal(2),
+}).strict()
+
+export const charterBootstrapDraftResultSchema = z.discriminatedUnion('available', [
+  z.object({
+    available: z.literal(true),
+    proposal: charterBootstrapDraftProposalSchema,
+  }).strict(),
+  z.object({
+    available: z.literal(false),
+    reason: z.enum(['not-live', 'no-summary', 'unavailable']),
+    message: z.string().optional(),
+  }).strict(),
+])
+
 export const charterFrameSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('snapshot'), value: charterViewSchema }).strict(),
   z.object({ type: z.literal('changed'), value: charterViewSchema }).strict(),
@@ -576,6 +636,9 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     'charter/bootstrap': (
       sessionId: SessionId,
     ) => Promise<RemoteResult<CharterBootstrapResult>>
+    'charter/bootstrapDraft': (
+      request: { readonly sessionId: SessionId; readonly targetLanguage?: 'zh' | 'en' },
+    ) => Promise<RemoteResult<CharterBootstrapDraftResult>>
     'charter/exportRecord': (
       sessionId: SessionId,
     ) => Promise<RemoteResult<CharterRecordExport>>
@@ -635,6 +698,9 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
       bootstrap: (
         sessionId: SessionId,
       ) => Promise<RemoteResult<CharterBootstrapResult>>
+      bootstrapDraft: (
+        request: { readonly sessionId: SessionId; readonly targetLanguage?: 'zh' | 'en' },
+      ) => Promise<RemoteResult<CharterBootstrapDraftResult>>
       exportRecord: (
         sessionId: SessionId,
       ) => Promise<RemoteResult<CharterRecordExport>>
@@ -650,6 +716,7 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
 
 export type {
   CharterBootstrapResult,
+  CharterBootstrapDraftResult,
   CharterEditRequest,
   CharterEditResult,
   CharterInitializeRequest,

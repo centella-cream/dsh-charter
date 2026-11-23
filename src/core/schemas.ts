@@ -168,7 +168,7 @@ export const newItemInputSchema = z.discriminatedUnion('kind', [
 ])
 
 export const charterOpSchema = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('objective.initialize'), text: z.string() }).strict(),
+  z.object({ type: z.literal('objective.initialize'), text: z.string(), clientRef: clientRefSchema.optional() }).strict(),
   z.object({
     type: z.literal('objective.redirect'),
     text: z.string(),

@@ -249,10 +249,59 @@ export interface CharterBootstrapProposal {
   readonly invariants: string[]
   readonly deliverables: string[]
   readonly source: CharterBootstrapSource
+  /** Structured candidates are present only on the additive `bootstrapDraft` method. */
+  readonly draftItems?: readonly CharterBootstrapDraftItem[]
+  readonly draftLang?: CharterDraftLanguage
+  readonly language?: CharterBootstrapLanguage
+  readonly extractorVersion?: 2
 }
 
 export type CharterBootstrapResult =
   | { readonly available: true; readonly proposal: CharterBootstrapProposal }
+  | {
+      readonly available: false
+      readonly reason: 'not-live' | 'no-summary' | 'unavailable'
+      readonly message?: string
+    }
+
+export type CharterDraftLanguage = 'zh' | 'en' | 'mixed'
+
+export interface CharterBootstrapDraftMember {
+  readonly ref: string
+  readonly text: string
+}
+
+export interface CharterBootstrapDraftItem {
+  readonly ref: string
+  readonly kind: 'objective' | 'invariant' | 'deliverable'
+  readonly text: string
+  readonly lang: CharterDraftLanguage
+  readonly oversized: boolean
+  readonly truncatedFrom?: number
+  readonly kindConfidence?: 'high' | 'low'
+  readonly foldCount?: number
+  readonly foldMembers?: readonly CharterBootstrapDraftMember[]
+}
+
+export type CharterLanguageStatus = 'source' | 'translated' | 'unavailable' | 'failed'
+
+export interface CharterBootstrapLanguage {
+  readonly requested: 'zh' | 'en' | null
+  readonly status: CharterLanguageStatus
+  readonly reason?: string
+  readonly provider?: string
+  readonly model?: string
+}
+
+export interface CharterBootstrapDraftProposal extends CharterBootstrapProposal {
+  readonly items: readonly CharterBootstrapDraftItem[]
+  readonly draftLang: CharterDraftLanguage
+  readonly language: CharterBootstrapLanguage
+  readonly extractorVersion: 2
+}
+
+export type CharterBootstrapDraftResult =
+  | { readonly available: true; readonly proposal: CharterBootstrapDraftProposal }
   | {
       readonly available: false
       readonly reason: 'not-live' | 'no-summary' | 'unavailable'
