@@ -1,4 +1,5 @@
 
+import { utf8Bytes } from '../core/limits.js'
 import { inspectUserText } from '../core/normalize.js'
 import type {
   CharterBootstrapDraftItem,
@@ -41,8 +42,13 @@ export interface DraftTranslationResult {
 }
 
 const PROMPT_VERSION = 'draft-language-v1'
-const MAX_TRANSLATION_TOKENS = 4_096
+const MAX_TRANSLATION_TOKENS = 8_192
 const DEFAULT_TIMEOUT_MS = 10_000
+// One JSON response for hundreds of candidates can exceed an output-token cap.
+// Batch by count and source bytes, then merge the validated ref maps.
+const MAX_BATCH_ITEMS = 12
+const MAX_BATCH_BYTES = 6_000
+const MAX_CONCURRENT_BATCHES = 4
 
 function prompt(target: 'zh' | 'en', items: readonly CharterBootstrapDraftItem[]): string {
   const lines = items.map(item => JSON.stringify({ ref: item.ref, kind: item.kind, text: item.text }))
@@ -124,40 +130,34 @@ export async function translateDraftItems(
 ): Promise<DraftTranslationResult> {
   const active = items.filter(item => item.kind !== 'objective' || item.ref === 'd-obj-0')
   if (active.length === 0) return { items, provider: model.provider, model: model.model }
+  const batches = translationBatches(active)
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(new Error('calibration timeout')), timeoutMs)
   const relay = (): void => controller.abort(signal?.reason)
   signal?.addEventListener('abort', relay, { once: true })
   try {
-    const options = {
-      provider: model.provider,
-      model: model.model,
-      system: `You are a contract-draft language normalizer (${PROMPT_VERSION}).`,
-      messages: [{ role: 'user' as const, content: [{ type: 'text' as const, text: prompt(target, active) }] }],
-      temperature: 0.1,
-      maxTokens: MAX_TRANSLATION_TOKENS,
-      signal: controller.signal,
+    const translated = await mapLimit(batches, MAX_CONCURRENT_BATCHES, async batch => {
+      try {
+        return await translateBatch(llm, model, target, batch, controller.signal)
+      } catch (error) {
+        controller.abort(error)
+        throw error
+      }
+    })
+    const translations = new Map<string, string>()
+    for (const batch of translated) {
+      for (const [ref, text] of batch) translations.set(ref, text)
     }
-    const chunks: DraftStreamChunk[] = []
-    for await (const chunk of llm.stream(options)) {
-      if (chunk.type === 'tool-call-delta') throw new Error('translation returned an unexpected tool call')
-      chunks.push(chunk)
-    }
-    const finish = [...chunks].reverse().find(chunk => chunk.type === 'finish')
-    if (finish?.type !== 'finish' || finish.reason?.kind !== 'stop') {
-      throw new Error(`translation finished with ${finish?.type === 'finish' ? finish.reason?.kind : 'no-finish'}`)
-    }
-    const translations = parseTranslation(assembleText(chunks), active.map(item => item.ref))
     return {
       items: items.map(item => {
-        const translated = translations.get(item.ref)
-        if (translated === undefined) return item
+        const translatedItem = translations.get(item.ref)
+        if (translatedItem === undefined) return item
         const members = item.foldMembers === undefined
           ? undefined
           : translateMembers(item.foldMembers, translations)
         return {
           ...item,
-          text: translated,
+          text: translatedItem,
           ...(members === undefined ? {} : { foldMembers: members }),
         }
       }),
@@ -168,6 +168,68 @@ export async function translateDraftItems(
     clearTimeout(timer)
     signal?.removeEventListener('abort', relay)
   }
+}
+
+function translationBatches(items: readonly CharterBootstrapDraftItem[]): Array<readonly CharterBootstrapDraftItem[]> {
+  const batches: Array<readonly CharterBootstrapDraftItem[]> = []
+  let current: CharterBootstrapDraftItem[] = []
+  let bytes = 0
+  for (const item of items) {
+    const itemBytes = utf8Bytes(item.text) + utf8Bytes(item.ref)
+    if (current.length > 0 && (current.length >= MAX_BATCH_ITEMS || bytes + itemBytes > MAX_BATCH_BYTES)) {
+      batches.push(current)
+      current = []
+      bytes = 0
+    }
+    current.push(item)
+    bytes += itemBytes
+  }
+  if (current.length > 0) batches.push(current)
+  return batches
+}
+
+async function translateBatch(
+  llm: DraftLlmRuntime,
+  model: DraftTranslationModel,
+  target: 'zh' | 'en',
+  batch: readonly CharterBootstrapDraftItem[],
+  signal: AbortSignal,
+): Promise<Map<string, string>> {
+  const options = {
+    provider: model.provider,
+    model: model.model,
+    system: `You are a contract-draft language normalizer (${PROMPT_VERSION}).`,
+    messages: [{ role: 'user' as const, content: [{ type: 'text' as const, text: prompt(target, batch) }] }],
+    temperature: 0.1,
+    maxTokens: MAX_TRANSLATION_TOKENS,
+    signal,
+  }
+  const chunks: DraftStreamChunk[] = []
+  for await (const chunk of llm.stream(options)) {
+    if (chunk.type === 'tool-call-delta') throw new Error('translation returned an unexpected tool call')
+    chunks.push(chunk)
+  }
+  const finish = [...chunks].reverse().find(chunk => chunk.type === 'finish')
+  if (finish?.type !== 'finish' || finish.reason?.kind !== 'stop') {
+    throw new Error(`translation finished with ${finish?.type === 'finish' ? finish.reason?.kind : 'no-finish'}`)
+  }
+  return parseTranslation(assembleText(chunks), batch.map(item => item.ref))
+}
+
+/** Run at most `limit` async jobs concurrently while preserving result order. */
+async function mapLimit<T, R>(values: readonly T[], limit: number, fn: (value: T) => Promise<R>): Promise<R[]> {
+  const results = new Array<R>(values.length)
+  let next = 0
+  const workers = Array.from({ length: Math.min(limit, values.length) }, async () => {
+    while (true) {
+      const index = next
+      next += 1
+      if (index >= values.length) return
+      results[index] = await fn(values[index]!)
+    }
+  })
+  await Promise.all(workers)
+  return results
 }
 
 export function targetLanguageOf(value: string | undefined): 'zh' | 'en' | null {

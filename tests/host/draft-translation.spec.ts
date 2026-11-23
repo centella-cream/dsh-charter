@@ -61,3 +61,33 @@ describe('draft translation', () => {
     )).rejects.toThrow(/max-tokens/u)
   })
 })
+
+
+describe('draft translation batching', () => {
+  it('splits large drafts into bounded calls and merges every ref', async () => {
+    let calls = 0
+    const llm = {
+      async *stream(options: { messages?: readonly { content?: readonly { text?: string }[] }[] }) {
+        calls += 1
+        const prompt = options.messages?.[0]?.content?.[0]?.text ?? ''
+        const rows = prompt.split('\n').flatMap(line => {
+          if (!line.startsWith('{"ref":')) return []
+          const parsed = JSON.parse(line) as { ref: string; text: string }
+          return [{ ref: parsed.ref, text: `translated:${parsed.ref}` }]
+        })
+        const json = JSON.stringify({ items: rows })
+        yield { type: 'block-start', index: 0 }
+        yield { type: 'text-delta', index: 0, text: json }
+        yield { type: 'block-end', index: 0, block: { type: 'text', text: json } }
+        yield { type: 'finish', reason: { kind: 'stop' } }
+      },
+    }
+    const items = Array.from({ length: 25 }, (_, index) => item(`d-inv-${index}`, `source-${index}-${'x'.repeat(120)}`))
+    const result = await translateDraftItems(llm, { provider: 'p', model: 'm' }, 'en', items)
+    expect(calls).toBeGreaterThan(1)
+    expect(result.items).toHaveLength(25)
+    for (const [index, translated] of result.items.entries()) {
+      expect(translated.text).toBe(`translated:d-inv-${index}`)
+    }
+  })
+})
