@@ -227,21 +227,25 @@ objective，逐字相等规则不变）。详见校准方案 §6/§7；本文的
 - 客户端 `CharterSessionSource.bootstrap()` 读取 `ctx.locale.getLocale().active`；无论 locale 是否 zh/en，
   只要方法存在就调用 `charter/bootstrapDraft`（折叠/oversized/ref 不因语言退化）；仅 zh/en 时传
   `targetLanguage`，其他 locale 传 undefined 并保留源语言草案。
-- Host 在确定性结构化抽取后计算 `draftLang`；若与目标一致则不调用模型。不一致时：
+- Host 先在确定性结构化抽取后立即返回源语言草案；若语言一致则不调用模型。不一致时：
   - `ctx.get('llm')` 可选解析；模型选择取当前 Session 的 `agent.model.current()`；
-  - 通过 `ctx.llm` 做一次 hand-built one-shot（本地流式文本组装）；只取 text block，丢弃 reasoning；
+  - 默认第一批 `bootstrapDraft` 请求（`awaitTranslation:false`）只返回源语言草案，`language.status='pending'`；
+    客户端先渲染草案，再在后台发第二个 `awaitTranslation:true` 请求（最多等待 `languageFollowTimeoutMs`）；
+  - 通过 `ctx.llm` 做有界分批 hand-built one-shot（本地流式文本组装）；只取 text block，丢弃 reasoning；
   - 只发送当前活动代表候选 + objective（不发送折组成员），要求严格 JSON `{items:[{ref,text}]}`；
     ref 集合必须完整、不可增删、不可重复；preserve numbers/paths/identifiers；
   - 输出逐条过 `inspectUserText`/长度检查；单条超限重新标 `oversized`；`finish` 非 stop 整批失败；
-  - 成功：`language.status='translated'`，`draftLang=target`，并把翻译结果按 draftHandle 缓存；
-  - 失败/无模型：保留结构化原文，`language.status='unavailable'|'failed'`，UI 显示降级提示；不阻断审阅。
+  - 成功：第二阶段返回 `language.status='translated'`，`draftLang=target`，并把翻译结果按 draftHandle 缓存；
+    客户端只在草案仍 pristine（未选择/未编辑）时替换，不覆盖用户正在审阅的内容；
+  - 失败/无模型：保留结构化原文，`language.status='unavailable'|'failed'`，UI 显示降级提示与技术详情；不阻断审阅。
+  - 旧客户端不传 `awaitTranslation` 时默认 `true`，保持同步调用语义。
 - 翻译缓存是本 Host 进程内的有界 transient 数据（key 含摘要 digest、extractorVersion、target、provider/model），
   `applyBootstrap` 用同一个 `draftHandle` 取回译文作为 `contentModified` 基准；缓存失效时拒绝过期 apply，
   客户端重新取草案。
 - 自动调用会向用户配置的模型发送压缩摘要/契约草案文本；profile 配置 `languageFollow: false` 可关闭自动
   翻译（结构化抽取仍生效）；README/user-guide/release notes 必须披露；record/Remote/模型工具面不变。
-- **已知优化（非阻断）：** `bootstrapDraft` 同步等待翻译；`languageFollowTimeoutMs` 默认 10s 且有配置上限，
-  超时/失败回退源语言。后续可改为“先回源语言草案、译文到达后替换”。
+- **非阻塞：** 首屏草案不等待模型；语言归一在客户端首屏之后的后台请求中完成，
+  `languageFollowTimeoutMs` 默认 10s 且有配置上限；超时/失败回退源语言。
 
 ## 5. UI（遵循 gui-v1 §4.9 冻结视觉语言）
 

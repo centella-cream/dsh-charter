@@ -96,12 +96,13 @@ deliverables, evidence, and dependency relationships survive compaction and rema
 - **Duplicate folding:** exact and conservative prefix duplicates are folded into one representative with a
   fold count and member refs, so repeated constraints do not flood the review.
 - **Language following:** when the reviewed draft language differs from the DSH UI language (`zh`/`en`), the
-  Host makes one bounded, strict-JSON translation call through the configured session model. If no model is
-  available or the response is invalid, the source-language draft remains fully usable with a visible fallback notice.
+  Host renders the source-language draft first, then performs bounded, strict-JSON translation calls through the
+  configured session model in the background and replaces the draft only while it is still pristine. If no model is
+  available or the response is invalid, the source-language draft remains usable with a visible fallback notice.
   The automatic call sends the compaction draft/current-charter text to that configured model; the plugin stores no
   API key and adds no telemetry or upload path. Set `languageFollow: false` in the profile config to disable the
   automatic model call; deterministic extraction/folding still runs and the source-language draft remains usable.
-  `languageFollowTimeoutMs` bounds the synchronous wait (default 10s).
+  `languageFollowTimeoutMs` bounds the background wait (default 10s); the draft card no longer blocks on it.
 
 ### Compatibility and runtime
 
@@ -311,7 +312,7 @@ Defaults live in `cordis.patch.yml`. Override them in the profile patch:
 | `maxRecoveryBytes` | 4194304 | full recovery-archive budget |
 | `contextOrder` | 130 | runtime-context order |
 | `languageFollow` | true | normalize a review draft to the active `zh`/`en` DSH language through the session model; set `false` to disable the automatic call |
-| `languageFollowTimeoutMs` | 10000 | upper bound for one automatic language-normalization call; timeout keeps the source draft usable |
+| `languageFollowTimeoutMs` | 10000 | upper bound for the background language-normalization phase; timeout keeps the source draft usable |
 
 The only model-visible capacity is `maxPromptBytes`; `maxItems` and `maxPendingItems` bound storage.
 

@@ -261,7 +261,7 @@ Defaults live in `cordis.patch.yml`. Override the same keys in the profile's `co
 | `mutationLimit` | 128 | recent mutation receipts |
 | `contextOrder` | 130 | runtime-context order; after sandbox/approval/subagent by default |
 | `languageFollow` | true | normalize a review draft to the active `zh`/`en` DSH language through the session model; set `false` to disable the automatic model call |
-| `languageFollowTimeoutMs` | 10000 | upper bound for one automatic language-normalization call; on timeout the source draft remains usable |
+| `languageFollowTimeoutMs` | 10000 | upper bound for the background language-normalization phase; on timeout the source draft remains usable |
 
 The only model-visible capacity is `maxPromptBytes`; active item counts are not capped separately. Storage is
 bounded by `maxItems`, `maxPendingItems`, and `maxRecordBytes`. Values that would make a Session ready but
@@ -285,9 +285,10 @@ The tab shows a live context meter and per-field byte counters. Nothing is silen
 - The objective, per-item byte limits, and storage/atomic limits remain hard gates; the UI shows the exact
   problem and Apply stays disabled only for those real limits.
 
-When `languageFollow` is enabled and the draft language differs from the DSH UI language, the Host sends the
-active draft candidates to the session model for one bounded translation call. Set `languageFollow: false` in the
-profile to keep the source language and avoid that automatic call; the deterministic extraction still runs.
+When `languageFollow` is enabled and the draft language differs from the DSH UI language, the source draft renders
+first; the Host then sends active candidates to the session model in bounded background calls and replaces the
+draft if it is still untouched. Set `languageFollow: false` in the profile to keep the source language and avoid
+that automatic call; the deterministic extraction still runs.
 
 Raise the budgets in the profile when your charter needs more room.
 

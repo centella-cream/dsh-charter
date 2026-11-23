@@ -86,11 +86,11 @@
 
 - **语义保全：**只按句边界切分；超长句整段保留并标记，不再硬切成碎片；显式截断记录原始字节数。
 - **相似重复折叠：**全等/保守前缀重复折叠为代表条目，并保留折叠计数与成员 ref。
-- **语言跟随：**草案语言与 DSH 界面语言（`zh`/`en`）不一致时，Host 通过当前会话模型做一次有界、严格 JSON
-  的翻译调用；模型不可用或响应不合格时保留原文草案并显示降级提示，不阻断审阅。自动调用会把压缩草案/当前契约
+- **语言跟随：**草案语言与 DSH 界面语言（`zh`/`en`）不一致时，Host 不等待模型：先立即返回源语言草案，再在后台通过当前会话模型做有界、严格 JSON 的分批翻译，并在草案仍未被操作时替换。模型不可用或响应不合格时
+  保留原文草案并显示降级提示，不阻断审阅。自动调用会把压缩草案/当前契约
   文本发送到该会话配置的模型；插件不保存 API key，也不新增遥测或上传。可在 profile 设置
   `languageFollow: false` 关闭自动调用；结构化抽取/折叠仍生效，源语言草案仍可用。
-  `languageFollowTimeoutMs` 限制同步等待（默认 10 秒）。
+  `languageFollowTimeoutMs` 限制后台翻译等待（默认 10 秒），草案首屏不再等待它。
 
 ### 兼容性与运行时
 
@@ -280,7 +280,7 @@ active-count 失败。
 | `maxRecoveryBytes` | 4194304 | 完整 recovery archive 预算 |
 | `contextOrder` | 130 | runtime-context 顺序 |
 | `languageFollow` | true | 按当前 `zh`/`en` DSH 界面语言通过模型归一草案；设为 `false` 关闭自动调用 |
-| `languageFollowTimeoutMs` | 10000 | 单次自动语言归一等待上限；超时保留源语言草案 |
+| `languageFollowTimeoutMs` | 10000 | 后台自动语言归一等待上限；超时保留源语言草案 |
 
 模型可见容量只有 `maxPromptBytes`；`maxItems` 和 `maxPendingItems` 约束存储。
 
