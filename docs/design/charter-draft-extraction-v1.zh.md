@@ -133,7 +133,7 @@ v2 采用**双抽取器、单摘要源、共享 handle、ref 命名空间路由*
 
 | | legacy 抽取器 | 结构化抽取器（v2） |
 | --- | --- | --- |
-| 实现 | 现 `bootstrapFromSummary` **原样冻结**，重命名为 `extractLegacy`，配 golden fixture（真实摘要语料 → 输出 JSON 快照，逐字节锁定） | §3 全部改进，`extractorVersion: 2` |
+| 实现 | 现 `bootstrapFromSummary` **原样冻结**，重命名为 `extractLegacy`，配 golden fixture（合成摘要 → 输出 JSON 快照，逐字节锁定） | §3 全部改进，`extractorVersion: 2` |
 | 服务方法 | `charter/bootstrap`（响应 DTO 不变） | `charter/bootstrapDraft` |
 | 服务 ref 命名空间 | `bootstrap-(inv\|del)-<i>`（现状不变） | `d-*`（§4.3） |
 | 演进 | 0.3.x 内冻结不改；弃用时机另议（D-A5） | 0.4.0 校准层的输入 |
@@ -240,6 +240,8 @@ objective，逐字相等规则不变）。详见校准方案 §6/§7；本文的
   客户端重新取草案。
 - 自动调用会向用户配置的模型发送压缩摘要/契约草案文本；profile 配置 `languageFollow: false` 可关闭自动
   翻译（结构化抽取仍生效）；README/user-guide/release notes 必须披露；record/Remote/模型工具面不变。
+- **已知优化（非阻断）：** 当前 `bootstrapDraft` 同步等待翻译，首开草案区最长 30s；后续可改为“先回源语言草案、
+  译文到达后替换”，或提供 `languageFollowTimeoutMs`。
 
 ## 5. UI（遵循 gui-v1 §4.9 冻结视觉语言）
 
@@ -272,8 +274,10 @@ Remote 方法与 additive optional op 字段；禁止 record schema、prompt、�
 
 - 结构化抽取：句/子句切分、oversized 标记、4× 截断边界与标记文本、折叠键/前缀包含/成员完整、
   语言阈值边界语料、kind 打分中英正反例、objective 打分并列规则、确定性（同输入同输出同 ref）；
-- **legacy golden**：真实摘要语料（≥10 条脱敏样本）在 `extractLegacy` 上的输出 JSON 与 0.3.2
-  实现快照逐字节一致；
+- **legacy golden**：`extractLegacy` 对固定语料的输出 JSON 与 0.3.2 快照逐字节一致。
+  **接受偏差（2026-11-23）：** 原方案要求 ≥10 条真实脱敏摘要；当前仓库没有可安全提交的真实摘要语料，
+  实际交付为 3 条合成案例（混合章节/超长硬切/CRLF+NFD）。机制已逐字节锁定；发布前由发布决策选择
+  “补 ≥10 条真实脱敏摘要”或“书面接受 3 条合成片段作为偏差”。
 - `extractorVersion` 变更时 ref 不稳定的显式测试；
 - **自动语言归一**：目标同语不调用、跨语调用成功、模型缺失回退、finish=max-tokens/malformed/缺 ref 整批失败、译文超限重标 oversized、缓存命中/失效、`applyBootstrap` 以译文为基准。
 
