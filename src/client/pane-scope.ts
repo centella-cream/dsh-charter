@@ -72,6 +72,8 @@ export interface PaneScope {
   readonly bootstrapId: string
   readonly bootstrapItems: readonly import("./bootstrap-plan.js").BootstrapDraftItem[]
   readonly bootstrapObjective: string
+  readonly bootstrapLanguage?: import("../host/types.js").CharterBootstrapLanguage | undefined
+  readonly bootstrapDraftLang?: import("../host/types.js").CharterDraftLanguage | undefined
   readonly bootstrapObjectiveOver: boolean
   readonly bootstrapPlan: import("./bootstrap-plan.js").BootstrapPlan
   readonly bootstrapPromptBytes: number

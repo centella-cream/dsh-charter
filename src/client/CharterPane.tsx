@@ -395,6 +395,8 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
     bootstrapItems,
     bootstrapVisibleCount,
     bootstrapProblem,
+    bootstrapLanguage,
+    bootstrapDraftLang,
     bootstrapBaseRevision,
   } = draftState
   const [showHistoryItems, setShowHistoryItems] = useState(false)
@@ -654,6 +656,7 @@ export function CharterPane({ source, draft, release, t }: CharterPaneProps) {
     && bootstrapPlan.ops.length > 0
     && !bootstrapObjectiveOver
     && !bootstrapItemsOver
+    && !bootstrapItems.some(item => item.selected && item.oversized === true && item.text === item.originalText)
     && !bootstrapBudgetOver
     && !bootstrapStorageOver
     && !bootstrapStale
@@ -1390,6 +1393,8 @@ activeDeliverables,
   area,
   bootstrapPhase,
   bootstrapProblem,
+  bootstrapLanguage,
+  bootstrapDraftLang,
   counts,
   currentDeliverables,
   currentInvariants,

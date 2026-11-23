@@ -239,6 +239,15 @@ const en = {
   'bootstrap.notLive': 'This Session is not live in this Host process. Open it here to read its compaction history.',
   'bootstrap.noSummary': 'No usable compaction summary exists for this Session yet. A draft appears after a compaction.',
   'bootstrap.unavailable': 'Charter storage is unavailable, so the history draft cannot be read.',
+  'bootstrap.languageTranslated': 'Draft normalized to {language}.',
+  'bootstrap.languageFallback': 'Could not normalize the draft to {language}; showing the source language.',
+  'bootstrap.languageTag': '{language} draft',
+  'bootstrap.oversizedHint': 'This candidate exceeds the item limit. Edit or split it before applying.',
+  'bootstrap.truncatedHint': 'Truncated from {bytes} bytes; the complete source remains in compaction history.',
+  'bootstrap.foldedHint': '{count} similar candidates folded into this row.',
+  'locale.zh': 'Chinese',
+  'locale.en': 'English',
+  'locale.mixed': 'Mixed language',
 
   'notice.conflict': 'The charter advanced from revision {from} to {to}. Your draft is preserved. '
     + 'Apply it to the latest revision, or discard it and review the new version.',
@@ -837,6 +846,15 @@ const zh: Record<CharterLocaleKey, string> = {
   'bootstrap.notLive': '该会话当前不在这个 Host 进程中运行。在此打开它后才能读取压缩历史。',
   'bootstrap.noSummary': '该会话还没有可用的压缩摘要；完成一次压缩后才会出现草案。',
   'bootstrap.unavailable': '契约存储不可用，暂时无法读取历史草案。',
+  'bootstrap.languageTranslated': '草案已按 {language} 生成。',
+  'bootstrap.languageFallback': '无法把草案转换为 {language}，当前显示原文语言。',
+  'bootstrap.languageTag': '{language} 草案',
+  'bootstrap.oversizedHint': '该候选超过条目上限，请先编辑或拆分后再应用。',
+  'bootstrap.truncatedHint': '已从 {bytes} 字节截断；完整原文仍在压缩历史中。',
+  'bootstrap.foldedHint': '已把 {count} 条相似候选折叠到本行。',
+  'locale.zh': '中文',
+  'locale.en': '英文',
+  'locale.mixed': '混合语言',
 
   'notice.conflict': '契约已从修订 {from} 更新到 {to}。草稿已保留；'
     + '可将草稿应用到最新修订，或丢弃后查看新版本。',

@@ -10,7 +10,9 @@ import type {
 import { classifyRemoteFailure } from './remote-error.js'
 import type { CharterOp, NewItemInput } from '../core/schemas.js'
 import type {
+  CharterBootstrapLanguage,
   CharterBootstrapProposal,
+  CharterDraftLanguage,
   CharterView,
 } from '../host/types.js'
 import type { CharterSessionSource } from './store.js'
@@ -141,6 +143,8 @@ export interface CharterDraftState {
   /** How many candidates the review currently exposes; never resets on section changes. */
   readonly bootstrapVisibleCount: number
   readonly bootstrapProblem: BootstrapProblem | null
+  readonly bootstrapLanguage?: CharterBootstrapLanguage | undefined
+  readonly bootstrapDraftLang?: CharterDraftLanguage | undefined
   /** A stream frame made the reviewed draft stale while its RPC outcome was unknown. */
   readonly bootstrapNeedsStale: boolean
   /** View revision captured when the reviewed history draft was accepted. */
@@ -1137,7 +1141,7 @@ export class CharterDraft {
   }
 
   bootstrapPlan(view: CharterView): BootstrapPlan {
-    return buildBootstrapPlan(view, this.state.bootstrapObjective, this.visibleBootstrapItems())
+    return buildBootstrapPlan(view, this.state.bootstrapObjective, this.visibleBootstrapItems(), this.state.bootstrap?.extractorVersion === 2)
   }
 
   /** Ask for a draft when the Session is empty and no attempt has been made yet. */
@@ -1211,6 +1215,7 @@ export class CharterDraft {
         return
       }
       const proposal = outcome.proposal
+      const structuredItems = proposal.draftItems
       this.update({
         bootstrapPhase: 'draft',
         bootstrap: proposal,
@@ -1218,22 +1223,39 @@ export class CharterDraft {
         // eventual Apply must use it, never a newer view revision.
         bootstrapBaseRevision: requestedRevision,
         bootstrapObjective: proposal.objective ?? '',
-        bootstrapItems: [
-          ...proposal.invariants.map((text, index) => ({
-            id: `inv-${index}`,
-            kind: 'invariant' as const,
-            text,
-            selected: false,
-          })),
-          ...proposal.deliverables.map((text, index) => ({
-            id: `del-${index}`,
-            kind: 'deliverable' as const,
-            text,
-            selected: false,
-          })),
-        ],
+        bootstrapItems: structuredItems === undefined
+          ? [
+              ...proposal.invariants.map((text, index) => ({
+                id: `inv-${index}`,
+                kind: 'invariant' as const,
+                text,
+                selected: false,
+              })),
+              ...proposal.deliverables.map((text, index) => ({
+                id: `del-${index}`,
+                kind: 'deliverable' as const,
+                text,
+                selected: false,
+              })),
+            ]
+          : structuredItems
+            .filter(item => item.kind !== 'objective')
+            .map(item => ({
+              id: item.ref,
+              clientRef: item.ref,
+              kind: item.kind as 'invariant' | 'deliverable',
+              text: item.text,
+              selected: false,
+              lang: item.lang,
+              oversized: item.oversized,
+              originalText: item.text,
+              ...(item.truncatedFrom === undefined ? {} : { truncatedFrom: item.truncatedFrom }),
+              ...(item.foldCount === undefined ? {} : { foldCount: item.foldCount }),
+            })),
         bootstrapVisibleCount: 40,
         bootstrapProblem: null,
+        ...(proposal.language === undefined ? {} : { bootstrapLanguage: proposal.language }),
+        ...(proposal.draftLang === undefined ? {} : { bootstrapDraftLang: proposal.draftLang }),
         // Do not steal the user's current section while they are working.
         ...(this.userBusy ? {} : { section: 'history' as const }),
       })
@@ -1257,6 +1279,8 @@ export class CharterDraft {
       bootstrapItems: [],
       bootstrapVisibleCount: 40,
       bootstrapProblem: null,
+      bootstrapLanguage: undefined,
+      bootstrapDraftLang: undefined,
       bootstrapNeedsStale: false,
       bootstrapBaseRevision: null,
       bootstrapSaving: false,

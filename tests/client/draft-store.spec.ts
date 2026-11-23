@@ -329,6 +329,50 @@ describe('per-Session draft ownership', () => {
     expect('proposalSource' in requests[0]!).toBe(false)
   })
 
+  it('uses structured refs and language status from bootstrapDraft', async () => {
+    const requests: import('../../src/core/schemas.js').CharterBootstrapApplyRequest[] = []
+    const fake = source({
+      edit: async () => ({ ok: false, code: 'UNAVAILABLE', message: 'unused' }),
+      applyBootstrap: async request => {
+        requests.push(request)
+        return { ok: true, replayed: false, committedRevision: 1, ids: {}, view: view(1) }
+      },
+      bootstrap: async () => ({
+        available: true,
+        proposal: {
+          objective: 'Normalized objective',
+          invariants: ['Normalized invariant'],
+          deliverables: [],
+          source: { summarySeq: 7, at: 9 },
+          extractorVersion: 2,
+          draftLang: 'en',
+          language: { requested: 'en', status: 'translated', provider: 'p', model: 'm' },
+          draftItems: [
+            { ref: 'd-obj-0', kind: 'objective', text: 'Normalized objective', lang: 'en', oversized: false },
+            { ref: 'd-inv-0', kind: 'invariant', text: 'Normalized invariant', lang: 'en', oversized: true },
+          ],
+        },
+      }),
+    })
+    const draft = new CharterDraft(sessionId, () => fake)
+    draft.bindLifecycle('life-structured')
+    draft.ensureBootstrap(view(0), true)
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(draft.getSnapshot().bootstrapItems[0]).toMatchObject({
+      id: 'd-inv-0',
+      clientRef: 'd-inv-0',
+      oversized: true,
+      originalText: 'Normalized invariant',
+    })
+    expect(draft.getSnapshot().bootstrapLanguage?.status).toBe('translated')
+    draft.updateBootstrapItem('d-inv-0', { selected: true })
+    await draft.applyBootstrap(view(0))
+    expect(requests[0]?.ops).toMatchObject([
+      { type: 'objective.initialize', clientRef: 'd-obj-0' },
+      { type: 'item.add', item: { clientRef: 'd-inv-0' } },
+    ])
+  })
+
   it('rejects bootstrap edits while the save request is in flight', async () => {
     let release: ((value: CharterEditResult) => void) | undefined
     const pending = new Promise<CharterEditResult>(resolve => { release = resolve })

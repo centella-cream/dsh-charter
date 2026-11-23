@@ -21,6 +21,8 @@ export function ReviewCenterPage({ scope }: { readonly scope: PaneScope }): Reac
   bootstrapPhase,
   bootstrapPlan,
   bootstrapProblem,
+  bootstrapLanguage,
+  bootstrapDraftLang,
   bootstrapPromptBytes,
   bootstrapReplay,
   bootstrapSaving,
@@ -344,6 +346,23 @@ export function ReviewCenterPage({ scope }: { readonly scope: PaneScope }): Reac
                 ? t('bootstrap.sourcePlain')
                 : t('bootstrap.source', { tokens: bootstrap.source.shadowedTokens })}
                     </span>
+                    {bootstrapLanguage?.status === 'translated' && (
+                      <span className="charter-hint" role="status">{t('bootstrap.languageTranslated', {
+                        language: bootstrapLanguage.requested === 'zh' ? t('locale.zh') : t('locale.en'),
+                      })}</span>
+                    )}
+                    {(bootstrapLanguage?.status === 'unavailable' || bootstrapLanguage?.status === 'failed') && (
+                      <div className="charter-notice charter-notice--warning" role="status">
+                        {t('bootstrap.languageFallback', {
+                          language: bootstrapLanguage.requested === 'zh' ? t('locale.zh') : t('locale.en'),
+                        })}
+                      </div>
+                    )}
+                    {bootstrapDraftLang !== undefined && bootstrapLanguage?.status !== 'translated' && (
+                      <span className="charter-hint">{t('bootstrap.languageTag', {
+                        language: bootstrapDraftLang === 'zh' ? t('locale.zh') : bootstrapDraftLang === 'en' ? t('locale.en') : t('locale.mixed'),
+                      })}</span>
+                    )}
                     <div className="charter-bootstrap__summary">
                       <StatusTag tone="info">{t('bootstrap.summary', { active: bootstrapPlan.active, pending: bootstrapPlan.pending })}</StatusTag>
                       <span role="status">
@@ -388,8 +407,9 @@ export function ReviewCenterPage({ scope }: { readonly scope: PaneScope }): Reac
                             const outcome = bootstrapPlan.outcomes[item.id];
                             const checkboxId = `${bootstrapId}-include-${item.id}`;
                             const textId = `${bootstrapId}-text-${item.id}`;
+                            const oversizedUnedited = item.oversized === true && item.text === item.originalText;
                             return (<div className="charter-bootstrap__item" key={item.id}>
-                                    <input id={checkboxId} type="checkbox" checked={item.selected} disabled={bootstrapSaving || unknownBlocked} aria-label={t('bootstrap.includeAria', { index: index + 1 })} onChange={event => draft.updateBootstrapItem(item.id, { selected: event.target.checked })}/>
+                                    <input id={checkboxId} type="checkbox" checked={item.selected} disabled={bootstrapSaving || unknownBlocked || oversizedUnedited} aria-label={t('bootstrap.includeAria', { index: index + 1 })} aria-describedby={`${textId}-meta`} onChange={event => draft.updateBootstrapItem(item.id, { selected: event.target.checked })}/>
                                     <label className="charter-bootstrap__checklabel" htmlFor={checkboxId}>{t('bootstrap.selected')}</label>
                                     <div className="charter-draftfield">
                                       <label className="charter-bootstrap__textlabel" htmlFor={textId}>{t('bootstrap.editAria', { index: index + 1 })}</label>
@@ -403,6 +423,15 @@ export function ReviewCenterPage({ scope }: { readonly scope: PaneScope }): Reac
                                     ? t('bootstrap.itemOver', { limit: formatBytes(t, view.limits.maxItemBytes) })
                                     : `${formatBytes(t, bytes)} / ${formatBytes(t, view.limits.maxItemBytes)}`}
                                         </span>
+                                        {item.foldCount !== undefined && item.foldCount > 1 && (
+                                          <span className="charter-hint">{t('bootstrap.foldedHint', { count: item.foldCount })}</span>
+                                        )}
+                                        {item.truncatedFrom !== undefined && (
+                                          <span className="charter-hint">{t('bootstrap.truncatedHint', { bytes: String(item.truncatedFrom) })}</span>
+                                        )}
+                                        {oversizedUnedited && (
+                                          <span className="charter-hint">{t('bootstrap.oversizedHint')}</span>
+                                        )}
                                       </span>
                                     </div>
                                   </div>);

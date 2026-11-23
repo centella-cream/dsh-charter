@@ -27,6 +27,14 @@ export interface BootstrapDraftItem {
   readonly kind: 'invariant' | 'deliverable'
   readonly text: string
   readonly selected: boolean
+  /** Host-issued stable ref; absent for the legacy extractor. */
+  readonly clientRef?: string
+  readonly lang?: 'zh' | 'en' | 'mixed'
+  readonly oversized?: boolean
+  readonly truncatedFrom?: number
+  readonly foldCount?: number
+  /** Text as extracted/translated, used to tell an edit from an untouched oversized candidate. */
+  readonly originalText?: string
 }
 
 /** The model-visible part of a history import plus its deferred proposals. */
@@ -63,13 +71,19 @@ export function buildBootstrapPlan(
   view: CharterView,
   objective: string,
   items: readonly BootstrapDraftItem[],
+  structuredDraft = false,
 ): BootstrapPlan {
   // Normalize with the same function the Host uses for admission, so the
   // incremental byte accounting below matches `previewPrompt` exactly even for
   // CRLF or decomposed Unicode input.
   const normalizedObjective = inspectUserText(objective).value
+  const structured = structuredDraft || items.some(item => item.clientRef?.startsWith('d-') === true)
   const objectiveOp: CharterOp | null = view.objective === null && normalizedObjective.length > 0
-    ? { type: 'objective.initialize', text: normalizedObjective }
+    ? {
+        type: 'objective.initialize',
+        text: normalizedObjective,
+        ...(structured ? { clientRef: 'd-obj-0' } : {}),
+      }
     : null
   const baseOps: CharterOp[] = objectiveOp === null ? [] : [objectiveOp]
   const base = projectView(view, baseOps)
@@ -132,10 +146,10 @@ export function buildBootstrapPlan(
         + (isInvariant ? (invariantCount > 0 ? 1 : 0) : (deliverableCount > 0 ? 1 : 0))
         + bytesOf(token)
     const activeOp: CharterOp = isInvariant
-      ? { type: 'item.add', item: { clientRef: `bootstrap-${item.id}`, kind: 'invariant', text, order } }
+      ? { type: 'item.add', item: { clientRef: item.clientRef ?? `bootstrap-${item.id}`, kind: 'invariant', text, order } }
       : {
           type: 'item.add',
-          item: { clientRef: `bootstrap-${item.id}`, kind: 'deliverable', text, order, progress: 'not-started' },
+          item: { clientRef: item.clientRef ?? `bootstrap-${item.id}`, kind: 'deliverable', text, order, progress: 'not-started' },
         }
     // The actual model-visible budget is the gate. Candidates that would
     // exceed it are preserved as review-only proposals instead of being
@@ -197,10 +211,10 @@ function exactBootstrapPlan(
     const text = inspectUserText(item.text).value
     if (text.length === 0) continue
     const activeOp: CharterOp = item.kind === 'invariant'
-      ? { type: 'item.add', item: { clientRef: `bootstrap-${item.id}`, kind: 'invariant', text, order } }
+      ? { type: 'item.add', item: { clientRef: item.clientRef ?? `bootstrap-${item.id}`, kind: 'invariant', text, order } }
       : {
           type: 'item.add',
-          item: { clientRef: `bootstrap-${item.id}`, kind: 'deliverable', text, order, progress: 'not-started' },
+          item: { clientRef: item.clientRef ?? `bootstrap-${item.id}`, kind: 'deliverable', text, order, progress: 'not-started' },
         }
     exactRenders += 1
     if (utf8Bytes(previewPrompt(view, [...ops, activeOp])) <= view.limits.maxPromptBytes) {
