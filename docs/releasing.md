@@ -10,9 +10,9 @@ This is the current release checklist. It replaces the older per-rc staging note
 Releases, and npm versions are immutable: never move a tag, delete a published release, or rebuild bytes after
 tagging.
 
-## Current state (2026-11-16)
+## Current state (2026-11-24)
 
-- **Development candidate:** `0.3.3` — structured draft extraction + automatic zh/en language following; implemented/tested locally, not pushed/tagged/published.
+- **Release candidate:** `0.3.3` — structured draft extraction + non-blocking zh/en language following; local candidate artifact `6f987d7b…`, source gates and profile acceptance complete. Not pushed/tagged/published; C+1 checksum and promotion pending explicit release execution.
 - **Published:** `0.3.2` — npm `latest`/`next`, GitHub Release `v0.3.2`; exact artifact
   `dsh-charter-0.3.2.tgz`, SHA-256 `9dcb82ae34eaaeb6d266bb98f3e1f92f3a0798042ce3dc282abe9173ff79e056`.
 - **Previous release:** `0.3.1` — GitHub Release `v0.3.1`.
