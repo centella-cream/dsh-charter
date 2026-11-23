@@ -9,6 +9,7 @@ import type {
   CharterRestoreRequest,
 } from '../core/schemas.js'
 import type {
+  CharterBootstrapDraftResult,
   CharterBootstrapResult,
   CharterEditResult,
   CharterRecordExport,
@@ -149,6 +150,32 @@ export class CharterSessionSource implements CharterSource {
   readonly bootstrap = async (): Promise<CharterBootstrapResult> => {
     const remote = this.remote
     if (remote === undefined) return { available: false, reason: 'unavailable' }
+    const active = (() => {
+      try {
+        return (this.ctx.locale as unknown as { getLocale?: () => { active?: string } }).getLocale?.().active
+      } catch {
+        return undefined
+      }
+    })()
+    const targetLanguage = active?.toLowerCase().split(/[-_]/u)[0]
+    if (targetLanguage === 'zh' || targetLanguage === 'en') {
+      const draft = (remote as unknown as {
+        bootstrapDraft?: (request: {
+          readonly sessionId: SessionId
+          readonly targetLanguage?: 'zh' | 'en'
+        }) => Promise<{ ok: true; value: CharterBootstrapDraftResult } | { ok: false; error: unknown }>
+      }).bootstrapDraft
+      if (typeof draft === 'function') {
+        const response = await draft({ sessionId: this.sessionId, targetLanguage })
+        if (response.ok) {
+          if (!response.value.available) return response.value
+          return { available: true, proposal: response.value.proposal }
+        }
+        // A method-level transport failure on an older host is the only case
+        // worth falling back to the legacy extraction; business failures are real.
+        if (!String(response.error).includes('not a function')) throw response.error
+      }
+    }
     const result = await remote.bootstrap(this.sessionId)
     if (!result.ok) throw result.error
     return result.value
