@@ -78,7 +78,7 @@
 - **根字号图形缩放：** 根字号大于 16px 时，画布作为整体等比缩放（最多 200%），节点文本、边、泳道和命中区
   保持对齐；viewport 改为可滚动，而不是裁切图形。
 - **最终构建证据：** 空/暂存/已应用/冲突确认状态、forced-colors 与 reduced-motion 截图，以及断点/缩放
-  测量记录在 0.3.2 候选中。
+  测量记录于 0.3.2 发布。
 - **仍待人工门禁：** 真实 VoiceOver/NVDA 与 Desktop 原生窗口证据；自动化 AX-tree 或 renderer 截图不计为
   已通过。
 
@@ -90,6 +90,7 @@
   的翻译调用；模型不可用或响应不合格时保留原文草案并显示降级提示，不阻断审阅。自动调用会把压缩草案/当前契约
   文本发送到该会话配置的模型；插件不保存 API key，也不新增遥测或上传。可在 profile 设置
   `languageFollow: false` 关闭自动调用；结构化抽取/折叠仍生效，源语言草案仍可用。
+  `languageFollowTimeoutMs` 限制同步等待（默认 10 秒）。
 
 ### 兼容性与运行时
 
@@ -259,6 +260,8 @@ active-count 失败。
     maxObjectiveBytes: 4096
     maxItemBytes: 1024
     contextOrder: 130
+    languageFollow: true
+    languageFollowTimeoutMs: 10000
 ```
 
 | 字段 | 默认值 | 含义 |
@@ -276,6 +279,8 @@ active-count 失败。
 | `maintenanceLimit` | 16 | 最近 initialize/restore receipt |
 | `maxRecoveryBytes` | 4194304 | 完整 recovery archive 预算 |
 | `contextOrder` | 130 | runtime-context 顺序 |
+| `languageFollow` | true | 按当前 `zh`/`en` DSH 界面语言通过模型归一草案；设为 `false` 关闭自动调用 |
+| `languageFollowTimeoutMs` | 10000 | 单次自动语言归一等待上限；超时保留源语言草案 |
 
 模型可见容量只有 `maxPromptBytes`；`maxItems` 和 `maxPendingItems` 约束存储。
 

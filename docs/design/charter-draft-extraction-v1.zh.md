@@ -240,8 +240,8 @@ objective，逐字相等规则不变）。详见校准方案 §6/§7；本文的
   客户端重新取草案。
 - 自动调用会向用户配置的模型发送压缩摘要/契约草案文本；profile 配置 `languageFollow: false` 可关闭自动
   翻译（结构化抽取仍生效）；README/user-guide/release notes 必须披露；record/Remote/模型工具面不变。
-- **已知优化（非阻断）：** 当前 `bootstrapDraft` 同步等待翻译，首开草案区最长 30s；后续可改为“先回源语言草案、
-  译文到达后替换”，或提供 `languageFollowTimeoutMs`。
+- **已知优化（非阻断）：** `bootstrapDraft` 同步等待翻译；`languageFollowTimeoutMs` 默认 10s 且有配置上限，
+  超时/失败回退源语言。后续可改为“先回源语言草案、译文到达后替换”。
 
 ## 5. UI（遵循 gui-v1 §4.9 冻结视觉语言）
 
@@ -276,7 +276,7 @@ Remote 方法与 additive optional op 字段；禁止 record schema、prompt、�
   语言阈值边界语料、kind 打分中英正反例、objective 打分并列规则、确定性（同输入同输出同 ref）；
 - **legacy golden**：`extractLegacy` 对固定语料的输出 JSON 与 0.3.2 快照逐字节一致。
   **接受偏差（2026-11-23）：** 原方案要求 ≥10 条真实脱敏摘要；当前仓库没有可安全提交的真实摘要语料，
-  实际交付为 3 条合成案例（混合章节/超长硬切/CRLF+NFD）。机制已逐字节锁定；发布前由发布决策选择
+  实际交付为 10 条合成案例（混合章节/超长硬切/CRLF+NFD/中英/重复/无 objective 等）。机制已逐字节锁定；发布前由发布决策选择
   “补 ≥10 条真实脱敏摘要”或“书面接受 3 条合成片段作为偏差”。
 - `extractorVersion` 变更时 ref 不稳定的显式测试；
 - **自动语言归一**：目标同语不调用、跨语调用成功、模型缺失回退、finish=max-tokens/malformed/缺 ref 整批失败、译文超限重标 oversized、缓存命中/失效、`applyBootstrap` 以译文为基准。
