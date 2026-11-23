@@ -543,4 +543,5 @@ DSH ABI/wire。本分支另做仅声明层的兼容维护：rc.2 的 engines/pee
 | `0.2.0` | 四个产品支柱、record v2、查询面、三中心 UI、架构重构 | 通用记忆、执行策略、任意 validator、无必要的新 domain |
 | `0.2.2` | 客户端依赖关系图形视图、§6.5 conflict 确认、预览 optional 字段 | 新 record schema/domain、新 Remote 方法、模型可见能力变更、图形独有能力 |
 | `0.3.1` | GUI 收敛补丁：依赖图审计、standing envelope 预警、本地 traffic checker；零 record/Remote/prompt 变化（已发布） | 新 record schema/domain、新 Remote/模型能力、DSH ABI/wire 变更 |
+| `0.3.3` | 结构化草案抽取：`charter/bootstrapDraft` additive Remote、objective `clientRef`、折叠/oversized/ref；自动 zh/en 语言归一（`languageFollow` 可关，失败回退源语言） | record schema/domain、prompt 投影、模型工具面变更、破坏 legacy bootstrap/apply、无开关的无界模型调用 |
 | `0.4.0` | 既有交付物 relation proposal + record schema v3 + downgrade fence（待决策） | 未经 roadmap/设计修订直接实现、无 downgrade fence、无人工验收 |

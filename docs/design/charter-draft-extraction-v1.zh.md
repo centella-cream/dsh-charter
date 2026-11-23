@@ -95,8 +95,9 @@ Host 通过会话当前模型做一次严格 JSON 批量翻译；模型不可用
 - Unicode script 码点占比：Latin ≥ 70% → `en`；CJK ≥ 70% → `zh`；其余 → `mixed`
   （阈值集中定义、进 fixture，D-A4 用真实摘要语料校准一次）；
 - 每条候选 + 草案整体（`draftLang`，按字节加权多数）各有一个 `lang`；
-- **Host 不感知 client locale**：DTO 不含任何 mismatch 判断字段（评审 P1-3，v1 的
-  `localeMismatch` 已删除）；客户端拿 `draftLang`/`lang` 与自身界面语言比对并提示。
+- **Host 不读取 ambient client locale**：DTO 不含 mismatch 判断字段（v1 的 `localeMismatch` 已删除）；
+  客户端拿 `draftLang`/`lang` 与自身界面语言比对并提示。需要语言归一时，客户端在
+  `bootstrapDraft` 请求中显式传 `targetLanguage: zh|en`；Host 只接受白名单，不猜语言。
 
 ### 3.4 kind 分类打分
 
@@ -223,8 +224,9 @@ objective，逐字相等规则不变）。详见校准方案 §6/§7；本文的
 
 ### 4.6 自动语言归一（0.3.3）
 
-- 客户端 `CharterSessionSource.bootstrap()` 读取 `ctx.locale.getLocale().active`，把 `zh`/`en` 作为
-  `targetLanguage` 传给 `charter/bootstrapDraft`；其他 locale 继续调用 legacy/best-effort，不猜测语言。
+- 客户端 `CharterSessionSource.bootstrap()` 读取 `ctx.locale.getLocale().active`；无论 locale 是否 zh/en，
+  只要方法存在就调用 `charter/bootstrapDraft`（折叠/oversized/ref 不因语言退化）；仅 zh/en 时传
+  `targetLanguage`，其他 locale 传 undefined 并保留源语言草案。
 - Host 在确定性结构化抽取后计算 `draftLang`；若与目标一致则不调用模型。不一致时：
   - `ctx.get('llm')` 可选解析；模型选择取当前 Session 的 `agent.model.current()`；
   - 通过 `ctx.llm` 做一次 hand-built one-shot（本地流式文本组装）；只取 text block，丢弃 reasoning；
@@ -236,8 +238,8 @@ objective，逐字相等规则不变）。详见校准方案 §6/§7；本文的
 - 翻译缓存是本 Host 进程内的有界 transient 数据（key 含摘要 digest、extractorVersion、target、provider/model），
   `applyBootstrap` 用同一个 `draftHandle` 取回译文作为 `contentModified` 基准；缓存失效时拒绝过期 apply，
   客户端重新取草案。
-- 自动调用会向用户配置的模型发送压缩摘要/契约草案文本；设置说明和 release notes 必须披露；
-  record/Remote/模型工具面不变。
+- 自动调用会向用户配置的模型发送压缩摘要/契约草案文本；profile 配置 `languageFollow: false` 可关闭自动
+  翻译（结构化抽取仍生效）；README/user-guide/release notes 必须披露；record/Remote/模型工具面不变。
 
 ## 5. UI（遵循 gui-v1 §4.9 冻结视觉语言）
 

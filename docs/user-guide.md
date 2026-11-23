@@ -243,6 +243,7 @@ Defaults live in `cordis.patch.yml`. Override the same keys in the profile's `co
     maxObjectiveBytes: 4096
     maxItemBytes: 1024
     contextOrder: 130
+    languageFollow: true
 ```
 
 | Field | Default | Meaning |
@@ -258,6 +259,7 @@ Defaults live in `cordis.patch.yml`. Override the same keys in the profile's `co
 | `maxHistoryBytes` | 131072 | recent history bytes |
 | `mutationLimit` | 128 | recent mutation receipts |
 | `contextOrder` | 130 | runtime-context order; after sandbox/approval/subagent by default |
+| `languageFollow` | true | normalize a review draft to the active `zh`/`en` DSH language through the session model; set `false` to disable the automatic model call |
 
 The only model-visible capacity is `maxPromptBytes`; active item counts are not capped separately. Storage is
 bounded by `maxItems`, `maxPendingItems`, and `maxRecordBytes`. Values that would make a Session ready but
@@ -271,8 +273,8 @@ seats remain visible.
 
 The tab shows a live context meter and per-field byte counters. Nothing is silently truncated:
 
-- Long history-draft items are split into multiple candidates at sentence/clause boundaries; every candidate is
-  preserved. An over-limit candidate is highlighted and Apply stays disabled until you shorten it.
+- Long history-draft items are split only at sentence boundaries; an over-limit sentence is kept whole and
+  marked. An oversized/truncated candidate is highlighted and Apply stays disabled until you edit or split it.
 - The objective is kept whole. If it exceeds `maxObjectiveBytes`, the draft shows the full text and an over-limit
   message; shorten it before applying.
 - If candidates do not fit the context budget, the candidates that fit become active and the rest are saved as
@@ -280,6 +282,10 @@ The tab shows a live context meter and per-field byte counters. Nothing is silen
   Review and accept the proposals when you have context room.
 - The objective, per-item byte limits, and storage/atomic limits remain hard gates; the UI shows the exact
   problem and Apply stays disabled only for those real limits.
+
+When `languageFollow` is enabled and the draft language differs from the DSH UI language, the Host sends the
+active draft candidates to the session model for one bounded translation call. Set `languageFollow: false` in the
+profile to keep the source language and avoid that automatic call; the deterministic extraction still runs.
 
 Raise the budgets in the profile when your charter needs more room.
 

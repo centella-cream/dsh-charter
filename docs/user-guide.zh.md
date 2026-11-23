@@ -224,6 +224,7 @@ Change Set 引入或加重依赖冲突时，Review/Apply 会列出受影响交�
     maxObjectiveBytes: 4096
     maxItemBytes: 1024
     contextOrder: 130
+    languageFollow: true
 ```
 
 | 字段 | 默认 | 说明 |
@@ -239,6 +240,7 @@ Change Set 引入或加重依赖冲突时，Review/Apply 会列出受影响交�
 | `maxHistoryBytes` | 131072 | 近期 history 字节上限 |
 | `mutationLimit` | 128 | 近期 mutation 回执上限 |
 | `contextOrder` | 130 | runtime context 排序；默认在 sandbox/approval/subagent 之后 |
+| `languageFollow` | true | 按当前 `zh`/`en` DSH 界面语言，通过后续模型归一草案；设为 `false` 可关闭自动模型调用 |
 
 模型可见容量只有 `maxPromptBytes`；active 条目数不再单独设上限。存储由 `maxItems`、`maxPendingItems` 和
 `maxRecordBytes` 约束。会让 Session 处于 ready 但永久不可编辑的配置值会被抬到文档化最小值，并由 Host 记录 warning。
@@ -250,12 +252,15 @@ Change Set 引入或加重依赖冲突时，Review/Apply 会列出受影响交�
 
 标签页显示实时上下文预算条和每个字段的字节计数。任何内容都不会被静默截断：
 
-- 历史草案中的长条目按句子/分句边界拆成多个候选，全部保留。仍然超过单条上限的候选会高亮，应用
-  保持禁用，直到你缩短它。
+- 历史草案中的长条目只按句边界拆分；超过单条上限的整句会保留并标记。超限/截断候选会高亮，应用
+  保持禁用，直到你编辑或拆分它。
 - 目标保持完整。若超过 `maxObjectiveBytes`，草案显示全文和超限提示；请缩短后再应用。
 - 候选放不进上下文预算时，能放下的部分直接生效，其余保存为**待审提案**。应用 仍然可用；不会拒绝、
   截断、丢弃或再次摘要。等上下文有余量时再逐条接受提案。
 - 目标、单条字节、存储/单批容量仍是硬限制；UI 会显示具体问题，只有这些真实限制会让应用 禁用。
+
+启用 `languageFollow` 且草案语言与 DSH 界面语言不一致时，Host 会把当前草案候选发送给会话模型做一次
+有界翻译调用。可在 profile 设置 `languageFollow: false` 保留源语言并关闭该自动调用；确定性抽取仍然生效。
 
 会话契约需要更多空间时，可在 profile 中调高预算。
 

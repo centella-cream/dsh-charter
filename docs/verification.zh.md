@@ -298,8 +298,8 @@ rm -rf .tmp
 
 ## 1.4 0.3.3 结构化草案与语言跟随（2026-11-23，候选）
 
-- 源码门禁：`npm run check` = 44 文件 / 512 测试 PASS；token coverage PASS；`verify:ui-metrics --gate=final` PASS。
+- 源码门禁：`npm run check` = 44 文件 / 517 测试 PASS；token coverage PASS；`verify:ui-metrics --gate=final` PASS。
 - 结构化抽取：只按句边界切分、超长保留、>4x 显式截断、全等/前缀折叠、语言标注、稳定 `d-*` ref；见 `tests/core/structured-bootstrap.spec.ts`。
 - Host apply：`charter/bootstrapDraft` + `d-*` ref + objective `clientRef`；legacy `charter/bootstrap` 与旧 clientRef 由既有 composition 测试继续覆盖。
-- 自动语言跟随：Host 解析当前会话模型，经 `ctx.llm` 做一次严格 JSON 调用（本地流式文本组装）；模型缺失/输出不合格时回退原文并返回显式 `language.status`。单测覆盖成功、malformed、max-tokens、缺 ref；composition 测试覆盖假模型翻译与翻译后 apply。
-- 候选 artifact `dist/dsh-charter-0.3.3.tgz` SHA-256 `e9fbe2bb22dd0f556ecc7ee1ab45b59110542f9db31aaf4fe94d981303c8d1a9`；exact-artifact package smoke 与 packed recovery smoke PASS。11 版本矩阵 PASS（`.tmp/compat-033-committed.json`，source `1df9a63`）；本地 profile 安装精确候选，Web UI 显示 `v0.3.3`。当前候选未发布；真实模型翻译的人工验收仍未完成，不在本节宣称完成。
+- 自动语言跟随：Host 解析当前会话模型，经 `ctx.llm` 做一次严格 JSON 调用（本地流式文本组装）；模型缺失/输出不合格时回退原文并返回显式 `language.status`。单测覆盖成功、malformed、max-tokens、缺 ref；composition 测试覆盖假模型翻译、翻译后 apply、`languageFollow: false`、bootstrapDraft 缺失/失败回退；legacy golden fixture 锁定 0.3.2 抽取输出。
+- 候选 artifact `dist/dsh-charter-0.3.3.tgz` SHA-256 `e1b4958318f1d149ae83a22551dad9fc3a0bd0b4cd9b5d4dc87b44ec927b093a`；exact-artifact package smoke 与 packed recovery smoke PASS。11 版本矩阵 PASS（`.tmp/compat-033-review-final.json`，source `bbb1cfa`）；本地 profile 安装精确候选，Web UI 显示 `v0.3.3`。当前候选未发布；真实模型翻译的人工验收仍未完成，不在本节宣称完成。

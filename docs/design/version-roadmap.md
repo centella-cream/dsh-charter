@@ -304,16 +304,14 @@ Alpha milestones may change the schema, but every change must ship fixture migra
 | `0.1.1` | Compatible stable bug/security/DSH/accessibility patches | New persistent state, API, or workflow |
 | `0.2.0` | Four product pillars, record v2, query plane, three-area UI, architecture refactor | General memory, execution policy, arbitrary validators, unnecessary domain migration |
 | `0.2.2` | Client-side dependency graph, §6.5 conflict confirmation, optional preview fields | New record schema/domain, new Remote methods, model-visible capability changes, graph-only capabilities |
+| `0.3.1` | Published dependency/a11y/standing-envelope convergence; no record/Remote/prompt change | New schema/domain, Remote/model capability, DSH ABI/wire change |
+| `0.3.3` | Structured draft extraction: additive bootstrapDraft Remote, objective clientRef, folding/oversized/refs; automatic zh/en language follow with `languageFollow` opt-out and source fallback | Record schema/domain, prompt/tool changes, breaking legacy bootstrap/apply, unbounded always-on model call |
 | `0.3.0` | All-section GUI refactor: design system, IA/routing, Change Set contract, Pane/store split, a11y/screenshot evidence | New record schema/domain, new Remote/model capability, compatibility declaration changes, pushing/merging/tagging/publishing or availability claims before human acceptance |
 
-## 16. `0.3.0` GUI Refactor (in development)
+## 16. `0.3.x` GUI line and `0.3.3` draft candidate
 
-The 0.3.0 line unifies the GUI of all Pane areas (Workspace, Review Center, Diagnostics & Maintenance) under one
-design system and interaction contract: token-based styling, real scroll/focus routing, the workspace-v2 Change Set
-contract, the Pane/store split, and DOM/browser accessibility and screenshot evidence. It is client-only: no record
-schema, migration, Host service, Remote/wire, prompt projection, model capability, or compatibility declaration
-changes.
+The `0.3.0`–`0.3.2` line published the all-section GUI design, dependency graph, and accessibility/evidence
+convergence. `0.3.3` adds the structured draft extraction and optional automatic language follow. The GUI remains
+client-only except for the additive draft methods documented in the extraction design.
 
-Authority: [charter-gui-v1.zh.md](charter-gui-v1.zh.md) (`Active`). Status: W0 started; not implemented and not
-released. Until human acceptance passes, the local `feat/0.3.0-gui` branch is not pushed, `main` is not merged, and
-nothing may be tagged/released/published or described as available.
+Authority: [charter-gui-v1.zh.md](charter-gui-v1.zh.md) (`Active`) and [the extraction design](charter-draft-extraction-v1.zh.md) (`Implemented — pending release acceptance`). The 0.3.3 candidate is not published until the normal release gates and human acceptance pass.

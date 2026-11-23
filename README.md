@@ -99,7 +99,8 @@ deliverables, evidence, and dependency relationships survive compaction and rema
   Host makes one bounded, strict-JSON translation call through the configured session model. If no model is
   available or the response is invalid, the source-language draft remains fully usable with a visible fallback notice.
   The automatic call sends the compaction draft/current-charter text to that configured model; the plugin stores no
-  API key and adds no telemetry or upload path.
+  API key and adds no telemetry or upload path. Set `languageFollow: false` in the profile config to disable the
+  automatic model call; deterministic extraction/folding still runs and the source-language draft remains usable.
 
 ### Compatibility and runtime
 
