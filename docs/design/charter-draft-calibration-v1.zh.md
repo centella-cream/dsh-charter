@@ -1,6 +1,6 @@
 # `dsh-charter` 0.3.4 契约草案校准方案（语言跟随 · 精简聚合 · 语义完整切分）
 
-> **状态：** `Active` —— 0.3.4 开发范围与设计权威。核心 Host/Remote/审阅纵向切片已实现；A/B、真实模型人工验收、
+> **状态：** `Implemented — pending release acceptance` —— 0.3.4 开发范围与设计权威；A/B/真实模型人工验收尚未完成。核心 Host/Remote/审阅纵向切片已实现；A/B、真实模型人工验收、
 > 完整 UI 门禁与发布仍待完成，因此不 tag/release/publish、不声称 0.3.4 已发布。
 > **版本范围：** `0.3.4`（草案校准补丁线，模型校准层 L2+L3）。**定位约束：只提升草案聚合/可读性/
 > 语言/审阅效率，不声称提升模型长程任务完成率，不承诺草案完整性/通用性**（历史补全与执行能力
@@ -9,7 +9,8 @@
 > draftHandle、apply 命名空间分派、objective `clientRef`、`extractorVersion`）与其已上线的
 > 翻译基础设施（§4 复用映射）。
 > **基准：** 2026-11-24，`main` @ `44a542d3`；`0.3.3` 已发布（SHA-256 `707043d3…`）。
-> **修订：** v6（2026-11-24）——按实现审查收敛：0.3.3 翻译保留为独立回退、校准始终使用 L1 源 handle；consent 披露由 Pane + profile 配置承载；effort 直通与 signal 取消、按条目选择集列为后续门禁；§6.5 明确 MVP 为整体替换。
+> **修订：** v7（2026-11-24）——移除未实现的 `calibration.trigger`/`calibration.cooldownMinutes`（auto/冷却保留到 A/B 后）；修正文档索引/§5.7 缓存/§5.8 取消/附录 C 记录；状态改为 pending release acceptance。
+> v6（2026-11-24）——按实现审查收敛：0.3.3 翻译保留为独立回退、校准始终使用 L1 源 handle；consent 披露由 Pane + profile 配置承载；effort 直通与 signal 取消、按条目选择集列为后续门禁；§6.5 明确 MVP 为整体替换。
 > v5（2026-11-24）——**版本定位调整（用户决策）**：本方案从 0.4.0 降级为 `0.3.4`
 > 草案校准补丁线；0.4.0 重新定义为完整契约功能升级（另立
 > [charter-execution-v1.zh.md](charter-execution-v1.zh.md)）。新增定位约束与四项发布保证
@@ -172,9 +173,8 @@ C 阶段启动前以 0.3.3 线上数据（C0 指标，§10）校准本方案默�
 
 | 键 | 类型/默认 | 说明 |
 | --- | --- | --- |
-| `calibration.enabled` | boolean / **false** | opt-in 总开关 |
+| `calibration.enabled` | boolean / **false** | opt-in 总开关；0.3.4 不提供 `trigger`/`cooldownMinutes`（auto 触发与冷却保留到 A/B 达标后的版本） |
 | `calibration.consentVersion` | int / 0 | 用户已确认的披露版本；< 当前 `CALIBRATION_DISCLOSURE_VERSION` 时 Host 拒绝调用。确认动作在 profile 配置中完成（`Schema` description 与 Pane 披露对话框展示全文；Profile 设置面板呈现由 DSH 负责）；**Pane 不写配置** |
-| `calibration.trigger` | `manual` \| `auto` / `manual` | auto = 新摘要出现且冷却期外自动校准一次；仅在 A/B 协议 1 达标后开放（§11） |
 | `calibration.provider` / `calibration.model` | string / 空 | 空 = 走 §5.3 解析链 |
 | `calibration.reasoningEffort` | string / 空 | 空 = adapter 默认；自由字符串；Host 在 adapter 暴露 efforts 时校验（§5.4），否则直通；`calibrationStatus.efforts` 仍为空（异步发现未接线） |
 | `calibration.targetLanguage` | `auto` \| `zh` \| `en` / `auto` | auto = 跟随请求携带的客户端界面语言（白名单） |
@@ -182,7 +182,6 @@ C 阶段启动前以 0.3.3 线上数据（C0 指标，§10）校准本方案默�
 | `calibration.maxOutputTokens` | int / 2048 | `maxTokens` 硬顶；**进缓存键**（§5.7） |
 | `calibration.maxCandidates` | int / **12** | 候选数上限；实际 N 由 §5.5 动态预算再收紧 |
 | `calibration.timeoutMs` | int / 30000 | AbortSignal |
-| `calibration.cooldownMinutes` | int / 10 | auto 触发冷却（手动不受限，受单飞约束） |
 
 配置快照语义：调用发起时读取快照，进行中不受配置变更影响。与 0.3.3 `languageFollow*` 键的
 互斥/优先关系见 §3.1：校准可用时不再触发独立翻译调用。
@@ -277,8 +276,10 @@ N = clamp(1, min(maxCandidates, floor((maxOutputTokens × 0.9 − 200) / avg(est
   maxOutputTokens}, acceptedCharterDigest, inputTruncated)`；
   `acceptedCharterDigest` = 当前 accepted/current 条目文本的 canonical digest——用户改契约后
   旧校准自动失效；`maxOutputTokens` 直接影响输出形状，必须进键；
-- TTL 默认 30min + 键任一维度不匹配即 miss；内存 LRU（每 Session 1 条、全局 16 条），
-  不落盘、不进 record、不进导出/archive；
+- TTL 默认 30min + 键任一维度不匹配即 miss；当前实现为全局 `calibrationCache` 最多 32 条、
+  `calibrationRuns` 最多 32 条（无 per-Session 上限；0.3.3 `translatedItems` 同形为 32 条），
+  不落盘、不进 record、不进导出/archive；与本文旧版“每 Session 1 条/全局 16 条”不同，后者的
+  per-Session 淘汰未实现；
 - 命中返回 `cached: true` 与原始 usage（诊断区分 cached/miss/joined）。
 
 ### 5.8 单飞与并发（评审 P1-12）
@@ -286,8 +287,8 @@ N = clamp(1, min(maxCandidates, floor((maxOutputTokens × 0.9 − 200) / avg(est
 - 同 Session 同参数并发调用 **join** 进行中的运行，共享结果（响应 `joined: true`）——无
   `CALIBRATION_IN_FLIGHT` 错误码；
 - 同 Session 不同参数（effort/locale 不同）→ 当前按独立缓存键执行（无参数冲突错误码；该码未实现并从 0.3.4 错误码移除）；
-- 取消：任一 joiner 取消不影响其他 joiner；全部取消 → AbortSignal 触发，记
-  `CALIBRATION_CANCELLED`（不计入失败诊断）。
+- 取消：0.3.4 仅实现 timeout AbortSignal；joiner/Pane detach 的取消中继与 `CALIBRATION_CANCELLED`
+  路径未接线（错误码保留供后续版本），不计入已实现合同。
 
 ### 5.9 失败矩阵
 
@@ -468,7 +469,6 @@ interface CharterCalibrationResult {
   readonly resolved?: { readonly provider: string; readonly model: string }   // available/unconfigured 时尽力给出
   readonly efforts?: readonly { readonly id: string; readonly label?: string }[]  // adapter 枚举，可空
   readonly consent: { readonly required: number; readonly acknowledged: number }
-  readonly trigger: 'manual' | 'auto'
   readonly cooldownRemainingMs?: number
 }>>
 ```
@@ -686,3 +686,5 @@ round-trip、peer 图校验、trusted-attachment 防伪造测试、A/B 协议 1 
 | 2026-11-23 | **评审修订 v3**：P0-A → §6.1/§6.2（撤回"withEvidence 直接可用"假设；改为 edit() 既有宿主侧参数先例上的 `hostAttachments.evidenceByClientRef` trusted-attachment 通道，core `ApplyOpsInput`/`itemFromInput` 显式扩展，wire 双 schema 保持 strict 无 evidence，附防伪造测试）；P0-C → §6.6（objective 校准 apply = `objective.initialize + clientRef:'c-obj-*' + runId`，逐字相等，仅当记录无 objective；objective 无 evidence 槽位如实记为已知边界）；P1-2 → §7.2 新增 `charter/calibrationStatus` 方法（capabilities strict DTO 零变化）；P1-4 → §5.6-4 degraded split 派生 ref/替换语义/选择集继承 + §7.1 degraded 结构；P1-5 → §5.7 缓存键补 `maxOutputTokens`；P1-6 → §11 A/B 拆分为离线盲评与行为自观察两个独立协议（评审者/语料留存/统计/用途分离）；新增 §4 对 0.3.3 附录 A 冻结合同的依赖声明、§10 C0 观察阶段、D9 混用禁令。 |
 | 2026-11-24 | **v4（D1 落盘 + 0.3.3 发布对齐）**：状态 Proposed → `Active`（路线图 §1/§2/§14.2.2/§16 已修订：0.4.0 = 校准主线，relation proposal 移 0.4.x，schema v3 移出范围）；基准更新为 `main` @ `44a542d3`、0.3.3 已发布（`707043d3…`）。新增 §3.1 校准与 0.3.3 语言归一统一路径（校准可用时抑制翻译二段请求、三级降级链互斥、每草案至多一次模型调用、配置互斥语义、缓存隔离）；§4 改为已交付基座复用映射表（ctx.get/解析链/one-shot/分批/校验/两段式/缓存/handle 八项）；§7.1 增加 `awaitCalibration` 两段式与 `pending` 字段（沿用 0.3.3 已验证模式）+ 客户端守卫说明；§5.4 补 effort 缺省策略（DeepSeek `'off'` 生产先例，档位由 C0/D8 冻结）；M0 探针按生产验证裁剪（P1/P4/P7 已验证，P3/P6 缩减回归，余 P2/P5/P8）；C0 指标具体化（partial/failed 率、批数、等待时长、折叠/oversized/编辑率）；版本计数 11 → 13；§12 风险行同步无 peer 决策；附录 B D1 勾选。 |
 | 2026-11-24 | **v5（版本定位调整，用户决策）**：本方案从 0.4.0 降级为 **0.3.4 草案校准补丁线**——校准本质是 0.3.x 草案质量增强（additive Remote、opt-in、零 record schema、零 prompt/tool 变更），不应占据 minor 版本；`0.4.0` 重新定义为**完整契约功能升级**（readiness/ready queue、停滞检测、执行记忆 + record schema v3、relation proposal、历史补全草案、可选 LLM assessor），设计权威另立 [charter-execution-v1.zh.md](charter-execution-v1.zh.md)。本文新增定位边界（§0：只提升草案质量与审阅效率，不声称提升模型长程任务完成率、不承诺完整性/通用性）、§2.2 排除 0.4.0 全部能力、§9 既有行为零变化保证、downgrade round-trip 扩展为 0.3.2+0.3.3 双版本、§11 A/B 共同边界（文本质量指标不得挪用为执行表现证据）；D1/附录 B 同步。 |
+| 2026-11-24 | **v6（实现审查收敛）**：0.3.3 翻译保留为独立回退（校准使用 L1 源 handle，双调用为已知成本）；校准隐藏非 zh/en；runId 绑定 draftHandle；mergedFrom 接入逐条 diff；effort 在 adapter 暴露 efforts 时校验；consent 披露改由 Schema description + Pane dialog + profile 配置承载；L2-8 记录为“旧 0.3.2/0.3.3 record fixture → 0.3.4 strict schema”方向，反向留人工；按 ref suppressed 选择集仍为 MVP 整体替换。 |
+| 2026-11-24 | **v7（死配置/证据收口）**：从 0.3.4 Config 删除未实现的 `calibration.trigger`/`calibration.cooldownMinutes`，状态对象与诊断 UI 同步移除；修正 docs/README 索引的“单一模型路径”旧表述；§5.7 缓存改为实际 32+32 全局上限；§5.8 明确取消中继未实现；附录 C 补齐 v6/v7；`CALIBRATION_PARAMS_CONFLICT` 已从错误码移除。 |

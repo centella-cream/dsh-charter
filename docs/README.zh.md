@@ -52,7 +52,7 @@
 | [design/charter-dependency-graph-v1.zh.md](design/charter-dependency-graph-v1.zh.md) | Active | 0.2.2 / 0.3.1 / 0.3.2 | 客户端依赖关系图形视图；源码已在 0.2.2 落地，真实浏览器证据已记录；真实 AT 与 W0-1/2/3 仍属 0.3.2 门禁。 |
 | [design/charter-gui-v1.zh.md](design/charter-gui-v1.zh.md) | Active | 0.3.0 / 0.3.1 / 0.3.2 | 全栏目 GUI 全面重构：设计系统、IA/路由、Change Set 合同、Pane/store 拆分、证据门禁；视觉语言已冻结（文档感）：[design/mockups/](design/mockups/README.md)。 |
 | [design/charter-draft-extraction-v1.zh.md](design/charter-draft-extraction-v1.zh.md) | Active | 0.3.3（已发布） | 契约草案抽取质量与自动中英文语言跟随：语义保全切分、近重复折叠、结构化候选与稳定 ref、宿主模型后台分批翻译、每批重试/partial 回退与可选专用模型；已随 0.3.3 于 2026-11-24 发布。 |
-| [design/charter-draft-calibration-v1.zh.md](design/charter-draft-calibration-v1.zh.md) | Active | 0.3.4（已决策，当前开发线） | 契约草案校准补丁线：语义聚合、可读性改写、原文 diff 审阅、质量 A/B；宿主托管 `ctx.llm` opt-in + consent，零 record schema/prompt/工具面变更；与 0.3.3 语言归一合并为单一模型路径；复用已发布的 0.3.3 抽取/翻译基座。定位约束：不声称提升模型长程任务完成率。 |
+| [design/charter-draft-calibration-v1.zh.md](design/charter-draft-calibration-v1.zh.md) | Implemented — pending release acceptance | 0.3.4（当前开发线） | 契约草案校准补丁线：语义聚合、可读性改写、原文 diff 审阅、质量 A/B；宿主托管 `ctx.llm` opt-in + consent，零 record schema/prompt/工具面变更；保留已发布的 0.3.3 语言归一作为独立回退（翻译 + 校准可能各调用一次，已知成本）；复用 0.3.3 抽取/翻译基座。定位约束：不声称提升模型长程任务完成率。 |
 | [design/charter-execution-v1.zh.md](design/charter-execution-v1.zh.md) | Proposed | 0.4.0（范围已决策，E0 详细设计先行） | 完整契约功能升级：readiness/ready queue、停滞检测、执行记忆（decision/environment/evidence/progress proposal，record schema v3 + 迁移 + downgrade fence）、relation proposal、历史补全草案、条件式 LLM assessor；执行类 A/B 指标。 |
 | [design/version-roadmap.md](design/version-roadmap.md) | Active | 全版本线 | 范围与版本权威；中文为 normative。 |
 | [design/compatibility.md](design/compatibility.md) | Active | 已声明 DSH 版本 | 兼容声明与矩阵。 |
