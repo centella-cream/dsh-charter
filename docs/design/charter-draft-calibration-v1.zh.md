@@ -176,7 +176,7 @@ C 阶段启动前以 0.3.3 线上数据（C0 指标，§10）校准本方案默�
 | `calibration.consentVersion` | int / 0 | 用户已确认的披露版本；< 当前 `CALIBRATION_DISCLOSURE_VERSION` 时 Host 拒绝调用。确认动作在 profile 配置中完成（`Schema` description 与 Pane 披露对话框展示全文；Profile 设置面板呈现由 DSH 负责）；**Pane 不写配置** |
 | `calibration.trigger` | `manual` \| `auto` / `manual` | auto = 新摘要出现且冷却期外自动校准一次；仅在 A/B 协议 1 达标后开放（§11） |
 | `calibration.provider` / `calibration.model` | string / 空 | 空 = 走 §5.3 解析链 |
-| `calibration.reasoningEffort` | string / 空 | 空 = adapter 默认；**自由字符串**，原样传给 adapter，Host 不做枚举预校验；可用枚举发现/校验待后续（§5.4） |
+| `calibration.reasoningEffort` | string / 空 | 空 = adapter 默认；自由字符串；Host 在 adapter 暴露 efforts 时校验（§5.4），否则直通；`calibrationStatus.efforts` 仍为空（异步发现未接线） |
 | `calibration.targetLanguage` | `auto` \| `zh` \| `en` / `auto` | auto = 跟随请求携带的客户端界面语言（白名单） |
 | `calibration.maxInputBytes` | int / 24576 | 摘要输入 UTF-8 上限（句边界预截断，截断状态进缓存键） |
 | `calibration.maxOutputTokens` | int / 2048 | `maxTokens` 硬顶；**进缓存键**（§5.7） |
@@ -203,8 +203,9 @@ C 阶段启动前以 0.3.3 线上数据（C0 指标，§10）校准本方案默�
 ```text
 GenerateOptions {
   provider, model        ← §5.3 解析链
-  reasoningEffort        ← 配置/请求非空时原样传给 adapter；Host 不做枚举预校验（adapter 负责校验）
-                           CALIBRATION_EFFORT_UNSUPPORTED / CALIBRATION_CANCELLED 当前为保留码，未接线
+  reasoningEffort        ← 配置/请求非空时，若 llm 暴露 resolveModelInfo/reasoning.efforts，则先校验；
+                           不在枚举内 → CALIBRATION_EFFORT_UNSUPPORTED（detail 带可用枚举）；
+                           无发现接口的旧 adapter 原样直通。CALIBRATION_CANCELLED 仍为保留码。
   system                 ← CALIBRATION_PROMPT_V{n}（版本化常量；改动必须升版本 + 重跑 golden fixture）
   messages               ← [user: 受限输入包（§5.5）]
   temperature            ← 0.1（固定，不开放配置）
