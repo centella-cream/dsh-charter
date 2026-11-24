@@ -4,256 +4,78 @@
 [![GitHub](https://img.shields.io/badge/GitHub-centella--cream%2Fdsh--charter-181717?logo=github)](https://github.com/centella-cream/dsh-charter)
 [![DSH](https://img.shields.io/badge/DSH-13%20verified%20versions-4b6bfb)](docs/design/compatibility.zh.md)
 [![Node](https://img.shields.io/badge/node-%5E22.19%20%7C%7C%20%3E%3D24-339933)](package.json)
-[![Status: 0.3.3](https://img.shields.io/badge/status-0.3.3-brightgreen)](#状态)
+[![Status: 0.3.4 development candidate](https://img.shields.io/badge/status-0.3.4%20dev-brightgreen)](#状态)
 
 [English](README.md) | 中文
 
 > **压缩会改写历史，但不会改写你的承诺。**
 
-`dsh-charter` 是 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的持久化、用户所有的
-会话契约插件。目标、硬约束、交付物、证据和依赖关系在上下文压缩后仍然保留，并且始终可查看、可编辑。
+`dsh-charter` 是 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的持久化、用户所有的会话契约插件。目标、硬约束、交付物、证据和依赖关系在上下文压缩后仍然保留，并且始终可查看、可编辑。
 
-![文档感布局中的会话契约页](docs/assets/charter-pane-0.3.3.zh.png)
+![会话契约 Pane](docs/assets/charter-pane-0.3.4.zh.png)
 
-> 本地 Web profile 中的 Pane：顶部下划线 tabs、720px 文档列、对齐的文档行和可折叠执行路径。
-> 截图仅使用合成演示数据。
+![依赖关系图](docs/assets/charter-graph-0.3.4.zh.png)
 
-![Pane 中的依赖关系图](docs/assets/charter-graph-0.3.3.zh.png)
-
-> 执行路径依赖图：泳道标题、三列执行网格和状态/类型 legend；存在依赖时显示方向箭头与沿边命中区。语义列表始终是权威操作面。
-
-## 目录
-
-- [状态](#状态)
-- [核心能力](#核心能力)
-- [依赖关系](#依赖关系)
-- [提案、诊断与恢复](#提案诊断与恢复)
-- [为什么需要](#为什么需要)
-- [工作原理](#工作原理)
-- [安装](#安装)
-- [快速开始](#快速开始)
-- [会话契约页](#会话契约页)
-- [配置](#配置)
-- [兼容性](#兼容性)
-- [安全与隐私](#安全与隐私)
-- [开发](#开发)
-- [文档](#文档)
-- [贡献](#贡献)
-- [License](#license)
+Pane 把工作区、审阅中心和诊断放在同一文档列中。截图只使用合成演示数据。
 
 ## 状态
 
-- **当前已发布：**`0.3.3` — 结构化契约草案抽取、自动中英文语言归一、相似重复折叠、稳定候选 ref、非阻塞后台翻译，以及针对自定义模型延迟的自适应分批。已发布到 npm `latest`/`next` 和 GitHub Release `v0.3.3`。
-- **开发候选：**`0.3.4` — opt-in、consent 校验的草案校准：语义聚合、可读改写、原文/校准稿审阅与 `c-*` apply provenance。尚未发布。
+- **当前已发布：**`0.3.3` — 结构化草案抽取、自动中英文语言跟随、重复折叠、稳定草案 ref、非阻塞后台翻译和自适应分批翻译。
+- **开发候选：**`0.3.4` — opt-in、consent 门禁的草案校准：语义聚合、可读改写、原文/校准稿审阅、`c-*` apply provenance、真实模型校准状态与诊断。
 - **上一版本：**`0.3.2` — 无障碍/证据收敛；`0.3.1`、`0.3.0` 是更早基线。
-  **主要 DSH 基线：**`0.2.2-rc.5`；十三个声明版本通过源码矩阵验证。
-- 从 `0.2.0` 起版本号使用普通递增（`0.2.0`、`0.2.1`、`0.2.2`、`0.3.0`、`0.3.1`、`0.3.2`、`0.3.3`），不再使用 `rc` 后缀。
+- **主要 DSH 基线：**`0.2.2-rc.5`；十三个声明版本通过源码矩阵验证。
+- **Plugins** 页面显示本地化标题和带版本号的功能说明，并明确校准的数据发送限制。
 
 ## 核心能力
 
-### 文档感 Pane
-
-- **一份文档，不是仪表盘。** Workspace、审阅中心和诊断与维护共用同一阅读列、字号阶、行解剖、chip、
-  quiet link 与空态/skeleton。
-- **顶部下划线 tabs，无左侧纵向导航。** 所有宽度使用顶部 tabs；宽屏只在有 Change Set 时增加
-  720px 文档列 + 280px Change Set rail。
-- **行对齐。** 每行是 `[状态圆点 | 正文 | 右对齐 D 编号与字节数]`；字节元信息、D 编号与正文首行共用
-  20px 行盒基线。行级轻动作用 quiet link，不额外堆按钮。
-- **暂存语言统一。** 暂存行使用 2px business 内嵌强调条、5% 底色和“已暂存”chip；Change Set rail 是安静的
-  margin note，不再套一层卡片。
-- **依赖图是增强视图，不是第二权威。** 执行路径 disclosure 内是 px 几何依赖图：固定 184px 节点、两行截断、
-  状态解剖、边状态和紧凑 inspector；语义列表始终是权威操作面。
-- **版本可见。** Pane 页头同时显示已安装版本 chip、revision 和 prompt meter。
-
-### 依赖图与诊断
-
-- **依赖图审计：** 泳道标题、SVG 方向箭头、沿边展开的 44px 命中区、点划线历史边、自适应画布高度，并移除
-  未使用的 graph `ops` 输入。
-- **Standing envelope 预警：** Diagnostics 按 32 KiB cap 精确估算 `charter_read standing` 结果，显示
-  `<80%` / `>=80%` / 超 cap 三态，并计入 id 开销。
-- **流量取证：** 本地 `traffic-check` 增加 `charter_propose` 拒绝分类和 active charter surface hash；
-  `traffic-diff` 对比前后基线。不新增运行时埋点、不上报。
-
-### 无障碍与证据收敛
-
-- **根字号图形缩放：** 根字号大于 16px 时，画布作为整体等比缩放（最多 200%），节点文本、边、泳道和命中区
-  保持对齐；viewport 改为可滚动，而不是裁切图形。
-- **最终构建证据：** 空/暂存/已应用/冲突确认状态、forced-colors 与 reduced-motion 截图，以及断点/缩放
-  测量记录于 0.3.2 发布。
-- **仍待人工门禁：** 真实 VoiceOver/NVDA 与 Desktop 原生窗口证据；自动化 AX-tree 或 renderer 截图不计为
-  已通过。
-
-### 结构化草案抽取与语言跟随
-
-- **语义保全：**只按句边界切分；超长句整段保留并标记，不再硬切成碎片；显式截断记录原始字节数。
-- **相似重复折叠：**全等/保守前缀重复折叠为代表条目，并保留折叠计数与成员 ref。
-- **语言跟随：**草案语言与 DSH 界面语言（`zh`/`en`）不一致时，Host 不等待模型：先立即返回源语言草案，再在后台通过当前会话模型做有界、严格 JSON 的分批翻译，并在草案仍未被操作时替换。模型不可用或响应不合格时
-  保留原文草案并显示降级提示，不阻断审阅。自动调用会把压缩草案/当前契约
-  文本发送到该会话配置的模型；插件不保存 API key，也不新增遥测或上传。可在 profile 设置
-  `languageFollow: false` 关闭自动调用；结构化抽取/折叠仍生效，源语言草案仍可用。
-  `languageFollowTimeoutMs` 限制每批后台翻译等待（默认 60 秒）；失败批会拆分重试并保留成功候选。自定义 API 用户可设置 `languageFollowProvider`/`languageFollowModel` 固定专用翻译模型。
-
-### 兼容性与运行时
-
-- DSH `0.2.2-rc.5` 声明与有界 `engines.dsh` 0.2 线范围；精确 `dshReleases`/peer 列表仍是十三版本矩阵已验证支持集。
-- `charter_read standing` 现在返回交付物稳定 id，模型可以提出真实 `requires` 引用；`D<n>` 明确只是展示标签，
-  非法引用显式失败。
-- Desktop/Web 插件通过 Host profile 重组 + client HMR 热更新；CSS 按归属 style tag upsert，重载后替换旧样式，
-  不产生重复标签。
-
-## 为什么需要
-
-压缩会把较早的上下文替换成摘要。摘要可能保留总体任务，却丢掉长期约束，比如“不要改 migrations/”、
-“交付前运行测试”或“保持 API 向后兼容”。把这些内容放进 system prompt 又会越过用户内容的权限边界。
-
-`dsh-charter` 专注解决这个问题：
-
-- **独立正本。**每个 Session 只有一个 `dsh-storage-domain` 记录；压缩摘要和 UI 缓存既不写入也不恢复它。
-- **用户角色。**用户可编辑正文进入 user-role runtime context，不进入 system message。模型可通过
-  `charter_read` 读取，不能写入。
-- **确定性重建。**相同的记录 revision 和 renderer 产生字节一致的上下文；`{{...}}` 会被转义，旧版 DSH
-  prompt 插值不能改写用户正文。
-- **显式预算。**Pane 展示实时上下文计量和分字段字节数；溢出会被拒绝或提示选择，绝不静默截断。
-- **原子 Apply。**一个 Change Set 要么完整提交，要么不提交；带 revision 冲突、幂等重试和 Host canonical
-  preview digest。
-- **安全接入。**已有压缩历史的 Session 可以生成只读草案；用户确认前不会生效。
-- **可恢复。**export/restore 仅 owner 可用；Host 每个 Session 最多保留 5 份恢复快照（整个 profile 最多 25 份）；健康记录拒绝覆盖；
-  写入结果不确定时只隔离该 Session，等待 Host 重启恢复。
-- **逐 Session fail closed。**结构损坏的记录会保留用于诊断，不会被覆盖。
-
-契约是声明，不是强制执行策略。需要机器强制的限制请使用 Host permissions、sandbox policy、hooks 或
-执行守卫。
-
-## 依赖关系
-
-deliverable 不是一份互不相关的顺序清单。一个 deliverable 可以声明对其他 deliverable 的**前置约束**，
-这些关系会进入存储契约、校验边界、UI 计划和模型可见 prompt。
-
-![依赖关系：测试 D1 与迁移 D2 汇聚到发布 D3](docs/assets/dependency-example.zh.svg)
-
-- **类型化、可校验的关系。**每个 deliverable 可携带 `requires: [id…]`。Host 拒绝自环、重复前置、
-  悬空引用、非 active 端点和环；整个 Change Set 原子失败，不会写入半张图。
-- **确定性的依赖投影。**standing deliverable 按 canonical 拓扑顺序获得稳定 `D<n>` key；prompt 按前置
-  在前、依赖在后的顺序渲染，模型因此知道哪些承诺可以执行、必须先完成什么。
-- **派生 readiness。**readiness 由 acceptance、lifecycle、前置 readiness 和 progress 派生：`ready`、
-  `waiting`、`blocked`、`dependency-conflict`、`in-progress` 或 `terminal`，不保存容易过期的重复状态。
-- **可见、可编辑。**Workspace 同时展示依赖图和紧凑语义列表，支持前置编辑与就绪状态；非法图会显示冲突提示而不是拖垮 Pane，图不一致
-  时禁用 Apply。
-- **生命周期安全。**archive、restore、supersede、fork 和 proposal acceptance 都会校验或重映射关系；
-  `proposedRequires` 让 pending deliverable 引用候选前置条件，接受时解析为正式 requires。
-- **有界。**关系集合同样受 record 和 prompt 预算约束，不引入独立的图正本。
-- **依赖图视角。** 依赖图是局部 ego 视图，包含候选泳道和替代历史泳道；它不是第二权威，图上的编辑与列表
-  暂存同一组 Change Set ops。零依赖时使用有界孤立节点网格和明确的“添加前置”提示。
-
-依赖是用户编写的**执行约束**，不是强制 sandbox 或权限系统。
-
-## 提案、诊断与恢复
-
-- 三个一级区域：**Workspace**、**Review Center**、**Diagnostics & Maintenance**。
-- record schema v2、内存 v1 迁移、proposal batch、类型化 provenance 和 objective proposal。
-- `summary`/`watchSummary` 及分页 item/proposal/change query；Pane 使用 summary + query，完整 watch 仅作为
-  兼容回退。
-- pending-only `charter_propose`；用户触发的 message proposal（选择器、可编辑正文、kind）。
-- Evidence Integrity 与 Fact Validity，以及 owner-only 注册式验证器：
-  `workspace.path-exists`、`workspace.file-digest`、`workspace.file-contains`。
-- message/compaction-summary/agent-tool batch 的 source integrity 投影复算；fork source integrity 明确返回
-  `unsupported`。
-- fork 的 item/validity/evidence/依赖重映射；Recovery Center 支持 export/initialize，以及从最多 5 份的
-  owner-only 快照缓存恢复。
-- 中英文 UI、明暗主题、键盘 focus 状态和容器查询响应式布局。
-
-## 工作原理
-
-```mermaid
-flowchart LR
-  U[用户在 Charter 页编辑] --> A[charter.edit]
-  A --> B[原子单记录更新]
-  B --> D[(dsh_charter_v1 storage domain)]
-  D -. 有界快照 .-> Q[(dsh_charter_archives_v1 / 最多 5 份)]
-  Q --> X[owner-only 恢复缓存]
-  D --> R[确定性 renderer]
-  R --> C[user-role runtime context]
-  D --> T[charter_read]
-  P[压缩] -. 从不写入 .-> D
-  P --> S[compaction/summary]
-  S --> H[只读历史草案]
-  H --> U
-  W[charter.watchSummary] --> U
-```
-
-Host 在 `session/created` 和首次 prompt 前的 `agent/created` 初始化记录。浏览器注册 conversation-view
-入口；Pane 和 `charter.watchSummary` 读取同一个 revisioned projection。`charter.bootstrap` 从最新可用
-compaction summary 返回只读草案，不写 storage。
+- **持久、用户所有的权威。** 每个 Session 一个 `dsh-storage-domain` record 是唯一权威；模型没有写入能力，Apply 是单次原子编辑。
+- **文档感 Pane。** 顶部下划线 tabs、对齐行、字节计数、prompt meter，工作区/审阅中心/诊断共用视觉语言。
+- **结构化草案审阅。** 压缩摘要变成只读候选：句边界切分、oversized/truncated 标记、重复折叠、稳定 `d-*` ref 和只读 Apply。
+- **可选智能校准。** opt-in、consent 门禁的 Host 模型调用可聚合/改写候选（`c-*`），显示 uncertain/merged/split、原文 excerpt 和“用原文”。默认关闭。
+- **语言跟随。** 先显示源语言草案，需要时后台分批翻译；可配置专用翻译模型。
+- **依赖图。** 本地 ego-scoped 图和语义列表共享同一 Change Set；图是增强视图，不是第二权威。
+- **按设计有界。** 上下文/条目/记录/操作预算可见；溢出变成 pending proposal 或显式拒绝，从不静默截断。
 
 ## 安装
 
-当前已发布版本是 `0.3.3`：
+最新已发布版本是 `0.3.3`：
 
 ```bash
 dsh plugin --profile web add dsh-charter@0.3.3
-```
-
-离线机器或需要精确验证 artifact 时：
-
-```bash
+# 离线/精确 artifact：
 npm pack dsh-charter@0.3.3
 dsh plugin --profile web add ./dsh-charter-0.3.3.tgz
 ```
 
-`0.3.4` 是当前开发候选，从工作区构建：
+`0.3.4` 是当前开发候选：
 
 ```bash
 npm pack
 dsh plugin --profile web add ./dsh-charter-0.3.4.tgz
 ```
 
-Desktop 请使用 **Desktop → Plugins → Install/Update**；若 Desktop 构建支持本地插件导入，也可导入同一
-tarball。`dsh plugin --profile desktop` 会被拥有该 profile 的 Electron 应用拒绝。
+Desktop 使用 **Plugins → Install/Update**（支持本地 tarball 的构建可导入）。可复现 profile 请固定精确版本；不要绕过兼容门禁安装未声明的旧版。
+
+### 更新与回滚
+
+使用精确版本或本地 tarball 更新。client bundle 可通过 profile 热替换；如果安装结果已成功但新的 Host service/Remote 方法仍未生效，重新加载 Host 或 Desktop 一次即可。完整退出/重启只是兜底，不是客户端改动的默认要求。回滚时安装上一个精确版本（当前已发布为 `0.3.3`）；`0.3.2`/`0.3.3`/`0.3.4` 写入的 record 无需迁移仍可读取。
 
 ### 要求
 
-- DSH：仅支持[兼容矩阵](docs/design/compatibility.zh.md)中列出的版本；当前主基线是 `0.2.2-rc.5`
-  （十三版本本地矩阵）；`0.2.1+` 才具备 per-Peer Remote resource authorization。
-- Node.js **`^22.19.0 || >=24.0.0`**。
-- Web 或 Desktop profile。
-
-可复现 profile 请固定精确版本。pnpm 的 release-age 策略可能让刚发布的版本暂时不被 `@next`/`@latest`
-解析；不要绕过兼容门禁安装未声明的旧版本。
+- DSH 版本见[兼容矩阵](docs/design/compatibility.zh.md)；主基线 `0.2.2-rc.5`。
+- Node.js `^22.19.0 || >=24.0.0`。
+- Web 或 Desktop profile；`0.2.1+` 才具备 per-Peer Remote authorization。
 
 ## 快速开始
 
-### 新建契约
-
-1. 打开 live Session，选择 **Charter** 标签页。
-2. 设置 objective，添加 invariant/deliverable，按需配置 `requires`。
-3. 使用 **Preview context** 检查精确的 user-role 文本和字节数。
-4. 点击 **Apply**。revision 冲突会保留草案并显示服务器 revision。
-
-### 接入已有压缩历史
-
-1. 打开一个在当前 Host 进程中 live 的旧 Session。
-2. 打开 **Charter**。若契约为空，Review Center 会从最新可用 `compaction/summary` 生成草案。
-3. 审阅或编辑候选，取消勾选过期内容，只应用需要生效的部分。
-
-当前 Host 进程中不 live 的 Session 以只读方式展示；需要编辑时请先在这里启动该 Session。
-
-## 会话契约页
-
-Pane 从 Session 视图打开。宽屏使用左侧区块导航，窄屏使用横向 tab。
-
-| 区域 | 用途 |
-| --- | --- |
-| **Workspace** | 当前目标、硬约束、交付物、约束计划、未解决阻塞 |
-| **Review Center** | pending proposal batch、历史草案、非当前条目、近期变更 |
-| **Diagnostics & Maintenance** | prompt/preview 健康、source integrity、validator、record health、export/restore、capabilities |
-
-Pane 有 sticky 的 Preview / Discard / Apply 工具栏，展示精确的模型可见上下文，并按字段报告预算。长文本
-会被拆分，不会静默截断；pending proposal 始终可见、可审阅；溢出会变成可审阅 proposal，而不是任意
-active-count 失败。
+1. 在 DSH 打开 Session，切到「契约」。
+2. 在工作区添加目标、硬约束、交付物，或在审阅中心检查压缩历史草案。
+3. 检查 Change Set 后原子 Apply。
+4. 压缩后的 Session 会从最近一次可用压缩摘要生成审阅草案；只接受/应用你确认的内容。
 
 ## 配置
 
-默认值在 `cordis.patch.yml`。在 profile patch 中覆盖：
+默认值在 `cordis.patch.yml`，在 profile config 覆盖同名键。常用配置：
 
 ```yaml
 - id: charter
@@ -264,37 +86,34 @@ active-count 失败。
     contextOrder: 130
     languageFollow: true
     languageFollowTimeoutMs: 60000
-    # 可选：专用翻译路由；省略则使用当前会话模型
-    languageFollowProvider: your-provider
-    languageFollowModel: your-fast-model
+    # 可选专用翻译路由：
+    # languageFollowProvider: your-provider
+    # languageFollowModel: your-fast-model
+    calibration:
+      enabled: false
+      consentVersion: 0
+      maxCandidates: 12
+      maxOutputTokens: 2048
 ```
 
-| 字段 | 默认值 | 含义 |
+| 字段 | 默认 | 说明 |
 | --- | ---: | --- |
-| `maxPromptBytes` | 8192 | 仅 charter contribution 的 UTF-8 上下文预算 |
-| `maxObjectiveBytes` | 4096 | objective 的 UTF-8 预算 |
-| `maxItemBytes` | 1024 | 单条 item 文本预算 |
-| `maxItems` | 512 | 所有条目存储上限 |
-| `maxPendingItems` | 512 | pending proposal 上限 |
-| `maxOps` | 1024 | 单次 Apply 的操作数 |
-| `maxRecordBytes` | 1048576 | 单个 Session 记录 |
-| `historyLimit` | 64 | 最近 history receipt |
-| `maxHistoryBytes` | 131072 | 最近 history 字节 |
-| `mutationLimit` | 128 | 最近 mutation receipt |
-| `maintenanceLimit` | 16 | 最近 initialize/restore receipt |
-| `maxRecoveryBytes` | 4194304 | 完整 recovery archive 预算 |
-| `contextOrder` | 130 | runtime-context 顺序 |
-| `languageFollow` | true | 按当前 `zh`/`en` DSH 界面语言通过模型归一草案；设为 `false` 关闭自动调用 |
-| `languageFollowTimeoutMs` | 60000 | 单批后台翻译等待上限；失败批会拆分并保留源文 |
-| `calibration.enabled` | false | opt-in 草案校准；需确认 `consentVersion` |
-| `calibration.consentVersion` | 0 | profile 中已确认的披露版本；当前披露为 1 |
-| `calibration.provider` / `.model` | 空 | 可选专用校准路由；为空使用会话模型 |
-| `calibration.maxCandidates` | 12 | 校准输出候选上限 |
+| `maxPromptBytes` | 8192 | 契约 contribution 的 UTF-8 预算 |
+| `maxObjectiveBytes` | 4096 | objective 字节预算 |
+| `maxItemBytes` | 1024 | 单条文本预算 |
+| `maxItems` / `maxPendingItems` | 512 / 512 | 条目/pending proposal 上限 |
+| `maxOps` / `maxRecordBytes` | 1024 / 1048576 | 单次 Apply 操作数/记录预算 |
+| `contextOrder` | 130 | runtime context 排序 |
+| `languageFollow` | true | 跟随当前 `zh`/`en` DSH 界面语言 |
+| `languageFollowTimeoutMs` | 60000 | 后台翻译批次等待上限 |
+| `languageFollowProvider` / `.model` | 未设置 | 可选专用翻译路由 |
+| `calibration.enabled` | false | opt-in 智能草案校准 |
+| `calibration.consentVersion` | 0 | 已确认披露版本；阅读披露后设为 `1` |
+| `calibration.provider` / `.model` | 未设置 | 可选专用校准路由 |
+| `calibration.maxCandidates` | 12 | 校准候选上限 |
 | `calibration.maxOutputTokens` | 2048 | 校准输出 token 上限 |
-| `languageFollowProvider` | 未设置 | 可选专用翻译 provider；需同时设置 model |
-| `languageFollowModel` | 未设置 | 可选专用翻译模型；两者都不设时使用当前会话模型 |
 
-模型可见容量只有 `maxPromptBytes`；`maxItems` 和 `maxPendingItems` 约束存储。
+校准会把压缩草案文本与当前契约条目发送到配置的 provider/model；调用计入模型用量（含 reasoning tokens）。结果始终是待审提案，接受前不进入 standing prompt；缓存仅在内存。启用前必须在审阅中心阅读披露。
 
 ## 兼容性
 
@@ -302,64 +121,43 @@ active-count 失败。
 | --- | --- |
 | `0.1.7-rc.2` | 支持（最低版本） |
 | `0.2.0-rc.1` / `0.2.0-rc.2` | 支持 |
-| `0.2.1-rc.1` / `0.2.1-rc.2` / `0.2.1-rc.3` / `0.2.1-rc.4` / `0.2.1-rc.5` | 支持 |
-| `0.2.2-rc.1` / `0.2.2-rc.2` / `0.2.2-rc.3` / `0.2.2-rc.4` / `0.2.2-rc.5` | 支持（主基线：`0.2.2-rc.5`） |
+| `0.2.1-rc.1` … `0.2.1-rc.5` | 支持 |
+| `0.2.2-rc.1` … `0.2.2-rc.5` | 支持（主基线：`0.2.2-rc.5`） |
+| `0.2.3-alpha.x` | 不支持 |
 | `0.3.x` | 验证前不声明 |
 
-`engines.dsh` 使用有界的 0.2 线范围（`0.1.7-rc.2 || >=0.2.0-rc.1 <0.3.0-0`），DSH gate 会按 prerelease
-语义求值，因此未来的 0.2.x prerelease 更新无需插件重新发版；上方精确的 `dshReleases`/peer 列表仍是矩阵已验证
-支持集。若某个 0.2.x 更新确实破坏 Pane，请报告。
-
-“支持”表示该版本通过 typecheck、build、测试和 Remote/client smoke，并具备[兼容矩阵](docs/design/compatibility.zh.md)
-中记录的 profile 证据。`0.1.7` / `0.2.0` 没有 per-Peer Remote resource authorization，仅应在可信单操作者
-环境中使用。
+`engines.dsh` 限定 0.2 线；精确 `dshReleases`/peer 列表是矩阵验证支持集。详见[兼容性](docs/design/compatibility.zh.md)。
 
 ## 安全与隐私
 
-- 用户正文不会进入 system-role message。
-- 模型没有写权限；`charter_read` 只读。
-- `owner` 可执行包括 purge 在内的所有编辑；`user` 可执行普通编辑但不能 purge；Host-only validator 结果
-  不能由客户端 edit 路径伪造。
-- 注册式 validator 仅 owner 可运行，只读取 Session workspace 内文件，受文件/字节/deadline 边界约束，
-  不执行任意 shell。
-- 普通日志只包含 id、kind、revision 和错误码，不包含用户正文。
-- 契约不是权限系统。威胁模型和报告方式见 [SECURITY.md](SECURITY.md)。
+- 用户文本保持 user-role；模型没有写入能力。
+- 校准和语言归一都是显式模型调用；插件不新增遥测或上传路径，凭据留在 DSH。
+- 语言跟随会使用配置的会话/专用模型；设置 `languageFollow: false` 可避免该调用。
+- Record 存在 Session 的 `dsh_charter_v1` domain；导出/恢复是 owner-only maintenance。
+- 安全问题请按 [SECURITY.md](SECURITY.md) 私下报告。
 
 ## 开发
 
 ```bash
 npm ci
-npm run check              # typecheck + build + remote/client smoke + Vitest
-npm run smoke:package      # packed tarball installability
-npm run verify:compaction  # 手动真实模型 compaction 检查
-node scripts/verify/compat-matrix.mjs --versions all --allow-new-release
+npm run check                    # typecheck + build + smokes + Vitest + token gate
+npm run verify:ui-metrics -- --gate=final
+npm run smoke:package
+node scripts/verify/recovery-smoke.mjs --artifact dist/dsh-charter-<version>.tgz --sha256 SHA256SUMS
+node scripts/verify/compat-matrix.mjs --versions all
 ```
 
-当前源码证据：**36 个测试文件 / 441 个测试**，九版本 DSH 矩阵 **9/9**、每版 **441/441** 通过。精确命令
-和 source/local-matrix/exact-artifact/manual 证据的区别见[验证记录](docs/verification.zh.md)。
-
-CI 在 Node `22.19.0` 和 `24` 上运行 `npm run check` 与 `npm run smoke:package`；release candidate 和 promotion 是独立门禁。green candidate 不等于已发布。
+见 [CONTRIBUTING.md](CONTRIBUTING.md)、[verification](docs/verification.md) 和[发布流程](docs/releasing.md)。Public CI 在 Node 22.19.0/24 上运行 check 与 package smoke；exact-artifact、兼容性和浏览器/Desktop 门禁独立执行。
 
 ## 文档
 
-- [文档索引与约定](docs/README.md)
-- [用户与运维指南](docs/user-guide.zh.md)
+- [用户指南](docs/user-guide.zh.md)
+- [版本与路线](docs/design/version-roadmap.zh.md)
+- [结构化抽取设计](docs/design/charter-draft-extraction-v1.zh.md)
+- [草案校准设计](docs/design/charter-draft-calibration-v1.zh.md)
 - [兼容矩阵](docs/design/compatibility.zh.md)
-- [验证记录](docs/verification.zh.md)
-- [Charter 设计 v1](docs/design/charter-design-v1.zh.md)
-- [0.2 工作区设计](docs/design/charter-workspace-v2.zh.md)
-- [Release notes](docs/release-notes/README.md)
-- [发布清单](docs/releasing.zh.md)
-- [版本路线](docs/design/version-roadmap.zh.md)
-
-历史设计、审查和发布计划冻结在 `docs/history/`；研究笔记在 `docs/research/`。
-
-## 贡献
-
-修改 Host 契约、prompt 边界或 client bundle 前，请阅读 [CONTRIBUTING.zh.md](CONTRIBUTING.zh.md) 和
-[Code of Conduct](CODE_OF_CONDUCT.md)。安全报告遵循 [SECURITY.md](SECURITY.md)。远程仓库只保留 `main`；
-开发分支仅在本地，线性合入后再 push。
+- [文档索引](docs/README.zh.md)
 
 ## License
 
-[MIT](LICENSE) © 2026 dsh-charter contributors。
+MIT，见 [LICENSE](LICENSE)。
