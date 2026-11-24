@@ -307,4 +307,5 @@ rm -rf .tmp
 
 - 源码门禁：`npm run check` = 45 文件 / 530 测试 PASS；13 个声明 DSH 版本 token 覆盖 PASS；`verify:ui-metrics --gate=final` PASS。
 - 已实现：opt-in 校准配置/consent 门禁、Host `ctx.llm` 单轮严格 JSON 调用、语义聚合/可读改写校验、`c-*` 候选与 `mergedFrom`、Host-only evidence excerpt、`applyBootstrap.calibrationRunId`、两个新 Remote 方法及基础审阅 UI（校准、uncertain/merge/split、原文、用原文）。
+- 候选 artifact `dist/dsh-charter-0.3.4.tgz` SHA-256 `b4046104464b9ba7eb8dc630575cb01a4d52d6f8731e36b7484c25093791028f`；exact-artifact package smoke 与 packed recovery smoke PASS；13 版本矩阵 PASS（`.tmp/compat-13-034-final.json`，source `cbf9f88`）。
 - 尚未完成：A/B 协议 1/2、真实模型人工校准验收、完整 L4 UI/AT 证据、完整失败/capability 矩阵与 0.4.0 能力。校准默认关闭。

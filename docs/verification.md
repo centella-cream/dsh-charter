@@ -357,4 +357,5 @@ rm -rf .tmp
 
 - Source gates: `npm run check` = 45 files / 530 tests PASS; token coverage PASS over 13 declared DSH versions; `verify:ui-metrics --gate=final` PASS.
 - Implemented: opt-in calibration config/consent gate, Host `ctx.llm` one-shot strict JSON call, semantic aggregation/readable rewrite validation, `c-*` candidate refs with `mergedFrom`, trusted Host-only evidence excerpts, additive `applyBootstrap.calibrationRunId`, two new Remote methods and basic review UI (calibrate, uncertainty/merge/split badges, original excerpt, use-original).
+- Candidate artifact `dist/dsh-charter-0.3.4.tgz` SHA-256 `b4046104464b9ba7eb8dc630575cb01a4d52d6f8731e36b7484c25093791028f`; exact-artifact package smoke and packed recovery smoke PASS; 13-version matrix PASS (`.tmp/compat-13-034-final.json`, source `cbf9f88`).
 - Not yet complete: A/B protocol-1/2, real-model/manual calibration acceptance, full L4 UI/AT evidence, complete failure/capability matrix and 0.4.0 capabilities. Calibration remains disabled by default.
