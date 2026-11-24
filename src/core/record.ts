@@ -39,6 +39,9 @@ export interface CommitRecordInput {
   readonly at: number
   readonly limits: CharterLimits
   readonly proposalSource?: ProposalSource
+  readonly hostAttachments?: {
+    readonly evidenceByClientRef?: Readonly<Record<string, readonly import('./schemas.js').CharterEvidence[]>>
+  }
 }
 
 export class MutationReplay extends Error {
@@ -550,6 +553,7 @@ export function commitRecord(input: CommitRecordInput): CharterRecord {
     ...(proposalBatchId === undefined || input.proposalSource === undefined
       ? {}
       : { activeProposalBatchId: proposalBatchId }),
+    ...(input.hostAttachments === undefined ? {} : { hostAttachments: input.hostAttachments }),
   })
   const pendingProposalCount = applied.snapshot.items.filter(item => item.review === 'pending').length
     + applied.objectiveProposals.filter(proposal => proposal.review === 'pending').length

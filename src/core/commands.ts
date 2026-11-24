@@ -6,6 +6,7 @@ import type {
   CharterSnapshot,
   NewItemInput,
   ObjectiveProposal,
+  CharterEvidence,
 } from './schemas.js'
 import { buildSnapshotUnchecked } from './render.js'
 import { validateState } from './state.js'
@@ -23,6 +24,10 @@ export interface ApplyOpsInput {
   readonly objectiveProposals?: readonly ObjectiveProposal[]
   readonly proposalBatchId?: string
   readonly activeProposalBatchId?: string
+  /** Host-only provenance attachments; never accepted from the wire. */
+  readonly hostAttachments?: {
+    readonly evidenceByClientRef?: Readonly<Record<string, readonly CharterEvidence[]>>
+  }
 }
 
 export interface ApplyOpsOutput {
@@ -42,6 +47,7 @@ function itemFromInput(
   revision: number,
   origin: 'user' | 'agent',
   links?: { readonly supersedes?: string; readonly proposalBatchId?: string },
+  evidence?: readonly CharterEvidence[],
 ): CharterItem {
   const common = {
     id,
@@ -53,6 +59,7 @@ function itemFromInput(
     origin: input.origin ?? origin,
     order: input.order,
     createdRevision: revision,
+    ...(evidence === undefined || evidence.length === 0 ? {} : { evidence: [...evidence] }),
     ...links?.supersedes === undefined ? {} : { supersedes: links.supersedes },
     ...links?.proposalBatchId === undefined ? {} : { proposalBatchId: links.proposalBatchId },
     ...(input.contentModified === true ? { contentModified: true } : {}),
@@ -286,7 +293,7 @@ export function applyOps(input: ApplyOpsInput): ApplyOpsOutput {
         if (items.has(id)) throw charterError('INVALID_REFERENCE', `minted item id ${id} already exists`)
         items.set(id, itemFromInput(resolveProposedRequires(op.item, input.ids), id, input.nextRevision, origin, {
           ...(input.activeProposalBatchId === undefined ? {} : { proposalBatchId: input.activeProposalBatchId }),
-        }))
+        }, input.hostAttachments?.evidenceByClientRef?.[op.item.clientRef]))
         changes.push({ type: 'item.added', itemId: id })
         break
       }
@@ -296,7 +303,7 @@ export function applyOps(input: ApplyOpsInput): ApplyOpsOutput {
         // A proposal is always pending, even when a user imported it from history.
         items.set(id, itemFromInput(resolveProposedRequires(op.item, input.ids), id, input.nextRevision, 'agent', {
           ...(input.proposalBatchId === undefined ? {} : { proposalBatchId: input.proposalBatchId }),
-        }))
+        }, input.hostAttachments?.evidenceByClientRef?.[op.item.clientRef]))
         changes.push({ type: 'item.added', itemId: id })
         break
       }

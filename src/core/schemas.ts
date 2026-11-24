@@ -253,6 +253,7 @@ export const charterEditRequestSchema = z.object({
 
 export const charterBootstrapApplyRequestSchema = charterEditRequestSchema.extend({
   draftHandle: z.string().min(1).max(256),
+  calibrationRunId: z.string().min(1).max(256).optional(),
 }).strict()
 
 export type CharterBootstrapApplyRequest = z.infer<typeof charterBootstrapApplyRequestSchema>

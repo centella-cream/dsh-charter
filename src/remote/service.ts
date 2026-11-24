@@ -11,6 +11,8 @@ import type {
 import type {
   CharterBootstrapResult,
   CharterBootstrapDraftResult,
+  CharterCalibrationResult,
+  CharterCalibrationStatusResult,
   CharterEditResult,
   CharterRecordExport,
   CharterRecordOperationResult,
@@ -199,6 +201,31 @@ export class CharterRemoteService extends TypertRemoteService {
     request: { readonly sessionId: SessionId; readonly targetLanguage?: 'zh' | 'en'; readonly awaitTranslation?: boolean },
   ): Promise<CharterBootstrapDraftResult> {
     return this.ctx.charter.bootstrapDraft(request.sessionId, request.targetLanguage, request.awaitTranslation)
+  }
+
+  @remoteMethod({
+    resources: {
+      session: (request: { readonly sessionId: SessionId }): SessionId => request.sessionId,
+    },
+  })
+  calibrationStatus(request: { readonly sessionId: SessionId }): Promise<CharterCalibrationStatusResult> {
+    return Promise.resolve(this.ctx.charter.calibrationStatus(request.sessionId))
+  }
+
+  @remoteMethod({
+    resources: {
+      session: (request: { readonly sessionId: SessionId }): SessionId => request.sessionId,
+    },
+  })
+  calibrateBootstrap(request: {
+    readonly sessionId: SessionId
+    readonly draftHandle: string
+    readonly locale: 'zh' | 'en'
+    readonly effort?: string
+    readonly consentVersion: number
+    readonly awaitCalibration?: boolean
+  }): Promise<CharterCalibrationResult> {
+    return this.ctx.charter.calibrateBootstrap(request)
   }
 
   @remoteMethod({

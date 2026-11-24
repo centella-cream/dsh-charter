@@ -480,3 +480,47 @@ export interface CharterReadOptions {
 }
 
 export type CharterCommittedSnapshot = CharterSnapshot
+
+/** UI/configuration state for the optional 0.3.4 draft calibration service. */
+export type CharterCalibrationStatusKind =
+  | 'available'
+  | 'unavailable-host'
+  | 'unconfigured'
+  | 'disabled'
+  | 'consent-required'
+
+export interface CharterCalibrationStatusResult {
+  readonly status: CharterCalibrationStatusKind
+  readonly resolved?: { readonly provider: string; readonly model: string }
+  readonly efforts?: readonly string[]
+  readonly consent: { readonly required: number; readonly acknowledged: number }
+  readonly trigger: 'manual' | 'auto'
+  readonly reason?: string
+}
+
+export interface CharterCalibrationCandidate {
+  readonly ref: string
+  readonly kind: 'objective' | 'invariant' | 'deliverable'
+  readonly text: string
+  readonly uncertain: boolean
+  readonly mergedFrom?: readonly { readonly ref: string; readonly excerpt: string }[]
+}
+
+export interface CharterCalibrationResult {
+  readonly runId: string
+  readonly pending: boolean
+  readonly cached: boolean
+  readonly joined: boolean
+  readonly promptVersion: number
+  readonly resolved: { readonly provider: string; readonly model: string; readonly effort?: string }
+  readonly candidates: readonly CharterCalibrationCandidate[]
+  readonly truncated: boolean
+  readonly inputTruncated: boolean
+  readonly degraded?: readonly { readonly ref: string; readonly parts: readonly string[]; readonly reason: 'split' }[]
+  readonly usage?: {
+    readonly inputBytes: number
+    readonly outputTokens?: number
+    readonly reasoningTokens?: number
+    readonly durationMs: number
+  }
+}

@@ -17,6 +17,13 @@ import {
 import { bootstrapFromEvents } from '../core/bootstrap.js'
 import { structuredFromEvents, STRUCTURED_EXTRACTOR_VERSION } from '../core/structured-bootstrap.js'
 import { translateDraftItems, targetLanguageOf, type DraftLlmRuntime } from './draft-translation.js'
+import {
+  buildCalibrationRequest,
+  CALIBRATION_DISCLOSURE_VERSION,
+  CALIBRATION_PROMPT_VERSION,
+  runDraftCalibration,
+  type CalibrationRequestInput,
+} from './draft-calibration.js'
 import { readSessionEvents } from './session-events.js'
 import { assertEditAuthorized } from '../core/authorization.js'
 import {
@@ -105,6 +112,8 @@ import type {
   CharterBootstrapDraftResult,
   CharterBootstrapDraftItem,
   CharterBootstrapDraftProposal,
+  CharterCalibrationResult,
+  CharterCalibrationStatusResult,
   CharterBootstrapLanguage,
   CharterRecordExport,
   CharterRecordOperationResult,
@@ -123,6 +132,33 @@ import type {
 } from './types.js'
 import type { SessionStartSource as StartSource } from '@deepseek-ai/dsh-agent'
 
+export interface CharterCalibrationOptions {
+  readonly enabled: boolean
+  readonly consentVersion: number
+  readonly trigger: 'manual' | 'auto'
+  readonly provider?: string
+  readonly model?: string
+  readonly reasoningEffort?: string
+  readonly targetLanguage: 'auto' | 'zh' | 'en'
+  readonly maxInputBytes: number
+  readonly maxOutputTokens: number
+  readonly maxCandidates: number
+  readonly timeoutMs: number
+  readonly cooldownMinutes: number
+}
+
+export const DEFAULT_CALIBRATION_OPTIONS: CharterCalibrationOptions = {
+  enabled: false,
+  consentVersion: 0,
+  trigger: 'manual',
+  targetLanguage: 'auto',
+  maxInputBytes: 24_576,
+  maxOutputTokens: 2_048,
+  maxCandidates: 12,
+  timeoutMs: 30_000,
+  cooldownMinutes: 10,
+}
+
 export interface CharterConfig extends CharterLimits {
   readonly contextOrder: number
   /** Automatically normalize a review draft to the DSH UI language via the session model. */
@@ -132,6 +168,7 @@ export interface CharterConfig extends CharterLimits {
   /** Optional dedicated translation route; both fields must be set to override the session model. */
   readonly languageFollowProvider?: string
   readonly languageFollowModel?: string
+  readonly calibration: CharterCalibrationOptions
 }
 
 export const DEFAULT_CHARTER_CONFIG: CharterConfig = {
@@ -139,6 +176,7 @@ export const DEFAULT_CHARTER_CONFIG: CharterConfig = {
   contextOrder: 130,
   languageFollow: true,
   languageFollowTimeoutMs: 60_000,
+  calibration: DEFAULT_CALIBRATION_OPTIONS,
 }
 
 export const Config: Schema<CharterConfig> = Schema.object({
@@ -160,6 +198,20 @@ export const Config: Schema<CharterConfig> = Schema.object({
   languageFollowTimeoutMs: Schema.number().step(1).min(1_000).max(300_000).default(DEFAULT_CHARTER_CONFIG.languageFollowTimeoutMs),
   languageFollowProvider: Schema.string(),
   languageFollowModel: Schema.string(),
+  calibration: Schema.object({
+    enabled: Schema.boolean().default(DEFAULT_CALIBRATION_OPTIONS.enabled),
+    consentVersion: Schema.number().step(1).min(0).default(DEFAULT_CALIBRATION_OPTIONS.consentVersion),
+    trigger: Schema.union(['manual', 'auto']).default(DEFAULT_CALIBRATION_OPTIONS.trigger),
+    provider: Schema.string(),
+    model: Schema.string(),
+    reasoningEffort: Schema.string(),
+    targetLanguage: Schema.union(['auto', 'zh', 'en']).default(DEFAULT_CALIBRATION_OPTIONS.targetLanguage),
+    maxInputBytes: Schema.number().step(1).min(1_024).max(1_048_576).default(DEFAULT_CALIBRATION_OPTIONS.maxInputBytes),
+    maxOutputTokens: Schema.number().step(1).min(128).max(65_536).default(DEFAULT_CALIBRATION_OPTIONS.maxOutputTokens),
+    maxCandidates: Schema.number().step(1).min(1).max(512).default(DEFAULT_CALIBRATION_OPTIONS.maxCandidates),
+    timeoutMs: Schema.number().step(1).min(1_000).max(300_000).default(DEFAULT_CALIBRATION_OPTIONS.timeoutMs),
+    cooldownMinutes: Schema.number().step(1).min(0).max(10_080).default(DEFAULT_CALIBRATION_OPTIONS.cooldownMinutes),
+  }).default(DEFAULT_CALIBRATION_OPTIONS),
 })
 
 function lifecycleFingerprint(identity: CharterIdentity): string {
@@ -295,6 +347,9 @@ export class CharterService extends Service {
   private readonly config: CharterConfig
   private readonly localizedDrafts = new Map<string, CharterBootstrapDraftProposal>()
   private readonly translatedItems = new Map<string, { readonly items: readonly CharterBootstrapDraftItem[]; readonly language: CharterBootstrapLanguage }>()
+  private readonly calibrationCache = new Map<string, { readonly result: CharterCalibrationResult; readonly at: number }>()
+  private readonly calibrationJobs = new Map<string, Promise<CharterCalibrationResult>>()
+  private readonly calibrationRuns = new Map<string, { readonly result: CharterCalibrationResult; readonly at: number }>()
   private sessionsTable: KvTable<SessionIdType, CharterRecord> | undefined
   private archivesTable: KvTable<string, CharterArchiveCacheEntry> | undefined
   private archivesDomain: { close(): Promise<void> } | undefined
@@ -1036,6 +1091,159 @@ export class CharterService extends Service {
     this.localizedDrafts.set(draftHandle, proposal)
     this.trimMap(this.localizedDrafts, 32)
     return { available: true, proposal }
+  }
+
+  /** Optional calibration capability/status, read separately from strict view capabilities. */
+  calibrationStatus(sessionId: SessionIdType): CharterCalibrationStatusResult {
+    const consent = {
+      required: CALIBRATION_DISCLOSURE_VERSION,
+      acknowledged: this.config.calibration.consentVersion,
+    }
+    const base = { consent, trigger: this.config.calibration.trigger }
+    const llm = this.ctx.get('llm')
+    if (llm === undefined) return { ...base, status: 'unavailable-host', reason: 'Host LLM service is unavailable.' }
+    const model = this.calibrationSelection(sessionId)
+    if (!this.config.calibration.enabled) {
+      return { ...base, status: 'disabled', ...(model === undefined ? {} : { resolved: { provider: model.provider, model: model.model } }), reason: 'Calibration is disabled in the profile configuration.' }
+    }
+    if (this.config.calibration.consentVersion !== CALIBRATION_DISCLOSURE_VERSION) {
+      return { ...base, status: 'consent-required', ...(model === undefined ? {} : { resolved: { provider: model.provider, model: model.model } }), reason: 'Calibration disclosure has not been accepted.' }
+    }
+    if (model === undefined) return { ...base, status: 'unconfigured', reason: 'No calibration model route is available.' }
+    return { ...base, status: 'available', resolved: { provider: model.provider, model: model.model }, efforts: [] }
+  }
+
+  private calibrationSelection(sessionId: SessionIdType): { readonly provider: string; readonly model: string; readonly effort?: string } | undefined {
+    const provider = this.config.calibration.provider?.trim()
+    const model = this.config.calibration.model?.trim()
+    if (provider !== undefined && provider !== '' && model !== undefined && model !== '') {
+      return { provider, model, ...(this.config.calibration.reasoningEffort === undefined ? {} : { effort: this.config.calibration.reasoningEffort }) }
+    }
+    const selection = (this.ctx.agents.get(sessionId) as unknown as { readonly model?: { current(): { provider: string; model: string } | undefined } } | undefined)?.model?.current()
+    if (selection === undefined) return undefined
+    return { provider: selection.provider, model: selection.model, ...(this.config.calibration.reasoningEffort === undefined ? {} : { effort: this.config.calibration.reasoningEffort }) }
+  }
+
+  private calibrationAccepted(sessionId: SessionIdType): readonly { kind: 'invariant' | 'deliverable'; text: string }[] {
+    const session = this.ctx.sessions.get(sessionId)
+    if (session === undefined) return []
+    const record = this.recordFor(session)
+    if (record === undefined) return []
+    return record.current.items
+      .filter(item => item.lifecycle === 'current' && item.review === 'accepted')
+      .map(item => ({ kind: item.kind, text: item.text }))
+  }
+
+  /**
+   * Optional one-shot calibration of an already-extracted draft. Calibration
+   * never mutates the record and is never auto-applied.
+   */
+  async calibrateBootstrap(request: {
+    readonly sessionId: SessionIdType
+    readonly draftHandle: string
+    readonly locale: 'zh' | 'en'
+    readonly effort?: string
+    readonly consentVersion: number
+    readonly awaitCalibration?: boolean
+  }): Promise<CharterCalibrationResult> {
+    const session = this.ctx.sessions.get(request.sessionId)
+    if (session === undefined) throw charterError('NOT_FOUND', 'The Session is not live')
+    if (!this.config.calibration.enabled) throw charterError('CALIBRATION_DISABLED', 'Calibration is disabled')
+    if (request.consentVersion !== CALIBRATION_DISCLOSURE_VERSION || this.config.calibration.consentVersion !== CALIBRATION_DISCLOSURE_VERSION) {
+      throw charterError('CALIBRATION_CONSENT_REQUIRED', 'Calibration disclosure consent is required')
+    }
+    const llm = this.ctx.get('llm') as unknown as DraftLlmRuntime | undefined
+    if (llm === undefined) throw charterError('CALIBRATION_UNAVAILABLE', 'Host LLM service is unavailable')
+    const selection = this.calibrationSelection(request.sessionId)
+    if (selection === undefined) throw charterError('CALIBRATION_UNCONFIGURED', 'No calibration model route is available')
+    const effort = request.effort ?? selection.effort
+    const proposal = this.localizedDrafts.get(request.draftHandle)
+    if (proposal === undefined) throw charterError('INVALID_ARGUMENT', 'calibration draft handle is expired')
+    const accepted = this.calibrationAccepted(request.sessionId)
+    const acceptedDigest = sha256Json(accepted)
+    const key = sha256Json({
+      sessionId: request.sessionId,
+      draftHandle: request.draftHandle,
+      locale: request.locale,
+      effort: effort ?? null,
+      provider: selection.provider,
+      model: selection.model,
+      acceptedDigest,
+      maxCandidates: this.config.calibration.maxCandidates,
+      maxOutputTokens: this.config.calibration.maxOutputTokens,
+      maxInputBytes: this.config.calibration.maxInputBytes,
+      maxItemBytes: this.config.maxItemBytes,
+      targetLanguage: this.config.calibration.targetLanguage,
+      promptVersion: CALIBRATION_PROMPT_VERSION,
+    })
+    const cached = this.calibrationCache.get(key)
+    if (cached !== undefined && Date.now() - cached.at < 30 * 60_000) {
+      this.calibrationRuns.set(cached.result.runId, { result: cached.result, at: cached.at })
+      return { ...cached.result, cached: true, joined: false, pending: false }
+    }
+    let job = this.calibrationJobs.get(key)
+    if (job === undefined) {
+      const runId = randomUUID()
+      job = this.performCalibration({ llm, selection, ...(effort === undefined ? {} : { effort }), proposal, accepted, request, runId })
+      this.calibrationJobs.set(key, job)
+      job.finally(() => this.calibrationJobs.delete(key)).catch(() => undefined)
+      if (request.awaitCalibration === false) {
+        return {
+          runId,
+          pending: true,
+          cached: false,
+          joined: false,
+          promptVersion: CALIBRATION_PROMPT_VERSION,
+          resolved: { provider: selection.provider, model: selection.model, ...(effort === undefined ? {} : { effort }) },
+          candidates: [],
+          truncated: false,
+          inputTruncated: false,
+        }
+      }
+    }
+    const result = await job
+    this.calibrationCache.set(key, { result, at: Date.now() })
+    this.trimMap(this.calibrationCache, 32)
+    this.calibrationRuns.set(result.runId, { result, at: Date.now() })
+    this.trimMap(this.calibrationRuns, 32)
+    return { ...result, cached: false, joined: this.calibrationJobs.has(key) && request.awaitCalibration !== false }
+  }
+
+  private async performCalibration(input: {
+    readonly llm: DraftLlmRuntime
+    readonly selection: { readonly provider: string; readonly model: string }
+    readonly effort?: string
+    readonly proposal: CharterBootstrapDraftProposal
+    readonly accepted: readonly { kind: 'invariant' | 'deliverable'; text: string }[]
+    readonly request: { readonly sessionId: SessionIdType; readonly locale: 'zh' | 'en' }
+    readonly runId: string
+  }): Promise<CharterCalibrationResult> {
+    const targetLanguage = this.config.calibration.targetLanguage === 'auto'
+      ? input.request.locale
+      : this.config.calibration.targetLanguage
+    const draftItems = input.proposal.items.map(item => ({ ref: item.ref, kind: item.kind, text: item.text }))
+    const prepared = buildCalibrationRequest({
+      config: {
+        targetLanguage,
+        maxInputBytes: this.config.calibration.maxInputBytes,
+        maxOutputTokens: this.config.calibration.maxOutputTokens,
+        maxCandidates: this.config.calibration.maxCandidates,
+        maxItemBytes: this.config.maxItemBytes,
+        timeoutMs: this.config.calibration.timeoutMs,
+      },
+      hasObjective: (() => {
+        const live = this.ctx.sessions.get(input.request.sessionId)
+        return live === undefined ? false : this.recordFor(live)?.current.objective !== undefined
+      })(),
+      accepted: input.accepted,
+      draftItems,
+    } satisfies CalibrationRequestInput)
+    const result = await runDraftCalibration(input.llm, {
+      provider: input.selection.provider,
+      model: input.selection.model,
+      ...(input.effort === undefined ? {} : { effort: input.effort }),
+    }, prepared, this.config.calibration.timeoutMs)
+    return { ...result, runId: input.runId, pending: false, cached: false, joined: false }
   }
 
   /** The validated localized draft used by applyBootstrap for structured refs. */
@@ -1902,6 +2110,21 @@ export class CharterService extends Service {
       return []
     })
     const structuredRefs = refs.filter(ref => ref.startsWith('d-'))
+    const calibrationRefs = refs.filter(ref => ref.startsWith('c-'))
+    if (calibrationRefs.length > 0) {
+      if (structuredRefs.length > 0 || normalized.ops.some(op => (op.type === 'item.add' || op.type === 'item.propose') && op.item.clientRef.startsWith('bootstrap-'))) {
+        return unavailableResult('INVALID_ARGUMENT', 'calibrated bootstrap apply cannot mix c-* refs with another ref namespace')
+      }
+      const runId = parsedRequest.data.calibrationRunId
+      if (runId === undefined) return unavailableResult('INVALID_ARGUMENT', 'calibrated bootstrap apply requires calibrationRunId')
+      const run = this.calibrationRuns.get(runId)
+      if (run === undefined || Date.now() - run.at > 30 * 60_000) {
+        return unavailableResult('CALIBRATION_RUN_EXPIRED', 'calibration result expired; run calibration again')
+      }
+      const draft = this.structuredDraftForHandle(parsedRequest.data.draftHandle)
+      if (draft === undefined) return unavailableResult('INVALID_ARGUMENT', 'structured bootstrap draft expired; request a new draft')
+      return this.applyCalibratedBootstrap(normalized, parsedRequest.data.draftHandle, run.result, draft, actor)
+    }
     const usesStructured = structuredRefs.length > 0
       || normalized.ops.some(op => op.type === 'objective.initialize' && op.clientRef?.startsWith('d-obj-') === true)
     if (normalized.ops.some(op => (op.type === 'item.add' || op.type === 'item.propose') && op.item.clientRef.startsWith('d-'))
@@ -2007,6 +2230,86 @@ export class CharterService extends Service {
         projectionVersion: 1,
       }, legacyExtraction.proposal),
     }, { allowContentModified: true, dedupeSourceDigest: sourceDigest })
+  }
+
+  private applyCalibratedBootstrap(
+    normalized: CharterEditRequest,
+    draftHandle: string,
+    run: CharterCalibrationResult,
+    draft: CharterBootstrapDraftProposal,
+    actor: CharterActor,
+  ): Promise<CharterEditResult> {
+    if (run.pending || run.candidates.length === 0) {
+      return Promise.resolve(unavailableResult('CALIBRATION_RUN_EXPIRED', 'calibration has no completed candidates'))
+    }
+    const candidates = new Map<string, { readonly kind: 'objective' | 'invariant' | 'deliverable'; readonly text: string; readonly oversized: boolean }>()
+    const evidence = new Map<string, readonly import('../core/schemas.js').CharterEvidence[]>()
+    for (const candidate of run.candidates) {
+      const oversized = candidate.kind === 'objective'
+        ? utf8Bytes(candidate.text) > this.config.maxObjectiveBytes
+        : utf8Bytes(candidate.text) > this.config.maxItemBytes
+      candidates.set(candidate.ref, { kind: candidate.kind, text: candidate.text, oversized })
+      if (candidate.mergedFrom !== undefined && candidate.mergedFrom.length > 0) {
+        evidence.set(candidate.ref, candidate.mergedFrom.slice(0, 3).map(item => ({
+          kind: 'compaction-summary' as const,
+          sessionId: normalized.sessionId,
+          seq: draft.source.summarySeq,
+          projectionVersion: 1,
+          digest: sha256Text(`${candidate.ref} ${item.excerpt}`),
+          excerpt: item.excerpt.slice(0, 512),
+        })))
+      }
+    }
+    const stripModified = (item: import('../core/schemas.js').NewItemInput): import('../core/schemas.js').NewItemInput => {
+      const { contentModified: _modified, ...rest } = item
+      return rest as import('../core/schemas.js').NewItemInput
+    }
+    const withModified = (item: import('../core/schemas.js').NewItemInput, modified: boolean): import('../core/schemas.js').NewItemInput => modified
+      ? { ...stripModified(item), contentModified: true }
+      : stripModified(item)
+    const ops: import('../core/schemas.js').CharterOp[] = []
+    for (const op of normalized.ops) {
+      if (op.type === 'objective.propose' || op.type === 'objective.redirect') {
+        return Promise.resolve(unavailableResult('INVALID_ARGUMENT', 'calibrated bootstrap cannot propose or redirect an objective'))
+      }
+      if (op.type === 'objective.initialize') {
+        const candidate = op.clientRef === undefined ? candidates.get('') : candidates.get(op.clientRef)
+        if (op.clientRef === undefined || candidate === undefined || candidate.kind !== 'objective' || op.text !== candidate.text) {
+          return Promise.resolve(unavailableResult('INVALID_ARGUMENT', 'calibrated objective.initialize must match the reviewed calibration candidate'))
+        }
+        ops.push(op)
+        continue
+      }
+      if (op.type === 'item.add' || op.type === 'item.propose') {
+        const candidate = candidates.get(op.item.clientRef)
+        if (candidate === undefined || candidate.kind === 'objective' || op.item.kind !== candidate.kind) {
+          return Promise.resolve(unavailableResult('INVALID_ARGUMENT', 'calibrated bootstrap candidate reference is invalid'))
+        }
+        if (candidate.oversized && op.item.text === candidate.text) {
+          return Promise.resolve(unavailableResult('INVALID_ARGUMENT', 'oversized calibration candidate must be edited or split before apply'))
+        }
+        ops.push({ ...op, item: withModified(op.item, op.item.text !== candidate.text) })
+        continue
+      }
+      if (op.type === 'item.supersede') {
+        ops.push({ ...op, replacement: stripModified(op.replacement) })
+        continue
+      }
+      ops.push(op)
+    }
+    const source = {
+      kind: 'compaction-summary' as const,
+      summarySeq: draft.source.summarySeq,
+      at: draft.source.at,
+      sessionId: normalized.sessionId,
+      projectionVersion: 1,
+      digest: sha256Json({ calibration: run.runId, draftHandle, source: draft.source }),
+    }
+    return this.edit({ ...normalized, ops }, actor, source, {
+      allowContentModified: true,
+      dedupeSourceDigest: sha256Json({ calibration: run.runId, draftHandle, source: draft.source }),
+      hostAttachments: { evidenceByClientRef: Object.fromEntries(evidence) },
+    })
   }
 
   private applyStructuredBootstrap(
@@ -2505,7 +2808,13 @@ export class CharterService extends Service {
     untrustedRequest: unknown,
     actor: CharterActor = { kind: 'owner' },
     proposalSource?: import('../core/schemas.js').ProposalSource,
-    options: { readonly allowContentModified?: boolean; readonly dedupeSourceDigest?: string } = {},
+    options: {
+      readonly allowContentModified?: boolean
+      readonly dedupeSourceDigest?: string
+      readonly hostAttachments?: {
+        readonly evidenceByClientRef?: Readonly<Record<string, readonly import('../core/schemas.js').CharterEvidence[]>>
+      }
+    } = {},
   ): Promise<CharterEditResult> {
     let request: CharterEditRequest
     try {
@@ -2624,6 +2933,7 @@ export class CharterService extends Service {
               at: Date.now(),
               limits: this.config,
               ...(proposalSource === undefined ? {} : { proposalSource }),
+              ...(options.hostAttachments === undefined ? {} : { hostAttachments: options.hostAttachments }),
             })
             produced = true
             return nextRecord

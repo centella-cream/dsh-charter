@@ -24,6 +24,8 @@ import type {
 import type {
   CharterBootstrapResult,
   CharterBootstrapDraftResult,
+  CharterCalibrationResult,
+  CharterCalibrationStatusResult,
   CharterEditResult,
   CharterRecordExport,
   CharterRecordOperationResult,
@@ -68,6 +70,19 @@ export const charterErrorCodeSchema = z.enum([
   'RECORD_CONFLICT',
   'OPERATION_ID_REUSED',
   'RECOVERY_UNSUPPORTED',
+  'CALIBRATION_UNAVAILABLE',
+  'CALIBRATION_DISABLED',
+  'CALIBRATION_CONSENT_REQUIRED',
+  'CALIBRATION_UNCONFIGURED',
+  'CALIBRATION_EFFORT_UNSUPPORTED',
+  'CALIBRATION_PROVIDER',
+  'CALIBRATION_TIMEOUT',
+  'CALIBRATION_CANCELLED',
+  'CALIBRATION_MALFORMED',
+  'CALIBRATION_SCHEMA',
+  'CALIBRATION_TEXT',
+  'CALIBRATION_PARAMS_CONFLICT',
+  'CALIBRATION_RUN_EXPIRED',
 ])
 
 export const charterRecordStateSchema = z.discriminatedUnion('kind', [
@@ -571,6 +586,68 @@ export const charterBootstrapDraftResultSchema = z.discriminatedUnion('available
   }).strict(),
 ])
 
+export const charterCalibrationStatusRequestSchema = z.object({
+  sessionId: z.string().min(1).max(256),
+}).strict()
+
+export const charterCalibrationStatusResultSchema = z.object({
+  status: z.enum(['available', 'unavailable-host', 'unconfigured', 'disabled', 'consent-required']),
+  resolved: z.object({ provider: z.string(), model: z.string() }).strict().optional(),
+  efforts: z.array(z.string()).optional(),
+  consent: z.object({ required: z.number().int().nonnegative(), acknowledged: z.number().int().nonnegative() }).strict(),
+  trigger: z.enum(['manual', 'auto']),
+  reason: z.string().optional(),
+}).strict()
+
+export const charterCalibrateBootstrapRequestSchema = z.object({
+  sessionId: z.string().min(1).max(256),
+  draftHandle: z.string().min(1).max(256),
+  locale: z.enum(['zh', 'en']),
+  effort: z.string().optional(),
+  consentVersion: z.number().int().nonnegative(),
+  awaitCalibration: z.boolean().optional(),
+}).strict()
+
+const charterCalibrationMergedSchema = z.object({
+  ref: z.string().min(1).max(64),
+  excerpt: z.string(),
+}).strict()
+
+const charterCalibrationCandidateSchema = z.object({
+  ref: z.string().min(1).max(96),
+  kind: z.enum(['objective', 'invariant', 'deliverable']),
+  text: z.string(),
+  uncertain: z.boolean(),
+  mergedFrom: z.array(charterCalibrationMergedSchema).max(3).optional(),
+}).strict()
+
+export const charterCalibrationResultSchema = z.object({
+  runId: z.string().min(1).max(256),
+  pending: z.boolean(),
+  cached: z.boolean(),
+  joined: z.boolean(),
+  promptVersion: z.number().int().positive(),
+  resolved: z.object({
+    provider: z.string(),
+    model: z.string(),
+    effort: z.string().optional(),
+  }).strict(),
+  candidates: z.array(charterCalibrationCandidateSchema),
+  truncated: z.boolean(),
+  inputTruncated: z.boolean(),
+  degraded: z.array(z.object({
+    ref: z.string(),
+    parts: z.array(z.string()),
+    reason: z.literal('split'),
+  }).strict()).optional(),
+  usage: z.object({
+    inputBytes: z.number().int().nonnegative(),
+    outputTokens: z.number().int().nonnegative().optional(),
+    reasoningTokens: z.number().int().nonnegative().optional(),
+    durationMs: z.number().int().nonnegative(),
+  }).strict().optional(),
+}).strict()
+
 export const charterFrameSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('snapshot'), value: charterViewSchema }).strict(),
   z.object({ type: z.literal('changed'), value: charterViewSchema }).strict(),
@@ -640,6 +717,12 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     'charter/bootstrapDraft': (
       request: { readonly sessionId: SessionId; readonly targetLanguage?: 'zh' | 'en'; readonly awaitTranslation?: boolean },
     ) => Promise<RemoteResult<CharterBootstrapDraftResult>>
+    'charter/calibrationStatus': (
+      request: { readonly sessionId: SessionId },
+    ) => Promise<RemoteResult<CharterCalibrationStatusResult>>
+    'charter/calibrateBootstrap': (
+      request: { readonly sessionId: SessionId; readonly draftHandle: string; readonly locale: 'zh' | 'en'; readonly effort?: string; readonly consentVersion: number; readonly awaitCalibration?: boolean },
+    ) => Promise<RemoteResult<CharterCalibrationResult>>
     'charter/exportRecord': (
       sessionId: SessionId,
     ) => Promise<RemoteResult<CharterRecordExport>>
@@ -702,6 +785,12 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
       bootstrapDraft: (
         request: { readonly sessionId: SessionId; readonly targetLanguage?: 'zh' | 'en'; readonly awaitTranslation?: boolean },
       ) => Promise<RemoteResult<CharterBootstrapDraftResult>>
+      calibrationStatus: (
+        request: { readonly sessionId: SessionId },
+      ) => Promise<RemoteResult<CharterCalibrationStatusResult>>
+      calibrateBootstrap: (
+        request: { readonly sessionId: SessionId; readonly draftHandle: string; readonly locale: 'zh' | 'en'; readonly effort?: string; readonly consentVersion: number; readonly awaitCalibration?: boolean },
+      ) => Promise<RemoteResult<CharterCalibrationResult>>
       exportRecord: (
         sessionId: SessionId,
       ) => Promise<RemoteResult<CharterRecordExport>>
@@ -718,6 +807,8 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
 export type {
   CharterBootstrapResult,
   CharterBootstrapDraftResult,
+  CharterCalibrationResult,
+  CharterCalibrationStatusResult,
   CharterEditRequest,
   CharterEditResult,
   CharterInitializeRequest,

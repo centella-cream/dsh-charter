@@ -36,7 +36,7 @@ function installToolExecutor(ctx: Context): void {
 
 async function mount(
   root: string,
-  config: Partial<Record<string, number | boolean | string>> = {},
+  config: Record<string, unknown> = {},
   options: { readonly autoStartup?: boolean } = {},
 ): Promise<Context> {
   const ctx = new Context()
@@ -2328,6 +2328,97 @@ describe('structured bootstrap draft', () => {
 })
 
 describe('automatic draft language follow', () => {
+  it('calibrates a structured draft, attaches provenance evidence, and applies c-* refs atomically', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-calibration-'))
+    roots.push(root)
+    const ctx = await mount(root, {
+      languageFollow: false,
+      calibration: {
+        enabled: true,
+        consentVersion: 1,
+        trigger: 'manual',
+        targetLanguage: 'auto',
+        maxInputBytes: 24_576,
+        maxOutputTokens: 2_048,
+        maxCandidates: 12,
+        timeoutMs: 30_000,
+        cooldownMinutes: 10,
+      },
+    })
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('calibration-success'), {
+      meta: { cwd: root, createdAt: 1_700_000_003_200 },
+    })
+    await waitForReady(service, session)
+    const fakeAgent = {
+      id: session.id,
+      session,
+      model: { current: () => ({ provider: 'fake', model: 'fake-model' }) },
+    } as unknown as Agent
+    await ctx.agents.register(fakeAgent)
+    const llm = {
+      async *stream(options: { messages?: readonly { content?: readonly { text?: string }[] }[] }) {
+        const prompt = options.messages?.[0]?.content?.[0]?.text ?? ''
+        const merged = /^- (d-[a-z]+-\d+)/mu.exec(prompt)?.[1]
+        const output = JSON.stringify([{
+          kind: 'invariant',
+          text: 'Calibrated invariant.',
+          uncertain: false,
+          ...(merged === undefined ? {} : { mergedFrom: [merged] }),
+        }])
+        yield { type: 'block-start', index: 0, blockType: 'text' }
+        yield { type: 'text-delta', index: 0, text: output }
+        yield { type: 'block-end', index: 0, block: { type: 'text', text: output } }
+        yield { type: 'finish', reason: { kind: 'stop' } }
+      },
+    }
+    ctx.provide('llm', llm as never)
+    const append = session as unknown as { append(type: string, data: unknown): unknown }
+    append.append('compaction/summary', {
+      summary: [{ type: 'text', text: '## Critical Context\n- Must keep the API stable.\n## Pending Jobs\n- Run the full check.\n' }],
+    })
+    const draft = await service.bootstrapDraft(session.id, 'en')
+    expect(draft.available).toBe(true)
+    if (!draft.available) return
+    expect(service.calibrationStatus(session.id).status).toBe('available')
+    const run = await service.calibrateBootstrap({
+      sessionId: session.id,
+      draftHandle: draft.proposal.draftHandle!,
+      locale: 'en',
+      consentVersion: 1,
+      awaitCalibration: true,
+    })
+    expect(run.pending).toBe(false)
+    expect(run.candidates[0]).toMatchObject({
+      ref: 'c-0',
+      kind: 'invariant',
+      text: 'Calibrated invariant.',
+    })
+    expect(run.candidates[0]?.mergedFrom?.[0]?.ref).toMatch(/^d-/u)
+    const applied = await service.applyBootstrap({
+      sessionId: session.id,
+      mutationId: 'calibration-apply',
+      baseRevision: 0,
+      draftHandle: draft.proposal.draftHandle!,
+      calibrationRunId: run.runId,
+      ops: [{
+        type: 'item.add',
+        item: {
+          clientRef: 'c-0',
+          kind: 'invariant',
+          text: 'Calibrated invariant.',
+          order: 0,
+        },
+      }],
+    })
+    expect(applied).toMatchObject({ ok: true })
+    const appliedItem = service.view(session).items.find(item => item.text === 'Calibrated invariant.')
+    expect(appliedItem?.evidence?.[0]).toMatchObject({
+      kind: 'compaction-summary',
+    })
+    expect(appliedItem?.evidence?.[0]?.excerpt?.length).toBeGreaterThan(0)
+  })
+
   it('can disable automatic language following without blocking drafts', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-charter-language-disabled-'))
     roots.push(root)
