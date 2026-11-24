@@ -307,6 +307,6 @@ rm -rf .tmp
 
 - 源码门禁：`npm run check` = 45 文件 / 530 测试 PASS；13 个声明 DSH 版本 token 覆盖 PASS；`verify:ui-metrics --gate=final` PASS。
 - 已实现：opt-in 校准配置/consent 门禁、Host `ctx.llm` 单轮严格 JSON 调用、语义聚合/可读改写校验、`c-*` 候选与 `mergedFrom`、Host-only evidence excerpt、`applyBootstrap.calibrationRunId`、两个新 Remote 方法及基础审阅 UI（校准、uncertain/merge/split、原文、用原文、consent 披露、objective 提醒、诊断 usage）。
-- README/README.zh 已精简并更新为当前构建：0.3.4 Pane 截图在 1440×1000 Web profile 视口下裁剪右侧 `.charter-root`，依赖图裁剪图元素并使用更高视口；均跟随系统浅色主题，来自已安装候选；`package:smoke` 现在校验本地化 `locale/en.json`/`locale/zh.json` metadata 且 description 包含包版本。Web Plugin Manager 在中英文下均渲染了本地化标题/描述和版本说明。
-- 候选 artifact `dist/dsh-charter-0.3.4.tgz` SHA-256 `aa6f82337b02974d99525c4c67ddaa92ae76e5ab29e47b3281940b4a843408b7`；exact-artifact package smoke 与 packed recovery smoke PASS；13 版本矩阵 PASS（`.tmp/compat-13-034-readme.json`，source `8f8d6c8`）。
+- README/README.zh 已精简并更新为当前构建：0.3.4 Pane 截图在 1440×1000 Web profile 视口下裁剪右侧 `.charter-root`，依赖图裁剪图元素并使用更高视口；均跟随系统浅色主题；UI 与契约文本同 README 语言一致（中文复用 `0.3.3` 演示会话的三条中文交付物，因为该 live 会话不能同时从 Web profile 打开）；`package:smoke` 现在校验本地化 `locale/en.json`/`locale/zh.json` metadata 且 description 包含包版本。Web Plugin Manager 在中英文下均渲染了本地化标题/描述和版本说明。
+- 候选 artifact `dist/dsh-charter-0.3.4.tgz` SHA-256 `ac0a6671ab717d7b4e4f44c9c2a3f3b87fa648dbebf31bab561e026f51154903`；exact-artifact package smoke 与 packed recovery smoke PASS；13 版本矩阵 PASS（`.tmp/compat-13-034-readme.json`，source `8f8d6c8`）。
 - 尚未完成：A/B 协议 1/2、真实模型人工校准验收、完整 L4 UI/AT 证据、完整失败/capability 矩阵与 0.4.0 能力。校准默认关闭。
