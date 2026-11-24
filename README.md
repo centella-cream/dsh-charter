@@ -16,7 +16,7 @@ English | [中文](README.zh.md)
 
 ![Dependency graph](docs/assets/charter-graph-0.3.4.png)
 
-The Pane keeps the workspace, Review Center, and Diagnostics in one document column. The screenshots use synthetic demo data.
+The Pane keeps the workspace, Review Center, and Diagnostics in one document column. Screenshots crop to the right-hand Pane, use synthetic demo data, and follow the current system theme.
 
 ## Status
 
