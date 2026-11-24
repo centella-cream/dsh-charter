@@ -29,7 +29,7 @@ import type {
   CharterArchiveListResult,
   CharterArchiveReadResult,
 } from '../host/types.js'
-import { resolveRemoteActor } from './actor.js'
+import { requireOwnerCalibration, resolveRemoteActor } from './actor.js'
 import { remoteMethod } from './compat.js'
 import { watchCharter, type CharterWatchSource } from './watch.js'
 import type { CharterFrame } from './wire.js'
@@ -234,9 +234,7 @@ export class CharterRemoteService extends TypertRemoteService {
     }
     // Calibration spends model budget and is opt-in; a non-owner Remote peer
     // must not trigger it even when the profile has calibration enabled.
-    if (actor.kind !== 'owner') {
-      return Promise.reject(new CharterError('FORBIDDEN', 'Calibration is owner-only'))
-    }
+    requireOwnerCalibration(actor)
     return this.ctx.charter.calibrateBootstrap(request)
   }
 

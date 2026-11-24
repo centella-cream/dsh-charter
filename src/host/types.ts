@@ -494,7 +494,6 @@ export interface CharterCalibrationStatusResult {
   readonly resolved?: { readonly provider: string; readonly model: string }
   readonly efforts?: readonly string[]
   readonly consent: { readonly required: number; readonly acknowledged: number }
-  readonly trigger: 'manual' | 'auto'
   readonly reason?: string
 }
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { CHARTER_LOCALE } from '../../src/client/locales.js'
+import { CALIBRATION_DISCLOSURE } from '../../src/core/calibration-disclosure.js'
 
 const placeholderPattern = /\{[A-Za-z0-9_]+\}/gu
 
@@ -16,6 +17,10 @@ describe('client locale dictionaries', () => {
     for (const key of Object.keys(CHARTER_LOCALE.en) as Array<keyof typeof CHARTER_LOCALE.en>) {
       expect(placeholders(CHARTER_LOCALE.en[key]), key).toEqual(placeholders(CHARTER_LOCALE.zh[key]))
     }
+  })
+
+  it('anchors the English disclosure dialog to the Host disclosure constant', () => {
+    expect(CHARTER_LOCALE.en['bootstrap.calibrationDisclosureText']).toBe(CALIBRATION_DISCLOSURE)
   })
 
   it('never leaks Chinese characters into the English dictionary', () => {

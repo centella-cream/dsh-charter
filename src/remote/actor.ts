@@ -1,5 +1,6 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { resolveActor } from '../host/service.js'
+import { charterError } from '../core/errors.js'
 import type { CharterActor } from '../core/schemas.js'
 import { peerPrincipalRequired } from './compat.js'
 
@@ -15,4 +16,9 @@ export function resolveRemoteActor(
   requirePrincipal: boolean = peerPrincipalRequired(),
 ): CharterActor {
   return resolveActor(ctx, { requirePrincipal })
+}
+
+/** Calibration spends model budget; only the owner principal may trigger it. */
+export function requireOwnerCalibration(actor: CharterActor): void {
+  if (actor.kind !== 'owner') throw charterError('FORBIDDEN', 'Calibration is owner-only')
 }

@@ -1,6 +1,8 @@
 import type { LocaleDictOf } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 
+import { CALIBRATION_DISCLOSURE } from '../core/calibration-disclosure.js'
+
 export const CHARTER_LOCALE_NS = 'dsh-charter'
 
 const en = {
@@ -254,7 +256,7 @@ const en = {
   'bootstrap.calibrationDegraded': 'split into {count} parts',
   'bootstrap.calibrationConsent': 'Calibration needs your disclosure consent.',
   'bootstrap.calibrationDisclosure': 'Review disclosure',
-  'bootstrap.calibrationDisclosureText': 'Enabling calibration sends compaction-summary draft text and current charter items to the configured provider/model. Model usage is charged, including reasoning tokens. Results remain pending review-only proposals and never enter the standing prompt before you accept them. Cache is memory only.',
+  'bootstrap.calibrationDisclosureText': CALIBRATION_DISCLOSURE,
   'bootstrap.calibrationDisclosureSettings': 'This dialog does not write configuration. Set calibration.enabled: true and calibration.consentVersion: 1 in your profile config after reading this disclosure.',
   'bootstrap.calibrationObjectiveWarning': 'Applying a calibrated objective makes it the current objective immediately; review the calibrated text before applying.',
   'bootstrap.calibrationOriginal': 'Original',
@@ -535,7 +537,6 @@ const en = {
   'diagnostics.calibrationUnavailable': 'Calibration capability is not exposed by this Host.',
   'diagnostics.calibrationStatus': 'Status',
   'diagnostics.calibrationConsent': 'Consent',
-  'diagnostics.calibrationTrigger': 'Trigger',
   'diagnostics.calibrationModel': 'Model',
   'diagnostics.calibrationFailures': 'Failures',
   'diagnostics.calibrationInputBytes': 'Input',
@@ -1170,7 +1171,6 @@ const zh: Record<CharterLocaleKey, string> = {
   'diagnostics.calibrationUnavailable': '当前 Host 未暴露校准能力。',
   'diagnostics.calibrationStatus': '状态',
   'diagnostics.calibrationConsent': 'Consent',
-  'diagnostics.calibrationTrigger': '触发方式',
   'diagnostics.calibrationModel': '模型',
   'diagnostics.calibrationFailures': '失败次数',
   'diagnostics.calibrationInputBytes': '输入',

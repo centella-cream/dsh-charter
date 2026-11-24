@@ -136,7 +136,6 @@ import type { SessionStartSource as StartSource } from '@deepseek-ai/dsh-agent'
 export interface CharterCalibrationOptions {
   readonly enabled: boolean
   readonly consentVersion: number
-  readonly trigger: 'manual' | 'auto'
   readonly provider?: string
   readonly model?: string
   readonly reasoningEffort?: string
@@ -145,19 +144,16 @@ export interface CharterCalibrationOptions {
   readonly maxOutputTokens: number
   readonly maxCandidates: number
   readonly timeoutMs: number
-  readonly cooldownMinutes: number
 }
 
 export const DEFAULT_CALIBRATION_OPTIONS: CharterCalibrationOptions = {
   enabled: false,
   consentVersion: 0,
-  trigger: 'manual',
   targetLanguage: 'auto',
   maxInputBytes: 24_576,
   maxOutputTokens: 2_048,
   maxCandidates: 12,
   timeoutMs: 30_000,
-  cooldownMinutes: 10,
 }
 
 export interface CharterConfig extends CharterLimits {
@@ -202,7 +198,6 @@ export const Config: Schema<CharterConfig> = Schema.object({
   calibration: Schema.object({
     enabled: Schema.boolean().description('Opt-in draft calibration. Sends compaction draft text and current charter items to the configured model; results are review-only proposals.').default(DEFAULT_CALIBRATION_OPTIONS.enabled),
     consentVersion: Schema.number().step(1).min(0).description(CALIBRATION_DISCLOSURE).default(DEFAULT_CALIBRATION_OPTIONS.consentVersion),
-    trigger: Schema.union(['manual', 'auto']).default(DEFAULT_CALIBRATION_OPTIONS.trigger),
     provider: Schema.string(),
     model: Schema.string(),
     reasoningEffort: Schema.string().description('Optional adapter reasoning effort. When adapter metadata exposes its supported efforts, the Host validates the choice before the model call; otherwise it is passed through and the adapter rejects it.'),
@@ -211,7 +206,6 @@ export const Config: Schema<CharterConfig> = Schema.object({
     maxOutputTokens: Schema.number().step(1).min(128).max(65_536).default(DEFAULT_CALIBRATION_OPTIONS.maxOutputTokens),
     maxCandidates: Schema.number().step(1).min(1).max(512).default(DEFAULT_CALIBRATION_OPTIONS.maxCandidates),
     timeoutMs: Schema.number().step(1).min(1_000).max(300_000).default(DEFAULT_CALIBRATION_OPTIONS.timeoutMs),
-    cooldownMinutes: Schema.number().step(1).min(0).max(10_080).default(DEFAULT_CALIBRATION_OPTIONS.cooldownMinutes),
   }).default(DEFAULT_CALIBRATION_OPTIONS),
 })
 
@@ -1100,7 +1094,7 @@ export class CharterService extends Service {
       required: CALIBRATION_DISCLOSURE_VERSION,
       acknowledged: this.config.calibration.consentVersion,
     }
-    const base = { consent, trigger: this.config.calibration.trigger }
+    const base = { consent }
     const llm = this.ctx.get('llm')
     if (llm === undefined) return { ...base, status: 'unavailable-host', reason: 'Host LLM service is unavailable.' }
     const model = this.calibrationSelection(sessionId)

@@ -135,7 +135,6 @@ export function DiagnosticsPage({ scope }: { readonly scope: PaneScope }): React
                     <dl className="charter-envelope__facts">
                       <div><dt>{t('diagnostics.calibrationStatus')}</dt><dd>{bootstrapCalibrationStatus.status}</dd></div>
                       <div><dt>{t('diagnostics.calibrationConsent')}</dt><dd>{bootstrapCalibrationStatus.consent.acknowledged} / {bootstrapCalibrationStatus.consent.required}</dd></div>
-                      <div><dt>{t('diagnostics.calibrationTrigger')}</dt><dd>{bootstrapCalibrationStatus.trigger}</dd></div>
                       {bootstrapCalibrationStatus.resolved !== undefined && <div><dt>{t('diagnostics.calibrationModel')}</dt><dd>{bootstrapCalibrationStatus.resolved.provider}/{bootstrapCalibrationStatus.resolved.model}</dd></div>}
                       <div><dt>{t('diagnostics.calibrationFailures')}</dt><dd>{bootstrapCalibrationFailureCount}</dd></div>
                       {bootstrapCalibrationUsage !== undefined && <>

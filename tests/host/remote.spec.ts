@@ -15,6 +15,7 @@ import {
   charterErrorCodeSchema,
 } from '../../src/remote/wire.js'
 import { RemoteError } from '@deepseek-ai/dsh-typert-protocol'
+import { requireOwnerCalibration, resolveRemoteActor } from '../../src/remote/actor.js'
 
 describe('charter Remote contract', () => {
   it('uses create-based strict codecs and validates the 0.2 wire methods', () => {
@@ -336,6 +337,15 @@ describe('charter Remote contract', () => {
       expectedTarget: { kind: 'invalid', reason: 'schema', recordDigest: 'sha256:' + '0'.repeat(64) },
       archive: {},
     }).success).toBe(true)
+  })
+
+  it('denies calibration to a non-owner Remote peer before spending model budget', () => {
+    const actor = resolveRemoteActor({
+      invocation: { peer: { principal: { kind: 'guest' } } },
+    } as never)
+    expect(actor.kind).toBe('user')
+    expect(() => requireOwnerCalibration(actor)).toThrow(expect.objectContaining({ code: 'FORBIDDEN' }))
+    expect(() => requireOwnerCalibration({ kind: 'owner' })).not.toThrow()
   })
 
   it('classifies Remote failures by stable code, never message or instanceof', async () => {

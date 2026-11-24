@@ -2337,13 +2337,11 @@ describe('automatic draft language follow', () => {
       calibration: {
         enabled: true,
         consentVersion: 1,
-        trigger: 'manual',
         targetLanguage: 'auto',
         maxInputBytes: 24_576,
         maxOutputTokens: 2_048,
         maxCandidates: 12,
         timeoutMs: 30_000,
-        cooldownMinutes: 10,
       },
     })
     const service = ctx.charter as CharterService
@@ -2428,13 +2426,11 @@ describe('automatic draft language follow', () => {
       calibration: {
         enabled: true,
         consentVersion: 1,
-        trigger: 'manual',
         targetLanguage: 'auto',
         maxInputBytes: 24_576,
         maxOutputTokens: 2_048,
         maxCandidates: 12,
         timeoutMs: 30_000,
-        cooldownMinutes: 10,
       },
     })
     const service = ctx.charter as CharterService
@@ -2482,13 +2478,11 @@ describe('automatic draft language follow', () => {
       calibration: {
         enabled: true,
         consentVersion: 1,
-        trigger: 'manual',
         targetLanguage: 'auto',
         maxInputBytes: 24_576,
         maxOutputTokens: 2_048,
         maxCandidates: 12,
         timeoutMs: 30_000,
-        cooldownMinutes: 10,
       },
     })
     const service = ctx.charter as CharterService
@@ -2558,13 +2552,11 @@ describe('automatic draft language follow', () => {
       calibration: {
         enabled: true,
         consentVersion: 1,
-        trigger: 'manual',
         targetLanguage: 'auto',
         maxInputBytes: 24_576,
         maxOutputTokens: 2_048,
         maxCandidates: 12,
         timeoutMs: 30_000,
-        cooldownMinutes: 10,
       },
     })
     const service = ctx.charter as CharterService
@@ -2600,13 +2592,11 @@ describe('automatic draft language follow', () => {
     const enabled = {
       enabled: true,
       consentVersion: 1,
-      trigger: 'manual',
       targetLanguage: 'auto',
       maxInputBytes: 24_576,
       maxOutputTokens: 2_048,
       maxCandidates: 12,
       timeoutMs: 30_000,
-      cooldownMinutes: 10,
     }
     const ctx = await mount(root, { calibration: enabled })
     const service = ctx.charter as CharterService
@@ -2636,13 +2626,11 @@ describe('automatic draft language follow', () => {
       calibration: {
         enabled: true,
         consentVersion: 0,
-        trigger: 'manual',
         targetLanguage: 'auto',
         maxInputBytes: 24_576,
         maxOutputTokens: 2_048,
         maxCandidates: 12,
         timeoutMs: 30_000,
-        cooldownMinutes: 10,
       },
     })
     const service = ctx.charter as CharterService
@@ -2714,13 +2702,11 @@ describe('automatic draft language follow', () => {
       calibration: {
         enabled: true,
         consentVersion: 1,
-        trigger: 'manual',
         targetLanguage: 'auto',
         maxInputBytes: 24_576,
         maxOutputTokens: 2_048,
         maxCandidates: 12,
         timeoutMs: 30_000,
-        cooldownMinutes: 10,
       },
     })
     const service = ctx.charter as CharterService

@@ -10,8 +10,9 @@ import type {
   CharterCalibrationResult,
 } from './types.js'
 
+export { CALIBRATION_DISCLOSURE, CALIBRATION_DISCLOSURE_VERSION } from '../core/calibration-disclosure.js'
+
 export const CALIBRATION_PROMPT_VERSION = 1
-export const CALIBRATION_DISCLOSURE_VERSION = 1
 
 const MAX_ACCEPTED_BYTES = 8_192
 const MAX_MERGED_FROM = 3
@@ -310,4 +311,3 @@ export async function runDraftCalibration(
   }
 }
 
-export const CALIBRATION_DISCLOSURE = 'Enabling calibration sends compaction-summary text and current charter items to the configured provider/model. Model usage is charged, including reasoning tokens. Results are pending proposals only and never take effect before you accept them. Cache is in memory only.'

@@ -461,7 +461,6 @@ describe('per-Session draft ownership', () => {
       calibrationStatus: async () => ({
         status: 'available',
         consent: { required: 1, acknowledged: 1 },
-        trigger: 'manual',
       }),
       calibrateBootstrap: async () => ({
         runId: 'run-1',
@@ -529,7 +528,7 @@ describe('per-Session draft ownership', () => {
           },
         }
       },
-      calibrationStatus: async () => ({ status: 'available', consent: { required: 1, acknowledged: 1 }, trigger: 'manual' }),
+      calibrationStatus: async () => ({ status: 'available', consent: { required: 1, acknowledged: 1 } }),
       calibrateBootstrap: async request => {
         calibrationHandle = request.draftHandle
         return {

@@ -594,7 +594,6 @@ export const charterCalibrationStatusResultSchema = z.object({
   resolved: z.object({ provider: z.string(), model: z.string() }).strict().optional(),
   efforts: z.array(z.string()).optional(),
   consent: z.object({ required: z.number().int().nonnegative(), acknowledged: z.number().int().nonnegative() }).strict(),
-  trigger: z.enum(['manual', 'auto']),
   reason: z.string().optional(),
 }).strict()
 
