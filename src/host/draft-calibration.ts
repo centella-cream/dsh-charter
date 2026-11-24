@@ -131,7 +131,7 @@ function buildPreparedCalibrationRequest(
     'If meaning is uncertain, keep the source wording and set uncertain=true.',
     'Return only a JSON array, with no prose and no Markdown fence. Each element is:',
     '{"kind":"invariant|deliverable|objective","text":"...","uncertain":false,"mergedFrom":["d-..."]}',
-    `At most ${selected.length} results. mergedFrom has at most ${MAX_MERGED_FROM} refs, each from the draft candidates in this batch.`,
+    `At most ${selected.length + Math.max(2, Math.ceil(selected.length * 0.25))} results. mergedFrom has at most ${MAX_MERGED_FROM} refs, each from the draft candidates in this batch.`,
     input.hasObjective ? 'The existing charter already has an objective: do not emit an objective candidate.' : 'At most one objective candidate is allowed.',
   ].join('\n')
   const draft = selected.map(item => `- ${item.ref} [${item.kind}] ${truncateAtBoundary(item.text, input.config.maxInputBytes)}`)
@@ -153,7 +153,9 @@ function buildPreparedCalibrationRequest(
     selected,
     inputTruncated,
     hasObjective: input.hasObjective,
-    candidateLimit: selected.length,
+    // Leave a small split margin: a model may legitimately turn one compound
+    // input into two atomic candidates. The global cap still applies at merge.
+    candidateLimit: selected.length + Math.max(2, Math.ceil(selected.length * 0.25)),
     maxOutputTokens: input.config.maxOutputTokens,
     maxItemBytes: input.config.maxItemBytes,
     inputBytes: acceptedBytes + selected.reduce((sum, item) => sum + utf8Bytes(item.text) + utf8Bytes(item.ref), 0),
@@ -603,10 +605,32 @@ function mergeCalibrationResults(
   }> = []
   const byKey = new Map<string, number>()
   const conflicts: { readonly refs: readonly string[]; readonly reason: 'near-duplicate' | 'objective' }[] = []
+  const sourceKinds = new Map(filterContractDraftItems(plan.source.draftItems).items.map(item => [item.ref, item.kind]))
+  let acceptedObjective = false
   for (const [batchIndex, result] of results.entries()) {
     const filtered = filterCalibrationCandidates(result.candidates)
     for (const item of filtered.excludedRefs) excludedRefs.push(item)
-    for (const candidate of filtered.candidates) {
+    const batchHasObjective = plan.batches[batchIndex]?.selected.some(item => item.kind === 'objective') === true
+    for (const rawCandidate of filtered.candidates) {
+      const refs = rawCandidate.mergedFrom?.map(item => item.ref) ?? []
+      const sourceObjective = refs.some(ref => sourceKinds.get(ref) === 'objective')
+      const sourceDeliverable = refs.some(ref => sourceKinds.get(ref) === 'deliverable')
+      // The model sometimes rewrites the objective as an invariant, or splits a
+      // deliverable action into invariant-looking fragments. Source provenance
+      // is authoritative for these two kinds.
+      const candidate = sourceObjective && rawCandidate.kind !== 'objective'
+        ? { ...rawCandidate, kind: 'objective' as const }
+        : sourceDeliverable && rawCandidate.kind === 'invariant'
+          ? { ...rawCandidate, kind: 'deliverable' as const }
+          : rawCandidate
+      if (candidate.kind === 'objective') {
+        const refsForConflict = refs.length === 0 ? [candidate.ref] : refs
+        if (plan.source.hasObjective || !batchHasObjective || acceptedObjective) {
+          conflicts.push({ refs: refsForConflict, reason: 'objective' })
+          continue
+        }
+        acceptedObjective = true
+      }
       const key = canonicalCandidateText(candidate.text)
       const existing = byKey.get(key)
       if (existing !== undefined) {
@@ -650,9 +674,9 @@ function mergeCalibrationResults(
   const degraded: { readonly ref: string; readonly parts: readonly string[]; readonly reason: 'split' }[] = []
   for (const [batchIndex, result] of results.entries()) {
     for (const entry of result.degraded ?? []) {
-      const ref = refMap.get(`${batchIndex}:${entry.ref}`)
-      if (ref === undefined) continue
+      const ref = refMap.get(`${batchIndex}:${entry.ref}`) ?? entry.ref
       const parts = entry.parts.map(part => refMap.get(`${batchIndex}:${part}`)).filter((part): part is string => part !== undefined)
+      if (parts.length === 0) continue
       degraded.push({ ref, parts, reason: 'split' })
     }
   }
@@ -661,8 +685,6 @@ function mergeCalibrationResults(
   for (const candidate of droppedCandidates) {
     for (const item of candidate.mergedFrom) excludedRefs.push({ ref: item.ref, reason: 'global-cap' })
   }
-  const objectiveConflicts = candidates.filter(candidate => candidate.kind === 'objective')
-  if (objectiveConflicts.length > 1) conflicts.push({ refs: objectiveConflicts.map(candidate => candidate.ref), reason: 'objective' })
   const completedBatches = results.filter(result => result.ok).length
   const failedBatches = results.length - completedBatches
   const usage = results.reduce((sum, result) => addUsage(sum, result.usage), { inputBytes: 0, durationMs: 0 } as BatchRunResult['usage'])

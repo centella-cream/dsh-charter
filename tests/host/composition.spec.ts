@@ -2358,7 +2358,8 @@ describe('automatic draft language follow', () => {
     const llm = {
       async *stream(options: { messages?: readonly { content?: readonly { text?: string }[] }[] }) {
         const prompt = options.messages?.[0]?.content?.[0]?.text ?? ''
-        const merged = /^- (d-[a-z]+-\d+)/mu.exec(prompt)?.[1]
+        const merged = /^- (d-inv-\d+)/mu.exec(prompt)?.[1]
+          ?? /^- (d-(?:del)-\d+)/mu.exec(prompt)?.[1]
         const output = JSON.stringify([{
           kind: 'invariant',
           text: 'Calibrated invariant.',
@@ -2374,7 +2375,7 @@ describe('automatic draft language follow', () => {
     ctx.provide('llm', llm as never)
     const append = session as unknown as { append(type: string, data: unknown): unknown }
     append.append('compaction/summary', {
-      summary: [{ type: 'text', text: '## Critical Context\n- Must keep the API stable.\n## Pending Jobs\n- Run the full check.\n' }],
+      summary: [{ type: 'text', text: '## Critical Context\n- Must keep the API stable.\n- Do not break clients.\n## Pending Jobs\n- Run the full check.\n' }],
     })
     const draft = await service.bootstrapDraft(session.id, 'en')
     expect(draft.available).toBe(true)

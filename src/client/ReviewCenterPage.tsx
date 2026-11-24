@@ -27,6 +27,7 @@ export function ReviewCenterPage({ scope }: { readonly scope: PaneScope }): Reac
   bootstrapCalibrationBusy,
   bootstrapCalibrationError,
   bootstrapCalibrationSummary,
+  bootstrapCalibrationConflicts,
   bootstrapObjectiveRef,
   calibrateBootstrap,
   useOriginalBootstrap,
@@ -381,6 +382,11 @@ export function ReviewCenterPage({ scope }: { readonly scope: PaneScope }): Reac
                               failed: bootstrapCalibrationSummary.failedBatches,
                             })
                           : t('bootstrap.calibrationIncomplete', { excluded: bootstrapCalibrationSummary.excludedCount })}
+                      </div>
+                    )}
+                    {bootstrapCalibrationConflicts !== undefined && bootstrapCalibrationConflicts.length > 0 && (
+                      <div className="charter-notice charter-notice--warning" role="status">
+                        {t('bootstrap.calibrationConflicts', { count: bootstrapCalibrationConflicts.length })}
                       </div>
                     )}
                     {bootstrapCalibrationStatus?.status === 'consent-required' && (

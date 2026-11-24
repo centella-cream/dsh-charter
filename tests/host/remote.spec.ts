@@ -11,6 +11,7 @@ import {
   charterViewSchema,
   charterProposalQueryResultSchema,
   charterChangeQueryResultSchema,
+  charterCalibrationResponseSchema,
   charterChangeSetPreviewResultSchema,
   charterErrorCodeSchema,
 } from '../../src/remote/wire.js'
@@ -81,6 +82,38 @@ describe('charter Remote contract', () => {
       order: 0,
       createdRevision: 1,
     }).success).toBe(true)
+  })
+
+  it('accepts v8 batch diagnostics and conflicts on the wire', () => {
+    const parsed = charterCalibrationResponseSchema.safeParse({
+      runId: 'run-1',
+      pending: false,
+      cached: false,
+      joined: false,
+      promptVersion: 2,
+      resolved: { provider: 'p', model: 'm' },
+      candidates: [],
+      batchCount: 2,
+      completedBatches: 2,
+      failedBatches: 0,
+      partial: false,
+      excludedRefs: [{ ref: 'd-inv-0', reason: 'non-contract' }],
+      conflicts: [{ refs: ['c-0', 'c-1'], reason: 'objective' }],
+      truncated: false,
+      inputTruncated: false,
+      usage: { inputBytes: 10, durationMs: 20, calls: 2 },
+    })
+    expect(parsed.success).toBe(true)
+  })
+
+  it('accepts a classified calibration failure as a domain result', () => {
+    const parsed = charterCalibrationResponseSchema.safeParse({
+      ok: false,
+      code: 'CALIBRATION_EFFORT_UNSUPPORTED',
+      message: 'reasoning effort is not available',
+    })
+    expect(parsed.success).toBe(true)
+    expect(charterCalibrationResponseSchema.safeParse({ ok: false }).success).toBe(false)
   })
 
   it('reads a view emitted by a Host that predates the storage-limit fields', () => {

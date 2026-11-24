@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { SessionId } from '@deepseek-ai/dsh-session'
+import { CharterCalibrationCallError } from '../../src/client/remote-error.js'
 import type { CharterEditRequest, CharterItem } from '../../src/core/schemas.js'
 import type {
   CharterBootstrapDraftResult,
@@ -545,6 +546,85 @@ describe('per-Session draft ownership', () => {
       excludedCount: 1,
     })
     expect(draft.getSnapshot().bootstrapItems[0]).toMatchObject({ id: 'c-0' })
+  })
+
+  it('surfaces classified calibration failures instead of swallowing them', async () => {
+    const fake = source({
+      edit: async () => ({ ok: false, code: 'UNAVAILABLE', message: 'unused' }),
+      bootstrap: async () => ({
+        available: true,
+        proposal: {
+          draftHandle: 'draft-failure',
+          objective: 'L1 objective',
+          invariants: ['L1 invariant'],
+          deliverables: [],
+          source: { summarySeq: 9, at: 11 },
+          extractorVersion: 2,
+          draftLang: 'en',
+          language: { requested: 'en', status: 'source' },
+          draftItems: [{ ref: 'd-inv-0', kind: 'invariant', text: 'L1 invariant', lang: 'en', oversized: false }],
+        },
+      }),
+      calibrationStatus: async () => ({ status: 'available', consent: { required: 2, acknowledged: 2 } }),
+      calibrateBootstrap: async () => {
+        throw new CharterCalibrationCallError('CALIBRATION_EFFORT_UNSUPPORTED', 'reasoning effort is not available')
+      },
+    })
+    const draft = new CharterDraft(sessionId, () => fake)
+    draft.bindLifecycle('life-calibration-failure')
+    draft.ensureBootstrap(view(0), true)
+    await new Promise(resolve => setTimeout(resolve, 0))
+    await new Promise(resolve => setTimeout(resolve, 0))
+    await draft.refreshCalibrationStatus()
+    await draft.calibrateBootstrap()
+    expect(draft.getSnapshot().bootstrapCalibrationError).toContain('CALIBRATION_EFFORT_UNSUPPORTED')
+    expect(draft.getSnapshot().bootstrapCalibrationFailureCount).toBe(1)
+  })
+
+  it('surfaces calibration conflicts and maps degraded parts after global renumbering', async () => {
+    const fake = source({
+      edit: async () => ({ ok: false, code: 'UNAVAILABLE', message: 'unused' }),
+      bootstrap: async () => ({
+        available: true,
+        proposal: {
+          draftHandle: 'draft-conflict',
+          objective: 'L1 objective',
+          invariants: ['L1 invariant'],
+          deliverables: [],
+          source: { summarySeq: 9, at: 11 },
+          extractorVersion: 2,
+          draftLang: 'en',
+          language: { requested: 'en', status: 'source' },
+          draftItems: [{ ref: 'd-inv-0', kind: 'invariant', text: 'L1 invariant', lang: 'en', oversized: false }],
+        },
+      }),
+      calibrationStatus: async () => ({ status: 'available', consent: { required: 2, acknowledged: 2 } }),
+      calibrateBootstrap: async () => ({
+        runId: 'run-conflict',
+        pending: false,
+        cached: false,
+        joined: false,
+        promptVersion: 2,
+        resolved: { provider: 'p', model: 'm' },
+        candidates: [
+          { ref: 'c-0', kind: 'invariant', text: 'First part', uncertain: false },
+          { ref: 'c-1', kind: 'invariant', text: 'Second part', uncertain: false },
+        ],
+        conflicts: [{ refs: ['d-inv-0'], reason: 'objective' }],
+        degraded: [{ ref: 'c-old', parts: ['c-0', 'c-1'], reason: 'split' }],
+        truncated: false,
+        inputTruncated: false,
+      }),
+    })
+    const draft = new CharterDraft(sessionId, () => fake)
+    draft.bindLifecycle('life-calibration-conflict')
+    draft.ensureBootstrap(view(0), true)
+    await new Promise(resolve => setTimeout(resolve, 0))
+    await new Promise(resolve => setTimeout(resolve, 0))
+    await draft.refreshCalibrationStatus()
+    await draft.calibrateBootstrap()
+    expect(draft.getSnapshot().bootstrapCalibrationConflicts).toEqual([{ refs: ['d-inv-0'], reason: 'objective' }])
+    expect(draft.getSnapshot().bootstrapItems.map(item => item.calibration?.degradedParts)).toEqual([2, 2])
   })
 
   it('still runs language follow when calibration is available', async () => {

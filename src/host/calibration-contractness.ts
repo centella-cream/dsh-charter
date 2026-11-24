@@ -18,6 +18,7 @@ const CONFIG_FRAGMENT = /^(?:[A-Z][A-Z0-9_]{2,}\s*=|(?:[A-Z][A-Z0-9_]{2,}\s*,\s*
 const ACTION_LABEL = /^(?:T|D|F)[-_]?\d+[:：]\s*/iu
 const IMPERATIVE = /\b(?:add|apply|clarify|commit|confirm|create|decide|define|drop|ensure|fix|implement|keep|merge|pin|remove|restore|run|set|update|write)\b/iu
 const HARD_INVARIANT = /\b(?:must(?: not)?|never|forbidden|not allowed|do not|don't|shall|always|no\b.*\buntil)\b/iu
+const HARD_DECISION = /\b(?:remains?|owner|approval|responsibility)\b/iu
 const ACTION_START = /^(?:add|apply|clarify|commit|confirm|create|decide|define|drop|ensure|fix|implement|keep|merge|pin|remove|restore|run|set|update|write)\b/iu
 
 /** Return why a raw line/calibrated candidate is not a durable contract item. */
@@ -26,8 +27,11 @@ export function contractnessReason(text: string): ContractnessReason | undefined
   if (value.length === 0) return 'fragment'
   if (TRAILING_COLON.test(value)) return 'fragment'
   if (CONFIG_FRAGMENT.test(value) && !IMPERATIVE.test(value)) return 'fragment'
+  // Real constraints can begin with words such as "Tests"/"Coverage"/"Current".
+  // Keep them when they carry a mandatory/imperative clause.
+  if (HARD_INVARIANT.test(value)) return undefined
   if (STATUS_START.test(value) || STATUS_ANY.test(value)) return 'status'
-  if (HISTORY.test(value)) return 'history'
+  if (HISTORY.test(value) && !HARD_DECISION.test(value)) return 'history'
   if (OPTIONAL.test(value)) return 'optional'
   if (PENDING.test(value)) return 'pending'
   return undefined

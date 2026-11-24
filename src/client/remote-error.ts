@@ -82,3 +82,30 @@ export function classifyConnectionError(
   if (code === 'gateway/cancelled' || code === 'gateway/timeout') return 'timeout'
   return fallback
 }
+
+
+/** A calibration business failure returned by the Host envelope. */
+export class CharterCalibrationCallError extends Error {
+  readonly code: string
+
+  constructor(code: string, message: string) {
+    super(message)
+    this.name = 'CharterCalibrationCallError'
+    this.code = code
+  }
+}
+
+/** Convert a Remote rejection or calibration failure value into a classified Error. */
+export function calibrationCallError(value: unknown): Error {
+  if (typeof value === 'object' && value !== null) {
+    const candidate = value as { code?: unknown; message?: unknown; details?: { code?: unknown; message?: unknown } }
+    const code = typeof candidate.code === 'string'
+      ? candidate.code
+      : typeof candidate.details?.code === 'string' ? candidate.details.code : undefined
+    const message = typeof candidate.message === 'string'
+      ? candidate.message
+      : typeof candidate.details?.message === 'string' ? candidate.details.message : undefined
+    if (code !== undefined) return new CharterCalibrationCallError(code, message ?? 'Calibration failed')
+  }
+  return value instanceof Error ? value : new Error(String(value))
+}

@@ -7,7 +7,7 @@ import type {
   CharterRestoreRequest,
   CharterRestoreTarget,
 } from '../core/schemas.js'
-import { classifyRemoteFailure } from './remote-error.js'
+import { CharterCalibrationCallError, classifyRemoteFailure } from './remote-error.js'
 import type { CharterOp, NewItemInput } from '../core/schemas.js'
 import type {
   CharterBootstrapDraftProposal,
@@ -168,6 +168,7 @@ export interface CharterDraftState {
   readonly bootstrapSourceDraftHandle?: string | undefined
   readonly bootstrapCalibrationUsage?: import('../host/types.js').CharterCalibrationResult['usage'] | undefined
   readonly bootstrapCalibrationSummary?: BootstrapCalibrationSummary | undefined
+  readonly bootstrapCalibrationConflicts?: import('../host/types.js').CharterCalibrationResult['conflicts'] | undefined
   readonly bootstrapCalibrationFailureCount: number
   readonly bootstrapObjectiveRef?: string | undefined
   /** A stream frame made the reviewed draft stale while its RPC outcome was unknown. */
@@ -303,6 +304,7 @@ function initialState(sessionId: SessionId): CharterDraftState {
     bootstrapSourceDraftHandle: undefined,
     bootstrapCalibrationUsage: undefined,
     bootstrapCalibrationSummary: undefined,
+    bootstrapCalibrationConflicts: undefined,
     bootstrapCalibrationFailureCount: 0,
     bootstrapObjectiveRef: undefined,
     bootstrapNeedsStale: false,
@@ -1275,6 +1277,7 @@ export class CharterDraft {
         bootstrapCalibrationRunId: undefined,
         bootstrapCalibrationUsage: undefined,
         bootstrapCalibrationSummary: undefined,
+        bootstrapCalibrationConflicts: undefined,
         bootstrapCalibrationError: undefined,
         bootstrapCalibrationFailureCount: 0,
       } : {}),
@@ -1379,7 +1382,7 @@ export class CharterDraft {
     const draftHandle = this.state.bootstrapSourceDraftHandle ?? this.state.bootstrap?.draftHandle
     if (status?.status !== 'available' || source?.calibrateBootstrap === undefined || draftHandle === undefined) return
     if (this.state.bootstrapCalibrationBusy) return
-    this.update({ bootstrapCalibrationBusy: true, bootstrapCalibrationError: undefined })
+    this.update({ bootstrapCalibrationBusy: true, bootstrapCalibrationError: undefined, bootstrapCalibrationConflicts: undefined })
     try {
       // Two-phase: return quickly with a run id, then join the same Host job.
       const pending = await source.calibrateBootstrap({
@@ -1398,9 +1401,11 @@ export class CharterDraft {
       if (result === undefined) throw new Error('calibration request failed')
       this.applyCalibrationResult(result)
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      const code = error instanceof CharterCalibrationCallError ? error.code : undefined
       this.update({
         bootstrapCalibrationBusy: false,
-        bootstrapCalibrationError: error instanceof Error ? error.message : String(error),
+        bootstrapCalibrationError: code === undefined ? message : `${code}: ${message}`,
         bootstrapCalibrationFailureCount: this.state.bootstrapCalibrationFailureCount + 1,
       })
     }
@@ -1427,9 +1432,9 @@ export class CharterDraft {
           ...(candidate.mergedFrom === undefined || candidate.mergedFrom.length === 0
             ? {}
             : { mergedFrom: candidate.mergedFrom.map(item => ({ ref: item.ref, text: item.excerpt })) }),
-          ...(result.degraded?.find(entry => candidate.ref.startsWith(`${entry.ref}.`)) === undefined
+          ...(result.degraded?.find(entry => entry.parts.includes(candidate.ref)) === undefined
             ? {}
-            : { degradedParts: result.degraded.find(entry => candidate.ref.startsWith(`${entry.ref}.`))?.parts.length ?? 0 }),
+            : { degradedParts: result.degraded.find(entry => entry.parts.includes(candidate.ref))?.parts.length ?? 0 }),
         },
       }))
     const objective = result.candidates.find(candidate => candidate.kind === 'objective')
@@ -1450,6 +1455,7 @@ export class CharterDraft {
         excludedCount,
         ...(result.usage?.calls === undefined ? {} : { calls: result.usage.calls }),
       } } : { bootstrapCalibrationSummary: undefined }),
+      ...(result.conflicts === undefined || result.conflicts.length === 0 ? { bootstrapCalibrationConflicts: undefined } : { bootstrapCalibrationConflicts: result.conflicts }),
       bootstrapObjectiveRef: objective?.ref,
       bootstrapObjective: objective?.text ?? '',
       bootstrapItems: items,
@@ -1484,6 +1490,7 @@ export class CharterDraft {
       bootstrapSourceDraftHandle: undefined,
       bootstrapCalibrationBusy: false,
       bootstrapCalibrationSummary: undefined,
+      bootstrapCalibrationConflicts: undefined,
       bootstrapCalibrationError: undefined,
     })
   }

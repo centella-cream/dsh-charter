@@ -205,6 +205,71 @@ describe('adaptive calibration planning and batching (v8)', () => {
     }
   }
 
+  it('promotes a deliverable-provenance invariant to the deliverable kind', async () => {
+    const deliverableSource = {
+      ...source,
+      draftItems: [{ ref: 'd-del-0', kind: 'deliverable' as const, text: 'Run the full gate.' }],
+    }
+    const model = {
+      async *stream(options: never) {
+        const refs = promptRefs(options)
+        const output = JSON.stringify([{ kind: 'invariant', text: 'Run the full gate.', mergedFrom: [refs[0] ?? 'd-del-0'] }])
+        yield { type: 'block-end', index: 0, block: { type: 'text', text: output } }
+        yield { type: 'finish', reason: { kind: 'stop' } }
+      },
+    }
+    const result = await runCalibrationPlan(model as never, { provider: 'p', model: 'm' }, planCalibrationBatches(deliverableSource, batching), options)
+    expect(result.candidates[0]?.kind).toBe('deliverable')
+  })
+
+  it('promotes an objective-provenance invariant to the objective kind', async () => {
+    const objectiveSource = {
+      ...source,
+      draftItems: [
+        { ref: 'd-obj-0', kind: 'objective' as const, text: 'Ship the calibrated dashboard.' },
+        { ref: 'd-inv-0', kind: 'invariant' as const, text: 'Keep the API stable.' },
+      ],
+    }
+    const model = {
+      async *stream(options: never) {
+        const refs = promptRefs(options)
+        const output = JSON.stringify([{ kind: 'invariant', text: 'Ship the calibrated dashboard.', mergedFrom: [refs[0] ?? 'd-obj-0'] }])
+        yield { type: 'block-end', index: 0, block: { type: 'text', text: output } }
+        yield { type: 'finish', reason: { kind: 'stop' } }
+      },
+    }
+    const result = await runCalibrationPlan(model as never, { provider: 'p', model: 'm' }, planCalibrationBatches(objectiveSource, batching), options)
+    expect(result.candidates.filter(candidate => candidate.kind === 'objective')).toHaveLength(1)
+  })
+
+  it('accepts objective only from the batch that carried objective input', async () => {
+    const objectiveSource = {
+      ...source,
+      draftItems: [
+        { ref: 'd-obj-0', kind: 'objective' as const, text: 'Ship the calibrated dashboard.' },
+        ...Array.from({ length: 9 }, (_, index) => ({ ref: `d-inv-${index}`, kind: 'invariant' as const, text: `Requirement ${index} must remain stable.` })),
+      ],
+    }
+    let call = 0
+    const model = {
+      async *stream(options: never) {
+        call += 1
+        const refs = promptRefs(options)
+        const output = JSON.stringify([{
+          kind: 'objective',
+          text: `Objective from batch ${call}.`,
+          mergedFrom: [refs[0] ?? 'd-obj-0'],
+        }])
+        yield { type: 'block-end', index: 0, block: { type: 'text', text: output } }
+        yield { type: 'usage', usage: { outputTokens: 10 } }
+        yield { type: 'finish', reason: { kind: 'stop' } }
+      },
+    }
+    const result = await runCalibrationPlan(model as never, { provider: 'p', model: 'm' }, planCalibrationBatches(objectiveSource, batching), options)
+    expect(result.candidates.filter(candidate => candidate.kind === 'objective')).toHaveLength(1)
+    expect(result.conflicts?.some(conflict => conflict.reason === 'objective')).toBe(true)
+  })
+
   it('plans bounded batches and keeps every selected ref', () => {
     const plan = planCalibrationBatches(source, batching)
     expect(plan.batches).toHaveLength(4)
@@ -274,6 +339,15 @@ describe('contractness gate and quotas (v9)', () => {
     expect(filtered.items.find(item => item.ref === 'd-inv-1')?.kind).toBe('deliverable')
     expect(filtered.excludedRefs.map(item => item.ref)).toEqual(['d-inv-0', 'd-inv-2', 'd-inv-3', 'd-inv-4'])
     expect(filtered.excludedRefs.every(item => item.reason === 'non-contract')).toBe(true)
+  })
+
+  it('keeps mandatory Test/Coverage/decision-authority lines', () => {
+    const filtered = filterContractDraftItems([
+      { ref: 'd-inv-0', kind: 'invariant', text: 'Tests must pass before release.' },
+      { ref: 'd-inv-1', kind: 'invariant', text: 'Coverage must stay at least 90%.' },
+      { ref: 'd-inv-2', kind: 'invariant', text: 'User decision authority remains with the owner.' },
+    ])
+    expect(filtered.items.map(item => item.ref)).toEqual(['d-inv-0', 'd-inv-1', 'd-inv-2'])
   })
 
   it('keeps the objective and reserves deliverable slots under the global cap', () => {

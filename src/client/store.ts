@@ -22,7 +22,7 @@ import type {
 } from '../host/types.js'
 import type { CharterChangedFrame, CharterFrame, CharterSnapshotFrame, CharterSummaryFrame } from '../remote/wire.js'
 import { CharterDraft } from './draft-store.js'
-import { classifyConnectionError, type CharterConnectionErrorKind } from './remote-error.js'
+import { calibrationCallError, classifyConnectionError, type CharterConnectionErrorKind } from './remote-error.js'
 
 export interface CharterClientState {
   readonly status: 'connecting' | 'ready' | 'error'
@@ -286,19 +286,19 @@ export class CharterSessionSource implements CharterSource {
         readonly effort?: string
         readonly consentVersion: number
         readonly awaitCalibration?: boolean
-      }) => Promise<{ ok: true; value: CharterCalibrationResult } | { ok: false; error: unknown }>
+      }) => Promise<{ ok: true; value: CharterCalibrationResult | import('../host/types.js').CharterCalibrationFailure } | { ok: false; error: unknown }>
     }).calibrateBootstrap
     if (typeof method !== 'function') return undefined
-    try {
-      const result = await method({
-        sessionId: this.sessionId,
-        locale,
-        ...request,
-      })
-      return result.ok ? result.value : undefined
-    } catch {
-      return undefined
+    const result = await method({
+      sessionId: this.sessionId,
+      locale,
+      ...request,
+    }).catch((error: unknown) => { throw calibrationCallError(error) })
+    if (!result.ok) throw calibrationCallError(result.error)
+    if ('ok' in result.value && result.value.ok === false) {
+      throw calibrationCallError(result.value)
     }
+    return result.value as CharterCalibrationResult
   }
 
   readonly edit = async (request: CharterEditRequest): Promise<CharterEditResult> => {

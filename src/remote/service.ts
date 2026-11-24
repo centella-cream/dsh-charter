@@ -11,6 +11,7 @@ import type {
 import type {
   CharterBootstrapResult,
   CharterBootstrapDraftResult,
+  CharterCalibrationFailure,
   CharterCalibrationResult,
   CharterCalibrationStatusResult,
   CharterEditResult,
@@ -224,18 +225,34 @@ export class CharterRemoteService extends TypertRemoteService {
     readonly effort?: string
     readonly consentVersion: number
     readonly awaitCalibration?: boolean
-  }): Promise<CharterCalibrationResult> {
-    let actor: CharterActor
+  }): Promise<CharterCalibrationResult | CharterCalibrationFailure> {
+    return this.calibrateBootstrapResult(request)
+  }
+
+  private async calibrateBootstrapResult(request: {
+    readonly sessionId: SessionId
+    readonly draftHandle: string
+    readonly locale: 'zh' | 'en'
+    readonly effort?: string
+    readonly consentVersion: number
+    readonly awaitCalibration?: boolean
+  }): Promise<CharterCalibrationResult | CharterCalibrationFailure> {
     try {
-      actor = resolveRemoteActor(this.ctx)
+      const actor = resolveRemoteActor(this.ctx)
+      // Calibration spends model budget and is opt-in; a non-owner Remote peer
+      // must not trigger it even when the profile has calibration enabled.
+      requireOwnerCalibration(actor)
+      return await this.ctx.charter.calibrateBootstrap(request)
     } catch (error) {
-      if (error instanceof CharterError) throw error
+      // Typert maps uncaught Host errors to gateway/internal. Calibration has
+      // stable business codes; return them as a domain failure value so the
+      // client can classify consent/effort/timeout/expiry instead of showing a
+      // generic internal error.
+      if (error instanceof CharterError) {
+        return Promise.resolve({ ok: false, code: error.code, message: error.message })
+      }
       throw error
     }
-    // Calibration spends model budget and is opt-in; a non-owner Remote peer
-    // must not trigger it even when the profile has calibration enabled.
-    requireOwnerCalibration(actor)
-    return this.ctx.charter.calibrateBootstrap(request)
   }
 
   @remoteMethod({

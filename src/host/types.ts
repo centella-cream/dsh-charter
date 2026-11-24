@@ -505,6 +505,12 @@ export interface CharterCalibrationCandidate {
   readonly mergedFrom?: readonly { readonly ref: string; readonly excerpt: string }[]
 }
 
+export interface CharterCalibrationFailure {
+  readonly ok: false
+  readonly code: string
+  readonly message: string
+}
+
 export interface CharterCalibrationResult {
   readonly runId: string
   readonly pending: boolean

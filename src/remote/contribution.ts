@@ -7,7 +7,7 @@ import {
   charterCalibrationStatusRequestSchema,
   charterCalibrationStatusResultSchema,
   charterCalibrateBootstrapRequestSchema,
-  charterCalibrationResultSchema,
+  charterCalibrationResponseSchema,
   charterEditRequestSchema,
   charterBootstrapApplyRequestSchema,
   charterEditResultSchema,
@@ -183,7 +183,7 @@ export const charterRemoteContribution: TypertRemoteContribution = {
     result: {
       mode: 'strict',
       typeSymbol: 'dsh-charter/CharterCalibrationResult',
-      create: () => charterCalibrationResultSchema,
+      create: () => charterCalibrationResponseSchema,
     },
   }, {
     id: 'dsh-charter#charter/edit',
