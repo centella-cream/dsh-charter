@@ -9,7 +9,8 @@
 > draftHandle、apply 命名空间分派、objective `clientRef`、`extractorVersion`）与其已上线的
 > 翻译基础设施（§4 复用映射）。
 > **基准：** 2026-11-24，`main` @ `44a542d3`；`0.3.3` 已发布（SHA-256 `707043d3…`）。
-> **修订：** v5（2026-11-24）——**版本定位调整（用户决策）**：本方案从 0.4.0 降级为 `0.3.4`
+> **修订：** v6（2026-11-24）——按实现审查收敛：0.3.3 翻译保留为独立回退、校准始终使用 L1 源 handle；consent 披露由 Pane + profile 配置承载；effort 直通与 signal 取消、按条目选择集列为后续门禁；§6.5 明确 MVP 为整体替换。
+> v5（2026-11-24）——**版本定位调整（用户决策）**：本方案从 0.4.0 降级为 `0.3.4`
 > 草案校准补丁线；0.4.0 重新定义为完整契约功能升级（另立
 > [charter-execution-v1.zh.md](charter-execution-v1.zh.md)）。新增定位约束与四项发布保证
 > （§0/§2.2/§9/§11）；downgrade round-trip 扩展为 0.3.2 与 0.3.3 双版本。
@@ -113,19 +114,21 @@ charter/applyBootstrap(+calibrationRunId, c-*/d-* refs 不混用)
 pending proposal（source=compaction-summary + evidence.excerpt=原文）→ 用户 accept 生效
 ```
 
-### 3.1 与 0.3.3 语言归一的统一路径（v4 新增）
+### 3.1 与 0.3.3 语言归一的关系（v5 按实现修订）
 
-0.3.3 已上线自动语言归一（`languageFollow`，后台两段式 `awaitTranslation`）。0.3.4 校准
-与其合并为**单一模型路径**，避免同一草案双重调用、双重计费：
+0.3.3 已上线自动语言归一（`languageFollow`，后台两段式 `awaitTranslation`）。0.3.4 **保留**
+该路径，不因校准可用而抑制翻译：
 
-- **优先序**：校准可用（`available` + enabled + consent 通过）时，客户端草案区**不再发起
-  0.3.3 的翻译二段请求**，改走 `calibrateBootstrap`（同样的两段式：先展示 L1 源语言草案，
-  后台等待校准结果）；校准 prompt 一次完成"语言归一 + 语义聚合 + 可读性改写"，输入始终是
-  L1 源语言草案（不消费 0.3.3 翻译结果，保证 provenance 与 diff 语义单一）。
-- **降级链（互斥，每草案至多一次模型调用）**：校准失败/未启用 → 回退 0.3.3 语言归一
-  （`languageFollow` 开启时）→ 再失败/未启用 → L1 源语言草案。
+- 草案出现后，若 `language.status=pending`，客户端照常发起 0.3.3 的后台翻译二段请求；翻译
+  完成后的视图仍可被校准结果替换。
+- 校准始终使用 **L1 源草案 handle**（`bootstrapSourceDraftHandle`），不消费翻译结果，从而
+  provenance/diff 的 ref 语义单一；`calibrationStatus` 可用不会关闭翻译入口。
+- 校准失败、未触发或用户不使用时，翻译二段请求已经运行或回退到源文，不会出现“语言跟随被
+  静默禁用”的回归。
+- **已知成本**：用户同时使用语言归一与校准时会有一次翻译调用 + 一次校准调用；这是 0.3.4
+  的 additive 行为，不声称“单一模型路径”。A/B 协议 1 可在未来决定是否恢复统一路径。
 - **配置语义**：`languageFollow=false` 只关翻译不关校准；`calibration.enabled=false` 只关校准
-  不影响翻译；两者都开时只执行校准（已含语言归一）。
+  不影响翻译；两者都开时两条路径都会执行，翻译作为自动回退，校准结果可覆盖视图。
 - **缓存隔离**：0.3.3 `translatedItems` 与校准缓存（§5.7）互不混用；校准缓存键含
   `promptVersion` 与完整 limits 快照。
 
@@ -170,10 +173,10 @@ C 阶段启动前以 0.3.3 线上数据（C0 指标，§10）校准本方案默�
 | 键 | 类型/默认 | 说明 |
 | --- | --- | --- |
 | `calibration.enabled` | boolean / **false** | opt-in 总开关 |
-| `calibration.consentVersion` | int / 0 | 用户已确认的披露版本；< 当前 `CALIBRATION_DISCLOSURE_VERSION` 时 Host 拒绝调用。确认动作发生在宿主设置面板（schema 描述承载披露全文，M0-P8 验证呈现能力）；**Pane 不写配置** |
+| `calibration.consentVersion` | int / 0 | 用户已确认的披露版本；< 当前 `CALIBRATION_DISCLOSURE_VERSION` 时 Host 拒绝调用。确认动作在 profile 配置中完成（`Schema` description 与 Pane 披露对话框展示全文；Profile 设置面板呈现由 DSH 负责）；**Pane 不写配置** |
 | `calibration.trigger` | `manual` \| `auto` / `manual` | auto = 新摘要出现且冷却期外自动校准一次；仅在 A/B 协议 1 达标后开放（§11） |
 | `calibration.provider` / `calibration.model` | string / 空 | 空 = 走 §5.3 解析链 |
-| `calibration.reasoningEffort` | string / 空 | 空 = adapter 默认；**自由字符串**，调用时对照 adapter 枚举校验（§5.4），配置 schema 不做动态枚举（评审 P1-11） |
+| `calibration.reasoningEffort` | string / 空 | 空 = adapter 默认；**自由字符串**，原样传给 adapter，Host 不做枚举预校验；可用枚举发现/校验待后续（§5.4） |
 | `calibration.targetLanguage` | `auto` \| `zh` \| `en` / `auto` | auto = 跟随请求携带的客户端界面语言（白名单） |
 | `calibration.maxInputBytes` | int / 24576 | 摘要输入 UTF-8 上限（句边界预截断，截断状态进缓存键） |
 | `calibration.maxOutputTokens` | int / 2048 | `maxTokens` 硬顶；**进缓存键**（§5.7） |
@@ -200,13 +203,13 @@ C 阶段启动前以 0.3.3 线上数据（C0 指标，§10）校准本方案默�
 ```text
 GenerateOptions {
   provider, model        ← §5.3 解析链
-  reasoningEffort        ← 配置/请求非空时携带；adapter 枚举校验失败 → CALIBRATION_EFFORT_UNSUPPORTED
-                           （错误 detail 携带可用枚举，UI 提示重选；不静默替换）
+  reasoningEffort        ← 配置/请求非空时原样传给 adapter；Host 不做枚举预校验（adapter 负责校验）
+                           CALIBRATION_EFFORT_UNSUPPORTED / CALIBRATION_CANCELLED 当前为保留码，未接线
   system                 ← CALIBRATION_PROMPT_V{n}（版本化常量；改动必须升版本 + 重跑 golden fixture）
   messages               ← [user: 受限输入包（§5.5）]
   temperature            ← 0.1（固定，不开放配置）
   maxTokens              ← calibration.maxOutputTokens
-  signal                 ← timeoutMs + 调用方取消 + Pane detach
+  signal                 ← timeoutMs（调用方取消/Pane detach 中继尚未实现，作为后续门禁）
 }
 ```
 
@@ -309,7 +312,7 @@ N = clamp(1, min(maxCandidates, floor((maxOutputTokens × 0.9 − 200) / avg(est
   缓存仅存于内存。"
 - consent 状态路径：`calibration.consentVersion`（宿主配置持久化）；`calibrateBootstrap` 请求
   必须携带 `consentVersion`，Host 校验等于当前 `CALIBRATION_DISCLOSURE_VERSION` 否则拒绝；
-  披露文案实质变更 → 版本号 +1 → 全员重新确认；Pane dialog 只读展示 + 「前往设置」，
+  披露文案实质变更 → 版本号 +1 → 全员重新确认；Pane dialog 只读展示 + profile 配置说明，
   **不写配置**；
 - 注入防御：摘要/条目文本视为数据；system prompt 声明输入不可信；输出仅经 §5.6 校验成为候选
   文本，永不执行、永不自动 apply、accept 前不进 standing prompt；`uncertain` 条目 UI 醒目标注
@@ -353,7 +356,8 @@ interface ApplyOpsInput {
 `charterBootstrapApplyRequestSchema` 保持无 evidence 字段，strict parse 保证 wire 注入被拒。
 附着前逐条过 `charterEvidenceSchema` 校验 + excerpt 边界强制。测试：wire 层 evidence 注入
 尝试被拒（L2-6）；attachment 仅经 applyBootstrap 校准分支可达（代码审查项 + 类型层不可达
-断言测试）。
+断言测试）。`digest` 是 `sha256(ref + excerpt)` 的内容哈希，`seq` 可回溯到摘要源；它不是摘要源
+自身的 digest，语义按“可回溯 evidence”接受（后续版本可更换为源 digest）。
 
 ### 6.3 runId 生命周期
 
@@ -378,9 +382,9 @@ interface ApplyOpsInput {
 readonly mergedFrom?: readonly { readonly ref: string; readonly excerpt: string }[]  // ≤3，ref ∈ 本次输入草案
 ```
 
-- **单一选择集**：客户端维护一个以 ref 为键的选择集；校准视图与原始草案视图是同一选择集的
-  两个投影。勾选校准候选 `c-R` ⇒ 其 `mergedFrom[].ref`（`d-*`）全部置 suppressed；在原始视图
-  勾选任一 suppressed ref ⇒ `c-R` 自动取消。互斥由纯函数保证，L1 测试覆盖；
+- **当前实现（MVP）**：校准成功后以校准候选**整体替换**审阅列表，`mergedFrom` excerpt 通过逐条
+  disclosure 展示；“用原文草案”为全量恢复，尚未实现按 ref 的单一选择集与 suppressed 互斥状态机。
+  单行选择集/互斥是后续版本门禁，不在 0.3.4 本地候选范围内。
 - degraded split 派生候选（`c-R.s<k>`）共享原 `c-R` 的 mergedFrom 映射：勾选任一派生段 ⇒
   同一组 `d-*` suppressed；全部派生段取消 ⇒ suppressed 释放；
 - **"用原文"** = 取消该校准候选（及其派生段），选中其全部 mergedFrom refs；
@@ -493,7 +497,7 @@ Pane 进入草案区时调用（与 `bootstrapDraft` 并行）；方法缺失（
 
 - 草案区头部：语言 chip + 不一致提示（客户端比对 draftLang）+ 「智能校准」按钮
   （`calibrationStatus` 四态决定 显示/置灰/隐藏，置灰必须显示首要原因）；consent 缺失时
-  dialog 只读展示披露全文 + 「前往设置」；
+  dialog 只读展示披露全文 + profile 配置说明；
 - 校准中：按钮 busy + 单条 notice（可取消）；
 - 校准视图：每条 = 校准文本 + `已校准` 徽章 + `合并 N 条`/`不确定`/`已拆分（k 段）` outline
   chip；行内 quietlink「原文」展开 原文 ↔ 校准稿 对照（发丝分隔，无花哨高亮）与「用原文」；
