@@ -1442,7 +1442,7 @@ export class CharterDraft {
         batchCount: result.batchCount ?? 1,
         completedBatches: result.completedBatches ?? 1,
         failedBatches: result.failedBatches ?? 0,
-        partial: result.partial === true,
+        partial: result.partial === true && (result.failedBatches ?? 0) > 0,
         truncated: result.truncated,
         inputTruncated: result.inputTruncated,
         excludedCount: result.excludedRefs?.length ?? 0,
