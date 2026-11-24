@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { charterError } from '../core/errors.js'
+import { CharterError, charterError } from '../core/errors.js'
 import { utf8Bytes } from '../core/limits.js'
 import { inspectUserText } from '../core/normalize.js'
 import { splitComplete } from '../core/structured-bootstrap.js'
@@ -78,8 +78,7 @@ function targetName(target: 'zh' | 'en'): string {
 
 /** Pure, versioned prompt/input builder; tests lock its bytes. */
 export function buildCalibrationRequest(input: CalibrationRequestInput): CalibrationPreparedRequest {
-  const priority: Record<CalibrationDraftItem['kind'], number> = { invariant: 0, deliverable: 1, objective: 2 }
-  const ordered = [...input.draftItems].sort((left, right) => priority[left.kind] - priority[right.kind])
+  const ordered = orderDraftItems(input.draftItems)
   const average = ordered.length === 0
     ? 1
     : Math.max(1, Math.round(ordered.reduce((sum, item) => sum + estimateTokens(item.text), 0) / ordered.length))
@@ -93,6 +92,19 @@ export function buildCalibrationRequest(input: CalibrationRequestInput): Calibra
     inputBytes = selected.reduce((sum, item) => sum + utf8Bytes(item.text) + utf8Bytes(item.ref), 0)
     inputTruncated = true
   }
+  return buildPreparedCalibrationRequest(input, selected, inputTruncated)
+}
+
+function orderDraftItems(items: readonly CalibrationDraftItem[]): CalibrationDraftItem[] {
+  const priority: Record<CalibrationDraftItem['kind'], number> = { invariant: 0, deliverable: 1, objective: 2 }
+  return [...items].sort((left, right) => priority[left.kind] - priority[right.kind])
+}
+
+function buildPreparedCalibrationRequest(
+  input: CalibrationRequestInput,
+  selected: readonly CalibrationDraftItem[],
+  inputTruncated: boolean,
+): CalibrationPreparedRequest {
   const accepted: string[] = []
   let acceptedBytes = 0
   for (const item of input.accepted) {
@@ -112,7 +124,7 @@ export function buildCalibrationRequest(input: CalibrationRequestInput): Calibra
     'If meaning is uncertain, keep the source wording and set uncertain=true.',
     'Return only a JSON array, with no prose and no Markdown fence. Each element is:',
     '{"kind":"invariant|deliverable|objective","text":"...","uncertain":false,"mergedFrom":["d-..."]}',
-    `At most ${selected.length} results. mergedFrom has at most ${MAX_MERGED_FROM} refs, each from the draft candidates.`,
+    `At most ${selected.length} results. mergedFrom has at most ${MAX_MERGED_FROM} refs, each from the draft candidates in this batch.`,
     input.hasObjective ? 'The existing charter already has an objective: do not emit an objective candidate.' : 'At most one objective candidate is allowed.',
   ].join('\n')
   const draft = selected.map(item => `- ${item.ref} [${item.kind}] ${truncateAtBoundary(item.text, input.config.maxInputBytes)}`)
@@ -137,8 +149,75 @@ export function buildCalibrationRequest(input: CalibrationRequestInput): Calibra
     candidateLimit: selected.length,
     maxOutputTokens: input.config.maxOutputTokens,
     maxItemBytes: input.config.maxItemBytes,
-    inputBytes: acceptedBytes + inputBytes,
+    inputBytes: acceptedBytes + selected.reduce((sum, item) => sum + utf8Bytes(item.text) + utf8Bytes(item.ref), 0),
   }
+}
+
+export interface CalibrationBatchConfig {
+  readonly batchCandidates: number
+  readonly maxBatchInputBytes: number
+  readonly maxTotalOutputTokens: number
+  readonly maxConcurrency: number
+  readonly retrySplitDepth: number
+  readonly runTimeoutMs: number
+}
+
+export interface CalibrationExcludedRef {
+  readonly ref: string
+  readonly reason: 'duplicate' | 'global-cap' | 'input-budget' | 'batch-failed'
+}
+
+export interface CalibrationBatchPlan {
+  readonly batches: readonly CalibrationPreparedRequest[]
+  readonly excludedRefs: readonly CalibrationExcludedRef[]
+  readonly inputTruncated: boolean
+  readonly source: CalibrationRequestInput
+}
+
+/** Pure planner: priority sort, global caps, output/input budgets and batch splitting. */
+export function planCalibrationBatches(
+  input: CalibrationRequestInput,
+  batching: CalibrationBatchConfig,
+): CalibrationBatchPlan {
+  const ordered = orderDraftItems(input.draftItems)
+  const excludedRefs: CalibrationExcludedRef[] = []
+  let selected = ordered.slice(0, input.config.maxCandidates)
+  for (const item of ordered.slice(selected.length)) excludedRefs.push({ ref: item.ref, reason: 'global-cap' })
+
+  const average = selected.length === 0
+    ? 1
+    : Math.max(1, Math.round(selected.reduce((sum, item) => sum + estimateTokens(item.text), 0) / selected.length))
+  const perBatchByOutput = Math.max(1, Math.floor((input.config.maxOutputTokens * 0.9 - 256) / average))
+  const batchSize = Math.max(1, Math.min(batching.batchCandidates, perBatchByOutput))
+  const maxBatches = Math.max(1, Math.floor(batching.maxTotalOutputTokens / input.config.maxOutputTokens))
+  const maxSelected = Math.max(1, maxBatches * batchSize)
+  if (selected.length > maxSelected) {
+    for (const item of selected.slice(maxSelected)) excludedRefs.push({ ref: item.ref, reason: 'global-cap' })
+    selected = selected.slice(0, maxSelected)
+  }
+
+  let inputBytes = selected.reduce((sum, item) => sum + utf8Bytes(item.text) + utf8Bytes(item.ref), 0)
+  while (selected.length > 1 && inputBytes > input.config.maxInputBytes) {
+    const removed = selected.pop()
+    if (removed !== undefined) excludedRefs.push({ ref: removed.ref, reason: 'input-budget' })
+    inputBytes = selected.reduce((sum, item) => sum + utf8Bytes(item.text) + utf8Bytes(item.ref), 0)
+  }
+
+  const batches: CalibrationPreparedRequest[] = []
+  let current: CalibrationDraftItem[] = []
+  let currentBytes = 0
+  for (const item of selected) {
+    const itemBytes = utf8Bytes(item.text) + utf8Bytes(item.ref)
+    if (current.length > 0 && (current.length >= batchSize || currentBytes + itemBytes > batching.maxBatchInputBytes)) {
+      batches.push(buildPreparedCalibrationRequest(input, current, excludedRefs.length > 0))
+      current = []
+      currentBytes = 0
+    }
+    current.push(item)
+    currentBytes += itemBytes
+  }
+  if (current.length > 0) batches.push(buildPreparedCalibrationRequest(input, current, excludedRefs.length > 0))
+  return { batches, excludedRefs, inputTruncated: excludedRefs.length > 0, source: input }
 }
 
 const candidateSchema = z.object({
@@ -251,16 +330,64 @@ export function parseCalibrationResponse(
   }
 }
 
-/** Execute the one bounded calibration call and validate its output. */
-export async function runDraftCalibration(
+export interface CalibrationRunOptions {
+  readonly timeoutMs: number
+  readonly runTimeoutMs: number
+  readonly maxConcurrency: number
+  readonly retrySplitDepth: number
+}
+
+interface CalibrationBatchPayload {
+  readonly candidates: readonly CalibrationCandidate[]
+  readonly degraded?: readonly { readonly ref: string; readonly parts: readonly string[]; readonly reason: 'split' }[]
+  readonly usage: {
+    readonly inputBytes: number
+    readonly outputTokens?: number
+    readonly reasoningTokens?: number
+    readonly durationMs: number
+  }
+  readonly calls: number
+}
+
+interface BatchRunResult {
+  readonly ok: boolean
+  readonly candidates: readonly CalibrationCandidate[]
+  readonly degraded?: readonly { readonly ref: string; readonly parts: readonly string[]; readonly reason: 'split' }[]
+  readonly failedRefs: readonly string[]
+  readonly usage: {
+    readonly inputBytes: number
+    readonly outputTokens?: number
+    readonly reasoningTokens?: number
+    readonly durationMs: number
+  }
+  readonly calls: number
+  readonly error?: unknown
+}
+
+function addUsage(
+  left: BatchRunResult['usage'],
+  right: BatchRunResult['usage'],
+): BatchRunResult['usage'] {
+  return {
+    inputBytes: left.inputBytes + right.inputBytes,
+    ...(left.outputTokens === undefined && right.outputTokens === undefined ? {} : { outputTokens: (left.outputTokens ?? 0) + (right.outputTokens ?? 0) }),
+    ...(left.reasoningTokens === undefined && right.reasoningTokens === undefined ? {} : { reasoningTokens: (left.reasoningTokens ?? 0) + (right.reasoningTokens ?? 0) }),
+    durationMs: left.durationMs + right.durationMs,
+  }
+}
+
+async function runCalibrationBatch(
   llm: DraftLlmRuntime,
   model: { readonly provider: string; readonly model: string; readonly effort?: string },
   input: CalibrationPreparedRequest,
   timeoutMs: number,
-): Promise<CalibrationOutput> {
+  signal?: AbortSignal,
+): Promise<CalibrationBatchPayload> {
   const controller = new AbortController()
   let timedOut = false
   const timer = setTimeout(() => { timedOut = true; controller.abort(new Error('calibration timeout')) }, timeoutMs)
+  const relay = (): void => controller.abort(signal?.reason)
+  signal?.addEventListener('abort', relay, { once: true })
   const started = Date.now()
   try {
     const options = {
@@ -280,10 +407,10 @@ export async function runDraftCalibration(
         chunks.push(chunk as CalibrationChunk)
       }
     } catch (error) {
-      if (timedOut) throw charterError('CALIBRATION_TIMEOUT', `calibration timed out after ${timeoutMs}ms`)
+      if (timedOut || signal?.aborted) throw charterError('CALIBRATION_TIMEOUT', `calibration timed out after ${timeoutMs}ms`)
       throw error
     }
-    if (timedOut) throw charterError('CALIBRATION_TIMEOUT', `calibration timed out after ${timeoutMs}ms`)
+    if (timedOut || signal?.aborted) throw charterError('CALIBRATION_TIMEOUT', `calibration timed out after ${timeoutMs}ms`)
     const finish = [...chunks].reverse().find(chunk => chunk.type === 'finish')
     if (finish?.type !== 'finish' || finish.reason?.kind !== 'stop') {
       throw charterError('CALIBRATION_MALFORMED', `calibration finished with ${finish?.type === 'finish' ? finish.reason?.kind : 'no-finish'}`)
@@ -291,12 +418,6 @@ export async function runDraftCalibration(
     const parsed = parseCalibrationResponse(assembleText(chunks), input)
     const usage = [...chunks].reverse().find(chunk => chunk.type === 'usage')
     return {
-      runId: '',
-      pending: false,
-      cached: false,
-      joined: false,
-      promptVersion: CALIBRATION_PROMPT_VERSION,
-      resolved: { provider: model.provider, model: model.model, ...(model.effort === undefined ? {} : { effort: model.effort }) },
       ...parsed,
       usage: {
         inputBytes: input.inputBytes,
@@ -304,10 +425,235 @@ export async function runDraftCalibration(
         ...(usage?.usage?.reasoningTokens === undefined ? {} : { reasoningTokens: usage.usage.reasoningTokens }),
         durationMs: Date.now() - started,
       },
-      cacheable: true,
+      calls: 1,
     }
+  } finally {
+    clearTimeout(timer)
+    signal?.removeEventListener('abort', relay)
+  }
+}
+
+function failedBatch(input: CalibrationPreparedRequest, error: unknown): BatchRunResult {
+  return {
+    ok: false,
+    candidates: [],
+    failedRefs: input.selected.map(item => item.ref),
+    usage: { inputBytes: input.inputBytes, durationMs: 0 },
+    calls: 1,
+    error,
+  }
+}
+
+/** Split a failed batch in half and retry within a bounded depth. */
+async function runCalibrationBatchResilient(
+  llm: DraftLlmRuntime,
+  model: { readonly provider: string; readonly model: string; readonly effort?: string },
+  source: CalibrationRequestInput,
+  input: CalibrationPreparedRequest,
+  options: CalibrationRunOptions,
+  signal: AbortSignal,
+  splitsLeft: number,
+): Promise<BatchRunResult> {
+  try {
+    const payload = await runCalibrationBatch(llm, model, input, options.timeoutMs, signal)
+    return { ok: true, candidates: payload.candidates, ...(payload.degraded === undefined ? {} : { degraded: payload.degraded }), failedRefs: [], usage: payload.usage, calls: payload.calls }
+  } catch (error) {
+    if (splitLeftDisabled(input, signal, splitsLeft)) return failedBatch(input, error)
+    const middle = Math.ceil(input.selected.length / 2)
+    if (middle <= 0 || middle >= input.selected.length) return failedBatch(input, error)
+    const leftInput = buildPreparedCalibrationRequest(source, input.selected.slice(0, middle), input.inputTruncated)
+    const rightInput = buildPreparedCalibrationRequest(source, input.selected.slice(middle), input.inputTruncated)
+    const [left, right] = await Promise.all([
+      runCalibrationBatchResilient(llm, model, source, leftInput, options, signal, splitsLeft - 1),
+      runCalibrationBatchResilient(llm, model, source, rightInput, options, signal, splitsLeft - 1),
+    ])
+    const failedRefs = [...left.failedRefs, ...right.failedRefs]
+    return {
+      ok: left.ok || right.ok,
+      candidates: [...left.candidates, ...right.candidates],
+      ...(left.degraded === undefined && right.degraded === undefined ? {} : { degraded: [...(left.degraded ?? []), ...(right.degraded ?? [])] }),
+      failedRefs,
+      usage: addUsage(left.usage, right.usage),
+      calls: left.calls + right.calls,
+      ...(left.error === undefined ? {} : { error: left.error }),
+    }
+  }
+}
+
+function splitLeftDisabled(input: CalibrationPreparedRequest, signal: AbortSignal, splitsLeft: number): boolean {
+  return splitsLeft <= 0 || input.selected.length <= 1 || signal.aborted
+}
+
+/** Execute all planned batches with bounded concurrency and split retries. */
+export async function runCalibrationPlan(
+  llm: DraftLlmRuntime,
+  model: { readonly provider: string; readonly model: string; readonly effort?: string },
+  plan: CalibrationBatchPlan,
+  options: CalibrationRunOptions,
+): Promise<Omit<CalibrationOutput, 'cacheable' | 'runId' | 'promptVersion' | 'resolved' | 'pending' | 'cached' | 'joined'>> {
+  const started = Date.now()
+  if (plan.batches.length === 0) {
+    return {
+      candidates: [], excludedRefs: plan.excludedRefs, truncated: plan.inputTruncated, inputTruncated: plan.inputTruncated,
+      batchCount: 0, completedBatches: 0, failedBatches: 0, partial: false,
+      usage: { inputBytes: 0, durationMs: 0, calls: 0 },
+    }
+  }
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(new Error('calibration run timeout')), options.runTimeoutMs)
+  try {
+    const results = await mapLimit(plan.batches, Math.max(1, options.maxConcurrency), batch =>
+      runCalibrationBatchResilient(llm, model, plan.source, batch, options, controller.signal, options.retrySplitDepth))
+    if (results.every(result => !result.ok)) {
+      if (controller.signal.aborted) throw charterError('CALIBRATION_TIMEOUT', `calibration run timed out after ${options.runTimeoutMs}ms`)
+      const first = results.find(result => result.error !== undefined)?.error
+      if (first instanceof CharterError) throw first
+      throw charterError('CALIBRATION_MALFORMED', 'all calibration batches failed')
+    }
+    return mergeCalibrationResults(plan, results, started)
   } finally {
     clearTimeout(timer)
   }
 }
 
+function mergeCalibrationResults(
+  plan: CalibrationBatchPlan,
+  results: readonly BatchRunResult[],
+  started: number,
+): Omit<CalibrationOutput, 'cacheable' | 'runId' | 'promptVersion' | 'resolved' | 'pending' | 'cached' | 'joined'> {
+  const unique: Array<{
+    readonly kind: CalibrationCandidate['kind']
+    readonly text: string
+    readonly uncertain: boolean
+    readonly mergedFrom: NonNullable<CalibrationCandidate['mergedFrom']>
+    readonly batchIndex: number
+    readonly oldRef: string
+  }> = []
+  const byKey = new Map<string, number>()
+  const conflicts: { readonly refs: readonly string[]; readonly reason: 'near-duplicate' | 'objective' }[] = []
+  for (const [batchIndex, result] of results.entries()) {
+    for (const candidate of result.candidates) {
+      const key = canonicalCandidateText(candidate.text)
+      const existing = byKey.get(key)
+      if (existing !== undefined) {
+        const current = unique[existing]!
+        const mergedFrom = [...current.mergedFrom, ...(candidate.mergedFrom ?? [])]
+          .filter((item, index, all) => all.findIndex(other => other.ref === item.ref) === index)
+        if (mergedFrom.length > MAX_MERGED_FROM) conflicts.push({ refs: mergedFrom.map(item => item.ref), reason: 'near-duplicate' })
+        unique[existing] = {
+          ...current,
+          uncertain: current.uncertain || candidate.uncertain,
+          mergedFrom: mergedFrom.slice(0, MAX_MERGED_FROM),
+        }
+        if (current.kind !== candidate.kind) conflicts.push({ refs: [current.oldRef, candidate.ref], reason: 'near-duplicate' })
+        continue
+      }
+      byKey.set(key, unique.length)
+      unique.push({
+        kind: candidate.kind,
+        text: candidate.text,
+        uncertain: candidate.uncertain,
+        mergedFrom: candidate.mergedFrom ?? [],
+        batchIndex,
+        oldRef: candidate.ref,
+      })
+    }
+  }
+  const droppedCandidates = unique.splice(plan.source.config.maxCandidates)
+  const capped = droppedCandidates.length
+  const refMap = new Map<string, string>()
+  const candidates: CalibrationCandidate[] = unique.map((candidate, index) => {
+    const ref = `c-${index}`
+    refMap.set(`${candidate.batchIndex}:${candidate.oldRef}`, ref)
+    return {
+      ref,
+      kind: candidate.kind,
+      text: candidate.text,
+      uncertain: candidate.uncertain,
+      ...(candidate.mergedFrom.length === 0 ? {} : { mergedFrom: candidate.mergedFrom }),
+    }
+  })
+  const degraded: { readonly ref: string; readonly parts: readonly string[]; readonly reason: 'split' }[] = []
+  for (const [batchIndex, result] of results.entries()) {
+    for (const entry of result.degraded ?? []) {
+      const ref = refMap.get(`${batchIndex}:${entry.ref}`)
+      if (ref === undefined) continue
+      const parts = entry.parts.map(part => refMap.get(`${batchIndex}:${part}`)).filter((part): part is string => part !== undefined)
+      degraded.push({ ref, parts, reason: 'split' })
+    }
+  }
+  const excludedRefs = [...plan.excludedRefs]
+  const failedRefs = results.flatMap(result => result.failedRefs).map(ref => ({ ref, reason: 'batch-failed' as const }))
+  excludedRefs.push(...failedRefs)
+  for (const candidate of droppedCandidates) {
+    for (const item of candidate.mergedFrom) excludedRefs.push({ ref: item.ref, reason: 'global-cap' })
+  }
+  const objectiveConflicts = candidates.filter(candidate => candidate.kind === 'objective')
+  if (objectiveConflicts.length > 1) conflicts.push({ refs: objectiveConflicts.map(candidate => candidate.ref), reason: 'objective' })
+  const completedBatches = results.filter(result => result.ok).length
+  const failedBatches = results.length - completedBatches
+  const usage = results.reduce((sum, result) => addUsage(sum, result.usage), { inputBytes: 0, durationMs: 0 } as BatchRunResult['usage'])
+  const calls = results.reduce((sum, result) => sum + result.calls, 0)
+  return {
+    candidates,
+    batchCount: plan.batches.length,
+    completedBatches,
+    failedBatches,
+    partial: completedBatches > 0 && (failedBatches > 0 || failedRefs.length > 0),
+    excludedRefs,
+    ...(conflicts.length === 0 ? {} : { conflicts }),
+    truncated: plan.inputTruncated || failedRefs.length > 0 || capped > 0,
+    inputTruncated: plan.inputTruncated,
+    ...(degraded.length === 0 ? {} : { degraded }),
+    usage: {
+      inputBytes: usage.inputBytes,
+      ...(usage.outputTokens === undefined ? {} : { outputTokens: usage.outputTokens }),
+      ...(usage.reasoningTokens === undefined ? {} : { reasoningTokens: usage.reasoningTokens }),
+      durationMs: Date.now() - started,
+      calls,
+    },
+  }
+}
+
+function canonicalCandidateText(value: string): string {
+  return value.normalize('NFC').trim().replace(/\s+/gu, ' ').toLowerCase()
+}
+
+async function mapLimit<T, R>(values: readonly T[], limit: number, fn: (value: T) => Promise<R>): Promise<R[]> {
+  const results = new Array<R>(values.length)
+  let next = 0
+  const workers = Array.from({ length: Math.min(limit, values.length) }, async () => {
+    while (true) {
+      const index = next
+      next += 1
+      if (index >= values.length) return
+      results[index] = await fn(values[index]!)
+    }
+  })
+  await Promise.all(workers)
+  return results
+}
+
+/** Execute one bounded calibration call; kept for the single-batch core tests. */
+export async function runDraftCalibration(
+  llm: DraftLlmRuntime,
+  model: { readonly provider: string; readonly model: string; readonly effort?: string },
+  input: CalibrationPreparedRequest,
+  timeoutMs: number,
+): Promise<CalibrationOutput> {
+  const payload = await runCalibrationBatch(llm, model, input, timeoutMs)
+  return {
+    runId: '',
+    pending: false,
+    cached: false,
+    joined: false,
+    promptVersion: CALIBRATION_PROMPT_VERSION,
+    resolved: { provider: model.provider, model: model.model, ...(model.effort === undefined ? {} : { effort: model.effort }) },
+    candidates: payload.candidates,
+    ...(payload.degraded === undefined ? {} : { degraded: payload.degraded }),
+    truncated: false,
+    inputTruncated: input.inputTruncated,
+    usage: payload.usage,
+    cacheable: true,
+  }
+}

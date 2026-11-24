@@ -18,11 +18,12 @@ import { bootstrapFromEvents } from '../core/bootstrap.js'
 import { structuredFromEvents, STRUCTURED_EXTRACTOR_VERSION } from '../core/structured-bootstrap.js'
 import { translateDraftItems, targetLanguageOf, type DraftLlmRuntime } from './draft-translation.js'
 import {
-  buildCalibrationRequest,
   CALIBRATION_DISCLOSURE,
   CALIBRATION_DISCLOSURE_VERSION,
   CALIBRATION_PROMPT_VERSION,
-  runDraftCalibration,
+  planCalibrationBatches,
+  runCalibrationPlan,
+  type CalibrationBatchConfig,
   type CalibrationRequestInput,
 } from './draft-calibration.js'
 import { readSessionEvents } from './session-events.js'
@@ -141,19 +142,40 @@ export interface CharterCalibrationOptions {
   readonly reasoningEffort?: string
   readonly targetLanguage: 'auto' | 'zh' | 'en'
   readonly maxInputBytes: number
+  readonly maxBatchInputBytes?: number
   readonly maxOutputTokens: number
   readonly maxCandidates: number
+  readonly batchCandidates?: number
+  readonly maxTotalOutputTokens?: number
+  readonly maxConcurrency?: number
+  readonly retrySplitDepth?: number
   readonly timeoutMs: number
+  readonly runTimeoutMs?: number
 }
 
-export const DEFAULT_CALIBRATION_OPTIONS: CharterCalibrationOptions = {
+export type ResolvedCalibrationOptions = CharterCalibrationOptions & {
+  readonly maxBatchInputBytes: number
+  readonly batchCandidates: number
+  readonly maxTotalOutputTokens: number
+  readonly maxConcurrency: number
+  readonly retrySplitDepth: number
+  readonly runTimeoutMs: number
+}
+
+export const DEFAULT_CALIBRATION_OPTIONS: ResolvedCalibrationOptions = {
   enabled: false,
   consentVersion: 0,
   targetLanguage: 'auto',
   maxInputBytes: 24_576,
-  maxOutputTokens: 2_048,
-  maxCandidates: 12,
-  timeoutMs: 30_000,
+  maxBatchInputBytes: 8_192,
+  maxOutputTokens: 4_096,
+  maxCandidates: 32,
+  batchCandidates: 8,
+  maxTotalOutputTokens: 16_384,
+  maxConcurrency: 3,
+  retrySplitDepth: 2,
+  timeoutMs: 45_000,
+  runTimeoutMs: 120_000,
 }
 
 export interface CharterConfig extends CharterLimits {
@@ -166,6 +188,10 @@ export interface CharterConfig extends CharterLimits {
   readonly languageFollowProvider?: string
   readonly languageFollowModel?: string
   readonly calibration: CharterCalibrationOptions
+}
+
+function resolvedCalibrationOptions(value: CharterCalibrationOptions): ResolvedCalibrationOptions {
+  return { ...DEFAULT_CALIBRATION_OPTIONS, ...value }
 }
 
 export const DEFAULT_CHARTER_CONFIG: CharterConfig = {
@@ -203,9 +229,15 @@ export const Config: Schema<CharterConfig> = Schema.object({
     reasoningEffort: Schema.string().description('Optional adapter reasoning effort. When adapter metadata exposes its supported efforts, the Host validates the choice before the model call; otherwise it is passed through and the adapter rejects it.'),
     targetLanguage: Schema.union(['auto', 'zh', 'en']).default(DEFAULT_CALIBRATION_OPTIONS.targetLanguage),
     maxInputBytes: Schema.number().step(1).min(1_024).max(1_048_576).default(DEFAULT_CALIBRATION_OPTIONS.maxInputBytes),
-    maxOutputTokens: Schema.number().step(1).min(128).max(65_536).default(DEFAULT_CALIBRATION_OPTIONS.maxOutputTokens),
-    maxCandidates: Schema.number().step(1).min(1).max(512).default(DEFAULT_CALIBRATION_OPTIONS.maxCandidates),
-    timeoutMs: Schema.number().step(1).min(1_000).max(300_000).default(DEFAULT_CALIBRATION_OPTIONS.timeoutMs),
+    maxBatchInputBytes: Schema.number().step(1).min(1_024).max(1_048_576).default(DEFAULT_CALIBRATION_OPTIONS.maxBatchInputBytes).description('Per-batch input byte cap for adaptive calibration.'),
+    maxOutputTokens: Schema.number().step(1).min(128).max(65_536).default(DEFAULT_CALIBRATION_OPTIONS.maxOutputTokens).description('Per-batch output token cap (v8 adaptive batches).'),
+    maxCandidates: Schema.number().step(1).min(1).max(512).default(DEFAULT_CALIBRATION_OPTIONS.maxCandidates).description('Global calibrated-candidate cap across all batches.'),
+    batchCandidates: Schema.number().step(1).min(1).max(512).default(DEFAULT_CALIBRATION_OPTIONS.batchCandidates).description('Maximum candidates sent to one calibration batch.'),
+    maxTotalOutputTokens: Schema.number().step(1).min(128).max(1_048_576).default(DEFAULT_CALIBRATION_OPTIONS.maxTotalOutputTokens).description('Hard cap for all calibration batches in one run.'),
+    maxConcurrency: Schema.number().step(1).min(1).max(16).default(DEFAULT_CALIBRATION_OPTIONS.maxConcurrency).description('Maximum concurrently running calibration batches.'),
+    retrySplitDepth: Schema.number().step(1).min(0).max(5).default(DEFAULT_CALIBRATION_OPTIONS.retrySplitDepth).description('How many times a failed batch may be split before giving up.'),
+    timeoutMs: Schema.number().step(1).min(1_000).max(300_000).default(DEFAULT_CALIBRATION_OPTIONS.timeoutMs).description('Per-batch calibration timeout.'),
+    runTimeoutMs: Schema.number().step(1).min(1_000).max(600_000).default(DEFAULT_CALIBRATION_OPTIONS.runTimeoutMs).description('Overall calibration run timeout.'),
   }).default(DEFAULT_CALIBRATION_OPTIONS),
 })
 
@@ -1130,8 +1162,8 @@ export class CharterService extends Service {
   }
 
   /**
-   * Optional one-shot calibration of an already-extracted draft. Calibration
-   * never mutates the record and is never auto-applied.
+   * Optional adaptive-batched calibration of an already-extracted draft.
+   * Calibration never mutates the record and is never auto-applied.
    */
   async calibrateBootstrap(request: {
     readonly sessionId: SessionIdType
@@ -1151,6 +1183,7 @@ export class CharterService extends Service {
     if (llm === undefined) throw charterError('CALIBRATION_UNAVAILABLE', 'Host LLM service is unavailable')
     const selection = this.calibrationSelection(request.sessionId)
     if (selection === undefined) throw charterError('CALIBRATION_UNCONFIGURED', 'No calibration model route is available')
+    const calibration = resolvedCalibrationOptions(this.config.calibration)
     const effort = request.effort ?? selection.effort
     const proposal = this.localizedDrafts.get(request.draftHandle)
     if (proposal === undefined) throw charterError('INVALID_ARGUMENT', 'calibration draft handle is expired')
@@ -1164,11 +1197,17 @@ export class CharterService extends Service {
       provider: selection.provider,
       model: selection.model,
       acceptedDigest,
-      maxCandidates: this.config.calibration.maxCandidates,
-      maxOutputTokens: this.config.calibration.maxOutputTokens,
-      maxInputBytes: this.config.calibration.maxInputBytes,
+      maxCandidates: calibration.maxCandidates,
+      maxOutputTokens: calibration.maxOutputTokens,
+      maxInputBytes: calibration.maxInputBytes,
+      maxBatchInputBytes: calibration.maxBatchInputBytes,
+      batchCandidates: calibration.batchCandidates,
+      maxTotalOutputTokens: calibration.maxTotalOutputTokens,
+      maxConcurrency: calibration.maxConcurrency,
+      retrySplitDepth: calibration.retrySplitDepth,
+      runTimeoutMs: calibration.runTimeoutMs,
       maxItemBytes: this.config.maxItemBytes,
-      targetLanguage: this.config.calibration.targetLanguage,
+      targetLanguage: calibration.targetLanguage,
       promptVersion: CALIBRATION_PROMPT_VERSION,
     })
     const cached = this.calibrationCache.get(key)
@@ -1235,25 +1274,26 @@ export class CharterService extends Service {
     readonly selection: { readonly provider: string; readonly model: string }
     readonly effort?: string
     readonly proposal: CharterBootstrapDraftProposal
-    readonly accepted: readonly { kind: 'invariant' | 'deliverable'; text: string }[]
+    readonly accepted: readonly { readonly kind: 'invariant' | 'deliverable'; readonly text: string }[]
     readonly request: { readonly sessionId: SessionIdType; readonly locale: 'zh' | 'en' }
     readonly runId: string
   }): Promise<CharterCalibrationResult> {
-    const targetLanguage = this.config.calibration.targetLanguage === 'auto'
+    const calibration = resolvedCalibrationOptions(this.config.calibration)
+    const targetLanguage = calibration.targetLanguage === 'auto'
       ? input.request.locale
-      : this.config.calibration.targetLanguage
+      : calibration.targetLanguage
     if (input.effort !== undefined) {
       await this.assertCalibrationEffort(input.llm, input.selection.provider, input.selection.model, input.effort)
     }
     const draftItems = input.proposal.items.map(item => ({ ref: item.ref, kind: item.kind, text: item.text }))
-    const prepared = buildCalibrationRequest({
+    const source: CalibrationRequestInput = {
       config: {
         targetLanguage,
-        maxInputBytes: this.config.calibration.maxInputBytes,
-        maxOutputTokens: this.config.calibration.maxOutputTokens,
-        maxCandidates: this.config.calibration.maxCandidates,
+        maxInputBytes: calibration.maxInputBytes,
+        maxOutputTokens: calibration.maxOutputTokens,
+        maxCandidates: calibration.maxCandidates,
         maxItemBytes: this.config.maxItemBytes,
-        timeoutMs: this.config.calibration.timeoutMs,
+        timeoutMs: calibration.timeoutMs,
       },
       hasObjective: (() => {
         const live = this.ctx.sessions.get(input.request.sessionId)
@@ -1261,19 +1301,41 @@ export class CharterService extends Service {
       })(),
       accepted: input.accepted,
       draftItems,
-    } satisfies CalibrationRequestInput)
+    }
+    const batching: CalibrationBatchConfig = {
+      batchCandidates: calibration.batchCandidates,
+      maxBatchInputBytes: calibration.maxBatchInputBytes,
+      maxTotalOutputTokens: calibration.maxTotalOutputTokens,
+      maxConcurrency: calibration.maxConcurrency,
+      retrySplitDepth: calibration.retrySplitDepth,
+      runTimeoutMs: calibration.runTimeoutMs,
+    }
+    const plan = planCalibrationBatches(source, batching)
     let result
     try {
-      result = await runDraftCalibration(input.llm, {
+      result = await runCalibrationPlan(input.llm, {
         provider: input.selection.provider,
         model: input.selection.model,
         ...(input.effort === undefined ? {} : { effort: input.effort }),
-      }, prepared, this.config.calibration.timeoutMs)
+      }, plan, {
+        timeoutMs: calibration.timeoutMs,
+        runTimeoutMs: calibration.runTimeoutMs,
+        maxConcurrency: calibration.maxConcurrency,
+        retrySplitDepth: calibration.retrySplitDepth,
+      })
     } catch (error) {
       if (error instanceof CharterError) throw error
       throw charterError('CALIBRATION_PROVIDER', (error instanceof Error ? error.message : String(error)).slice(0, 512))
     }
-    return { ...result, runId: input.runId, pending: false, cached: false, joined: false }
+    return {
+      ...result,
+      runId: input.runId,
+      pending: false,
+      cached: false,
+      joined: false,
+      promptVersion: CALIBRATION_PROMPT_VERSION,
+      resolved: { provider: input.selection.provider, model: input.selection.model, ...(input.effort === undefined ? {} : { effort: input.effort }) },
+    }
   }
 
   /** The validated localized draft used by applyBootstrap for structured refs. */

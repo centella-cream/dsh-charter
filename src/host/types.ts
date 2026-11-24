@@ -513,6 +513,13 @@ export interface CharterCalibrationResult {
   readonly promptVersion: number
   readonly resolved: { readonly provider: string; readonly model: string; readonly effort?: string }
   readonly candidates: readonly CharterCalibrationCandidate[]
+  /** v8 additive: bounded batch execution diagnostics. */
+  readonly batchCount?: number
+  readonly completedBatches?: number
+  readonly failedBatches?: number
+  readonly partial?: boolean
+  readonly excludedRefs?: readonly { readonly ref: string; readonly reason: 'duplicate' | 'global-cap' | 'input-budget' | 'batch-failed' }[]
+  readonly conflicts?: readonly { readonly refs: readonly string[]; readonly reason: 'near-duplicate' | 'objective' }[]
   readonly truncated: boolean
   readonly inputTruncated: boolean
   readonly degraded?: readonly { readonly ref: string; readonly parts: readonly string[]; readonly reason: 'split' }[]
@@ -521,5 +528,7 @@ export interface CharterCalibrationResult {
     readonly outputTokens?: number
     readonly reasoningTokens?: number
     readonly durationMs: number
+    /** v8: number of model calls made by this calibration run. */
+    readonly calls?: number
   }
 }
