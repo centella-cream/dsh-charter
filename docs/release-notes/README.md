@@ -4,7 +4,7 @@
 > **Version scope:** all release notes.
 > **Authority:** [version roadmap](../design/version-roadmap.md).
 
-The current development candidate is [0.3.4](0.3.4.md). The current release is [0.3.3](0.3.3.md). The latest release is [0.3.2](0.3.2.md). [0.3.1](0.3.1.md) is the previous public release; [0.3.0](0.3.0.md) precedes it; [0.2.0](0.2.0.md) precedes it; [0.1.0-rc.6](0.1.0-rc.6.md) is the earlier recovery release.
+The current development candidate is [0.3.4](0.3.4.md). The current/latest published release is [0.3.3](0.3.3.md); [0.3.2](0.3.2.md) is the previous release. [0.3.1](0.3.1.md) is the previous public release; [0.3.0](0.3.0.md) precedes it; [0.2.0](0.2.0.md) precedes it; [0.1.0-rc.6](0.1.0-rc.6.md) is the earlier recovery release.
 
 Published release history is summarized in [CHANGELOG.md](../../CHANGELOG.md) and remains available through the
 immutable Git tags and GitHub Releases. Older per-release note files were removed during the rc.5 documentation
