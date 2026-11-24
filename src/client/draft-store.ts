@@ -1355,7 +1355,7 @@ export class CharterDraft {
   async refreshCalibrationStatus(): Promise<void> {
     const source = this.resolveSource()
     const status = await source?.calibrationStatus?.()
-    if (status !== undefined) this.update({ bootstrapCalibrationStatus: status })
+    this.update({ bootstrapCalibrationStatus: status })
   }
 
   /** Run the optional calibration and replace the visible candidates on success. */
