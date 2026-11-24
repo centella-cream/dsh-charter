@@ -11,6 +11,8 @@ import type {
 import type {
   CharterBootstrapDraftResult,
   CharterBootstrapResult,
+  CharterCalibrationResult,
+  CharterCalibrationStatusResult,
   CharterEditResult,
   CharterRecordExport,
   CharterRecordOperationResult,
@@ -40,6 +42,14 @@ export interface CharterSource {
   readonly applyBootstrap?: (request: CharterBootstrapApplyRequest) => Promise<CharterEditResult>
   /** Extract a review-only draft from the latest compaction summary. */
   readonly bootstrap: () => Promise<CharterBootstrapResult>
+  /** Optional Host calibration capability status; absent on old Hosts. */
+  readonly calibrationStatus?: () => Promise<CharterCalibrationStatusResult | undefined>
+  readonly calibrateBootstrap?: (request: {
+    readonly draftHandle: string
+    readonly consentVersion: number
+    readonly effort?: string
+    readonly awaitCalibration?: boolean
+  }) => Promise<CharterCalibrationResult | undefined>
   /** Save the latest real user message as a pending proposal. */
   readonly queryMessages?: () => Promise<import('../host/types.js').CharterMessageListResult>
   readonly proposeMessage?: (
@@ -220,6 +230,63 @@ export class CharterSessionSource implements CharterSource {
         awaitTranslation: true,
       })
       return response.ok ? response.value : undefined
+    } catch {
+      return undefined
+    }
+  }
+
+  /** Read the optional calibration capability without affecting the draft. */
+  readonly calibrationStatus = async (): Promise<CharterCalibrationStatusResult | undefined> => {
+    const remote = this.remote
+    if (remote === undefined) return undefined
+    const method = (remote as unknown as {
+      calibrationStatus?: (request: { readonly sessionId: SessionId }) => Promise<{ ok: true; value: CharterCalibrationStatusResult } | { ok: false; error: unknown }>
+    }).calibrationStatus
+    if (typeof method !== 'function') return undefined
+    try {
+      const result = await method({ sessionId: this.sessionId })
+      return result.ok ? result.value : undefined
+    } catch {
+      return undefined
+    }
+  }
+
+  /** Run the optional one-shot calibration against the current structured draft handle. */
+  readonly calibrateBootstrap = async (request: {
+    readonly draftHandle: string
+    readonly consentVersion: number
+    readonly effort?: string
+    readonly awaitCalibration?: boolean
+  }): Promise<CharterCalibrationResult | undefined> => {
+    const remote = this.remote
+    if (remote === undefined) return undefined
+    const active = (() => {
+      try {
+        return (this.ctx.locale as unknown as { getLocale?: () => { active?: string } }).getLocale?.().active
+      } catch {
+        return undefined
+      }
+    })()
+    const base = active?.toLowerCase().split(/[-_]/u)[0]
+    const locale = base === 'en' ? 'en' : 'zh'
+    const method = (remote as unknown as {
+      calibrateBootstrap?: (request: {
+        readonly sessionId: SessionId
+        readonly draftHandle: string
+        readonly locale: 'zh' | 'en'
+        readonly effort?: string
+        readonly consentVersion: number
+        readonly awaitCalibration?: boolean
+      }) => Promise<{ ok: true; value: CharterCalibrationResult } | { ok: false; error: unknown }>
+    }).calibrateBootstrap
+    if (typeof method !== 'function') return undefined
+    try {
+      const result = await method({
+        sessionId: this.sessionId,
+        locale,
+        ...request,
+      })
+      return result.ok ? result.value : undefined
     } catch {
       return undefined
     }

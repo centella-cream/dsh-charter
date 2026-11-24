@@ -10,8 +10,11 @@ import type {
 import { classifyRemoteFailure } from './remote-error.js'
 import type { CharterOp, NewItemInput } from '../core/schemas.js'
 import type {
+  CharterBootstrapDraftProposal,
   CharterBootstrapLanguage,
   CharterBootstrapProposal,
+  CharterCalibrationResult,
+  CharterCalibrationStatusResult,
   CharterDraftLanguage,
   CharterView,
 } from '../host/types.js'
@@ -145,6 +148,12 @@ export interface CharterDraftState {
   readonly bootstrapProblem: BootstrapProblem | null
   readonly bootstrapLanguage?: CharterBootstrapLanguage | undefined
   readonly bootstrapDraftLang?: CharterDraftLanguage | undefined
+  /** Optional calibration capability/result for the current review draft. */
+  readonly bootstrapCalibrationStatus?: CharterCalibrationStatusResult | undefined
+  readonly bootstrapCalibrationBusy: boolean
+  readonly bootstrapCalibrationError?: string | undefined
+  readonly bootstrapCalibrationRunId?: string | undefined
+  readonly bootstrapObjectiveRef?: string | undefined
   /** A stream frame made the reviewed draft stale while its RPC outcome was unknown. */
   readonly bootstrapNeedsStale: boolean
   /** View revision captured when the reviewed history draft was accepted. */
@@ -271,6 +280,11 @@ function initialState(sessionId: SessionId): CharterDraftState {
     bootstrapItems: [],
     bootstrapVisibleCount: 40,
     bootstrapProblem: null,
+    bootstrapCalibrationStatus: undefined,
+    bootstrapCalibrationBusy: false,
+    bootstrapCalibrationError: undefined,
+    bootstrapCalibrationRunId: undefined,
+    bootstrapObjectiveRef: undefined,
     bootstrapNeedsStale: false,
     bootstrapBaseRevision: null,
     attempt: null,
@@ -1141,7 +1155,7 @@ export class CharterDraft {
   }
 
   bootstrapPlan(view: CharterView): BootstrapPlan {
-    return buildBootstrapPlan(view, this.state.bootstrapObjective, this.visibleBootstrapItems(), this.state.bootstrap?.extractorVersion === 2)
+    return buildBootstrapPlan(view, this.state.bootstrapObjective, this.visibleBootstrapItems(), this.state.bootstrap?.extractorVersion === 2, this.state.bootstrapObjectiveRef ?? 'd-obj-0')
   }
 
   /** Ask for a draft when the Session is empty and no attempt has been made yet. */
@@ -1216,8 +1230,18 @@ export class CharterDraft {
       }
       const proposal = outcome.proposal
       this.acceptBootstrapProposal(proposal, requestedRevision)
-      if (proposal.language?.status === 'pending') {
+      const calibrationStatus = await source.calibrationStatus?.()
+      if (calibrationStatus !== undefined) this.update({ bootstrapCalibrationStatus: calibrationStatus })
+      if (proposal.language?.status === 'pending' && calibrationStatus?.status !== 'available') {
         void this.localizeBootstrapProposal(source, proposal, requestedRevision, current)
+      } else if (proposal.language?.status === 'pending' && calibrationStatus?.status === 'available') {
+        this.update({
+          bootstrapLanguage: {
+            ...(proposal.language ?? { requested: null, status: 'source' as const }),
+            status: 'source',
+            reason: 'Calibration is available; translation is deferred until optional calibration.',
+          },
+        })
       }
 
     } catch (error) {
@@ -1229,7 +1253,7 @@ export class CharterDraft {
 
   /** Materialize the review draft; shared by the initial and localized responses. */
   private acceptBootstrapProposal(proposal: import('../host/types.js').CharterBootstrapProposal, requestedRevision: number): void {
-    const structuredItems = (proposal as import('../host/types.js').CharterBootstrapDraftProposal).draftItems
+    const structuredItems = (proposal as CharterBootstrapDraftProposal).draftItems
     this.update({
       bootstrapPhase: 'draft',
       bootstrap: proposal,
@@ -1314,6 +1338,100 @@ export class CharterDraft {
       return
     }
     this.acceptBootstrapProposal(localized.proposal, requestedRevision)
+  }
+
+  /** Read the optional calibration capability for the visible draft. */
+  async refreshCalibrationStatus(): Promise<void> {
+    const source = this.resolveSource()
+    const status = await source?.calibrationStatus?.()
+    if (status !== undefined) this.update({ bootstrapCalibrationStatus: status })
+  }
+
+  /** Run the optional calibration and replace the visible candidates on success. */
+  async calibrateBootstrap(): Promise<void> {
+    const status = this.state.bootstrapCalibrationStatus
+    const source = this.resolveSource()
+    const draftHandle = this.state.bootstrap?.draftHandle
+    if (status?.status !== 'available' || source?.calibrateBootstrap === undefined || draftHandle === undefined) return
+    if (this.state.bootstrapCalibrationBusy) return
+    this.update({ bootstrapCalibrationBusy: true, bootstrapCalibrationError: undefined })
+    try {
+      const result = await source.calibrateBootstrap({
+        draftHandle,
+        consentVersion: status.consent.required,
+        awaitCalibration: true,
+      })
+      if (result === undefined) throw new Error('calibration request failed')
+      this.applyCalibrationResult(result)
+    } catch (error) {
+      this.update({
+        bootstrapCalibrationBusy: false,
+        bootstrapCalibrationError: error instanceof Error ? error.message : String(error),
+      })
+    }
+  }
+
+  private applyCalibrationResult(result: CharterCalibrationResult): void {
+    if (result.pending) {
+      this.update({ bootstrapCalibrationBusy: true })
+      return
+    }
+    const items = result.candidates
+      .filter(candidate => candidate.kind !== 'objective')
+      .map(candidate => ({
+        id: candidate.ref,
+        clientRef: candidate.ref,
+        kind: candidate.kind as 'invariant' | 'deliverable',
+        text: candidate.text,
+        selected: !candidate.uncertain,
+        oversized: (this.state.bootstrap as CharterBootstrapDraftProposal | null)?.items?.find(item => item.ref === candidate.ref)?.oversized ?? false,
+        originalText: candidate.text,
+        calibration: {
+          uncertain: candidate.uncertain,
+          mergedCount: candidate.mergedFrom?.length ?? 0,
+          ...(result.degraded?.find(entry => candidate.ref.startsWith(`${entry.ref}.`)) === undefined
+            ? {}
+            : { degradedParts: result.degraded.find(entry => candidate.ref.startsWith(`${entry.ref}.`))?.parts.length ?? 0 }),
+        },
+      }))
+    const objective = result.candidates.find(candidate => candidate.kind === 'objective')
+    this.update({
+      bootstrapCalibrationBusy: false,
+      bootstrapCalibrationRunId: result.runId,
+      bootstrapObjectiveRef: objective?.ref,
+      bootstrapObjective: objective?.text ?? '',
+      bootstrapItems: items,
+      bootstrapVisibleCount: 40,
+      bootstrapCalibrationError: undefined,
+    })
+  }
+
+  /** Restore the complete L1 draft after reviewing calibration candidates. */
+  useOriginalBootstrap(): void {
+    const proposal = this.state.bootstrap
+    if (proposal === null) return
+    const structuredItems = (proposal as CharterBootstrapDraftProposal).draftItems
+    this.update({
+      bootstrapObjective: proposal.objective ?? '',
+      bootstrapObjectiveRef: structuredItems?.find(item => item.kind === 'objective')?.ref,
+      bootstrapItems: structuredItems === undefined
+        ? [
+            ...proposal.invariants.map((text, index) => ({ id: `inv-${index}`, kind: 'invariant' as const, text, selected: false })),
+            ...proposal.deliverables.map((text, index) => ({ id: `del-${index}`, kind: 'deliverable' as const, text, selected: false })),
+          ]
+        : structuredItems.filter(item => item.kind !== 'objective').map(item => ({
+            id: item.ref,
+            clientRef: item.ref,
+            kind: item.kind as 'invariant' | 'deliverable',
+            text: item.text,
+            selected: false,
+            ...(item.oversized === undefined ? {} : { oversized: item.oversized }),
+            originalText: item.text,
+          })),
+      bootstrapCalibrationRunId: undefined,
+      bootstrapCalibrationBusy: false,
+      bootstrapCalibrationError: undefined,
+    })
   }
 
   /** Explicit dismissal: one full cleanup of the draft and any replay evidence. */
@@ -1607,6 +1725,7 @@ export class CharterDraft {
       baseRevision,
       ops: plan.ops,
       draftHandle: this.state.bootstrap?.draftHandle ?? '',
+      ...(this.state.bootstrapCalibrationRunId === undefined ? {} : { calibrationRunId: this.state.bootstrapCalibrationRunId }),
     }
     this.update({
       bootstrapSaving: true,

@@ -72,6 +72,8 @@ function source(handlers: {
   edit: (request: CharterEditRequest) => Promise<CharterEditResult>
   bootstrap?: () => Promise<CharterBootstrapResult>
   localizeBootstrap?: () => Promise<CharterBootstrapDraftResult | undefined>
+  calibrationStatus?: () => Promise<import('../../src/host/types.js').CharterCalibrationStatusResult | undefined>
+  calibrateBootstrap?: (request: { readonly draftHandle: string; readonly consentVersion: number }) => Promise<import('../../src/host/types.js').CharterCalibrationResult | undefined>
   applyBootstrap?: (request: import('../../src/core/schemas.js').CharterBootstrapApplyRequest) => Promise<CharterEditResult>
   previewChangeSet?: (request: CharterEditRequest) => Promise<import('../../src/host/types.js').CharterChangeSetPreviewResult>
   snapshot?: () => ReturnType<CharterSessionSource['getSnapshot']>
@@ -81,6 +83,8 @@ function source(handlers: {
     edit: handlers.edit,
     bootstrap: handlers.bootstrap ?? (async () => ({ available: false, reason: 'unavailable' })),
     ...(handlers.localizeBootstrap === undefined ? {} : { localizeBootstrap: handlers.localizeBootstrap }),
+    ...(handlers.calibrationStatus === undefined ? {} : { calibrationStatus: handlers.calibrationStatus }),
+    ...(handlers.calibrateBootstrap === undefined ? {} : { calibrateBootstrap: handlers.calibrateBootstrap }),
     ...(handlers.applyBootstrap === undefined ? {} : { applyBootstrap: handlers.applyBootstrap }),
     ...(handlers.previewChangeSet === undefined ? {} : { previewChangeSet: handlers.previewChangeSet }),
     accept: () => undefined,
@@ -427,6 +431,64 @@ describe('per-Session draft ownership', () => {
     expect(draft.getSnapshot().bootstrapLanguage?.status).toBe('translated')
     expect(draft.getSnapshot().bootstrapObjective).toBe('Translated objective')
     expect(draft.getSnapshot().bootstrapItems[0]?.text).toBe('Translated invariant')
+  })
+
+  it('switches to calibrated candidates and carries the calibration run id into apply', async () => {
+    const applies: import('../../src/core/schemas.js').CharterBootstrapApplyRequest[] = []
+    const fake = source({
+      edit: async () => ({ ok: false, code: 'UNAVAILABLE', message: 'unused' }),
+      applyBootstrap: async request => {
+        applies.push(request)
+        return { ok: true, replayed: false, committedRevision: 1, ids: {}, view: view(1) }
+      },
+      bootstrap: async () => ({
+        available: true,
+        proposal: {
+          draftHandle: 'draft-1',
+          objective: 'L1 objective',
+          invariants: ['L1 invariant'],
+          deliverables: [],
+          source: { summarySeq: 9, at: 11 },
+          extractorVersion: 2,
+          draftLang: 'en',
+          language: { requested: 'en', status: 'source' },
+          draftItems: [
+            { ref: 'd-obj-0', kind: 'objective', text: 'L1 objective', lang: 'en', oversized: false },
+            { ref: 'd-inv-0', kind: 'invariant', text: 'L1 invariant', lang: 'en', oversized: false },
+          ],
+        },
+      }),
+      calibrationStatus: async () => ({
+        status: 'available',
+        consent: { required: 1, acknowledged: 1 },
+        trigger: 'manual',
+      }),
+      calibrateBootstrap: async () => ({
+        runId: 'run-1',
+        pending: false,
+        cached: false,
+        joined: false,
+        promptVersion: 1,
+        resolved: { provider: 'p', model: 'm' },
+        candidates: [{ ref: 'c-0', kind: 'invariant', text: 'Calibrated invariant', uncertain: false }],
+        truncated: false,
+        inputTruncated: false,
+      }),
+    })
+    const draft = new CharterDraft(sessionId, () => fake)
+    draft.bindLifecycle('life-calibrated')
+    draft.ensureBootstrap(view(0), true)
+    await new Promise(resolve => setTimeout(resolve, 0))
+    await new Promise(resolve => setTimeout(resolve, 0))
+    await draft.refreshCalibrationStatus()
+    expect(draft.getSnapshot().bootstrapCalibrationStatus?.status).toBe('available')
+    await draft.calibrateBootstrap()
+    expect(draft.getSnapshot().bootstrapCalibrationRunId).toBe('run-1')
+    expect(draft.getSnapshot().bootstrapItems[0]).toMatchObject({ id: 'c-0', clientRef: 'c-0', text: 'Calibrated invariant' })
+    draft.updateBootstrapItem('c-0', { selected: true })
+    await draft.applyBootstrap(view(0))
+    expect(applies[0]).toMatchObject({ calibrationRunId: 'run-1' })
+    expect(applies[0]?.ops[0]).toMatchObject({ type: 'item.add', item: { clientRef: 'c-0' } })
   })
 
   it('rejects bootstrap edits while the save request is in flight', async () => {

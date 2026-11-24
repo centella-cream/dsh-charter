@@ -23,6 +23,11 @@ export function ReviewCenterPage({ scope }: { readonly scope: PaneScope }): Reac
   bootstrapProblem,
   bootstrapLanguage,
   bootstrapDraftLang,
+  bootstrapCalibrationStatus,
+  bootstrapCalibrationBusy,
+  bootstrapCalibrationError,
+  calibrateBootstrap,
+  useOriginalBootstrap,
   bootstrapPromptBytes,
   bootstrapReplay,
   bootstrapSaving,
@@ -341,6 +346,29 @@ export function ReviewCenterPage({ scope }: { readonly scope: PaneScope }): Reac
                       </span>
                     </div>
                     <p className="charter-copy">{t('bootstrap.body')}</p>
+                    {bootstrapCalibrationStatus !== undefined && (
+                      <div className="charter-hint" role="status">
+                        {bootstrapCalibrationStatus.status === 'available'
+                          ? null
+                          : t('bootstrap.calibrationUnavailable', { reason: bootstrapCalibrationStatus.reason ?? bootstrapCalibrationStatus.status })}
+                        {bootstrapCalibrationStatus.status === 'available' && (
+                          <ActionButton disabled={bootstrapCalibrationBusy || bootstrapSaving || unknownBlocked} busy={bootstrapCalibrationBusy} onClick={calibrateBootstrap}>
+                            {bootstrapCalibrationBusy ? t('bootstrap.calibrationBusy') : t('bootstrap.calibration')}
+                          </ActionButton>
+                        )}
+                        {bootstrapItems.some(item => item.calibration !== undefined) && (
+                          <ActionButton disabled={bootstrapSaving || unknownBlocked} onClick={useOriginalBootstrap}>
+                            {t('bootstrap.calibrationUseOriginal')}
+                          </ActionButton>
+                        )}
+                      </div>
+                    )}
+                    {bootstrapCalibrationError !== undefined && (
+                      <div className="charter-notice charter-notice--warning" role="alert">
+                        {t('bootstrap.calibrationFailed')}
+                        <ErrorDetails detail={bootstrapCalibrationError} t={t}/>
+                      </div>
+                    )}
                     <span className="charter-source">
                       {bootstrap.source.shadowedTokens === undefined
                 ? t('bootstrap.sourcePlain')
@@ -442,6 +470,21 @@ export function ReviewCenterPage({ scope }: { readonly scope: PaneScope }): Reac
                                         )}
                                         {item.truncatedFrom !== undefined && (
                                           <span className="charter-hint">{t('bootstrap.truncatedHint', { bytes: String(item.truncatedFrom) })}</span>
+                                        )}
+                                        {item.calibration?.uncertain === true && (
+                                          <span className="charter-hint">{t('bootstrap.calibrationUncertain')}</span>
+                                        )}
+                                        {item.calibration !== undefined && item.calibration.mergedCount > 0 && (
+                                          <span className="charter-hint">{t('bootstrap.calibrationMerged', { count: item.calibration.mergedCount })}</span>
+                                        )}
+                                        {item.calibration?.degradedParts !== undefined && (
+                                          <span className="charter-hint">{t('bootstrap.calibrationDegraded', { count: item.calibration.degradedParts })}</span>
+                                        )}
+                                        {item.calibration?.mergedFrom !== undefined && item.calibration.mergedFrom.length > 0 && (
+                                          <details className="charter-error-details">
+                                            <summary>{t('bootstrap.calibrationOriginal')}</summary>
+                                            <pre>{item.calibration.mergedFrom.map(entry => entry.text).join('\n\n')}</pre>
+                                          </details>
                                         )}
                                         {oversizedUnedited && (
                                           <span className="charter-hint">{t('bootstrap.oversizedHint')}</span>

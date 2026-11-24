@@ -74,6 +74,11 @@ export interface PaneScope {
   readonly bootstrapObjective: string
   readonly bootstrapLanguage?: import("../host/types.js").CharterBootstrapLanguage | undefined
   readonly bootstrapDraftLang?: import("../host/types.js").CharterDraftLanguage | undefined
+  readonly bootstrapCalibrationStatus?: import("../host/types.js").CharterCalibrationStatusResult | undefined
+  readonly bootstrapCalibrationBusy: boolean
+  readonly bootstrapCalibrationError?: string | undefined
+  readonly calibrateBootstrap: () => void
+  readonly useOriginalBootstrap: () => void
   readonly bootstrapObjectiveOver: boolean
   readonly bootstrapPlan: import("./bootstrap-plan.js").BootstrapPlan
   readonly bootstrapPromptBytes: number

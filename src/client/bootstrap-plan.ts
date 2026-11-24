@@ -35,6 +35,13 @@ export interface BootstrapDraftItem {
   readonly foldCount?: number
   /** Text as extracted/translated, used to tell an edit from an untouched oversized candidate. */
   readonly originalText?: string
+  /** Optional calibration provenance shown by the review UI. */
+  readonly calibration?: {
+    readonly uncertain: boolean
+    readonly mergedCount: number
+    readonly degradedParts?: number
+    readonly mergedFrom?: readonly { readonly ref: string; readonly text: string }[]
+  }
 }
 
 /** The model-visible part of a history import plus its deferred proposals. */
@@ -72,17 +79,18 @@ export function buildBootstrapPlan(
   objective: string,
   items: readonly BootstrapDraftItem[],
   structuredDraft = false,
+  objectiveClientRef = 'd-obj-0',
 ): BootstrapPlan {
   // Normalize with the same function the Host uses for admission, so the
   // incremental byte accounting below matches `previewPrompt` exactly even for
   // CRLF or decomposed Unicode input.
   const normalizedObjective = inspectUserText(objective).value
-  const structured = structuredDraft || items.some(item => item.clientRef?.startsWith('d-') === true)
+  const structured = structuredDraft || items.some(item => item.clientRef?.startsWith('d-') === true || item.clientRef?.startsWith('c-') === true)
   const objectiveOp: CharterOp | null = view.objective === null && normalizedObjective.length > 0
     ? {
         type: 'objective.initialize',
         text: normalizedObjective,
-        ...(structured ? { clientRef: 'd-obj-0' } : {}),
+        ...(structured ? { clientRef: objectiveClientRef } : {}),
       }
     : null
   const baseOps: CharterOp[] = objectiveOp === null ? [] : [objectiveOp]
