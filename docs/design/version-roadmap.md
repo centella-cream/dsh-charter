@@ -29,7 +29,7 @@ The release path is:
   → 0.3.1 dependency-graph/a11y convergence, envelope warning, local traffic forensics (client-only, published)
   → 0.3.2 accessibility/evidence convergence (root-text scaling, six-state evidence; published)
   → 0.3.3 structured draft extraction + automatic language following (additive Remote; published)
-  → 0.3.4 contract-draft calibration (semantic aggregation/rewriting, unified language path, diff review, opt-in; decided)
+  → 0.3.4 contract-draft calibration (semantic aggregation/rewriting, independent language-following fallback, diff review, opt-in; decided)
   → 0.4.0 full contract-capability upgrade (readiness/ready queue, stall detection, execution memory + record schema v3,
     relation proposal, history-completion drafts, optional assessor; scope decided, detailed design E0 first)
 ```
@@ -55,7 +55,7 @@ rc.5 fixed the correctness defect inside the promised 0.1 workflow: previously e
   (structured draft extraction + automatic zh/en language following with `languageFollow` opt-out); tags, assets,
   and npm bytes are immutable.
 - `0.3.4` is the current development line (contract-draft calibration patch, decided 2026-11-24): semantic
-  aggregation, readable rewriting, unified language normalization, original-vs-calibrated diff review; opt-in,
+  aggregation, readable rewriting, preserved 0.3.3 language-following fallback, original-vs-calibrated diff review; opt-in,
   zero record-schema/prompt/tool change. Positioning constraint: it improves draft quality and review efficiency
   only and never claims improved long-horizon task completion. Authority:
   [charter-draft-calibration-v1.zh.md](charter-draft-calibration-v1.zh.md) (`Active`).
@@ -324,7 +324,7 @@ Alpha milestones may change the schema, but every change must ship fixture migra
 | `0.3.1` | Published dependency/a11y/standing-envelope convergence; no record/Remote/prompt change | New schema/domain, Remote/model capability, DSH ABI/wire change |
 | `0.3.3` | Structured draft extraction: additive bootstrapDraft Remote, objective clientRef, folding/oversized/refs; automatic zh/en language follow with `languageFollow` opt-out and source fallback | Record schema/domain, prompt/tool changes, breaking legacy bootstrap/apply, unbounded always-on model call |
 | `0.3.0` | All-section GUI refactor: design system, IA/routing, Change Set contract, Pane/store split, a11y/screenshot evidence | New record schema/domain, new Remote/model capability, compatibility declaration changes, pushing/merging/tagging/publishing or availability claims before human acceptance |
-| `0.3.4` | Draft-calibration patch line: `calibrateBootstrap`/`calibrationStatus` additive Remotes, additive `applyBootstrap` extension, host one-shot calibration (opt-in + consentVersion + pre-registered A/B), `evidence.excerpt` provenance with zero record-schema change, unified single-model path with language following | Record schema/domain, prompt/tool-surface changes, auto-applied calibration, changed bootstrap/apply behavior, "improves model execution/completeness" claims, publishing before human acceptance |
+| `0.3.4` | Draft-calibration patch line: `calibrateBootstrap`/`calibrationStatus` additive Remotes, additive `applyBootstrap` extension, host one-shot calibration (opt-in + consentVersion + pre-registered A/B), `evidence.excerpt` provenance with zero record-schema change, preserved 0.3.3 language-following fallback (translation + calibration may both call; documented cost) | Record schema/domain, prompt/tool-surface changes, auto-applied calibration, changed bootstrap/apply behavior, "improves model execution/completeness" claims, publishing before human acceptance |
 | `0.4.0` | Full contract-capability upgrade: readiness/ready queue and stall detection (prompt projection change), execution memory (decision/environment/evidence/progress proposal, record schema v3 + migration + downgrade fence), relation proposal, history-completion drafts, conditional assessor; execution-metric A/B | Implementation before E0 detailed design review, schema v3 without migration fixtures/downgrade fence, direct model writes, enforced execution policy, model-visible changes on by default without pre-registered A/B, releasing before all of E1–E4 pass (complete 0.4.0, no E1-only split), publishing before human acceptance |
 
 ## 16. `0.3.x` GUI line, `0.3.3` extraction, `0.3.4` calibration, and `0.4.0` contract upgrade
@@ -334,7 +334,7 @@ convergence. `0.3.3` (published 2026-11-24) added structured draft extraction an
 following. The GUI remains client-only except for the additive draft methods documented in the extraction design.
 
 `0.3.4` (decided 2026-11-24) adds opt-in model calibration of review drafts on top of the shipped 0.3.3
-infrastructure: semantic aggregation, readable rewriting in the UI language (unified single-model path), and
+infrastructure: semantic aggregation, readable rewriting in the UI language (translation remains an independent fallback so both may call), and
 original-vs-calibrated diff review, with zero record-schema change and full degradation to the deterministic
 draft. `0.4.0` (scope decided 2026-11-24) is the full contract-capability upgrade — readiness, stall detection,
 execution memory with record schema v3, relation proposal, and history completion — with detailed design (E0)

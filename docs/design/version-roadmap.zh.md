@@ -27,7 +27,7 @@
   → 0.3.1：依赖图/无障碍收敛、standing envelope 预警、本地流量取证（纯客户端，已发布）
   → 0.3.2：无障碍/证据收敛（根字号缩放、六状态与媒体证据；已发布）
   → 0.3.3：结构化草案抽取 + 自动语言跟随（additive Remote；已发布）
-  → 0.3.4：契约草案校准（语义聚合/可读改写/语言统一/diff 审阅；opt-in、零 record schema；已决策）
+  → 0.3.4：契约草案校准（语义聚合/可读改写/保留 0.3.3 语言归一独立回退/diff 审阅；opt-in、零 record schema；已决策）
   → 0.4.0：完整契约功能升级（readiness/ready queue、停滞检测、执行记忆 + record schema v3、
     relation proposal、历史补全草案、可选 assessor；范围已决策，详细设计 E0 先行）
 ```
@@ -59,9 +59,9 @@ rc.5 修复了与产品承诺冲突的审阅正确性问题：此前历史草案
 - `0.3.2` 已于 2026-11-16 发布；不改 record/Remote/prompt，人工 AT/Desktop 证据作为公开已知缺口。
 - `0.3.3` 已于 2026-11-24 发布到 npm（`latest`/`next`）和 GitHub Release `v0.3.3`：结构化草案抽取、
   重复折叠、稳定 ref 与自动 zh/en 语言归一（`languageFollow` 可关）；tag、资产和 npm 字节不可变。
-- `0.3.4` 为当前开发线（契约草案校准补丁，已决策 2026-11-24）：语义聚合、可读性改写、语言统一、
+- `0.3.4` 为当前开发线（契约草案校准补丁，已决策 2026-11-24）：语义聚合、可读性改写、保留 0.3.3 语言归一独立回退、
   原文 diff 审阅；opt-in、零 record schema/prompt/工具面变更；范围与验收由
-  [charter-draft-calibration-v1.zh.md](charter-draft-calibration-v1.zh.md)（`Active`）持有。
+  [charter-draft-calibration-v1.zh.md](charter-draft-calibration-v1.zh.md)（`Implemented — pending release acceptance`）持有。
   定位约束：只提升草案质量与审阅效率，不声称提升模型长程任务完成率。
 - `0.4.0` 为下一功能线（完整契约功能升级，范围已决策 2026-11-24）：readiness/ready queue、
   停滞检测、执行记忆（decision/environment/evidence/progress proposal，record schema v3 +
@@ -478,13 +478,12 @@ ranges/`dshReleases`。对里程碑的影响：不新增人工门禁类别，但
 
 ### 14.2.2 `0.3.4` 范围：契约草案校准补丁线（已决策，2026-11-24）
 
-- **主线**：在 0.3.3 结构化草案之上的模型校准——语义级聚合、可读性改写、目标语言归一（吸收
-  0.3.3 语言归一为单一模型路径，见校准方案 §3.1）、原文 ↔ 校准稿 diff 审阅与"用原文"。opt-in
+- **主线**：在 0.3.3 结构化草案之上的模型校准——语义级聚合、可读性改写、目标语言归一（保留 0.3.3 语言归一作为独立回退；翻译与校准可能各调用一次，见校准方案 §3.1）、原文 ↔ 校准稿 diff 审阅与"用原文"。opt-in
   （`calibration.enabled` 默认关）+ `consentVersion` 强校验；任何失败整批降级回确定性草案。
 - **wire**：新增 `charter/calibrateBootstrap`、`charter/calibrationStatus`；`applyBootstrap`
   additive 扩展（`calibrationRunId`、`c-*` ref 命名空间）。**零 record schema 变更**：逐条
-  provenance 走 Host trusted-attachment 附着 `evidence.excerpt`（校准方案 §6），0.3.2/0.3.3
-  可直接读取 0.3.4 写出的记录，无 downgrade fence（round-trip 双版本测试）。
+  provenance 走 Host trusted-attachment 附着 `evidence.excerpt`（校准方案 §6），0.3.4 记录不新增任何
+  record 字段；旧 0.3.2/0.3.3 record 已由 fixture 验证可被新代码读取，反向由真实旧版本 profile 人工复核。
 - **定位约束**：只提升草案聚合/可读性/语言/审阅效率，**不声称提升模型长程任务完成率**，
   不承诺草案完整性/通用性；A/B 只承诺文本质量与审阅效率。
 - **实现基座**：0.3.3 已交付并经真实使用验证的翻译基础设施——`ctx.get('llm')` 可选注入、
@@ -596,5 +595,5 @@ DSH ABI/wire。本分支另做仅声明层的兼容维护：rc.2 的 engines/pee
 | `0.3.1` | GUI 收敛补丁：依赖图审计、standing envelope 预警、本地 traffic checker；零 record/Remote/prompt 变化（已发布） | 新 record schema/domain、新 Remote/模型能力、DSH ABI/wire 变更 |
 | `0.3.2` | 无障碍/证据收敛：根字号缩放、六状态与媒体证据、文档对账（已发布） | 新 record schema/domain、新 Remote/模型能力、prompt 变更 |
 | `0.3.3` | 结构化草案抽取：`charter/bootstrapDraft` additive Remote、objective `clientRef`、折叠/oversized/ref；自动 zh/en 语言归一（`languageFollow` 可关，失败回退源语言）（已发布） | record schema/domain、prompt 投影、模型工具面变更、破坏 legacy bootstrap/apply、无开关的无界模型调用 |
-| `0.3.4` | 契约草案校准补丁线：`calibrateBootstrap`/`calibrationStatus` additive Remote、`applyBootstrap` additive 扩展、宿主 one-shot 校准（opt-in + consentVersion + A/B 预注册）、`evidence.excerpt` provenance（零 record schema 变更）、与语言归一统一路径 | record schema/domain、prompt 投影、模型工具面变更、自动生效校准结果、既有 bootstrap/apply 行为变化、"提升模型执行表现/完整性"宣称、未经人工验收发布 |
+| `0.3.4` | 契约草案校准补丁线：`calibrateBootstrap`/`calibrationStatus` additive Remote、`applyBootstrap` additive 扩展、宿主 one-shot 校准（opt-in + consentVersion + A/B 预注册）、`evidence.excerpt` provenance（零 record schema 变更）、保留 0.3.3 语言归一独立回退 | record schema/domain、prompt 投影、模型工具面变更、自动生效校准结果、既有 bootstrap/apply 行为变化、"提升模型执行表现/完整性"宣称、未经人工验收发布 |
 | `0.4.0` | 完整契约功能升级：readiness/ready queue 与停滞检测（prompt 投影变更）、执行记忆（decision/environment/evidence/progress proposal，record schema v3 + 迁移 + downgrade fence）、relation proposal、历史补全草案、条件式 assessor；执行类 A/B | 未经 E0 详细设计与评审直接实现、无迁移 fixture/downgrade 围栏的 schema v3、模型直接写契约、强制执行策略、未经 A/B 预注册默认开启模型可见变更、E1–E4 未全部达标即发布（完整 0.4.0，不设 E1-only 拆版）、未经人工验收发布 |

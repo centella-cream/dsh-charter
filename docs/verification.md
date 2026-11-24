@@ -3,24 +3,24 @@
 English | [中文](verification.zh.md)
 
 > **Status:** Active — current operating record.
-> **Version scope:** `0.3.3` structured-draft/language release (published 2026-11-24); previous published `0.3.2`.
+> **Version scope:** `0.3.4` draft-calibration development candidate; latest published release `0.3.3` (2026-11-24); previous published `0.3.2`.
 > **Baseline:** 2026-11-23
 
-Verification date: 2026-11-24. Current source version: `0.3.3`; latest published release is `0.3.3` (previous `0.3.2`). This is the current evidence record; historical per-commit narratives live in Git
+Verification date: 2026-11-24. Current source version: `0.3.4`; latest published release is `0.3.3` (previous `0.3.2`). This is the current evidence record; historical per-commit narratives live in Git
 history and the Changelog. Temporary directories, profiles, tarballs, and fetched HTML live under `.tmp/` and are
 excluded from the published package.
 
 Environment: macOS, Node `v22.23.1`, npm `12.0.2`, pnpm `12.3.4`. Local DSH development baseline:
 `0.2.2-rc.5` (the current npm `latest`/`next`).
 
-## 1. Current status (2026-11-23)
+## 1. Current status (2026-11-24)
 
 - Latest published release: `0.3.3` (npm `latest`/`next`, GitHub Release `v0.3.3`; exact artifact digest is recorded in the C+1 checksum commit and release evidence).
 - Previous published release: `0.3.2` (SHA-256 `9dcb82ae34eaaeb6d266bb98f3e1f92f3a0798042ce3dc282abe9173ff79e056`).
 - Previous releases: `0.3.1`, `0.3.0`, `0.2.2`; published tags and bytes are immutable.
-- Current source line: `0.3.3` structured-draft/language candidate, not published. It adds additive draft Remote/objective refs and automatic language following; record schema remains 2 and prompt projection is unchanged.
-- Source gates on the current tree: `npm run check` (44 files / 524 tests), token coverage 41 static + 1 dynamic over 13 declared DSH versions, and `verify:ui-metrics --gate=final`.
-- Compatibility: thirteen declared DSH versions are local-matrix verified (`.tmp/compat-13-adaptive-final.json`); latest DSH `0.2.2-rc.5` is the primary baseline. This is local evidence, not a CI claim.
+- Current source line: `0.3.4` draft-calibration development candidate, not published. `0.3.3` is the latest published release; `0.3.4` adds opt-in calibration, additive Remote/apply fields, and keeps record schema 2 and the standing prompt/tool surface unchanged.
+- Source gates on the current tree: `npm run check` (46 files / 546 tests), token coverage 41 static + 1 dynamic over 13 declared DSH versions, and `verify:ui-metrics --gate=final`.
+- Compatibility: thirteen declared DSH versions are local-matrix verified (`.tmp/compat-13-034-final4.json`, source `2a8d6c0`); latest DSH `0.2.2-rc.5` is the primary baseline. This is local evidence, not a CI claim. Fresh 0.2.2-rc.5 Web-profile install and 0.2.1-rc.3/rc.4 Gateway checks pass on the exact candidate.
 - Post-release fresh exact CLI install in an isolated `DSH_HOME` resolved `dsh-charter@0.3.2` from npm and
   loaded client `6ef68d25…`, matching the published artifact.
 - Published artifact: `dsh-charter-0.3.2.tgz` SHA-256
@@ -358,7 +358,7 @@ rm -rf .tmp
 - Source gates: `npm run check` = 46 files / 546 tests PASS; token coverage PASS over 13 declared DSH versions; `verify:ui-metrics --gate=final` PASS.
 - Implemented: opt-in calibration config/consent gate, Host `ctx.llm` one-shot strict JSON call, semantic aggregation/readable rewrite validation, `c-*` candidate refs with `mergedFrom`, trusted Host-only evidence excerpts, additive `applyBootstrap.calibrationRunId`, two new Remote methods and basic review UI (calibrate, uncertainty/merge/split badges, original excerpt, use-original, consent disclosure, objective warning, diagnostics usage).
 - README/README.zh are concise current-build documents; 0.3.4 Pane screenshots crop the right-hand `.charter-root` at a 1440x1000 Web-profile viewport and the dependency graph crops the graph element at a taller viewport; both follow the system light theme and use README-language-matching UI and contract text (Chinese reuses the three Chinese deliverables from the `0.3.3` demo session because that live session cannot be opened concurrently from the Web profile); `package:smoke` now asserts localized `locale/en.json`/`locale/zh.json` metadata and that the description names the package version. Web Plugin Manager rendered the localized title/description and version note in both languages.
-- Candidate artifact `dist/dsh-charter-0.3.4.tgz` SHA-256 `3fe00b4e734fa08adb790ec807ec0e73ae1a2efa8b97f9edb83da701648d39cd`; exact-artifact package smoke and packed recovery smoke PASS; 13-version matrix PASS (`.tmp/compat-13-034-final4.json`, source `2a8d6c0`).
+- Candidate artifact `dist/dsh-charter-0.3.4.tgz` SHA-256 `f06a44f884e699175076e1bc489e060fe35b67a40dd1fe9ba23f80f8e4aa4bbb`; exact-artifact package smoke, packed recovery smoke, fresh DSH 0.2.2-rc.5 Web profile install/serve smoke, and Gateway acceptance on DSH 0.2.1-rc.3/rc.4 (20 authorization checks each) PASS; 13-version matrix PASS (`.tmp/compat-13-034-final4.json`, source `2a8d6c0`).
 - P1-5 coverage closure (2026-11-24): also covers the calibration failure matrix (malformed/schema/text/tool-call/non-stop/timeout), explicit-effort rejection, and actual 0.3.2/0.3.3 record fixtures; actual 0.3.2 and 0.3.3-produced v2 record fixtures parse losslessly under the current strict schema; added calibration capability-state, cache/single-flight, 30-minute run-TTL, objective c-* exact-match, consent, mixed-namespace, missing/expired run, wire-evidence, run/handle, translation-fallback, mergedFrom, and oversized-split tests.
 - P2 closure (2026-11-24): removed the unimplemented `calibration.trigger`/`calibration.cooldownMinutes` config and diagnostics UI; added a non-owner calibration Remote guard test; corrected the docs index to the retained 0.3.3 translation fallback and pending-release status; anchored the English disclosure copy to the shared `CALIBRATION_DISCLOSURE` constant.
 - Review hardening (2026-11-24): 0.3.3 language normalization now always runs as the automatic fallback and calibration uses the preserved L1 source handle; calibration is hidden outside zh/en; calibration runs are bound to their source draft handle; mergedFrom excerpts are wired into the per-item diff disclosure; added consent, mixed-namespace, missing-run, run/handle, wire-evidence, mergedFrom, and translation-fallback tests; calibration is owner-only on the Remote path; excerpt truncation/degraded thresholds and joined/state reset were corrected.
