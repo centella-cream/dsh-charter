@@ -1010,6 +1010,22 @@ describe('structured bootstrap fallback', () => {
     await source.dispose()
   })
 
+  it('does not advertise or call calibration outside the zh/en whitelist', async () => {
+    let calls = 0
+    const source = new CharterSessionSource(
+      { locale: { getLocale: () => ({ active: 'fr-FR' }) } } as never,
+      SessionId('calibration-fr'),
+    )
+    ;(source as unknown as { remote: unknown }).remote = {
+      calibrationStatus: async () => { calls += 1; return { ok: true, value: { status: 'available', consent: { required: 1, acknowledged: 1 }, trigger: 'manual' } } },
+      calibrateBootstrap: async () => { calls += 1; return { ok: true, value: {} } },
+    }
+    expect(await source.calibrationStatus()).toBeUndefined()
+    expect(await source.calibrateBootstrap({ draftHandle: 'draft', consentVersion: 1 })).toBeUndefined()
+    expect(calls).toBe(0)
+    await source.dispose()
+  })
+
   it('falls back when a new client talks to an old Host without bootstrapDraft', async () => {
     let legacyCalls = 0
     const source = new CharterSessionSource({} as never, SessionId('absent-method'))

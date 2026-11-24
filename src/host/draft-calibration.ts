@@ -62,7 +62,7 @@ function estimateTokens(value: string): number {
 function clipExcerpt(text: string): string {
   if (utf8Bytes(text) <= MAX_EXCERPT_BYTES) return text
   const clipped = splitComplete(text, MAX_EXCERPT_BYTES)[0]
-  return clipped === undefined ? text.slice(0, 256) : `${clipped.text}…`
+  return clipped === undefined ? '' : `${clipped.text}…`
 }
 
 function truncateAtBoundary(text: string, maxBytes: number): string {
@@ -222,7 +222,7 @@ export function parseCalibrationResponse(
     const mergedFrom = normalizeRefs(input, row.mergedFrom)
     const ref = `c-${index}`
     const parts = splitComplete(normalized.value, input.maxItemBytes)
-    if (utf8Bytes(normalized.value) > 1_024 && parts.length > 0) {
+    if (utf8Bytes(normalized.value) > input.maxItemBytes && parts.length > 0) {
       const derived = parts.map((part, partIndex) => ({
         ref: `${ref}.s${partIndex}`,
         kind: row.kind,

@@ -19,6 +19,7 @@ import { structuredFromEvents, STRUCTURED_EXTRACTOR_VERSION } from '../core/stru
 import { translateDraftItems, targetLanguageOf, type DraftLlmRuntime } from './draft-translation.js'
 import {
   buildCalibrationRequest,
+  CALIBRATION_DISCLOSURE,
   CALIBRATION_DISCLOSURE_VERSION,
   CALIBRATION_PROMPT_VERSION,
   runDraftCalibration,
@@ -199,12 +200,12 @@ export const Config: Schema<CharterConfig> = Schema.object({
   languageFollowProvider: Schema.string(),
   languageFollowModel: Schema.string(),
   calibration: Schema.object({
-    enabled: Schema.boolean().default(DEFAULT_CALIBRATION_OPTIONS.enabled),
-    consentVersion: Schema.number().step(1).min(0).default(DEFAULT_CALIBRATION_OPTIONS.consentVersion),
+    enabled: Schema.boolean().description('Opt-in draft calibration. Sends compaction draft text and current charter items to the configured model; results are review-only proposals.').default(DEFAULT_CALIBRATION_OPTIONS.enabled),
+    consentVersion: Schema.number().step(1).min(0).description(CALIBRATION_DISCLOSURE).default(DEFAULT_CALIBRATION_OPTIONS.consentVersion),
     trigger: Schema.union(['manual', 'auto']).default(DEFAULT_CALIBRATION_OPTIONS.trigger),
     provider: Schema.string(),
     model: Schema.string(),
-    reasoningEffort: Schema.string(),
+    reasoningEffort: Schema.string().description('Optional adapter reasoning effort passed through to the calibration call; it is not pre-validated by this plugin.'),
     targetLanguage: Schema.union(['auto', 'zh', 'en']).default(DEFAULT_CALIBRATION_OPTIONS.targetLanguage),
     maxInputBytes: Schema.number().step(1).min(1_024).max(1_048_576).default(DEFAULT_CALIBRATION_OPTIONS.maxInputBytes),
     maxOutputTokens: Schema.number().step(1).min(128).max(65_536).default(DEFAULT_CALIBRATION_OPTIONS.maxOutputTokens),
@@ -349,7 +350,7 @@ export class CharterService extends Service {
   private readonly translatedItems = new Map<string, { readonly items: readonly CharterBootstrapDraftItem[]; readonly language: CharterBootstrapLanguage }>()
   private readonly calibrationCache = new Map<string, { readonly result: CharterCalibrationResult; readonly at: number }>()
   private readonly calibrationJobs = new Map<string, Promise<CharterCalibrationResult>>()
-  private readonly calibrationRuns = new Map<string, { readonly result: CharterCalibrationResult; readonly at: number }>()
+  private readonly calibrationRuns = new Map<string, { readonly result: CharterCalibrationResult; readonly draftHandle: string; readonly at: number }>()
   private sessionsTable: KvTable<SessionIdType, CharterRecord> | undefined
   private archivesTable: KvTable<string, CharterArchiveCacheEntry> | undefined
   private archivesDomain: { close(): Promise<void> } | undefined
@@ -1178,10 +1179,11 @@ export class CharterService extends Service {
     })
     const cached = this.calibrationCache.get(key)
     if (cached !== undefined && Date.now() - cached.at < 30 * 60_000) {
-      this.calibrationRuns.set(cached.result.runId, { result: cached.result, at: cached.at })
+      this.calibrationRuns.set(cached.result.runId, { result: cached.result, draftHandle: request.draftHandle, at: cached.at })
       return { ...cached.result, cached: true, joined: false, pending: false }
     }
     let job = this.calibrationJobs.get(key)
+    const joined = job !== undefined
     if (job === undefined) {
       const runId = randomUUID()
       job = this.performCalibration({ llm, selection, ...(effort === undefined ? {} : { effort }), proposal, accepted, request, runId })
@@ -1192,7 +1194,7 @@ export class CharterService extends Service {
           runId,
           pending: true,
           cached: false,
-          joined: false,
+          joined,
           promptVersion: CALIBRATION_PROMPT_VERSION,
           resolved: { provider: selection.provider, model: selection.model, ...(effort === undefined ? {} : { effort }) },
           candidates: [],
@@ -1204,9 +1206,9 @@ export class CharterService extends Service {
     const result = await job
     this.calibrationCache.set(key, { result, at: Date.now() })
     this.trimMap(this.calibrationCache, 32)
-    this.calibrationRuns.set(result.runId, { result, at: Date.now() })
+    this.calibrationRuns.set(result.runId, { result, draftHandle: request.draftHandle, at: Date.now() })
     this.trimMap(this.calibrationRuns, 32)
-    return { ...result, cached: false, joined: this.calibrationJobs.has(key) && request.awaitCalibration !== false }
+    return { ...result, cached: false, joined }
   }
 
   private async performCalibration(input: {
@@ -2126,6 +2128,9 @@ export class CharterService extends Service {
       const run = this.calibrationRuns.get(runId)
       if (run === undefined || Date.now() - run.at > 30 * 60_000) {
         return unavailableResult('CALIBRATION_RUN_EXPIRED', 'calibration result expired; run calibration again')
+      }
+      if (run.draftHandle !== parsedRequest.data.draftHandle) {
+        return unavailableResult('INVALID_ARGUMENT', 'calibration run does not belong to the supplied draft handle')
       }
       const draft = this.structuredDraftForHandle(parsedRequest.data.draftHandle)
       if (draft === undefined) return unavailableResult('INVALID_ARGUMENT', 'structured bootstrap draft expired; request a new draft')

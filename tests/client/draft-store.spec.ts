@@ -470,7 +470,7 @@ describe('per-Session draft ownership', () => {
         joined: false,
         promptVersion: 1,
         resolved: { provider: 'p', model: 'm' },
-        candidates: [{ ref: 'c-0', kind: 'invariant', text: 'Calibrated invariant', uncertain: false }],
+        candidates: [{ ref: 'c-0', kind: 'invariant', text: 'Calibrated invariant', uncertain: false, mergedFrom: [{ ref: 'd-inv-0', excerpt: 'L1 invariant' }] }],
         truncated: false,
         inputTruncated: false,
       }),
@@ -485,10 +485,77 @@ describe('per-Session draft ownership', () => {
     await draft.calibrateBootstrap()
     expect(draft.getSnapshot().bootstrapCalibrationRunId).toBe('run-1')
     expect(draft.getSnapshot().bootstrapItems[0]).toMatchObject({ id: 'c-0', clientRef: 'c-0', text: 'Calibrated invariant' })
+    expect(draft.getSnapshot().bootstrapItems[0]?.calibration?.mergedFrom).toEqual([{ ref: 'd-inv-0', text: 'L1 invariant' }])
     draft.updateBootstrapItem('c-0', { selected: true })
     await draft.applyBootstrap(view(0))
     expect(applies[0]).toMatchObject({ calibrationRunId: 'run-1' })
     expect(applies[0]?.ops[0]).toMatchObject({ type: 'item.add', item: { clientRef: 'c-0' } })
+  })
+
+  it('still runs language follow when calibration is available', async () => {
+    let localizeCalls = 0
+    let calibrationHandle: string | undefined
+    const fake = source({
+      edit: async () => ({ ok: false, code: 'UNAVAILABLE', message: 'unused' }),
+      bootstrap: async () => ({
+        available: true,
+        proposal: {
+          draftHandle: 'draft-source',
+          objective: null,
+          invariants: ['Source invariant'],
+          deliverables: [],
+          source: { summarySeq: 1, at: 1 },
+          extractorVersion: 2,
+          draftLang: 'zh',
+          language: { requested: 'en', status: 'pending' },
+          draftItems: [{ ref: 'd-inv-0', kind: 'invariant', text: 'Source invariant', lang: 'zh', oversized: false }],
+        },
+      }),
+      localizeBootstrap: async () => {
+        localizeCalls += 1
+        return {
+          available: true,
+          proposal: {
+            draftHandle: 'draft-localized',
+            objective: null,
+            invariants: ['Translated invariant'],
+            deliverables: [],
+            source: { summarySeq: 1, at: 1 },
+            extractorVersion: 2,
+            draftLang: 'en',
+            language: { requested: 'en', status: 'translated' },
+            draftItems: [{ ref: 'd-inv-0', kind: 'invariant', text: 'Translated invariant', lang: 'en', oversized: false }],
+            items: [{ ref: 'd-inv-0', kind: 'invariant', text: 'Translated invariant', lang: 'en', oversized: false }],
+          },
+        }
+      },
+      calibrationStatus: async () => ({ status: 'available', consent: { required: 1, acknowledged: 1 }, trigger: 'manual' }),
+      calibrateBootstrap: async request => {
+        calibrationHandle = request.draftHandle
+        return {
+          runId: 'run-source',
+          pending: false,
+          cached: false,
+          joined: false,
+          promptVersion: 1,
+          resolved: { provider: 'p', model: 'm' },
+          candidates: [],
+          truncated: false,
+          inputTruncated: false,
+        }
+      },
+    })
+    const draft = new CharterDraft(sessionId, () => fake)
+    draft.bindLifecycle('life-localize-fallback')
+    draft.ensureBootstrap(view(0), true)
+    await new Promise(resolve => setTimeout(resolve, 0))
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(localizeCalls).toBe(1)
+    expect(draft.getSnapshot().bootstrapItems[0]?.text).toBe('Translated invariant')
+    // The source handle remains the calibration/apply authority even after localization.
+    expect(draft.getSnapshot().bootstrapSourceDraftHandle).toBe('draft-source')
+    await draft.calibrateBootstrap()
+    expect(calibrationHandle).toBe('draft-source')
   })
 
   it('rejects bootstrap edits while the save request is in flight', async () => {

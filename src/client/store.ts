@@ -235,10 +235,26 @@ export class CharterSessionSource implements CharterSource {
     }
   }
 
+  /** Calibration only supports the same zh/en target whitelist as extraction. */
+  private calibrationLocale(): 'zh' | 'en' | undefined {
+    const active = (() => {
+      try {
+        return (this.ctx.locale as unknown as { getLocale?: () => { active?: string } }).getLocale?.().active
+      } catch {
+        return undefined
+      }
+    })()
+    const base = active?.toLowerCase().split(/[-_]/u)[0]
+    return base === 'en' ? 'en' : base === 'zh' ? 'zh' : undefined
+  }
+
   /** Read the optional calibration capability without affecting the draft. */
   readonly calibrationStatus = async (): Promise<CharterCalibrationStatusResult | undefined> => {
     const remote = this.remote
     if (remote === undefined) return undefined
+    // Do not advertise calibration when the active UI locale is outside the
+    // zh/en target whitelist; source text is passed through unchanged.
+    if (this.calibrationLocale() === undefined) return undefined
     const method = (remote as unknown as {
       calibrationStatus?: (request: { readonly sessionId: SessionId }) => Promise<{ ok: true; value: CharterCalibrationStatusResult } | { ok: false; error: unknown }>
     }).calibrationStatus
@@ -260,15 +276,8 @@ export class CharterSessionSource implements CharterSource {
   }): Promise<CharterCalibrationResult | undefined> => {
     const remote = this.remote
     if (remote === undefined) return undefined
-    const active = (() => {
-      try {
-        return (this.ctx.locale as unknown as { getLocale?: () => { active?: string } }).getLocale?.().active
-      } catch {
-        return undefined
-      }
-    })()
-    const base = active?.toLowerCase().split(/[-_]/u)[0]
-    const locale = base === 'en' ? 'en' : 'zh'
+    const locale = this.calibrationLocale()
+    if (locale === undefined) return undefined
     const method = (remote as unknown as {
       calibrateBootstrap?: (request: {
         readonly sessionId: SessionId

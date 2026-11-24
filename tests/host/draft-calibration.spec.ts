@@ -63,6 +63,16 @@ describe('draft calibration prompt and validation', () => {
     ]), prepared)).toThrow(/objective/u)
   })
 
+  it('splits oversized calibrated text into bounded derived refs', () => {
+    const prepared = buildCalibrationRequest(input)
+    const parsed = parseCalibrationResponse(JSON.stringify([
+      { kind: 'invariant', text: 'First sentence. Second sentence. '.repeat(10), mergedFrom: ['d-inv-0'] },
+    ]), prepared)
+    expect(parsed.candidates.length).toBeGreaterThan(1)
+    expect(parsed.candidates.every(candidate => candidate.ref.startsWith('c-0.s'))).toBe(true)
+    expect(parsed.degraded?.[0]?.ref).toBe('c-0')
+  })
+
   it('runs one bounded stream and returns usage', async () => {
     const preview = buildCalibrationRequest(input)
     const output = JSON.stringify([

@@ -14,6 +14,7 @@ import ToolRuntime from '@deepseek-ai/dsh-tools'
 import { CharterService } from '../../src/host/service.js'
 import { watchCharter } from '../../src/remote/watch.js'
 import type { CharterEditRequest } from '../../src/core/schemas.js'
+import { charterBootstrapApplyRequestSchema } from '../../src/core/schemas.js'
 
 const contexts: Context[] = []
 const roots: string[] = []
@@ -2417,6 +2418,144 @@ describe('automatic draft language follow', () => {
       kind: 'compaction-summary',
     })
     expect(appliedItem?.evidence?.[0]?.excerpt?.length).toBeGreaterThan(0)
+  })
+
+  it('rejects calibration without matching consent and rejects invalid c-* apply gates', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-calibration-gates-'))
+    roots.push(root)
+    const ctx = await mount(root, {
+      calibration: {
+        enabled: true,
+        consentVersion: 0,
+        trigger: 'manual',
+        targetLanguage: 'auto',
+        maxInputBytes: 24_576,
+        maxOutputTokens: 2_048,
+        maxCandidates: 12,
+        timeoutMs: 30_000,
+        cooldownMinutes: 10,
+      },
+    })
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('calibration-gates'), {
+      meta: { cwd: root, createdAt: 1_700_000_003_300 },
+    })
+    await waitForReady(service, session)
+    ctx.provide('llm', {
+      async *stream() { yield { type: 'finish', reason: { kind: 'stop' } } },
+    } as never)
+    expect(service.calibrationStatus(session.id).status).toBe('consent-required')
+    await expect(service.calibrateBootstrap({
+      sessionId: session.id,
+      draftHandle: 'missing',
+      locale: 'en',
+      consentVersion: 1,
+    })).rejects.toMatchObject({ code: 'CALIBRATION_CONSENT_REQUIRED' })
+    const apply = (extra: Record<string, unknown>) => service.applyBootstrap({
+      sessionId: session.id,
+      mutationId: 'calibration-gate',
+      baseRevision: 0,
+      draftHandle: 'missing',
+      ...extra,
+      ops: [{
+        type: 'item.add' as const,
+        item: { clientRef: 'c-0', kind: 'invariant' as const, text: 'x', order: 0 },
+      }],
+    } as never)
+    expect(await apply({})).toMatchObject({ ok: false, code: 'INVALID_ARGUMENT' })
+    expect(await apply({ calibrationRunId: 'missing' })).toMatchObject({ ok: false, code: 'CALIBRATION_RUN_EXPIRED' })
+    const mixed = await service.applyBootstrap({
+      sessionId: session.id,
+      mutationId: 'calibration-mixed',
+      baseRevision: 0,
+      draftHandle: 'draft',
+      ops: [
+        { type: 'item.add', item: { clientRef: 'c-0', kind: 'invariant', text: 'x', order: 0 } },
+        { type: 'item.add', item: { clientRef: 'd-inv-0', kind: 'invariant', text: 'y', order: 1 } },
+      ],
+    })
+    expect(mixed).toMatchObject({ ok: false, code: 'INVALID_ARGUMENT' })
+  })
+
+  it('rejects Host-only evidence on the wire and accepts no evidence field', () => {
+    const base = {
+      sessionId: 'session-1',
+      mutationId: 'm-1',
+      baseRevision: 0,
+      draftHandle: 'handle-1',
+      ops: [{
+        type: 'item.add',
+        item: {
+          clientRef: 'c-0',
+          kind: 'invariant',
+          text: 'x',
+          order: 0,
+          evidence: [{ kind: 'compaction-summary', sessionId: 'session-1', seq: 1, projectionVersion: 1, digest: 'sha256:x', excerpt: 'x' }],
+        },
+      }],
+    }
+    expect(charterBootstrapApplyRequestSchema.safeParse(base).success).toBe(false)
+  })
+
+  it('binds a calibration run to the draft handle that produced it', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-calibration-binding-'))
+    roots.push(root)
+    const ctx = await mount(root, {
+      languageFollow: false,
+      calibration: {
+        enabled: true,
+        consentVersion: 1,
+        trigger: 'manual',
+        targetLanguage: 'auto',
+        maxInputBytes: 24_576,
+        maxOutputTokens: 2_048,
+        maxCandidates: 12,
+        timeoutMs: 30_000,
+        cooldownMinutes: 10,
+      },
+    })
+    const service = ctx.charter as CharterService
+    const sessionA = ctx.sessions.create(SessionId('calibration-binding-a'), { meta: { cwd: root, createdAt: 1_700_000_003_400 } })
+    const sessionB = ctx.sessions.create(SessionId('calibration-binding-b'), { meta: { cwd: root, createdAt: 1_700_000_003_500 } })
+    await waitForReady(service, sessionA)
+    await waitForReady(service, sessionB)
+    await ctx.agents.register({
+      id: sessionA.id,
+      session: sessionA,
+      model: { current: () => ({ provider: 'fake', model: 'fake-model' }) },
+    } as unknown as Agent)
+    ctx.provide('llm', {
+      async *stream() {
+        const output = JSON.stringify([{ kind: 'invariant', text: 'bound', mergedFrom: [] }])
+        yield { type: 'block-end', index: 0, block: { type: 'text', text: output } }
+        yield { type: 'finish', reason: { kind: 'stop' } }
+      },
+    } as never)
+    for (const [session, text] of [[sessionA, 'A'], [sessionB, 'B']] as const) {
+      ;(session as unknown as { append(type: string, data: unknown): unknown }).append('compaction/summary', {
+        summary: [{ type: 'text', text: `## Critical Context\n- ${text}\n` }],
+      })
+    }
+    const draftA = await service.bootstrapDraft(sessionA.id, 'en')
+    const draftB = await service.bootstrapDraft(sessionB.id, 'en')
+    expect(draftA.available && draftB.available).toBe(true)
+    if (!draftA.available || !draftB.available) return
+    const run = await service.calibrateBootstrap({
+      sessionId: sessionA.id,
+      draftHandle: draftA.proposal.draftHandle!,
+      locale: 'en',
+      consentVersion: 1,
+      awaitCalibration: true,
+    })
+    const applied = await service.applyBootstrap({
+      sessionId: sessionA.id,
+      mutationId: 'calibration-binding',
+      baseRevision: 0,
+      draftHandle: draftB.proposal.draftHandle!,
+      calibrationRunId: run.runId,
+      ops: [{ type: 'item.add', item: { clientRef: 'c-0', kind: 'invariant', text: 'bound', order: 0 } }],
+    })
+    expect(applied).toMatchObject({ ok: false, code: 'INVALID_ARGUMENT' })
   })
 
   it('can disable automatic language following without blocking drafts', async () => {

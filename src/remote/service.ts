@@ -225,6 +225,18 @@ export class CharterRemoteService extends TypertRemoteService {
     readonly consentVersion: number
     readonly awaitCalibration?: boolean
   }): Promise<CharterCalibrationResult> {
+    let actor: CharterActor
+    try {
+      actor = resolveRemoteActor(this.ctx)
+    } catch (error) {
+      if (error instanceof CharterError) throw error
+      throw error
+    }
+    // Calibration spends model budget and is opt-in; a non-owner Remote peer
+    // must not trigger it even when the profile has calibration enabled.
+    if (actor.kind !== 'owner') {
+      return Promise.reject(new CharterError('FORBIDDEN', 'Calibration is owner-only'))
+    }
     return this.ctx.charter.calibrateBootstrap(request)
   }
 
