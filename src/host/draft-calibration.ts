@@ -273,9 +273,14 @@ export async function runDraftCalibration(
       signal: controller.signal,
     }
     const chunks: CalibrationChunk[] = []
-    for await (const chunk of llm.stream(options as never)) {
-      if (chunk.type === 'tool-call-delta') throw charterError('CALIBRATION_MALFORMED', 'calibration returned an unexpected tool call')
-      chunks.push(chunk as CalibrationChunk)
+    try {
+      for await (const chunk of llm.stream(options as never)) {
+        if (chunk.type === 'tool-call-delta') throw charterError('CALIBRATION_MALFORMED', 'calibration returned an unexpected tool call')
+        chunks.push(chunk as CalibrationChunk)
+      }
+    } catch (error) {
+      if (timedOut) throw charterError('CALIBRATION_TIMEOUT', `calibration timed out after ${timeoutMs}ms`)
+      throw error
     }
     if (timedOut) throw charterError('CALIBRATION_TIMEOUT', `calibration timed out after ${timeoutMs}ms`)
     const finish = [...chunks].reverse().find(chunk => chunk.type === 'finish')

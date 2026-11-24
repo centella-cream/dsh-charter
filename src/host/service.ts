@@ -205,7 +205,7 @@ export const Config: Schema<CharterConfig> = Schema.object({
     trigger: Schema.union(['manual', 'auto']).default(DEFAULT_CALIBRATION_OPTIONS.trigger),
     provider: Schema.string(),
     model: Schema.string(),
-    reasoningEffort: Schema.string().description('Optional adapter reasoning effort passed through to the calibration call; it is not pre-validated by this plugin.'),
+    reasoningEffort: Schema.string().description('Optional adapter reasoning effort. When adapter metadata exposes its supported efforts, the Host validates the choice before the model call; otherwise it is passed through and the adapter rejects it.'),
     targetLanguage: Schema.union(['auto', 'zh', 'en']).default(DEFAULT_CALIBRATION_OPTIONS.targetLanguage),
     maxInputBytes: Schema.number().step(1).min(1_024).max(1_048_576).default(DEFAULT_CALIBRATION_OPTIONS.maxInputBytes),
     maxOutputTokens: Schema.number().step(1).min(128).max(65_536).default(DEFAULT_CALIBRATION_OPTIONS.maxOutputTokens),
@@ -1211,6 +1211,31 @@ export class CharterService extends Service {
     return { ...result, cached: false, joined }
   }
 
+  /** Validate an explicit effort against the adapter's advertised set when discoverable. */
+  private async assertCalibrationEffort(
+    llm: DraftLlmRuntime,
+    provider: string,
+    model: string,
+    effort: string,
+  ): Promise<void> {
+    const resolve = (llm as unknown as {
+      resolveModelInfo?: (provider: string, model: string) => Promise<{ readonly reasoning?: { readonly efforts?: readonly { readonly id: string }[] } }>
+    }).resolveModelInfo
+    if (typeof resolve !== 'function') return
+    let info
+    try {
+      info = await resolve.call(llm, provider, model)
+    } catch (error) {
+      throw charterError('CALIBRATION_PROVIDER', (error instanceof Error ? error.message : String(error)).slice(0, 512))
+    }
+    const efforts = info.reasoning?.efforts
+    if (!Array.isArray(efforts) || !efforts.some(item => item.id === effort)) {
+      throw charterError('CALIBRATION_EFFORT_UNSUPPORTED', `reasoning effort ${effort} is not available for ${provider}/${model}`, {
+        available: (efforts ?? []).map(item => item.id),
+      })
+    }
+  }
+
   private async performCalibration(input: {
     readonly llm: DraftLlmRuntime
     readonly selection: { readonly provider: string; readonly model: string }
@@ -1223,6 +1248,9 @@ export class CharterService extends Service {
     const targetLanguage = this.config.calibration.targetLanguage === 'auto'
       ? input.request.locale
       : this.config.calibration.targetLanguage
+    if (input.effort !== undefined) {
+      await this.assertCalibrationEffort(input.llm, input.selection.provider, input.selection.model, input.effort)
+    }
     const draftItems = input.proposal.items.map(item => ({ ref: item.ref, kind: item.kind, text: item.text }))
     const prepared = buildCalibrationRequest({
       config: {

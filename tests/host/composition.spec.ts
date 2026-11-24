@@ -2550,6 +2550,50 @@ describe('automatic draft language follow', () => {
     }
   })
 
+  it('rejects an explicit effort outside the adapter-advertised set', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-calibration-effort-'))
+    roots.push(root)
+    const ctx = await mount(root, {
+      languageFollow: false,
+      calibration: {
+        enabled: true,
+        consentVersion: 1,
+        trigger: 'manual',
+        targetLanguage: 'auto',
+        maxInputBytes: 24_576,
+        maxOutputTokens: 2_048,
+        maxCandidates: 12,
+        timeoutMs: 30_000,
+        cooldownMinutes: 10,
+      },
+    })
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('calibration-effort'), { meta: { cwd: root, createdAt: 1_700_000_003_365 } })
+    await waitForReady(service, session)
+    await ctx.agents.register({
+      id: session.id,
+      session,
+      model: { current: () => ({ provider: 'fake', model: 'fake-model' }) },
+    } as unknown as Agent)
+    ctx.provide('llm', {
+      async resolveModelInfo() { return { reasoning: { efforts: [{ id: 'high' }] } } },
+      async *stream() { yield { type: 'finish', reason: { kind: 'stop' } } },
+    } as never)
+    ;(session as unknown as { append(type: string, data: unknown): unknown }).append('compaction/summary', {
+      summary: [{ type: 'text', text: '## Critical Context\n- Effort check.\n' }],
+    })
+    const draft = await service.bootstrapDraft(session.id, 'en')
+    expect(draft.available).toBe(true)
+    if (!draft.available) return
+    await expect(service.calibrateBootstrap({
+      sessionId: session.id,
+      draftHandle: draft.proposal.draftHandle!,
+      locale: 'en',
+      effort: 'low',
+      consentVersion: 1,
+    })).rejects.toMatchObject({ code: 'CALIBRATION_EFFORT_UNSUPPORTED' })
+  })
+
   it('reports unavailable, unconfigured, available, and disabled capability states', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-charter-calibration-states-'))
     roots.push(root)

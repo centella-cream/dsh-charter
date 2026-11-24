@@ -92,3 +92,50 @@ describe('draft calibration prompt and validation', () => {
     expect(result.usage?.outputTokens).toBe(12)
   })
 })
+
+describe('draft calibration failure matrix', () => {
+  const prepared = buildCalibrationRequest(input)
+
+  function streamOf(chunks: readonly unknown[]): { stream(): AsyncGenerator<unknown> } {
+    return {
+      async *stream() {
+        for (const chunk of chunks) yield chunk
+      },
+    }
+  }
+
+  it('rejects malformed JSON, schema violations, and invalid text', async () => {
+    await expect(runDraftCalibration(streamOf([
+      { type: 'block-end', index: 0, block: { type: 'text', text: 'not json' } },
+      { type: 'finish', reason: { kind: 'stop' } },
+    ]) as never, { provider: 'p', model: 'm' }, prepared, 1_000)).rejects.toMatchObject({ code: 'CALIBRATION_MALFORMED' })
+    await expect(runDraftCalibration(streamOf([
+      { type: 'block-end', index: 0, block: { type: 'text', text: '{"kind":"invariant"}' } },
+      { type: 'finish', reason: { kind: 'stop' } },
+    ]) as never, { provider: 'p', model: 'm' }, prepared, 1_000)).rejects.toMatchObject({ code: 'CALIBRATION_SCHEMA' })
+    await expect(runDraftCalibration(streamOf([
+      { type: 'block-end', index: 0, block: { type: 'text', text: JSON.stringify([{ kind: 'invariant', text: '\u0000' }]) } },
+      { type: 'finish', reason: { kind: 'stop' } },
+    ]) as never, { provider: 'p', model: 'm' }, prepared, 1_000)).rejects.toMatchObject({ code: 'CALIBRATION_TEXT' })
+  })
+
+  it('rejects tool calls, non-stop finishes, and timeouts', async () => {
+    await expect(runDraftCalibration(streamOf([
+      { type: 'tool-call-delta', index: 0 },
+      { type: 'finish', reason: { kind: 'stop' } },
+    ]) as never, { provider: 'p', model: 'm' }, prepared, 1_000)).rejects.toMatchObject({ code: 'CALIBRATION_MALFORMED' })
+    await expect(runDraftCalibration(streamOf([
+      { type: 'block-end', index: 0, block: { type: 'text', text: '[]' } },
+      { type: 'finish', reason: { kind: 'length' } },
+    ]) as never, { provider: 'p', model: 'm' }, prepared, 1_000)).rejects.toMatchObject({ code: 'CALIBRATION_MALFORMED' })
+    const slow = {
+      async *stream(options: { signal?: AbortSignal }) {
+        await new Promise((_resolve, reject) => {
+          options.signal?.addEventListener('abort', () => reject(new Error('aborted')), { once: true })
+        })
+      },
+    }
+    await expect(runDraftCalibration(slow as never, { provider: 'p', model: 'm' }, prepared, 10))
+      .rejects.toMatchObject({ code: 'CALIBRATION_TIMEOUT' })
+  })
+})
