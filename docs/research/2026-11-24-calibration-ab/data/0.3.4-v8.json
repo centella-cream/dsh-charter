@@ -1,0 +1,579 @@
+{
+  "label": "0.3.4 v8 adaptive batches",
+  "pluginVersion": "0.3.4-v8",
+  "sessionId": "session-ae8772c2-78f3-45f6-b31e-b50b56fdefdf",
+  "candidateArtifact": "dist/dsh-charter-0.3.4.tgz sha256 841eed5a0254e2af5b779c52d084b787288f5694ade2b5c522dab52d51dff5e2",
+  "draft": {
+    "objective": "User is delivering a multi-round requirements spec for a real project test, project name charter-test, stated goal: \"验证会话契约抽取\" (validate session charter extraction).",
+    "invariants": [
+      "Round 1 instruction (applies to all rounds unless lifted): \"请你理解并简要确认，不要写文件、不要执行命令\" — acknowledge briefly, do not write files, do not execute commands.",
+      "Round 10 (current): \"请把前九轮的最终约束整理成一份简短的待确认契约，不要写文件。\" — consolidate all final constraints into a short contract pending confirmation, no file writing.",
+      "Final consolidated requirements (as encoded in proposals):",
+      "Cannot delete src/legacy.ts; cannot break existing CLI/API compatibility; old data formats (v1 and old v2) must be readable.",
+      "bookmarkctl provides exactly add/list/search/remove; default human-readable table; --json emits stable JSON (stable field set and order).",
+      "Data only in XDG data dir bookmarks.json; writes must be atomic (temp file + rename); killed process must not leave partial JSON; must not silently overwrite corrupted files.",
+      "Invalid user input → exit code 2; corrupted file → exit code 3 plus recovery hint.",
+      "Schema v2 uses boolean favorited (tags removed, per round 9); lossless migration from v1; auto backup to bookmarks.json.bak before migration; rollback can read back v1.",
+      "Reader accepts v1 and both v2 shapes: old v2 with tags readable (tags ignored functionally); missing favorited defaults to false; writer only writes favorited.",
+      "No URL/file-path traversal outside data dir; no remote downloads; logs print domain only, never full bookmark URL.",
+      "10k bookmarks: list and search each ≤200ms; search is case-insensitive substring match over URL and title; must not rewrite original URL (no normalization of stored/output value).",
+      "No network dependencies, no new external services.",
+      "Full test suite must pass before delivery.",
+      "Deliverables: (1) four subcommands + table/--json output; (2) XDG storage, atomic write, corruption detection (exit 3 + hint), v1→v2 migration with .bak, v1 rollback read; (3) unit tests for migration, atomic write, corrupted file, path traversal + one end-to-end CLI test, full suite passing.",
+      "Standing user preference: concise Chinese confirmations; do not write files or run commands; distinguish logs (domain only) from user-visible output (full URL allowed).",
+      "Working directory: /Users/ryanzhang/tokfinity/ahapilot/infcode-eval-service; repo has strict AGENTS.md documentation/spec governance, but this task is a standalone charter-extraction test and no repo files have been touched."
+    ],
+    "deliverables": [
+      "Charter proposals submitted via charter_propose are awaiting user review/acceptance in Review Center (revision 1 created; charter_read before proposal showed {\"revision\":0,\"objective\":null,\"items\":[],\"truncated\":0}).",
+      "Two open decisions user never answered: (1) version semantics A vs B for favorited (proposal encoded option A as default); (2) whether --json must retain a tags key for downstream compatibility.",
+      "No implementation work has started; no files written; no commands executed.",
+      "Agent called charter_read (standing view) → empty charter, revision 0.",
+      "Agent called charter_propose with 13 items (10 invariants + 3 deliverables), returned {\"ok\":true,\"revision\":1}.",
+      "Agent has not yet sent the chat-facing contract text summarizing these items to the user.",
+      "Reply in chat with the short contract (pending confirmation), listing the 10 invariants and 3 deliverables, explicitly noting that proposals were submitted for Review Center acceptance, that option A was encoded as the favorited/v2 default, and that the tags output-compatibility question remains open."
+    ],
+    "source": {
+      "summarySeq": 120,
+      "at": 1795528870660,
+      "shadowedTokens": 13909
+    },
+    "items": [
+      {
+        "ref": "d-obj-0",
+        "kind": "objective",
+        "text": "User is delivering a multi-round requirements spec for a real project test, project name charter-test, stated goal: \"验证会话契约抽取\" (validate session charter extraction).",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-0",
+        "kind": "invariant",
+        "text": "Round 1 instruction (applies to all rounds unless lifted): \"请你理解并简要确认，不要写文件、不要执行命令\" — acknowledge briefly, do not write files, do not execute commands.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-1",
+        "kind": "invariant",
+        "text": "Round 10 (current): \"请把前九轮的最终约束整理成一份简短的待确认契约，不要写文件。\" — consolidate all final constraints into a short contract pending confirmation, no file writing.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-2",
+        "kind": "invariant",
+        "text": "Final consolidated requirements (as encoded in proposals):",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-3",
+        "kind": "invariant",
+        "text": "Cannot delete src/legacy.ts; cannot break existing CLI/API compatibility; old data formats (v1 and old v2) must be readable.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-4",
+        "kind": "invariant",
+        "text": "bookmarkctl provides exactly add/list/search/remove; default human-readable table; --json emits stable JSON (stable field set and order).",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-5",
+        "kind": "invariant",
+        "text": "Data only in XDG data dir bookmarks.json; writes must be atomic (temp file + rename); killed process must not leave partial JSON; must not silently overwrite corrupted files.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-6",
+        "kind": "invariant",
+        "text": "Invalid user input → exit code 2; corrupted file → exit code 3 plus recovery hint.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-7",
+        "kind": "invariant",
+        "text": "Schema v2 uses boolean favorited (tags removed, per round 9); lossless migration from v1; auto backup to bookmarks.json.bak before migration; rollback can read back v1.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-8",
+        "kind": "invariant",
+        "text": "Reader accepts v1 and both v2 shapes: old v2 with tags readable (tags ignored functionally); missing favorited defaults to false; writer only writes favorited.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-9",
+        "kind": "invariant",
+        "text": "No URL/file-path traversal outside data dir; no remote downloads; logs print domain only, never full bookmark URL.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-10",
+        "kind": "invariant",
+        "text": "10k bookmarks: list and search each ≤200ms; search is case-insensitive substring match over URL and title; must not rewrite original URL (no normalization of stored/output value).",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-11",
+        "kind": "invariant",
+        "text": "No network dependencies, no new external services.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-12",
+        "kind": "invariant",
+        "text": "Full test suite must pass before delivery.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-13",
+        "kind": "invariant",
+        "text": "Deliverables: (1) four subcommands + table/--json output; (2) XDG storage, atomic write, corruption detection (exit 3 + hint), v1→v2 migration with .bak, v1 rollback read; (3) unit tests for migration, atomic write, corrupted file, path traversal + one end-to-end CLI test, full suite passing.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-14",
+        "kind": "invariant",
+        "text": "Standing user preference: concise Chinese confirmations; do not write files or run commands; distinguish logs (domain only) from user-visible output (full URL allowed).",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-15",
+        "kind": "invariant",
+        "text": "Working directory: /Users/ryanzhang/tokfinity/ahapilot/infcode-eval-service; repo has strict AGENTS.md documentation/spec governance, but this task is a standalone charter-extraction test and no repo files have been touched.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-del-0",
+        "kind": "deliverable",
+        "text": "Charter proposals submitted via charter_propose are awaiting user review/acceptance in Review Center (revision 1 created; charter_read before proposal showed {\"revision\":0,\"objective\":null,\"items\":[],\"truncated\":0}).",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-del-1",
+        "kind": "deliverable",
+        "text": "Two open decisions user never answered: (1) version semantics A vs B for favorited (proposal encoded option A as default); (2) whether --json must retain a tags key for downstream compatibility.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-del-2",
+        "kind": "deliverable",
+        "text": "No implementation work has started; no files written; no commands executed.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-del-3",
+        "kind": "deliverable",
+        "text": "Agent called charter_read (standing view) → empty charter, revision 0.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-del-4",
+        "kind": "deliverable",
+        "text": "Agent called charter_propose with 13 items (10 invariants + 3 deliverables), returned {\"ok\":true,\"revision\":1}.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-del-5",
+        "kind": "deliverable",
+        "text": "Agent has not yet sent the chat-facing contract text summarizing these items to the user.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-del-6",
+        "kind": "deliverable",
+        "text": "Reply in chat with the short contract (pending confirmation), listing the 10 invariants and 3 deliverables, explicitly noting that proposals were submitted for Review Center acceptance, that option A was encoded as the favorited/v2 default, and that the tags output-compatibility question remains open.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      }
+    ],
+    "draftLang": "en",
+    "language": {
+      "requested": "zh",
+      "status": "pending",
+      "reason": "Language normalization is running after this draft is shown.",
+      "provider": "deepseek-official",
+      "model": "deepseek-flash"
+    },
+    "extractorVersion": 2,
+    "draftHandle": "sha256:cedc4ee33c5e799448cbbc4016fffb31ac23c8128d7833cb078e0b4df2275e7e"
+  },
+  "calibration": {
+    "candidates": [
+      {
+        "ref": "c-0",
+        "kind": "invariant",
+        "text": "在相关轮次指令未被解除前，只需简要确认，不写文件、不执行命令，并将前九轮的最终约束整理成一份简短的待确认契约。",
+        "uncertain": false,
+        "mergedFrom": [
+          {
+            "ref": "d-inv-0",
+            "excerpt": "Round 1 instruction (applies to all rounds unless lifted): \"请你理解并简要确认，不要写文件、不要执行命令\" — acknowledge briefly, do not write files, do not execute commands."
+          },
+          {
+            "ref": "d-inv-1",
+            "excerpt": "Round 10 (current): \"请把前九轮的最终约束整理成一份简短的待确认契约，不要写文件。\" — consolidate all final constraints into a short contract pending confirmation, no file writing."
+          }
+        ]
+      },
+      {
+        "ref": "c-1",
+        "kind": "invariant",
+        "text": "不得删除 src/legacy.ts，不得破坏现有 CLI/API 兼容性，并且必须能读取 v1 与旧版 v2 数据格式。",
+        "uncertain": false,
+        "mergedFrom": [
+          {
+            "ref": "d-inv-3",
+            "excerpt": "Cannot delete src/legacy.ts; cannot break existing CLI/API compatibility; old data formats (v1 and old v2) must be readable."
+          }
+        ]
+      },
+      {
+        "ref": "c-2",
+        "kind": "invariant",
+        "text": "bookmarkctl 必须恰好提供 add、list、search、remove 四个命令，默认输出人类可读表格，使用 --json 时输出字段集与字段顺序稳定的 JSON。",
+        "uncertain": false,
+        "mergedFrom": [
+          {
+            "ref": "d-inv-4",
+            "excerpt": "bookmarkctl provides exactly add/list/search/remove; default human-readable table; --json emits stable JSON (stable field set and order)."
+          }
+        ]
+      },
+      {
+        "ref": "c-3",
+        "kind": "invariant",
+        "text": "数据只能存放在 XDG 数据目录下的 bookmarks.json 中，写入必须原子（临时文件 + rename），进程被杀死时不得留下部分 JSON，且不得静默覆盖已损坏的文件。",
+        "uncertain": false,
+        "mergedFrom": [
+          {
+            "ref": "d-inv-5",
+            "excerpt": "Data only in XDG data dir bookmarks.json; writes must be atomic (temp file + rename); killed process must not leave partial JSON; must not silently overwrite corrupted files."
+          }
+        ]
+      },
+      {
+        "ref": "c-4",
+        "kind": "invariant",
+        "text": "非法用户输入必须以退出码 2 结束，文件损坏必须以退出码 3 结束并给出恢复提示。",
+        "uncertain": false,
+        "mergedFrom": [
+          {
+            "ref": "d-inv-6",
+            "excerpt": "Invalid user input → exit code 2; corrupted file → exit code 3 plus recovery hint."
+          }
+        ]
+      },
+      {
+        "ref": "c-5",
+        "kind": "invariant",
+        "text": "Schema v2 使用布尔型 favorited（移除 tags，依据第 9 轮）。",
+        "uncertain": false,
+        "mergedFrom": [
+          {
+            "ref": "d-inv-7",
+            "excerpt": "Schema v2 uses boolean favorited (tags removed, per round 9); lossless migration from v1; auto backup to bookmarks.json.bak before migration; rollback can read back v1."
+          }
+        ]
+      },
+      {
+        "ref": "c-6",
+        "kind": "invariant",
+        "text": "必须支持从 v1 无损迁移，并在迁移前自动备份到 bookmarks.json.bak。",
+        "uncertain": false,
+        "mergedFrom": [
+          {
+            "ref": "d-inv-7",
+            "excerpt": "Schema v2 uses boolean favorited (tags removed, per round 9); lossless migration from v1; auto backup to bookmarks.json.bak before migration; rollback can read back v1."
+          }
+        ]
+      },
+      {
+        "ref": "c-7",
+        "kind": "invariant",
+        "text": "回滚必须能够读回 v1 数据。",
+        "uncertain": false,
+        "mergedFrom": [
+          {
+            "ref": "d-inv-7",
+            "excerpt": "Schema v2 uses boolean favorited (tags removed, per round 9); lossless migration from v1; auto backup to bookmarks.json.bak before migration; rollback can read back v1."
+          }
+        ]
+      },
+      {
+        "ref": "c-8",
+        "kind": "invariant",
+        "text": "Reader 必须接受 v1 与两种 v2 结构（旧 v2 的 tags 可读取但在功能上忽略，缺失 favorited 时默认为 false），writer 只写入 favorited。",
+        "uncertain": false,
+        "mergedFrom": [
+          {
+            "ref": "d-inv-8",
+            "excerpt": "Reader accepts v1 and both v2 shapes: old v2 with tags readable (tags ignored functionally); missing favorited defaults to false; writer only writes favorited."
+          }
+        ]
+      },
+      {
+        "ref": "c-9",
+        "kind": "invariant",
+        "text": "禁止 URL 或文件路径遍历到 data dir 之外，禁止远程下载，并且不得引入网络依赖或新的外部服务。",
+        "uncertain": false,
+        "mergedFrom": [
+          {
+            "ref": "d-inv-9",
+            "excerpt": "No URL/file-path traversal outside data dir; no remote downloads; logs print domain only, never full bookmark URL."
+          },
+          {
+            "ref": "d-inv-11",
+            "excerpt": "No network dependencies, no new external services."
+          }
+        ]
+      },
+      {
+        "ref": "c-10",
+        "kind": "invariant",
+        "text": "日志只打印域名、绝不打印完整书签 URL，用户可见输出可包含完整 URL，确认信息使用简洁中文。",
+        "uncertain": false,
+        "mergedFrom": [
+          {
+            "ref": "d-inv-9",
+            "excerpt": "No URL/file-path traversal outside data dir; no remote downloads; logs print domain only, never full bookmark URL."
+          },
+          {
+            "ref": "d-inv-14",
+            "excerpt": "Standing user preference: concise Chinese confirmations; do not write files or run commands; distinguish logs (domain only) from user-visible output (full URL allowed)."
+          }
+        ]
+      },
+      {
+        "ref": "c-11",
+        "kind": "invariant",
+        "text": "在 10k 书签规模下，list 与 search 各自必须在 ≤200ms 内完成。",
+        "uncertain": false,
+        "mergedFrom": [
+          {
+            "ref": "d-inv-10",
+            "excerpt": "10k bookmarks: list and search each ≤200ms; search is case-insensitive substring match over URL and title; must not rewrite original URL (no normalization of stored/output value)."
+          }
+        ]
+      },
+      {
+        "ref": "c-12",
+        "kind": "invariant",
+        "text": "search 必须对 URL 和 title 做大小写不敏感的子串匹配，并且不得重写原始 URL（不对存储或输出值做规范化）。",
+        "uncertain": false,
+        "mergedFrom": [
+          {
+            "ref": "d-inv-10",
+            "excerpt": "10k bookmarks: list and search each ≤200ms; search is case-insensitive substring match over URL and title; must not rewrite original URL (no normalization of stored/output value)."
+          }
+        ]
+      },
+      {
+        "ref": "c-13",
+        "kind": "deliverable",
+        "text": "交付四个子命令，并提供 table 与 --json 两种输出。",
+        "uncertain": false,
+        "mergedFrom": [
+          {
+            "ref": "d-inv-13",
+            "excerpt": "Deliverables: (1) four subcommands + table/--json output; (2) XDG storage, atomic write, corruption detection (exit 3 + hint), v1→v2 migration with .bak, v1 rollback read; (3) unit tests for migration, atomic write, corrupted file, path traversal + one end-to-end CLI test, full suite passing."
+          }
+        ]
+      },
+      {
+        "ref": "c-14",
+        "kind": "deliverable",
+        "text": "交付 XDG 存储、原子写入、损坏检测（退出码 3 并给出提示）、带 .bak 的 v1→v2 迁移以及 v1 回滚读取。",
+        "uncertain": false,
+        "mergedFrom": [
+          {
+            "ref": "d-inv-13",
+            "excerpt": "Deliverables: (1) four subcommands + table/--json output; (2) XDG storage, atomic write, corruption detection (exit 3 + hint), v1→v2 migration with .bak, v1 rollback read; (3) unit tests for migration, atomic write, corrupted file, path traversal + one end-to-end CLI test, full suite passing."
+          }
+        ]
+      },
+      {
+        "ref": "c-15",
+        "kind": "deliverable",
+        "text": "交付针对迁移、原子写入、损坏文件和路径遍历的单元测试以及一条端到端 CLI 测试，并且完整测试套件必须在交付前通过。",
+        "uncertain": false,
+        "mergedFrom": [
+          {
+            "ref": "d-inv-13",
+            "excerpt": "Deliverables: (1) four subcommands + table/--json output; (2) XDG storage, atomic write, corruption detection (exit 3 + hint), v1→v2 migration with .bak, v1 rollback read; (3) unit tests for migration, atomic write, corrupted file, path traversal + one end-to-end CLI test, full suite passing."
+          },
+          {
+            "ref": "d-inv-12",
+            "excerpt": "Full test suite must pass before delivery."
+          }
+        ]
+      },
+      {
+        "ref": "c-16",
+        "kind": "deliverable",
+        "text": "在提交提案前调用 charter_read 得到的是空契约，返回内容为 {\"revision\":0,\"objective\":null,\"items\":[],\"truncated\":0}（revision 0）。",
+        "uncertain": false,
+        "mergedFrom": [
+          {
+            "ref": "d-del-3",
+            "excerpt": "Agent called charter_read (standing view) → empty charter, revision 0."
+          }
+        ]
+      },
+      {
+        "ref": "c-17",
+        "kind": "deliverable",
+        "text": "调用 charter_propose 提交了 13 个条目（10 个 invariant 与 3 个 deliverable），返回 {\"ok\":true,\"revision\":1}，该提案以 revision 1 创建并等待用户在 Review Center 审阅与接受。",
+        "uncertain": false,
+        "mergedFrom": [
+          {
+            "ref": "d-del-0",
+            "excerpt": "Charter proposals submitted via charter_propose are awaiting user review/acceptance in Review Center (revision 1 created; charter_read before proposal showed {\"revision\":0,\"objective\":null,\"items\":[],\"truncated\":0})."
+          },
+          {
+            "ref": "d-del-4",
+            "excerpt": "Agent called charter_propose with 13 items (10 invariants + 3 deliverables), returned {\"ok\":true,\"revision\":1}."
+          }
+        ]
+      },
+      {
+        "ref": "c-18",
+        "kind": "deliverable",
+        "text": "favorited 的 version 语义在选项 A 与选项 B 之间尚未确定，用户未作回答；提案中已把选项 A 作为默认编码。",
+        "uncertain": false,
+        "mergedFrom": [
+          {
+            "ref": "d-del-1",
+            "excerpt": "Two open decisions user never answered: (1) version semantics A vs B for favorited (proposal encoded option A as default); (2) whether --json must retain a tags key for downstream compatibility."
+          }
+        ]
+      },
+      {
+        "ref": "c-19",
+        "kind": "deliverable",
+        "text": "--json 是否必须保留 tags 键以兼容下游，用户尚未回答。",
+        "uncertain": false,
+        "mergedFrom": [
+          {
+            "ref": "d-del-1",
+            "excerpt": "Two open decisions user never answered: (1) version semantics A vs B for favorited (proposal encoded option A as default); (2) whether --json must retain a tags key for downstream compatibility."
+          }
+        ]
+      },
+      {
+        "ref": "c-20",
+        "kind": "deliverable",
+        "text": "尚未开始任何实现工作：没有写入文件，也没有执行任何命令。",
+        "uncertain": false,
+        "mergedFrom": [
+          {
+            "ref": "d-del-2",
+            "excerpt": "No implementation work has started; no files written; no commands executed."
+          }
+        ]
+      },
+      {
+        "ref": "c-21",
+        "kind": "deliverable",
+        "text": "尚未向用户发送面向聊天窗口的契约文本摘要。",
+        "uncertain": false,
+        "mergedFrom": [
+          {
+            "ref": "d-del-5",
+            "excerpt": "Agent has not yet sent the chat-facing contract text summarizing these items to the user."
+          }
+        ]
+      },
+      {
+        "ref": "c-22",
+        "kind": "deliverable",
+        "text": "需要在聊天中回复简短契约（待确认），列出 10 个 invariant 和 3 个 deliverable，并明确说明提案已提交至 Review Center 等待接受、选项 A 已作为 favorited/v2 的默认值编码，以及 tags 输出兼容性问题仍未决。",
+        "uncertain": false,
+        "mergedFrom": [
+          {
+            "ref": "d-del-6",
+            "excerpt": "Reply in chat with the short contract (pending confirmation), listing the 10 invariants and 3 deliverables, explicitly noting that proposals were submitted for Review Center acceptance, that option A was encoded as the favorited/v2 default, and that the tags output-compatibility question remains open."
+          }
+        ]
+      },
+      {
+        "ref": "c-23",
+        "kind": "objective",
+        "text": "charter-test 项目由用户多轮交付的需求说明构成，用于真实项目测试，其陈述目标为“验证会话契约抽取”。",
+        "uncertain": false,
+        "mergedFrom": [
+          {
+            "ref": "d-obj-0",
+            "excerpt": "User is delivering a multi-round requirements spec for a real project test, project name charter-test, stated goal: \"验证会话契约抽取\" (validate session charter extraction)."
+          }
+        ]
+      }
+    ],
+    "batchCount": 3,
+    "completedBatches": 3,
+    "failedBatches": 0,
+    "partial": false,
+    "excludedRefs": [],
+    "truncated": false,
+    "inputTruncated": false,
+    "usage": {
+      "inputBytes": 3802,
+      "outputTokens": 8040,
+      "durationMs": 15167,
+      "calls": 3
+    },
+    "runId": "2a1fd5e8-db87-4c9f-810a-a0b9b4bbc9d2",
+    "pending": false,
+    "cached": false,
+    "joined": false,
+    "promptVersion": 1,
+    "resolved": {
+      "provider": "deepseek-official",
+      "model": "deepseek-flash"
+    }
+  }
+}

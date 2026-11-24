@@ -1,6 +1,6 @@
 # `dsh-charter` 0.3.4 契约草案校准方案（语言跟随 · 精简聚合 · 语义完整切分）
 
-> **状态：** `Proposed` —— v8 自适应分批并发校准方案。**当前代码仍是 v7 单次调用实现**；2026-11-24 真实 Web 10 轮实测已暴露默认 `maxOutputTokens=2048` 的 max-tokens 失败与 12 条候选 `inputTruncated`，本方案要求重做校准内核后再重新验收；在此之前不得引用 v8 为已实现行为，也不得用 v7 单次实现的测试结果声称校准效果达标。
+> **状态：** `Proposed` —— v8 自适应分批并发校准方案。**v8 校准内核（planner/runner/reduce）已实现并通过真实 10 轮 Web case 的默认参数工程实测**（§5.11）；批级 UI/partial notice、披露 v2 重新 consent 流程、A/B 与人工验收仍未完成，因此整体仍不 release-ready。v7 单次实现的默认 max-tokens 失败与候选截断证据保留为反例。
 > **版本范围：** `0.3.4`（草案校准补丁线，模型校准层 L2+L3）。**定位约束：只提升草案聚合/可读性/
 > 语言/审阅效率与契约保持，不声称提升模型长程任务完成率，不承诺草案完整性/通用性**（历史补全与执行
 > 能力属 [0.4.0 完整契约升级](charter-execution-v1.zh.md)）。依赖**已发布**的 `0.3.3`
@@ -485,8 +485,16 @@ UI 在草案区合并为一条状态行（尊重单条 notice 合同），并允
 `/compact`，calibration route `deepseek-official/deepseek-flash`。完整证据保存在本地
 `.tmp/ab-test/`（不提交）：`turns.json`、`run-033.json`、`run-034.json`、`run-034def.json`。
 
-v8 验收必须用同一 case 重跑，并且默认参数下满足：不出现 max-tokens 整体失败；32 条 draft 的
-关键约束全部有去向（候选/合并/excluded 可见）；单批失败局部隔离；记录 tokens/耗时/批数。
+v8 验收用同一 case 重跑（2026-11-24，v8 实现）：
+
+| 变体 | L1 invariant | L1 deliverable | 校准结果 |
+| --- | ---: | ---: | --- |
+| v8 默认 | 16 | 7 | 3 批/3 完成/0 失败，24 候选，`truncated=false`，`inputTruncated=false`，8,040 output tokens，15.2s |
+
+v8 的 24 个候选覆盖 legacy/API、CLI、XDG/atomic、exit code、favorited、migration/backup、
+security、200ms、tests；没有 max-tokens 整体失败，也没有候选截断。该结果和原始数据见
+[docs/research/2026-11-24-calibration-ab](../research/2026-11-24-calibration-ab/report.md)。
+仍需用同一 case 验证批级 UI、partial 展示、披露 v2 与 A/B 协议，而不是只依赖一次工程 smoke。
 
 ## 6. Provenance 与 apply 合同（评审 P0-A/P0-2/P0-3/P0-C）
 

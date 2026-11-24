@@ -1,0 +1,285 @@
+{
+  "label": "0.3.4 v7 shipped defaults",
+  "pluginVersion": "0.3.4-v7-default",
+  "sessionId": "session-15185efb-5abd-4def-8bb0-6779731362ac",
+  "draft": {
+    "objective": "User: “这是一个真实项目测试。我先把需求分多轮发给你，请你理解并简要确认，不要写文件、不要执行命令。” Requirements were delivered in 10 rounds for a project named charter-test, whose stated goal is “验证会话契约抽取” (validate Session Charter extraction).",
+    "invariants": [
+      "Round 1: project charter-test; goal = validate session charter extraction; constraints: “不能删除 src/legacy.ts”, “必须保留 API 兼容性”.",
+      "Round 2: CLI named bookmarkctl with subcommands add/list/search/remove; default human-readable table output; --json emits stable JSON; no network dependencies.",
+      "Round 3: data at XDG data dir bookmarks.json; atomic writes (temp file + rename) so a killed process never leaves half-written JSON.",
+      "Round 4: invalid user input → exit code 2; corrupt file → exit code 3 plus recovery hint; never silently overwrite a corrupt file.",
+      "Round 5: schema v2 introducing tags; v1 → v2 lossless migration; auto-backup to bookmarks.json.bak before migration; rollback must still read v1.",
+      "Round 6: security — forbid path/URL traversal outside the data directory; no remote downloads; logs print domain only, never full bookmark URL.",
+      "Round 7: 10,000 bookmarks, list and search each ≤ 200ms; search = case-insensitive substring match that must not alter the original URL.",
+      "Round 8: acceptance — unit tests for migration, atomic write, corrupt file, path traversal; plus one end-to-end CLI test; full test suite must pass before delivery.",
+      "Round 9 (change, supersedes): drop tags, add boolean favorited; API compatibility must not break; old v2 files must still be readable; backup-before-migration rule unchanged.",
+      "Round 10: “请把前九轮的最终约束整理成一份简短的待确认契约，不要写文件。”",
+      "Standing user instruction: understand and briefly confirm each round; do not write files or run commands.",
+      "Round 9 supersedes round 5: tags removed in favor of favorited; old v2 tag-bearing files must remain readable; .bak-before-migration rule retained.",
+      "Charter proposal contents are text the user authored conceptually but the model proposed; the user must accept them — do not claim they are active until confirmed.",
+      "Working directory: /Users/ryanzhang/Personal/openprojects/dsh-charter; DSH Web GUI at http://127.0.0.1:52092; file policy workspace-write with approval prompts enabled.",
+      "Repo rules that constrain later implementation: never git checkout -- ./reset --hard/clean; no committing, tagging, or publishing without explicit request; version line currently 0.3.4 on feat/0.3.4-calibration; npm run check is the full gate (typecheck + build + remote/client smoke + Vitest + token gate).",
+      "Ambiguities to resolve before implementation: schema version numbering, favorited default, --json field stability, rollback UX, and the 200ms measurement definition."
+    ],
+    "deliverables": [
+      "User must review/accept the 14 pending charter proposals in the Review Center (not yet accepted as of checkpoint).",
+      "Two open decisions requiring user ruling (flagged, deliberately not self-decided):",
+      "A. Schema version path: (1) stay v2, reader tolerates both shapes (tags ignored, missing favorited defaults false), writer emits only favorited; or (2) bump to v3 migrating both v1→v3 and v2(tags)→v3, backup rule unchanged.",
+      "B. --json stability: (1) accept breaking change in tags→favorited, or (2) keep a transitional empty/omitted tags field.",
+      "Also flagged, non-blocking: favorited default value assumed false; rollback mechanism unspecified (manual .bak restore vs. built-in rollback subcommand); 200ms measurement basis unspecified (cold start incl. process spawn vs. in-command handling time).",
+      "objective for the charter was not proposed (only invariants/deliverables are allowed); if desired it must be set by the user.",
+      "Round 10 completed: consolidated rounds 1–9 into a pending charter via charter_propose (revision 1, 14 items): 10 invariants + 4 deliverables.",
+      "Invariants proposed: no deleting src/legacy.ts; API compatibility incl. --json as external API; no network deps/remote downloads; data only in XDG bookmarks.json with no traversal; atomic same-dir temp+rename writes; exit 2/exit 3 with no silent overwrite; lossless migration with .bak backup + v1 rollback readability + old v2(tags) readability; logs domain-only; 10k records ≤200ms; case-insensitive substring search without mutating original URL.",
+      "Deliverables proposed: (1) bookmarkctl CLI with four subcommands, table + --json; (2) storage layer (XDG resolution, atomic write, corruption detection + recovery hint, traversal protection); (3) schema migration with .bak, v1 rollback, old v2(tags) compatibility, with tags→favorited version/JSON decision pending; (4) tests — unit tests for migration/atomic write/corrupt file/path traversal plus one E2E CLI test, full suite green before delivery.",
+      "No files written, no shell commands executed at any point (honoring round 1 instruction).",
+      "Report to the user that 14 items are pending in the Review Center for acceptance, and ask for rulings on decision A (v2-compat vs. v3) and decision B (--json breaking vs. transitional tags)."
+    ],
+    "source": {
+      "summarySeq": 120,
+      "at": 1795526232228,
+      "shadowedTokens": 13810
+    },
+    "items": [
+      {
+        "ref": "d-obj-0",
+        "kind": "objective",
+        "text": "User: “这是一个真实项目测试。我先把需求分多轮发给你，请你理解并简要确认，不要写文件、不要执行命令。” Requirements were delivered in 10 rounds for a project named charter-test, whose stated goal is “验证会话契约抽取” (validate Session Charter extraction).",
+        "lang": "mixed",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-0",
+        "kind": "invariant",
+        "text": "Round 1: project charter-test; goal = validate session charter extraction; constraints: “不能删除 src/legacy.ts”, “必须保留 API 兼容性”.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-1",
+        "kind": "invariant",
+        "text": "Round 2: CLI named bookmarkctl with subcommands add/list/search/remove; default human-readable table output; --json emits stable JSON; no network dependencies.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-2",
+        "kind": "invariant",
+        "text": "Round 3: data at XDG data dir bookmarks.json; atomic writes (temp file + rename) so a killed process never leaves half-written JSON.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-3",
+        "kind": "invariant",
+        "text": "Round 4: invalid user input → exit code 2; corrupt file → exit code 3 plus recovery hint; never silently overwrite a corrupt file.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-4",
+        "kind": "invariant",
+        "text": "Round 5: schema v2 introducing tags; v1 → v2 lossless migration; auto-backup to bookmarks.json.bak before migration; rollback must still read v1.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-5",
+        "kind": "invariant",
+        "text": "Round 6: security — forbid path/URL traversal outside the data directory; no remote downloads; logs print domain only, never full bookmark URL.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-6",
+        "kind": "invariant",
+        "text": "Round 7: 10,000 bookmarks, list and search each ≤ 200ms; search = case-insensitive substring match that must not alter the original URL.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-7",
+        "kind": "invariant",
+        "text": "Round 8: acceptance — unit tests for migration, atomic write, corrupt file, path traversal; plus one end-to-end CLI test; full test suite must pass before delivery.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-8",
+        "kind": "invariant",
+        "text": "Round 9 (change, supersedes): drop tags, add boolean favorited; API compatibility must not break; old v2 files must still be readable; backup-before-migration rule unchanged.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-9",
+        "kind": "invariant",
+        "text": "Round 10: “请把前九轮的最终约束整理成一份简短的待确认契约，不要写文件。”",
+        "lang": "zh",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-10",
+        "kind": "invariant",
+        "text": "Standing user instruction: understand and briefly confirm each round; do not write files or run commands.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-11",
+        "kind": "invariant",
+        "text": "Round 9 supersedes round 5: tags removed in favor of favorited; old v2 tag-bearing files must remain readable; .bak-before-migration rule retained.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-12",
+        "kind": "invariant",
+        "text": "Charter proposal contents are text the user authored conceptually but the model proposed; the user must accept them — do not claim they are active until confirmed.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-13",
+        "kind": "invariant",
+        "text": "Working directory: /Users/ryanzhang/Personal/openprojects/dsh-charter; DSH Web GUI at http://127.0.0.1:52092; file policy workspace-write with approval prompts enabled.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-14",
+        "kind": "invariant",
+        "text": "Repo rules that constrain later implementation: never git checkout -- ./reset --hard/clean; no committing, tagging, or publishing without explicit request; version line currently 0.3.4 on feat/0.3.4-calibration; npm run check is the full gate (typecheck + build + remote/client smoke + Vitest + token gate).",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-15",
+        "kind": "invariant",
+        "text": "Ambiguities to resolve before implementation: schema version numbering, favorited default, --json field stability, rollback UX, and the 200ms measurement definition.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-del-0",
+        "kind": "deliverable",
+        "text": "User must review/accept the 14 pending charter proposals in the Review Center (not yet accepted as of checkpoint).",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-del-1",
+        "kind": "deliverable",
+        "text": "Two open decisions requiring user ruling (flagged, deliberately not self-decided):",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-del-2",
+        "kind": "deliverable",
+        "text": "A. Schema version path: (1) stay v2, reader tolerates both shapes (tags ignored, missing favorited defaults false), writer emits only favorited; or (2) bump to v3 migrating both v1→v3 and v2(tags)→v3, backup rule unchanged.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-del-3",
+        "kind": "deliverable",
+        "text": "B. --json stability: (1) accept breaking change in tags→favorited, or (2) keep a transitional empty/omitted tags field.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-del-4",
+        "kind": "deliverable",
+        "text": "Also flagged, non-blocking: favorited default value assumed false; rollback mechanism unspecified (manual .bak restore vs. built-in rollback subcommand); 200ms measurement basis unspecified (cold start incl. process spawn vs. in-command handling time).",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-del-5",
+        "kind": "deliverable",
+        "text": "objective for the charter was not proposed (only invariants/deliverables are allowed); if desired it must be set by the user.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-del-6",
+        "kind": "deliverable",
+        "text": "Round 10 completed: consolidated rounds 1–9 into a pending charter via charter_propose (revision 1, 14 items): 10 invariants + 4 deliverables.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-del-7",
+        "kind": "deliverable",
+        "text": "Invariants proposed: no deleting src/legacy.ts; API compatibility incl. --json as external API; no network deps/remote downloads; data only in XDG bookmarks.json with no traversal; atomic same-dir temp+rename writes; exit 2/exit 3 with no silent overwrite; lossless migration with .bak backup + v1 rollback readability + old v2(tags) readability; logs domain-only; 10k records ≤200ms; case-insensitive substring search without mutating original URL.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-del-8",
+        "kind": "deliverable",
+        "text": "Deliverables proposed: (1) bookmarkctl CLI with four subcommands, table + --json; (2) storage layer (XDG resolution, atomic write, corruption detection + recovery hint, traversal protection); (3) schema migration with .bak, v1 rollback, old v2(tags) compatibility, with tags→favorited version/JSON decision pending; (4) tests — unit tests for migration/atomic write/corrupt file/path traversal plus one E2E CLI test, full suite green before delivery.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-del-9",
+        "kind": "deliverable",
+        "text": "No files written, no shell commands executed at any point (honoring round 1 instruction).",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-del-10",
+        "kind": "deliverable",
+        "text": "Report to the user that 14 items are pending in the Review Center for acceptance, and ask for rulings on decision A (v2-compat vs. v3) and decision B (--json breaking vs. transitional tags).",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      }
+    ],
+    "draftLang": "en",
+    "language": {
+      "requested": "zh",
+      "status": "pending",
+      "reason": "Language normalization is running after this draft is shown.",
+      "provider": "deepseek-official",
+      "model": "deepseek-flash"
+    },
+    "extractorVersion": 2,
+    "draftHandle": "sha256:9149b0f09abb9e1bb3acab190d991ed51a99a605829b7032b9743c9833f62159"
+  },
+  "calibration": {
+    "code": "gateway/internal",
+    "message": "calibration finished with max-tokens",
+    "details": {}
+  }
+}

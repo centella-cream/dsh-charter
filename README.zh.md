@@ -21,7 +21,7 @@ Pane 把工作区、审阅中心和诊断放在同一文档列中。截图只裁
 ## 状态
 
 - **当前已发布：**`0.3.3` — 结构化草案抽取、自动中英文语言跟随、重复折叠、稳定草案 ref、非阻塞后台翻译和自适应分批翻译。
-- **开发候选：**`0.3.4` — opt-in、consent 门禁的草案校准：语义聚合、可读改写、原文/校准稿审阅、`c-*` apply provenance、真实模型校准状态与诊断。**未达到发布条件：**当前 v7 单次调用在真实 10 轮默认参数测试中失败，v8 自适应分批方案尚未实现。
+- **开发候选：**`0.3.4` — opt-in、consent 门禁的草案校准：语义聚合、可读改写、原文/校准稿审阅、`c-*` apply provenance、真实模型校准状态与诊断。**未达到发布条件：**v8 自适应分批内核已通过真实 10 轮默认参数工程测试，但批级 UI/partial 状态、披露 v2 重新确认与 A/B/人工验收仍未完成。
 - **上一版本：**`0.3.2` — 无障碍/证据收敛；`0.3.1`、`0.3.0` 是更早基线。
 - **主要 DSH 基线：**`0.2.2-rc.5`；十三个声明版本通过源码矩阵验证。
 - 从 `0.3.4` 起，**Plugins** 页面显示本地化标题和带版本号的功能说明，并明确校准的数据发送限制。
@@ -92,8 +92,10 @@ Desktop 使用 **Plugins → Install/Update**（支持本地 tarball 的构建�
     calibration:
       enabled: false
       consentVersion: 0
-      maxCandidates: 12
-      maxOutputTokens: 2048
+      maxCandidates: 32
+      batchCandidates: 8
+      maxOutputTokens: 4096
+      maxConcurrency: 3
 ```
 
 | 字段 | 默认 | 说明 |
@@ -110,10 +112,14 @@ Desktop 使用 **Plugins → Install/Update**（支持本地 tarball 的构建�
 | `calibration.enabled` | false | opt-in 智能草案校准 |
 | `calibration.consentVersion` | 0 | 已确认披露版本；阅读披露后设为 `1` |
 | `calibration.provider` / `.model` | 未设置 | 可选专用校准路由 |
-| `calibration.maxCandidates` | 12 | 校准候选上限 |
-| `calibration.maxOutputTokens` | 2048 | 校准输出 token 上限 |
+| `calibration.maxCandidates` | 32 | 全局校准候选上限 |
+| `calibration.batchCandidates` | 8 | 单批候选数 |
+| `calibration.maxOutputTokens` | 4096 | 单批输出 token 上限 |
+| `calibration.maxConcurrency` | 3 | 并发批数 |
+| `calibration.maxTotalOutputTokens` | 16384 | 单次校准总输出预算 |
+| `calibration.timeoutMs` / `runTimeoutMs` | 45000 / 120000 | 单批/整次超时 |
 
-校准会把压缩草案文本与当前契约条目发送到配置的 provider/model；调用计入模型用量（含 reasoning tokens）。结果始终是待审提案，接受前不进入 standing prompt；缓存仅在内存。启用前必须在审阅中心阅读披露。
+校准按有界批次把压缩草案文本与当前契约条目发送到配置的 provider/model；调用计入模型用量（含 reasoning tokens）。结果始终是待审提案，接受前不进入 standing prompt；缓存仅在内存。启用前必须在审阅中心阅读披露。
 
 ## 兼容性
 

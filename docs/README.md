@@ -61,6 +61,7 @@ same commit. Do not delete a historical decision just because it is inactive; mo
 | [history/2026-10-19-charter-design-v1-review.md](history/2026-10-19-charter-design-v1-review.md) | Historical | 0.1 | Frozen v1 design review. |
 | [history/2026-10-27-release-0.1.0-rc.5-plan.md](history/2026-10-27-release-0.1.0-rc.5-plan.md) | Historical | 0.1.0-rc.5 | Complete/frozen rc.5 stabilization plan. |
 | [research/charter-research.md](research/charter-research.md) | Historical | research snapshot | Facts captured for v1; not current decisions. |
+| [research/2026-11-24-calibration-ab/report.md](research/2026-11-24-calibration-ab/report.md) | Active | 0.3.3 / 0.3.4 calibration | Real 10-turn Web A/B: 0.3.3 baseline, v7 default/tuned, v8 adaptive batches; evidence for the v8 engineering gate. |
 | [verification.md](verification.md) | Active | current tree | Evidence record; counts and matrix results. |
 | [releasing.md](releasing.md) | Active | current line | Release/publish process. |
 | [user-guide.md](user-guide.md) | Active | current line | Installation and usage guide. |

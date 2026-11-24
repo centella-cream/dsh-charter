@@ -1,0 +1,290 @@
+{
+  "label": "0.3.3 published baseline",
+  "pluginVersion": "0.3.3",
+  "sessionId": "session-16eff3cf-eb4f-43fb-817f-3d69d79a9371",
+  "draft": {
+    "objective": "User stated: \"这是一个真实项目测试。我先把需求分多轮发给你，请你理解并简要确认，不要写文件、不要执行命令。\" Requirements arrive over 10 rounds; agent must confirm briefly each round, accumulate, and produce a pending contract at the end.",
+    "invariants": [
+      "Round 1: project name charter-test, goal \"验证会话契约抽取\"; constraints: 不能删除 src/legacy.ts, 必须保留 API 兼容性.",
+      "Round 2: CLI named bookmarkctl with subcommands add/list/search/remove; default human-readable table output; --json outputs stable JSON; \"不要引入网络依赖\".",
+      "Round 3: data stored at XDG data dir bookmarks.json; writes must be atomic (temp file + rename); no truncated JSON if process is killed.",
+      "Round 4: invalid user input → exit code 2; corrupted file → exit code 3 plus recovery hint; never silently overwrite a corrupted file.",
+      "Round 5: add schema v2 introducing tags; lossless migration from v1; auto-backup to bookmarks.json.bak before migration; rollback can read back v1.",
+      "Round 6: no path traversal outside data dir via URL or file path; no remote downloads; logs print only domain, never full bookmark URLs.",
+      "Round 7: 10,000 bookmarks, list and search within 200ms; search = case-insensitive substring match; must not alter original URL.",
+      "Round 8: acceptance — unit tests for migration, atomic write, corrupted file, path traversal; one end-to-end CLI test; full test suite must run before delivery.",
+      "Round 9 (change): remove tags, replace with boolean favorited; API compatibility must not break; old v2 files must still be readable; backup-before-migration rule unchanged.",
+      "Round 10 (current): \"请把前九轮的最终约束整理成一份简短的待确认契约，不要写文件。\"",
+      "User preference: no file writes, no shell commands throughout requirement rounds; brief confirmations only.",
+      "Pending proposals content (as submitted):",
+      "Invariants: (1) never delete src/legacy.ts, preserve API compatibility; (2) no network deps/remote downloads; (3) data only at $XDG_DATA_HOME/bookmarks.json (fallback ~/.local/share), no traversal outside; (4) all writes atomic — temp file + rename, no truncated JSON on SIGKILL, .bak likewise; (5) corrupted file never silently overwritten → exit 3 + recovery hint, no migration in corrupted state, do not rewrite existing good .bak; (6) exit codes: 0 success, 2 invalid input, 3 corrupted, 1 other runtime failure; (7) logs/errors/debug print domain only, normal output (table/--json) keeps full URL; (8) search case-insensitive substring, normalization only for comparison, original URL unmodified in storage/output; (9) stable --json field names/set across platform, order, version; (10) 10k bookmarks, list/search end-to-end wall-clock ≤200ms (local baseline machine, --json path, median of repeated runs); (11) schema changes lossless, .bak before migration, rollback reads v1, existing old v2 files readable.",
+      "Deliverables: (1) bookmarkctl CLI with add/list/search/remove, table default + stable --json; (2) storage layer: XDG path resolution, atomic read/write, corruption detection + recovery hint, 0/1/2/3 exit mapping; (3) schema v2 favorited boolean replacing tags — v1→v2 lossless migration, .bak before migration, rollback reads v1, old v2 files readable; (4) acceptance tests — unit tests for migration, atomic write (incl. process-kill scenario), corrupted file, path traversal (storage-layer path resolution entry), ≥1 end-to-end CLI test, full suite before delivery.",
+      "Open questions requiring user pick (defaults already applied in proposals):",
+      "Schema versioning: A (recommended) redefine v2 as favorited, migration chain v1→v2, \"old v2 readable\" = intra-version forward compat; vs B keep v2 with tags, add v3 with favorited, v1→v3 and v2 readable.",
+      "\"不打印完整 URL\" scope: agent's reading = logs/errors/debug only; normal command output (table, --json) keeps full URL.",
+      "200ms measurement basis: end-to-end wall-clock on --json path, local baseline, median (table path may get a looser target).",
+      "Path traversal has no testable entry point currently (no subcommand takes a path arg) → test the storage-layer path-resolution function as the seam.",
+      "Corruption + backup interaction: on corrupt source, exit 3, no migration, do not touch existing .bak (already encoded as invariant 5).",
+      "Also flagged: removing tags from --json is breaking if external consumers relied on v2 tags; whether that is inside \"API 兼容性\" protection is unconfirmed.",
+      "Round-9 favorited change supersedes the round-5 tags design."
+    ],
+    "deliverables": [
+      "User must confirm/accept the pending proposals in the Review Center (revision:1).",
+      "5 open decision points still unanswered by the user (defaults embedded in proposals, see Critical Context).",
+      "No implementation work started; nothing written to disk.",
+      "Just submitted 15 pending charter proposals (11 invariant, 4 deliverable) covering all 9 rounds, including round-9 change (favorited replacing tags) and round-8 acceptance tests; empty pre-existing charter.",
+      "The chat-facing summary of the contract has NOT yet been posted; the tool call was the last action.",
+      "Post the concise 待确认契约 in chat: list the 11 invariants and 4 deliverables, note they are also queued as pending proposals in Review Center, and surface the 5 open decision points for one-shot confirmation."
+    ],
+    "source": {
+      "summarySeq": 120,
+      "at": 1795525953282,
+      "shadowedTokens": 15311
+    },
+    "items": [
+      {
+        "ref": "d-obj-0",
+        "kind": "objective",
+        "text": "User stated: \"这是一个真实项目测试。我先把需求分多轮发给你，请你理解并简要确认，不要写文件、不要执行命令。\" Requirements arrive over 10 rounds; agent must confirm briefly each round, accumulate, and produce a pending contract at the end.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-0",
+        "kind": "invariant",
+        "text": "Round 1: project name charter-test, goal \"验证会话契约抽取\"; constraints: 不能删除 src/legacy.ts, 必须保留 API 兼容性.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-1",
+        "kind": "invariant",
+        "text": "Round 2: CLI named bookmarkctl with subcommands add/list/search/remove; default human-readable table output; --json outputs stable JSON; \"不要引入网络依赖\".",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-2",
+        "kind": "invariant",
+        "text": "Round 3: data stored at XDG data dir bookmarks.json; writes must be atomic (temp file + rename); no truncated JSON if process is killed.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-3",
+        "kind": "invariant",
+        "text": "Round 4: invalid user input → exit code 2; corrupted file → exit code 3 plus recovery hint; never silently overwrite a corrupted file.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-4",
+        "kind": "invariant",
+        "text": "Round 5: add schema v2 introducing tags; lossless migration from v1; auto-backup to bookmarks.json.bak before migration; rollback can read back v1.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-5",
+        "kind": "invariant",
+        "text": "Round 6: no path traversal outside data dir via URL or file path; no remote downloads; logs print only domain, never full bookmark URLs.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-6",
+        "kind": "invariant",
+        "text": "Round 7: 10,000 bookmarks, list and search within 200ms; search = case-insensitive substring match; must not alter original URL.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-7",
+        "kind": "invariant",
+        "text": "Round 8: acceptance — unit tests for migration, atomic write, corrupted file, path traversal; one end-to-end CLI test; full test suite must run before delivery.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-8",
+        "kind": "invariant",
+        "text": "Round 9 (change): remove tags, replace with boolean favorited; API compatibility must not break; old v2 files must still be readable; backup-before-migration rule unchanged.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-9",
+        "kind": "invariant",
+        "text": "Round 10 (current): \"请把前九轮的最终约束整理成一份简短的待确认契约，不要写文件。\"",
+        "lang": "zh",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-10",
+        "kind": "invariant",
+        "text": "User preference: no file writes, no shell commands throughout requirement rounds; brief confirmations only.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-11",
+        "kind": "invariant",
+        "text": "Pending proposals content (as submitted):",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-12",
+        "kind": "invariant",
+        "text": "Invariants: (1) never delete src/legacy.ts, preserve API compatibility; (2) no network deps/remote downloads; (3) data only at $XDG_DATA_HOME/bookmarks.json (fallback ~/.local/share), no traversal outside; (4) all writes atomic — temp file + rename, no truncated JSON on SIGKILL, .bak likewise; (5) corrupted file never silently overwritten → exit 3 + recovery hint, no migration in corrupted state, do not rewrite existing good .bak; (6) exit codes: 0 success, 2 invalid input, 3 corrupted, 1 other runtime failure; (7) logs/errors/debug print domain only, normal output (table/--json) keeps full URL; (8) search case-insensitive substring, normalization only for comparison, original URL unmodified in storage/output; (9) stable --json field names/set across platform, order, version; (10) 10k bookmarks, list/search end-to-end wall-clock ≤200ms (local baseline machine, --json path, median of repeated runs); (11) schema changes lossless, .bak before migration, rollback reads v1, existing old v2 files readable.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-13",
+        "kind": "invariant",
+        "text": "Deliverables: (1) bookmarkctl CLI with add/list/search/remove, table default + stable --json; (2) storage layer: XDG path resolution, atomic read/write, corruption detection + recovery hint, 0/1/2/3 exit mapping; (3) schema v2 favorited boolean replacing tags — v1→v2 lossless migration, .bak before migration, rollback reads v1, old v2 files readable; (4) acceptance tests — unit tests for migration, atomic write (incl. process-kill scenario), corrupted file, path traversal (storage-layer path resolution entry), ≥1 end-to-end CLI test, full suite before delivery.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-14",
+        "kind": "invariant",
+        "text": "Open questions requiring user pick (defaults already applied in proposals):",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-15",
+        "kind": "invariant",
+        "text": "Schema versioning: A (recommended) redefine v2 as favorited, migration chain v1→v2, \"old v2 readable\" = intra-version forward compat; vs B keep v2 with tags, add v3 with favorited, v1→v3 and v2 readable.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-16",
+        "kind": "invariant",
+        "text": "\"不打印完整 URL\" scope: agent's reading = logs/errors/debug only; normal command output (table, --json) keeps full URL.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-17",
+        "kind": "invariant",
+        "text": "200ms measurement basis: end-to-end wall-clock on --json path, local baseline, median (table path may get a looser target).",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-18",
+        "kind": "invariant",
+        "text": "Path traversal has no testable entry point currently (no subcommand takes a path arg) → test the storage-layer path-resolution function as the seam.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-19",
+        "kind": "invariant",
+        "text": "Corruption + backup interaction: on corrupt source, exit 3, no migration, do not touch existing .bak (already encoded as invariant 5).",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-20",
+        "kind": "invariant",
+        "text": "Also flagged: removing tags from --json is breaking if external consumers relied on v2 tags; whether that is inside \"API 兼容性\" protection is unconfirmed.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-inv-21",
+        "kind": "invariant",
+        "text": "Round-9 favorited change supersedes the round-5 tags design.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-del-0",
+        "kind": "deliverable",
+        "text": "User must confirm/accept the pending proposals in the Review Center (revision:1).",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-del-1",
+        "kind": "deliverable",
+        "text": "5 open decision points still unanswered by the user (defaults embedded in proposals, see Critical Context).",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-del-2",
+        "kind": "deliverable",
+        "text": "No implementation work started; nothing written to disk.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-del-3",
+        "kind": "deliverable",
+        "text": "Just submitted 15 pending charter proposals (11 invariant, 4 deliverable) covering all 9 rounds, including round-9 change (favorited replacing tags) and round-8 acceptance tests; empty pre-existing charter.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-del-4",
+        "kind": "deliverable",
+        "text": "The chat-facing summary of the contract has NOT yet been posted; the tool call was the last action.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      },
+      {
+        "ref": "d-del-5",
+        "kind": "deliverable",
+        "text": "Post the concise 待确认契约 in chat: list the 11 invariants and 4 deliverables, note they are also queued as pending proposals in Review Center, and surface the 5 open decision points for one-shot confirmation.",
+        "lang": "en",
+        "oversized": false,
+        "kindConfidence": "high"
+      }
+    ],
+    "draftLang": "en",
+    "language": {
+      "requested": "zh",
+      "status": "pending",
+      "reason": "Language normalization is running after this draft is shown.",
+      "provider": "deepseek-official",
+      "model": "deepseek-flash"
+    },
+    "extractorVersion": 2,
+    "draftHandle": "sha256:5a463038340a12cf07c72f85b64495dc43faf9854862638cc1c8b7cb9166102a"
+  },
+  "calibration": null
+}

@@ -21,7 +21,7 @@ The Pane keeps the workspace, Review Center, and Diagnostics in one document col
 ## Status
 
 - **Current published release:** `0.3.3` — structured draft extraction, automatic zh/en language following, duplicate folding, stable draft refs, deferred non-blocking translation, and adaptive batch translation.
-- **Development candidate:** `0.3.4` — opt-in, consent-gated draft calibration: semantic aggregation, readable rewriting, original-vs-calibrated review, `c-*` apply provenance, and real-model calibration status/diagnostics. **Not release-ready:** the current v7 single-call implementation fails a real default 10-turn test; the v8 adaptive-batched design is not implemented yet.
+- **Development candidate:** `0.3.4` — opt-in, consent-gated draft calibration: semantic aggregation, readable rewriting, original-vs-calibrated review, `c-*` apply provenance, and real-model calibration status/diagnostics. **Not release-ready:** the v8 adaptive-batched core passes the real default 10-turn engineering run, but batch UI/partial status, disclosure v2 re-consent and A/B/manual acceptance are still pending.
 - **Previous release:** `0.3.2` — accessibility/evidence convergence; `0.3.1` and `0.3.0` are earlier baselines.
 - **Primary DSH baseline:** `0.2.2-rc.5`; 13 declared DSH versions are source-matrix verified.
 - From `0.3.4`, the **Plugins** page shows a localized title and versioned description, including the calibration data-use limitation.
@@ -92,8 +92,10 @@ Defaults live in `cordis.patch.yml`; override the same keys in the profile confi
     calibration:
       enabled: false
       consentVersion: 0
-      maxCandidates: 12
-      maxOutputTokens: 2048
+      maxCandidates: 32
+      batchCandidates: 8
+      maxOutputTokens: 4096
+      maxConcurrency: 3
 ```
 
 | Field | Default | Meaning |
@@ -110,10 +112,14 @@ Defaults live in `cordis.patch.yml`; override the same keys in the profile confi
 | `calibration.enabled` | false | opt-in smart draft calibration |
 | `calibration.consentVersion` | 0 | accepted disclosure version; set to `1` after reading the disclosure |
 | `calibration.provider` / `.model` | unset | optional dedicated calibration route |
-| `calibration.maxCandidates` | 12 | calibrated candidate cap |
-| `calibration.maxOutputTokens` | 2048 | calibration output-token cap |
+| `calibration.maxCandidates` | 32 | global calibrated-candidate cap |
+| `calibration.batchCandidates` | 8 | candidates per batch |
+| `calibration.maxOutputTokens` | 4096 | per-batch output-token cap |
+| `calibration.maxConcurrency` | 3 | concurrently running batches |
+| `calibration.maxTotalOutputTokens` | 16384 | total output budget for one calibration |
+| `calibration.timeoutMs` / `runTimeoutMs` | 45000 / 120000 | per-batch / whole-run timeout |
 
-Calibration sends compaction draft text and current charter items to the configured provider/model; model usage is charged, including reasoning tokens. Results are pending proposals only and never enter the standing prompt before you accept them. The cache is memory-only. Never enable calibration without reading the disclosure in Review Center.
+Calibration sends compaction draft text and current charter items to the configured provider/model in bounded batches; model usage is charged, including reasoning tokens. Results are pending proposals only and never enter the standing prompt before you accept them. The cache is memory-only. Never enable calibration without reading the disclosure in Review Center.
 
 ## Compatibility
 
