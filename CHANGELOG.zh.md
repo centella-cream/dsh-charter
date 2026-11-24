@@ -11,7 +11,7 @@
 - 新增 `charter/calibrationStatus`/`charter/calibrateBootstrap` Remote 方法；`applyBootstrap` additive
   `calibrationRunId`；`c-*` 候选与 `mergedFrom`/Host-only evidence excerpt。
 - 零 record schema/prompt/工具面变化；0.3.2/0.3.3 记录仍可读取。
-- 校准默认关闭，发布前仍需人工/A-B 验收。
+- 校准默认关闭，发布前仍需人工/A-B 验收。校准设计正在改为 v8 自适应分批；当前单次候选**未达到发布条件**（真实 10 轮默认参数实测 max-tokens 失败且候选截断）。
 
 ## 0.3.3 — 2026-11-24（已发布）
 

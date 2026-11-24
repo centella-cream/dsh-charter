@@ -22,7 +22,7 @@
 | 版本 | 内容 | 模型调用 | wire |
 | --- | --- | --- | --- |
 | **0.3.3（本文，先发布）** | 语义保全切分、近重复折叠、语言标注、kind 打分、结构化候选（稳定 ref）、自动 zh/en 语言归一、完整 apply 合同 | 有（宿主 `ctx.llm` 单轮翻译，自动） | 新增 `charter/bootstrapDraft`；`objective.initialize` 增加可选 `clientRef`（additive） |
-| **0.3.4（校准方案，后发布）** | 语义级聚合、专用校准 prompt、diff 审阅、质量 A/B | 有（`ctx.llm` one-shot，opt-in 高级校准） | 新增 `charter/calibrateBootstrap`、`charter/calibrationStatus`；`applyBootstrap` additive 扩展 |
+| **0.3.4（校准方案，后发布）** | 语义级聚合、专用校准 prompt、diff 审阅、质量 A/B | 有（`ctx.llm` 每批 one-shot + 受限并发，opt-in 高级校准） | 新增 `charter/calibrateBootstrap`、`charter/calibrationStatus`；`applyBootstrap` additive 扩展 |
 
 **语言目标**：客户端以当前 DSH locale 的 `zh`/`en` 作为目标语言；结构化抽取后若草案语言不一致，
 Host 通过会话当前模型做一次严格 JSON 批量翻译；模型不可用或失败时保留原文并显示降级提示。

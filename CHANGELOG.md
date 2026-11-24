@@ -12,7 +12,7 @@ DSH plugin ABI is still moving.
 - Additive `charter/calibrationStatus` and `charter/calibrateBootstrap` Remote methods; additive
   `applyBootstrap.calibrationRunId`; `c-*` candidates with `mergedFrom` and Host-only evidence excerpts.
 - No record schema, standing prompt, or model tool changes; `0.3.2`/`0.3.3` records remain readable.
-- Calibration is disabled by default and still requires manual/A-B acceptance before release.
+- Calibration is disabled by default and still requires manual/A-B acceptance before release. The design is being reworked to v8 adaptive batching; the current one-shot candidate is **not release-ready** (a real 10-turn default run hit max-tokens and truncated candidates).
 
 ## 0.3.3 — 2026-11-24 (released)
 
