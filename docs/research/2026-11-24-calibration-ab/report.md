@@ -74,13 +74,38 @@ but not a clean contract.
 - This is **not** A/B protocol 1 (2 blind reviewers, 20 sanitized summaries, ≥3 runs). It is the
   engineering gate that must precede that protocol.
 
+## v9 real-summary follow-up (85809bdb…)
+
+A separate real summary from a long-running session was used to audit calibration quality. The raw L1
+draft had 23 invariants, 13 deliverables and one objective. v8 calibration returned 32 candidates but
+excluded the objective and four deliverables by global-cap, while retaining heading fragments, progress
+status, historical context and optional suggestions.
+
+The v9 contractness gate + quota changes produced on the same summary:
+
+| Metric | v8 | v9 |
+| --- | ---: | ---: |
+| candidates | 32 | 19 |
+| objective | excluded | present |
+| deliverables | 7 (4 excluded) | 11 (none excluded) |
+| batches / completed | 4 / 4 | 3 / 3 |
+| model calls | 7 | 3 |
+| output tokens | 15,677 | 5,216 |
+| duration | 40.0 s | 11.1 s |
+| truncated / inputTruncated | true / true | false / false |
+| non-contract refs excluded | 0 explicit | 18 explicit |
+
+T-1/T-2/T-3 are deliverables; heading/status/optional candidates are gone. Exact T-3 config facts
+remain atomic invariants and two 151-no-execution constraints remain duplicated; a bounded reduce pass
+is the next optional optimization. This is engineering validation, not formal A/B.
+
 ## Implementation evidence
 
 - Engineering run artifact: `dist/dsh-charter-0.3.4.tgz` SHA-256
   `841eed5a0254e2af5b779c52d084b787288f5694ade2b5c522dab52d51dff5e2`.
 - Final source candidate after the partial-UI/disclosure changes: SHA-256
-  `3b9847ff7c14a75dde43a8163de62abf73aabcf32e85df80ad94fb0de3e9d9e2` (164 files).
-- `npm run check`: 46 files / 551 tests PASS; token coverage PASS over 13 declared DSH versions.
+  `5adafa597cd3f51fa3435ccaf4898e9934af09de5df99c9a1956a3ea93da4826` (166 files).
+- `npm run check`: 46 files / 554 tests PASS; token coverage PASS over 13 declared DSH versions.
 - 13-version source matrix PASS (`.tmp/compat-13-034-v8.json`, source `2737b75`).
 - Exact-artifact package smoke, packed recovery smoke, fresh DSH 0.2.2-rc.5 Web profile smoke, and
   Gateway acceptance on DSH 0.2.1-rc.3/rc.4 PASS on the final bytes.

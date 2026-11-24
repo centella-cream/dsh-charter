@@ -21,7 +21,7 @@ The Pane keeps the workspace, Review Center, and Diagnostics in one document col
 ## Status
 
 - **Current published release:** `0.3.3` — structured draft extraction, automatic zh/en language following, duplicate folding, stable draft refs, deferred non-blocking translation, and adaptive batch translation.
-- **Development candidate:** `0.3.4` — opt-in, consent-gated draft calibration: semantic aggregation, readable rewriting, original-vs-calibrated review, `c-*` apply provenance, and real-model calibration status/diagnostics. **Not release-ready:** the v8 adaptive-batched core, partial coverage UI and disclosure v2 pass the real default 10-turn engineering run; formal A/B, L4 UI/AT, old-profile downgrade and human acceptance are still pending.
+- **Development candidate:** `0.3.4` — opt-in, consent-gated draft calibration: semantic aggregation, readable rewriting, original-vs-calibrated review, `c-*` apply provenance, and real-model calibration status/diagnostics. **Not release-ready:** the v8 adaptive-batched core plus the v9 contractness gate, partial coverage UI and disclosure v2 pass the real default 10-turn engineering run; formal A/B, L4 UI/AT, old-profile downgrade and human acceptance are still pending.
 - **Previous release:** `0.3.2` — accessibility/evidence convergence; `0.3.1` and `0.3.0` are earlier baselines.
 - **Primary DSH baseline:** `0.2.2-rc.5`; 13 declared DSH versions are source-matrix verified.
 - From `0.3.4`, the **Plugins** page shows a localized title and versioned description, including the calibration data-use limitation.

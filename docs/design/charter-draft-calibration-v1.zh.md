@@ -9,7 +9,10 @@
 > 翻译基础设施（§4 复用映射）。
 > **基准：** 2026-11-24，`main` @ `44a542d3`；`0.3.3` 已发布（SHA-256 `707043d3…`）；v7 单次
 > 调用实现已用真实 Web 10 轮 case 实测（见 §5.11），默认参数失败，v8 是修订方案而非既有合同。
-> **修订：** v8（2026-11-24）——把单次全量校准改为**自适应分批 + 受限并发 + 单批拆分重试 + Host
+> **修订：** v9（2026-11-24）——真实 session `85809bdb…` 验证暴露 v8 的契约质量问题：objective 与 4 个 deliverable 被
+> global-cap 排除，heading 碎片/进度状态/历史背景/optional 建议仍作为契约。新增 §5.12 **契约性门禁、objective
+> 预留、deliverable 配额、prompt v2 和输出过滤**；v8 内核不变。
+> v8（2026-11-24）——把单次全量校准改为**自适应分批 + 受限并发 + 单批拆分重试 + Host
 > 跨批归并**；新增批次预算/覆盖账本/partial 结果/批级缓存与失败隔离；明确不复用 128K 单次大输出，
 > 复用 0.3.3 翻译路径已验证的 `translationBatches`/`mapLimit`/`resilient split`/partial 合并模式；
 > 披露文案因多批调用升版本；记录并用测试证据说明 v7 默认参数失败；§5.4–§5.10、§7.1、§8、§10–§13、
@@ -495,6 +498,36 @@ v8 的 24 个候选覆盖 legacy/API、CLI、XDG/atomic、exit code、favorited�
 security、200ms、tests；没有 max-tokens 整体失败，也没有候选截断。该结果和原始数据见
 [docs/research/2026-11-24-calibration-ab](../research/2026-11-24-calibration-ab/report.md)。
 仍需用同一 case 验证批级 UI、partial 展示、披露 v2 与 A/B 协议，而不是只依赖一次工程 smoke。
+
+### 5.12 契约性门禁与候选配额（v9，2026-11-24）
+
+真实 session `85809bdb…` 的 L1 有 23 invariant + 13 deliverable + 1 objective；v8 calibration 返回
+32 候选，但 `truncated=true`、objective 和 4 个 deliverable 被 global-cap 排除，且 heading 碎片、
+进度状态、历史背景、待确认事项、optional 建议仍作为契约。v9 在调用模型前增加确定性的契约性门禁，
+并修正 planner 配额：
+
+- **契约性门禁（`calibration-contractness`，Host 纯函数）**：对 L1 item 分类
+  - `fragment`：以 `:`/`：` 结尾的 heading、无谓语配置片段；
+  - `status`：current/implementing/done/completed/git status/HEAD/test/gate 计数等；
+  - `history`：previously/decision authority/goal state/user rejected 等；
+  - `optional`：suggested/optional/nice-to-have 等；
+  - `pending`：need confirm/TBD/open question 等；
+  - 命中的 ref 进入 `excludedRefs` 的 `non-contract`，原始 L1 仍可见，不静默丢弃。
+- **动作重分类**：`T-n`/`D-n`/`F-n` 加 imperative 动词的条目从 invariant 改为 deliverable；
+  deliverable 中的硬约束（forbidden/not allowed 等）可回收为 invariant。
+- **planner 配额**：objective 先占位，永不被 global-cap 排除；deliverable 预留至少 25% 候选位；
+  invariant 填剩余，再补 deliverable。只有契约项被 cap/预算裁掉时 `inputTruncated=true`；
+  `non-contract` 过滤不算契约不完整，UI 的 incomplete 状态也不因它出现。
+- **prompt v2**：system prompt 明确只输出 durable objective/invariant/deliverable；显式丢弃
+  heading/status/history/optional/pending；允许少于输入；T-n 动作归 deliverable；不把状态改写为
+  契约；合并相关 fragment，不无意义拆分。
+- **输出门禁**：模型输出同样过契约性过滤；被过滤的源 ref 记 `non-contract`，不让模型把状态
+  重新写回契约。`CALIBRATION_PROMPT_VERSION` 从 1 升到 2（缓存失效）。
+- **v9 实测**：同一个 `85809bdb…` summary，v9 得到 19 候选（1 objective / 11 deliverable /
+  7 invariant），3/3 批完成，3 次调用，5,216 output tokens，11.1s；`truncated=false`、
+  `inputTruncated=false`；18 条 L1 噪声以 `non-contract` 排除。T-1/T-2/T-3 已是 deliverable，
+  heading/进度/optional 不再作为契约。剩余 T-3 配置事实仍是原子 invariant，属于后续 reduce
+  优化项，不影响本 case 的发布质量门禁。
 
 ## 6. Provenance 与 apply 合同（评审 P0-A/P0-2/P0-3/P0-C）
 
