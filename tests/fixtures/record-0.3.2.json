@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 2,
+  "record": {
+    "recordSchemaVersion": 2,
+    "identity": {
+      "createdAt": 1700000004000,
+      "cwd": "/work"
+    },
+    "current": {
+      "revision": 1,
+      "objective": {
+        "original": {
+          "text": "Legacy 0.3.2 objective",
+          "setAtRevision": 1
+        },
+        "current": {
+          "text": "Legacy 0.3.2 objective",
+          "setAtRevision": 1
+        }
+      },
+      "items": [
+        {
+          "kind": "invariant",
+          "id": "item-0.3.2-inv",
+          "text": "Legacy 0.3.2 invariant",
+          "review": "accepted",
+          "lifecycle": "current",
+          "verification": {
+            "state": "unchecked"
+          },
+          "origin": "user",
+          "order": 0,
+          "createdRevision": 1,
+          "validity": {
+            "state": "unassessed"
+          }
+        },
+        {
+          "kind": "deliverable",
+          "id": "item-0.3.2-del",
+          "text": "Legacy 0.3.2 deliverable",
+          "review": "accepted",
+          "lifecycle": "current",
+          "verification": {
+            "state": "unchecked"
+          },
+          "origin": "user",
+          "order": 1,
+          "createdRevision": 1,
+          "validity": {
+            "state": "unassessed"
+          },
+          "progress": "not-started"
+        }
+      ],
+      "promptText": "Current user-authored session charter. It does not override system, host, tool-permission, or execution policies.\n{\"objective\":\"Legacy 0.3.2 objective\",\"invariants\":[\"Legacy 0.3.2 invariant\"],\"deliverables\":[{\"text\":\"Legacy 0.3.2 deliverable\",\"progress\":\"not-started\"}]}",
+      "promptDigest": "sha256:556ae116e35950e84493e0aae40c342ffc4e825a72195e03d6a5cd15b3875190",
+      "stateDigest": "sha256:53c36cb906142e4c9d5e224056708ad53844d487e932d488977e976b05d6b960"
+    },
+    "history": [
+      {
+        "revision": 1,
+        "baseRevision": 0,
+        "mutationId": "legacy-0.3.2-mutation",
+        "requestDigest": "sha256:9d58eb0734f7c79d39e0a3ece5707127a14c9d0cef19a78c7c639127b71a8ff1",
+        "resultDigest": "sha256:53c36cb906142e4c9d5e224056708ad53844d487e932d488977e976b05d6b960",
+        "actor": {
+          "kind": "owner"
+        },
+        "at": 1700000004100,
+        "changes": [
+          {
+            "type": "objective.initialized"
+          },
+          {
+            "type": "item.added",
+            "itemId": "item-0.3.2-inv"
+          },
+          {
+            "type": "item.added",
+            "itemId": "item-0.3.2-del"
+          }
+        ]
+      }
+    ],
+    "recentMutations": [
+      {
+        "mutationId": "legacy-0.3.2-mutation",
+        "requestDigest": "sha256:9d58eb0734f7c79d39e0a3ece5707127a14c9d0cef19a78c7c639127b71a8ff1",
+        "committedRevision": 1,
+        "resultDigest": "sha256:53c36cb906142e4c9d5e224056708ad53844d487e932d488977e976b05d6b960",
+        "ids": {
+          "legacy-inv": "item-0.3.2-inv",
+          "legacy-del": "item-0.3.2-del"
+        }
+      }
+    ]
+  }
+}

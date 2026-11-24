@@ -1,7 +1,7 @@
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import AgentRegistry, { type Agent } from '@deepseek-ai/dsh-agent'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
@@ -2418,6 +2418,171 @@ describe('automatic draft language follow', () => {
       kind: 'compaction-summary',
     })
     expect(appliedItem?.evidence?.[0]?.excerpt?.length).toBeGreaterThan(0)
+  })
+
+  it('requires an exact objective c-* apply and accepts the calibrated objective when exact', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-calibration-objective-'))
+    roots.push(root)
+    const ctx = await mount(root, {
+      languageFollow: false,
+      calibration: {
+        enabled: true,
+        consentVersion: 1,
+        trigger: 'manual',
+        targetLanguage: 'auto',
+        maxInputBytes: 24_576,
+        maxOutputTokens: 2_048,
+        maxCandidates: 12,
+        timeoutMs: 30_000,
+        cooldownMinutes: 10,
+      },
+    })
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('calibration-objective'), { meta: { cwd: root, createdAt: 1_700_000_003_355 } })
+    await waitForReady(service, session)
+    await ctx.agents.register({
+      id: session.id,
+      session,
+      model: { current: () => ({ provider: 'fake', model: 'fake-model' }) },
+    } as unknown as Agent)
+    ctx.provide('llm', {
+      async *stream() {
+        const output = JSON.stringify([{ kind: 'objective', text: 'Calibrated objective' }])
+        yield { type: 'block-end', index: 0, block: { type: 'text', text: output } }
+        yield { type: 'finish', reason: { kind: 'stop' } }
+      },
+    } as never)
+    ;(session as unknown as { append(type: string, data: unknown): unknown }).append('compaction/summary', {
+      summary: [{ type: 'text', text: '## Critical Context\n- Objective candidate.\n' }],
+    })
+    const draft = await service.bootstrapDraft(session.id, 'en')
+    expect(draft.available).toBe(true)
+    if (!draft.available) return
+    const run = await service.calibrateBootstrap({ sessionId: session.id, draftHandle: draft.proposal.draftHandle!, locale: 'en', consentVersion: 1, awaitCalibration: true })
+    expect(run.candidates[0]).toMatchObject({ ref: 'c-0', kind: 'objective', text: 'Calibrated objective' })
+    const base = {
+      sessionId: session.id,
+      mutationId: 'calibration-objective-apply',
+      baseRevision: 0,
+      draftHandle: draft.proposal.draftHandle!,
+      calibrationRunId: run.runId,
+    }
+    expect(await service.applyBootstrap({ ...base, ops: [{ type: 'objective.initialize', clientRef: 'c-0', text: 'Wrong objective' }] }))
+      .toMatchObject({ ok: false, code: 'INVALID_ARGUMENT' })
+    expect(await service.applyBootstrap({ ...base, mutationId: 'calibration-objective-apply-ok', ops: [{ type: 'objective.initialize', clientRef: 'c-0', text: 'Calibrated objective' }] }))
+      .toMatchObject({ ok: true })
+    expect(service.view(session).objective?.current.text).toBe('Calibrated objective')
+  })
+
+  it('coalesces concurrent calibration calls and serves the result from cache', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-calibration-cache-'))
+    roots.push(root)
+    const ctx = await mount(root, {
+      languageFollow: false,
+      calibration: {
+        enabled: true,
+        consentVersion: 1,
+        trigger: 'manual',
+        targetLanguage: 'auto',
+        maxInputBytes: 24_576,
+        maxOutputTokens: 2_048,
+        maxCandidates: 12,
+        timeoutMs: 30_000,
+        cooldownMinutes: 10,
+      },
+    })
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('calibration-cache'), { meta: { cwd: root, createdAt: 1_700_000_003_350 } })
+    await waitForReady(service, session)
+    await ctx.agents.register({
+      id: session.id,
+      session,
+      model: { current: () => ({ provider: 'fake', model: 'fake-model' }) },
+    } as unknown as Agent)
+    let calls = 0
+    ctx.provide('llm', {
+      async *stream() {
+        calls += 1
+        await new Promise(resolve => setTimeout(resolve, 10))
+        const output = JSON.stringify([{ kind: 'invariant', text: 'cached calibration' }])
+        yield { type: 'block-end', index: 0, block: { type: 'text', text: output } }
+        yield { type: 'finish', reason: { kind: 'stop' } }
+      },
+    } as never)
+    ;(session as unknown as { append(type: string, data: unknown): unknown }).append('compaction/summary', {
+      summary: [{ type: 'text', text: '## Critical Context\n- Cache this.\n' }],
+    })
+    const draft = await service.bootstrapDraft(session.id, 'en')
+    expect(draft.available).toBe(true)
+    if (!draft.available) return
+    const request = {
+      sessionId: session.id,
+      draftHandle: draft.proposal.draftHandle!,
+      locale: 'en' as const,
+      consentVersion: 1,
+      awaitCalibration: true,
+    }
+    const [first, second] = await Promise.all([
+      service.calibrateBootstrap(request),
+      service.calibrateBootstrap(request),
+    ])
+    expect(calls).toBe(1)
+    expect(first.runId).toBe(second.runId)
+    expect(second.joined).toBe(true)
+    const third = await service.calibrateBootstrap(request)
+    expect(third).toMatchObject({ cached: true, runId: first.runId })
+    expect(calls).toBe(1)
+    // An apply after the 30-minute run TTL is a definitive expiry, not a silent fallback.
+    const now = Date.now()
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(now + 31 * 60_000)
+    try {
+      const expired = await service.applyBootstrap({
+        sessionId: session.id,
+        mutationId: 'calibration-expired',
+        baseRevision: 0,
+        draftHandle: draft.proposal.draftHandle!,
+        calibrationRunId: first.runId,
+        ops: [{ type: 'item.add', item: { clientRef: 'c-0', kind: 'invariant', text: 'cached calibration', order: 0 } }],
+      })
+      expect(expired).toMatchObject({ ok: false, code: 'CALIBRATION_RUN_EXPIRED' })
+    } finally {
+      clock.mockRestore()
+    }
+  })
+
+  it('reports unavailable, unconfigured, available, and disabled capability states', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-calibration-states-'))
+    roots.push(root)
+    const enabled = {
+      enabled: true,
+      consentVersion: 1,
+      trigger: 'manual',
+      targetLanguage: 'auto',
+      maxInputBytes: 24_576,
+      maxOutputTokens: 2_048,
+      maxCandidates: 12,
+      timeoutMs: 30_000,
+      cooldownMinutes: 10,
+    }
+    const ctx = await mount(root, { calibration: enabled })
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('calibration-states'), { meta: { cwd: root, createdAt: 1_700_000_003_360 } })
+    await waitForReady(service, session)
+    expect(service.calibrationStatus(session.id).status).toBe('unavailable-host')
+    ctx.provide('llm', { async *stream() { yield { type: 'finish', reason: { kind: 'stop' } } } } as never)
+    expect(service.calibrationStatus(session.id).status).toBe('unconfigured')
+    await ctx.agents.register({
+      id: session.id,
+      session,
+      model: { current: () => ({ provider: 'fake', model: 'fake-model' }) },
+    } as unknown as Agent)
+    expect(service.calibrationStatus(session.id).status).toBe('available')
+    const disabledCtx = await mount(root, {})
+    const disabled = disabledCtx.charter as CharterService
+    const disabledSession = disabledCtx.sessions.create(SessionId('calibration-disabled'), { meta: { cwd: root, createdAt: 1_700_000_003_370 } })
+    await waitForReady(disabled, disabledSession)
+    disabledCtx.provide('llm', { async *stream() { yield { type: 'finish', reason: { kind: 'stop' } } } } as never)
+    expect(disabled.calibrationStatus(disabledSession.id).status).toBe('disabled')
   })
 
   it('rejects calibration without matching consent and rejects invalid c-* apply gates', async () => {
