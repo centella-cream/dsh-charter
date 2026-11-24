@@ -71,6 +71,36 @@ A good pull request:
 
 For UI changes, include a screenshot or a short screen recording and verify light/dark and a narrow container.
 
+### README screenshot refresh
+
+README and its screenshots are release evidence, not mockups. Refresh both `README.md` and `README.zh.md`
+whenever a user-visible capability or the Pane layout changes, and before every candidate/release build:
+
+1. Install or run the exact current build in a **Web profile** and capture the real UI. Do not build HTML
+   mockups, hand-compose screenshots, or reuse an older version's images.
+2. Use a synthetic demo session for the screenshots. Prefer the contract from the session that was active
+   during the previous accepted release (for `0.3.3` this is `为 dsh-charter 插件优化 GUI 设计`: three
+   Chinese deliverables D1/D2/D3). If that session is live in another Host and cannot be opened safely,
+   recreate exactly its contract text in a synthetic session; never expose a user's live contract.
+3. Match the README language to the captured UI **and contract text**:
+   - English README: English DSH locale, English contract content.
+   - Chinese README: Chinese DSH locale, Chinese contract content from the previous accepted demo
+     (do not screenshot an English contract for the Chinese README).
+4. Set DSH appearance to **Follow system**. Do not force dark or light; if the OS theme changes, recapture.
+   Capture light and dark state tests separately if the UI change touches both, but the README image follows
+   the system theme.
+5. Crop to the product surface: Pane screenshots must contain only the right-hand `.charter-root` (no left
+   navigation, no session title bar); graph screenshots crop `.charter-graph` with a small padding. Label
+   synthetic content in the image caption/prose.
+6. Use a 1440px Web viewport (device scale factor 2) for the Pane; use a taller viewport only when a graph
+   would otherwise be clipped. The version chip must show the current package version.
+7. Save as `docs/assets/charter-pane-<version>.png` / `.zh.png` and
+   `docs/assets/charter-graph-<version>.png` / `.zh.png`; do not overwrite historical versioned assets.
+8. Verify both READMEs' install/update/config/compatibility snippets and links, the plugin-detail locale
+   metadata, and the image language/content. Record the capture conditions in `docs/verification.md`.
+
+The graph is optional when it is unchanged; if included, keep the same crop and language rules.
+
 ## Commit style
 
 Conventional prefixes are welcome but not required:

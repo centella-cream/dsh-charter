@@ -30,7 +30,10 @@ tagging.
    `dsh.compatibility.dshReleases`, `package-lock.json`, README/README.zh, compatibility docs,
    verification, CHANGELOGs, release notes, and root `SHA256SUMS`. Before the candidate is built, refresh
    README/README.zh with the latest capabilities and the current Pane screenshots from the accepted build; stale
-   README copy or screenshots block the release.
+   README copy or screenshots block the release. Screenshot work must follow
+   [CONTRIBUTING.md §README screenshot refresh](CONTRIBUTING.md#readme-screenshot-refresh): use the Web profile
+   current build, the previous accepted demo session's contract content (or an exact synthetic copy), matching
+   README language for UI and contract text, Follow-system appearance, and a right-hand `.charter-root` crop.
 3. Run `npm ci`, `npm run check`, and the normal `npm run smoke:package`.
 4. Run the compatibility regression over every declared DSH version and probe untracked `next`/`latest`
    versions. A missing, peer-drifted, or untested version blocks release.

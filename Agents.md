@@ -212,7 +212,9 @@ version that is not yet tracked**. This is a release requirement, not optional e
 - [ ] Every metadata site in the Lesson 4 list is consistent (package version, engines, peers, `dshReleases`,
       lockfile, README, compatibility, verification, CHANGELOG, release notes, `SHA256SUMS`).
 - [ ] README/README.zh describe the latest capabilities and current Pane style, with screenshots produced from the
-      accepted build; stale copy or stale screenshots block the release.
+      accepted build; stale copy or stale screenshots block the release. Screenshots follow
+      [CONTRIBUTING.md §README screenshot refresh](CONTRIBUTING.md#readme-screenshot-refresh): right-hand
+      `.charter-root` crop, system theme, and README-language-matching UI and contract content.
 - [ ] Test counts, digests, and coverage claims match the current tree; manual vs CI vs local-matrix evidence is
       labeled honestly.
 - [ ] English and Chinese long-form docs updated together; Chinese normative plan updated when details changed.

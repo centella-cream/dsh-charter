@@ -68,6 +68,32 @@ npm run check
 
 UI 改动请附截图或短录屏，并验证明暗主题和窄容器。
 
+### README 截图刷新
+
+README 及其截图是发布证据，不是装饰图。每次用户可见能力或 Pane 布局变化、以及每个候选/发布构建前，
+必须同时刷新 `README.md` 与 `README.zh.md`：
+
+1. 在 **Web profile** 中安装或运行当前精确构建并截取真实 UI；不要制作 HTML mockup、手工拼图或复用旧版本图。
+2. 使用合成演示会话。优先使用上一个已验收版本生效会话的契约内容（`0.3.3` 对应
+   `为 dsh-charter 插件优化 GUI 设计` 的三条中文交付物 D1/D2/D3）；如果该会话仍在其他 Host 中 live、
+   无法安全打开，则在合成会话中逐字重建其契约文本；绝不暴露用户的 live 契约。
+3. README 语言必须与 **UI 和契约文本**一致：
+   - 英文 README：英文 DSH locale + 英文契约内容。
+   - 中文 README：中文 DSH locale + 上一个已验收演示的中文契约内容；
+     不得在中文 README 中截英文契约。
+4. DSH 外观设为 **跟随系统**；不要强制深色或浅色。系统主题变化后重新截取。UI 同时涉及明暗状态时另行
+   验证明暗，但 README 图跟随系统主题。
+5. 只裁剪产品区域：Pane 图只保留右侧 `.charter-root`（不含左侧导航、不含会话标题栏）；依赖图裁剪
+   `.charter-graph` 并留少量 padding。正文说明截图为合成演示数据。
+6. Pane 使用 1440px Web 视口、device scale factor 2；依赖图必要时使用更高视口以免裁切；版本 chip 必须是
+   当前包版本。
+7. 文件命名为 `docs/assets/charter-pane-<version>.png` / `.zh.png` 和
+   `docs/assets/charter-graph-<version>.png` / `.zh.png`；不要覆盖历史版本图。
+8. 校验中英文 README 的安装/更新/配置/兼容片段和链接、插件详情页 locale metadata、图片语言与内容；
+   在 `docs/verification.md` 记录截图条件。
+
+依赖图未变化时可选；包含时同样遵守裁剪和语言规则。
+
 ## Commit 风格
 
 欢迎但不强制使用 Conventional 前缀：
