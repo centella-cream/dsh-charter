@@ -24,7 +24,7 @@ The Pane keeps the workspace, Review Center, and Diagnostics in one document col
 - **Development candidate:** `0.3.4` — opt-in, consent-gated draft calibration: semantic aggregation, readable rewriting, original-vs-calibrated review, `c-*` apply provenance, and real-model calibration status/diagnostics.
 - **Previous release:** `0.3.2` — accessibility/evidence convergence; `0.3.1` and `0.3.0` are earlier baselines.
 - **Primary DSH baseline:** `0.2.2-rc.5`; 13 declared DSH versions are source-matrix verified.
-- The **Plugins** page shows the localized title and a versioned description, including the calibration data-use limitation.
+- From `0.3.4`, the **Plugins** page shows a localized title and versioned description, including the calibration data-use limitation.
 
 ## Core capabilities
 
