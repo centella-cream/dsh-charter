@@ -317,6 +317,8 @@ function verifyArtifactContents({ artifact, consumer, emptyNpmrc, run }) {
     'CHANGELOG.zh.md',
     'LICENSE',
     'icon.svg',
+    'locale/en.json',
+    'locale/zh.json',
     'cordis.patch.yml',
     'lib/index.js',
     'lib/index.d.ts',
@@ -329,10 +331,32 @@ function verifyArtifactContents({ artifact, consumer, emptyNpmrc, run }) {
   for (const path of required) {
     if (!files.has(path)) throw new Error(`packed artifact is missing ${path}`)
   }
+  for (const locale of ['en', 'zh']) {
+    const path = `locale/${locale}.json`
+    const bytes = archive.files.get(path)
+    if (bytes === undefined) throw new Error(`packed artifact is missing ${path}`)
+    let metadata
+    try {
+      metadata = JSON.parse(bytes.toString('utf8'))
+    } catch {
+      throw new Error(`${path} is not valid JSON`)
+    }
+    const meta = metadata?.meta
+    if (typeof meta?.title !== 'string' || meta.title.trim() === '') {
+      throw new Error(`${path} is missing meta.title`)
+    }
+    if (typeof meta?.description !== 'string' || meta.description.trim() === '') {
+      throw new Error(`${path} is missing meta.description`)
+    }
+    if (!meta.description.includes(manifest.version)) {
+      throw new Error(`${path} description does not mention the current version ${manifest.version}`)
+    }
+  }
   for (const [subpath, target] of Object.entries(packedManifest.exports)) {
     const targets = typeof target === 'string' ? [target] : Object.values(target)
     for (const value of targets) {
       if (typeof value !== 'string') continue
+      if (value.includes('*')) continue
       const path = value.replace(/^\.\//u, '')
       if (!files.has(path)) throw new Error(`export ${subpath} points at missing ${path}`)
     }

@@ -24,7 +24,9 @@
       "default": "./lib/core.js"
     },
     "./cordis.patch.yml": "./cordis.patch.yml",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
   },
   "files": [
     "icon.svg",
@@ -53,7 +55,8 @@
     "CODE_OF_CONDUCT.md",
     "CODE_OF_CONDUCT.zh.md",
     "docs/releasing.md",
-    "docs/releasing.zh.md"
+    "docs/releasing.zh.md",
+    "locale"
   ],
   "sideEffects": [
     "./lib/index.js",
