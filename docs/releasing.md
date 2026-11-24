@@ -38,9 +38,13 @@ tagging.
 4. Run the compatibility regression over every declared DSH version and probe untracked `next`/`latest`
    versions. A missing, peer-drifted, or untested version blocks release.
 5. Run the local gates on a local non-`main` branch and build the acceptance tarball/profile. Perform local human
-   acceptance against that exact build. Only after acceptance, merge into local `main` linearly, then push
-   `main`. Do not push development branches; the remote keeps only `main`. Keep the worktree free of secrets,
-   user records, and `.tmp` artifacts.
+   acceptance against that exact build. For Desktop, install/update through the Desktop **Plugins** flow and
+   use its reload/hot-update action; do not terminate or signal the Desktop app/Host, and do not edit the
+   Desktop profile to force an install or acceptance. An agent may prepare the artifact and verify profile/
+   logs read-only after the human acts; an uninstalled candidate is a blocked gate, not a pass. Only after
+   acceptance, merge into local `main` linearly, then push `main`. Do not push development branches; the
+   remote keeps only `main`. Keep the worktree free of secrets, user records, test Sessions, and `.tmp`
+   artifacts.
 
 ## 2. Build the candidate bytes once
 

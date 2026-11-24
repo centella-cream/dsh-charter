@@ -101,6 +101,19 @@ by the Electron app on purpose — use Desktop Plugins or the local tarball. For
 plugin cannot distinguish absent from corrupt: stop the Host before any re-initialization can overwrite it, back
 up, then repair.
 
+**Local acceptance / Desktop lifecycle rule:** local acceptance is a **human action after installing the exact
+artifact through the product's own hot-update path**. For Desktop this means the Desktop Plugins install/update
+flow and its reload/hot-update action. Never terminate, restart, or signal the Desktop/Electron app or its Host
+process, and never edit the Desktop profile to force an install, to "activate" a build, or to make acceptance
+pass. An agent may prepare the artifact, give the exact install/reload steps, inspect profile/logs read-only
+after the human acts, and record evidence. If the candidate is not installed, mark the Desktop gate **blocked**
+rather than manufacturing a launch. Installing by direct profile mutation is not a substitute for the
+hot-update path.
+
+**Test-session cleanup rule:** any Session created for a test is temporary. Record its id at creation, use a
+unique title, and delete it when the test is finished. Delete only Sessions you created; never touch user or
+unrelated Sessions. A test run is not complete until those Sessions have been removed.
+
 ### 4. Release metadata is one atomic unit
 
 `0.1.0-rc.3` declared only five DSH versions, so the hardened Desktop gate correctly refused installation on DSH

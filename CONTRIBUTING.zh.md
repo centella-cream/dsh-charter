@@ -94,6 +94,16 @@ README 及其截图是发布证据，不是装饰图。每次用户可见能力�
 
 依赖图未变化时可选；包含时同样遵守裁剪和语言规则。
 
+### 本机人工验收与 Desktop 热更新
+
+本机验收必须由人工针对精确候选 artifact 执行。Desktop 必须通过 **Plugins** 的安装/更新流程和它的
+重载/热更新动作完成；不得终止或向 Desktop App、Electron 进程或 Host 进程发信号，也不得直接修改
+Desktop profile 来强行安装或让验收通过。Agent 可以准备 artifact 和安装步骤，在人工操作后只读核对版本、
+日志并记录证据；候选未安装时，Desktop 门禁只能标记 **blocked**，不能视为通过。
+
+测试需要创建 Session 时，记录创建过的 id，测试结束只删除自己创建的 Session；绝不删除用户或其他
+无关 Session。
+
 ## Commit 风格
 
 欢迎但不强制使用 Conventional 前缀：

@@ -101,6 +101,18 @@ whenever a user-visible capability or the Pane layout changes, and before every 
 
 The graph is optional when it is unchanged; if included, keep the same crop and language rules.
 
+### Local human acceptance and Desktop hot update
+
+Local acceptance is performed by a human against the exact candidate artifact. For Desktop, install/update
+through the Desktop **Plugins** flow and use its reload/hot-update action; do not terminate or signal the
+Desktop app, its Electron process, or its Host process, and do not edit the Desktop profile to force an
+install or to make the gate pass. An agent may prepare the artifact and installation steps, then verify the
+installed version and record evidence read-only after the human has acted. If the candidate is not installed,
+the Desktop gate is blocked, not passed.
+
+When a test needs Sessions, record the created ids and remove only those Sessions at the end. Never delete
+user or unrelated Sessions.
+
 ## Commit style
 
 Conventional prefixes are welcome but not required:

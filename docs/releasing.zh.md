@@ -33,9 +33,12 @@ tag、不删除已发布 Release、不在打 tag 后重建字节。
 3. 运行 `npm ci`、`npm run check` 和普通 `npm run smoke:package`。
 4. 对每个声明 DSH 版本跑兼容回归，并 probe 未跟踪的 `next`/`latest` 版本；缺失、peer drift 或未验证版本
    阻断发布。
-5. 在本地非 `main` 分支跑完门禁并构建验收 tarball/profile，对该精确构建做本地人工验收。验收确认后，
-   再线性合入本地 `main` 并推送 `main`。不要推送开发分支；远程只保留 `main`。工作树不得包含 secrets、
-   用户记录或 `.tmp` 产物。
+5. 在本地非 `main` 分支跑完门禁并构建验收 tarball/profile，对该精确构建做本地人工验收。
+   Desktop 必须通过 **Plugins** 流程安装/更新，并使用其重载/热更新动作；不得终止或向 Desktop App/Host
+   发信号，也不得直接修改 Desktop profile 来强行安装或验收。Agent 可以准备 artifact，在人工操作后只读
+   核对 profile/日志并记录证据；候选未安装时门禁是 blocked，不是 pass。验收确认后，再线性合入本地
+   `main` 并推送 `main`。不要推送开发分支；远程只保留 `main`。工作树不得包含 secrets、用户记录、
+   测试 Session 或 `.tmp` 产物。
 
 ## 2. 只构建一次候选字节
 
