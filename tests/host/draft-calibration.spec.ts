@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildCalibrationRequest, parseCalibrationResponse, planCalibrationBatches, runCalibrationPlan, runDraftCalibration } from '../../src/host/draft-calibration.js'
+import { buildCalibrationRequest, filterCalibrationCandidates, filterContractDraftItems, parseCalibrationResponse, planCalibrationBatches, runCalibrationPlan, runDraftCalibration } from '../../src/host/draft-calibration.js'
 
 const input = {
   config: {
@@ -251,5 +251,61 @@ describe('adaptive calibration planning and batching (v8)', () => {
     expect(result.truncated).toBe(true)
     expect(result.excludedRefs?.some(item => item.ref === 'd-inv-7' && item.reason === 'batch-failed')).toBe(true)
     expect(result.candidates.length).toBeGreaterThan(0)
+  })
+})
+
+
+describe('contractness gate and quotas (v9)', () => {
+  const noisy = [
+    { ref: 'd-obj-0', kind: 'objective' as const, text: 'Ship the service.' },
+    { ref: 'd-inv-0', kind: 'invariant' as const, text: 'Latest review requires 3 pre-run fixes:' },
+    { ref: 'd-inv-1', kind: 'invariant' as const, text: 'T-1: add a read-only precheck before the write.' },
+    { ref: 'd-inv-2', kind: 'invariant' as const, text: 'Suggested extra fixes: optimize PRAGMA.' },
+    { ref: 'd-inv-3', kind: 'invariant' as const, text: 'Current git status is dirty.' },
+    { ref: 'd-inv-4', kind: 'invariant' as const, text: 'Need confirm with the user before running.' },
+    { ref: 'd-inv-5', kind: 'invariant' as const, text: 'No execution until the user approves.' },
+    { ref: 'd-del-0', kind: 'deliverable' as const, text: 'Fix the failing transaction test.' },
+    { ref: 'd-del-1', kind: 'deliverable' as const, text: 'Run the full gate.' },
+  ]
+
+  it('filters fragments/status/history/optional/pending and reclassifies actions', () => {
+    const filtered = filterContractDraftItems(noisy)
+    expect(filtered.items.map(item => item.ref)).toEqual(['d-obj-0', 'd-inv-1', 'd-inv-5', 'd-del-0', 'd-del-1'])
+    expect(filtered.items.find(item => item.ref === 'd-inv-1')?.kind).toBe('deliverable')
+    expect(filtered.excludedRefs.map(item => item.ref)).toEqual(['d-inv-0', 'd-inv-2', 'd-inv-3', 'd-inv-4'])
+    expect(filtered.excludedRefs.every(item => item.reason === 'non-contract')).toBe(true)
+  })
+
+  it('keeps the objective and reserves deliverable slots under the global cap', () => {
+    const items = [
+      { ref: 'd-obj-0', kind: 'objective' as const, text: 'Ship the service.' },
+      ...Array.from({ length: 20 }, (_, index) => ({ ref: `d-inv-${index}`, kind: 'invariant' as const, text: `Requirement ${index} must hold.` })),
+      ...Array.from({ length: 10 }, (_, index) => ({ ref: `d-del-${index}`, kind: 'deliverable' as const, text: `Implement deliverable ${index}.` })),
+    ]
+    const plan = planCalibrationBatches({
+      config: { targetLanguage: 'en', maxInputBytes: 24_576, maxOutputTokens: 4_096, maxCandidates: 12, maxItemBytes: 4_096, timeoutMs: 2_000 },
+      hasObjective: false,
+      accepted: [],
+      draftItems: items,
+    }, { batchCandidates: 8, maxBatchInputBytes: 8_192, maxTotalOutputTokens: 16_384, maxConcurrency: 2, retrySplitDepth: 1, runTimeoutMs: 5_000 })
+    const selected = plan.batches.flatMap(batch => batch.selected)
+    expect(selected.some(item => item.ref === 'd-obj-0')).toBe(true)
+    expect(selected.filter(item => item.kind === 'deliverable')).toHaveLength(4)
+    expect(plan.inputTruncated).toBe(true)
+  })
+
+  it('uses prompt v2 to reject non-contract material and filters model output', () => {
+    const prepared = buildCalibrationRequest(input)
+    expect(prepared.system).toContain('Only emit durable contract items')
+    expect(prepared.system).toContain('Drop headings/labels')
+    expect(prepared.system).toContain('Action items such as T-1/T-2/T-3 are deliverables')
+    const filtered = filterCalibrationCandidates([
+      { ref: 'c-0', kind: 'invariant', text: 'Latest review requires 3 fixes:', uncertain: false },
+      { ref: 'c-1', kind: 'invariant', text: 'T-1: add the precheck.', uncertain: false },
+      { ref: 'c-2', kind: 'invariant', text: 'Current git status is dirty.', uncertain: false },
+      { ref: 'c-3', kind: 'deliverable', text: 'Run the full gate.', uncertain: false },
+    ])
+    expect(filtered.candidates.map(item => item.ref)).toEqual(['c-1', 'c-3'])
+    expect(filtered.candidates[0]?.kind).toBe('deliverable')
   })
 })

@@ -1433,7 +1433,9 @@ export class CharterDraft {
         },
       }))
     const objective = result.candidates.find(candidate => candidate.kind === 'objective')
-    const incomplete = result.partial === true || result.truncated || result.inputTruncated || (result.failedBatches ?? 0) > 0 || (result.excludedRefs?.length ?? 0) > 0
+    const nonContractCount = result.excludedRefs?.filter(item => item.reason === 'non-contract').length ?? 0
+    const excludedCount = Math.max(0, (result.excludedRefs?.length ?? 0) - nonContractCount)
+    const incomplete = result.partial === true || result.truncated || result.inputTruncated || (result.failedBatches ?? 0) > 0 || excludedCount > 0
     this.update({
       bootstrapCalibrationBusy: false,
       bootstrapCalibrationRunId: result.runId,
@@ -1445,7 +1447,7 @@ export class CharterDraft {
         partial: result.partial === true && (result.failedBatches ?? 0) > 0,
         truncated: result.truncated,
         inputTruncated: result.inputTruncated,
-        excludedCount: result.excludedRefs?.length ?? 0,
+        excludedCount,
         ...(result.usage?.calls === undefined ? {} : { calls: result.usage.calls }),
       } } : { bootstrapCalibrationSummary: undefined }),
       bootstrapObjectiveRef: objective?.ref,

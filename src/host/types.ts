@@ -518,7 +518,7 @@ export interface CharterCalibrationResult {
   readonly completedBatches?: number
   readonly failedBatches?: number
   readonly partial?: boolean
-  readonly excludedRefs?: readonly { readonly ref: string; readonly reason: 'duplicate' | 'global-cap' | 'input-budget' | 'batch-failed' }[]
+  readonly excludedRefs?: readonly { readonly ref: string; readonly reason: 'duplicate' | 'global-cap' | 'input-budget' | 'batch-failed' | 'non-contract' }[]
   readonly conflicts?: readonly { readonly refs: readonly string[]; readonly reason: 'near-duplicate' | 'objective' }[]
   readonly truncated: boolean
   readonly inputTruncated: boolean
