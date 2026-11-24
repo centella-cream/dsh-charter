@@ -19,7 +19,7 @@ tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 - 当前源码线：`0.3.4` 草案校准开发候选，未发布；`0.3.3` 为最新已发布版本。`0.3.4` 新增 opt-in 校准、additive Remote/apply 字段；record schema 仍为 2，standing prompt/工具面未变。
 - 当前源码门禁：`npm run check`（46 文件 / 551 测试）、token 覆盖 41 static + 1 dynamic、
   13 个声明 DSH 版本，以及 `verify:ui-metrics --gate=final`。
-- 兼容矩阵：13 个声明版本通过本地矩阵（`.tmp/compat-13-034-v8.json`（source `e4a826c`））；最新 DSH `0.2.2-rc.5` 为主基线。这是本地证据，不是 CI 结论。
+- 兼容矩阵：13 个声明版本通过本地矩阵（`.tmp/compat-13-034-v8.json`（source `2737b75`））；最新 DSH `0.2.2-rc.5` 为主基线。这是本地证据，不是 CI 结论。
 - 发布后在隔离 `DSH_HOME` 做 exact CLI 安装，npm 解析到 `dsh-charter@0.3.2`，client `6ef68d25…` 与已发布
   artifact 一致。
 - 已发布 artifact：`dsh-charter-0.3.2.tgz` SHA-256
@@ -308,7 +308,7 @@ rm -rf .tmp
 - 源码门禁：`npm run check` = 46 文件 / 551 测试 PASS；13 个声明 DSH 版本 token 覆盖 PASS；`verify:ui-metrics --gate=final` PASS。
 - 已实现：opt-in 校准配置/consent 门禁、Host `ctx.llm` 单轮严格 JSON 调用、语义聚合/可读改写校验、`c-*` 候选与 `mergedFrom`、Host-only evidence excerpt、`applyBootstrap.calibrationRunId`、两个新 Remote 方法及基础审阅 UI（校准、uncertain/merge/split、原文、用原文、consent 披露、objective 提醒、诊断 usage）。
 - README/README.zh 已精简并更新为当前构建：0.3.4 Pane 截图在 1440×1000 Web profile 视口下裁剪右侧 `.charter-root`，依赖图裁剪图元素并使用更高视口；均跟随系统浅色主题；UI 与契约文本同 README 语言一致（中文复用 `0.3.3` 演示会话的三条中文交付物，因为该 live 会话不能同时从 Web profile 打开）；`package:smoke` 现在校验本地化 `locale/en.json`/`locale/zh.json` metadata 且 description 包含包版本。Web Plugin Manager 在中英文下均渲染了本地化标题/描述和版本说明。
-- v8 源码候选 `dist/dsh-charter-0.3.4.tgz` SHA-256 `c6ddf8704f63680b5f6a51248b2e1f173c0ef402bd1bb58e54d7651139872d75`（164 文件）；`npm run check`（46 文件 / 551 测试）、13 版本源码矩阵（`.tmp/compat-13-034-v8.json`，source `e4a826c`）、exact-artifact package smoke、packed recovery smoke、fresh DSH 0.2.2-rc.5 Web profile 安装/启动 smoke、DSH 0.2.1-rc.3/rc.4 Gateway acceptance（各 20 项授权检查）PASS。这不是 release candidate：正式 A/B、L4 UI/AT、旧 profile 降级与人工门禁仍待完成。
+- v8 源码候选 `dist/dsh-charter-0.3.4.tgz` SHA-256 `3b9847ff7c14a75dde43a8163de62abf73aabcf32e85df80ad94fb0de3e9d9e2`（164 文件）；`npm run check`（46 文件 / 551 测试）、13 版本源码矩阵（`.tmp/compat-13-034-v8.json`，source `2737b75`）、exact-artifact package smoke、packed recovery smoke、fresh DSH 0.2.2-rc.5 Web profile 安装/启动 smoke、DSH 0.2.1-rc.3/rc.4 Gateway acceptance（各 20 项授权检查）PASS。这不是 release candidate：正式 A/B、L4 UI/AT、旧 profile 降级与人工门禁仍待完成。
 - P1-5 覆盖收口（2026-11-24）：另补 failure matrix（malformed/schema/text/tool-call/非 stop/超时）、effort 枚举拒绝与 0.3.2/0.3.3 实际 record fixture；0.3.2/0.3.3 实际产生的 v2 record fixture 在当前 strict schema 下无损解析；新增 capability 四态、缓存/单飞、30 分钟 run TTL、objective c-* 逐字、consent、混用命名空间、missing/expired run、wire evidence、run/handle、翻译回退、mergedFrom 与 oversized split 测试。
 - P2 收口（2026-11-24）：移除未实现的 `calibration.trigger`/`calibration.cooldownMinutes` 配置与诊断 UI；补 non-owner calibration Remote 守卫测试；docs/README 索引改为“保留 0.3.3 翻译回退”并标记 pending release acceptance；英文披露文案改由共享 `CALIBRATION_DISCLOSURE` 常量单一来源。
 - 校准方案重做（2026-11-24）：真实 Web 10 轮 + `/compact` 实测表明 v7 单次调用默认 2048 输出会 `max-tokens` 失败，且 32 条 draft 只校准 12 条。v8 自适应分批（planner/runner/reduce）已实现；同一 10 轮 case 在默认参数下通过（3/3 批、24 候选、无截断、15.2s），见 [research/2026-11-24-calibration-ab](research/2026-11-24-calibration-ab/report.md)。partial/truncated 状态与披露 v2 已实现；正式 A/B、L4/AT、旧 profile 降级与人工门禁仍未完成，候选**未达到发布条件**。

@@ -79,9 +79,9 @@ but not a clean contract.
 - Engineering run artifact: `dist/dsh-charter-0.3.4.tgz` SHA-256
   `841eed5a0254e2af5b779c52d084b787288f5694ade2b5c522dab52d51dff5e2`.
 - Final source candidate after the partial-UI/disclosure changes: SHA-256
-  `c6ddf8704f63680b5f6a51248b2e1f173c0ef402bd1bb58e54d7651139872d75` (164 files).
+  `3b9847ff7c14a75dde43a8163de62abf73aabcf32e85df80ad94fb0de3e9d9e2` (164 files).
 - `npm run check`: 46 files / 551 tests PASS; token coverage PASS over 13 declared DSH versions.
-- 13-version source matrix PASS (`.tmp/compat-13-034-v8.json`, source `e4a826c`).
+- 13-version source matrix PASS (`.tmp/compat-13-034-v8.json`, source `2737b75`).
 - Exact-artifact package smoke, packed recovery smoke, fresh DSH 0.2.2-rc.5 Web profile smoke, and
   Gateway acceptance on DSH 0.2.1-rc.3/rc.4 PASS on the final bytes.
 - This candidate is still not release-ready: formal A/B, L4 UI/AT, old-profile downgrade and manual gates remain.
