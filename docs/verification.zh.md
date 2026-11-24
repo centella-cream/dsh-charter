@@ -307,5 +307,6 @@ rm -rf .tmp
 
 - 源码门禁：`npm run check` = 45 文件 / 530 测试 PASS；13 个声明 DSH 版本 token 覆盖 PASS；`verify:ui-metrics --gate=final` PASS。
 - 已实现：opt-in 校准配置/consent 门禁、Host `ctx.llm` 单轮严格 JSON 调用、语义聚合/可读改写校验、`c-*` 候选与 `mergedFrom`、Host-only evidence excerpt、`applyBootstrap.calibrationRunId`、两个新 Remote 方法及基础审阅 UI（校准、uncertain/merge/split、原文、用原文、consent 披露、objective 提醒、诊断 usage）。
-- 候选 artifact `dist/dsh-charter-0.3.4.tgz` SHA-256 `a32fa0df6d571e0a50cd587ef1b201acfc6e7f919b68767fc735ee35cb2cdd95`；exact-artifact package smoke 与 packed recovery smoke PASS；13 版本矩阵 PASS（`.tmp/compat-13-034-final2.json`，source `f6481a4`）。
+- README/README.zh 已精简并更新为当前构建：0.3.4 Pane 与依赖图截图来自已安装候选；`package:smoke` 现在校验本地化 `locale/en.json`/`locale/zh.json` metadata 且 description 包含包版本。Web Plugin Manager 在中英文下均渲染了本地化标题/描述和版本说明。
+- 候选 artifact `dist/dsh-charter-0.3.4.tgz` SHA-256 `5698f55c46d905aa327f56e1061898c72ab99ce4b8a0750a9fc35dae5bd0e816`；exact-artifact package smoke 与 packed recovery smoke PASS；13 版本矩阵 PASS（`.tmp/compat-13-034-final2.json`，source `f6481a4`）。
 - 尚未完成：A/B 协议 1/2、真实模型人工校准验收、完整 L4 UI/AT 证据、完整失败/capability 矩阵与 0.4.0 能力。校准默认关闭。
