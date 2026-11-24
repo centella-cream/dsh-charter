@@ -2336,7 +2336,7 @@ describe('automatic draft language follow', () => {
       languageFollow: false,
       calibration: {
         enabled: true,
-        consentVersion: 1,
+        consentVersion: 2,
         targetLanguage: 'auto',
         maxInputBytes: 24_576,
         maxOutputTokens: 2_048,
@@ -2384,7 +2384,7 @@ describe('automatic draft language follow', () => {
       sessionId: session.id,
       draftHandle: draft.proposal.draftHandle!,
       locale: 'en',
-      consentVersion: 1,
+      consentVersion: 2,
       awaitCalibration: true,
     })
     expect(run.pending).toBe(false)
@@ -2425,7 +2425,7 @@ describe('automatic draft language follow', () => {
       languageFollow: false,
       calibration: {
         enabled: true,
-        consentVersion: 1,
+        consentVersion: 2,
         targetLanguage: 'auto',
         maxInputBytes: 24_576,
         maxOutputTokens: 2_048,
@@ -2454,7 +2454,7 @@ describe('automatic draft language follow', () => {
     const draft = await service.bootstrapDraft(session.id, 'en')
     expect(draft.available).toBe(true)
     if (!draft.available) return
-    const run = await service.calibrateBootstrap({ sessionId: session.id, draftHandle: draft.proposal.draftHandle!, locale: 'en', consentVersion: 1, awaitCalibration: true })
+    const run = await service.calibrateBootstrap({ sessionId: session.id, draftHandle: draft.proposal.draftHandle!, locale: 'en', consentVersion: 2, awaitCalibration: true })
     expect(run.candidates[0]).toMatchObject({ ref: 'c-0', kind: 'objective', text: 'Calibrated objective' })
     const base = {
       sessionId: session.id,
@@ -2477,7 +2477,7 @@ describe('automatic draft language follow', () => {
       languageFollow: false,
       calibration: {
         enabled: true,
-        consentVersion: 1,
+        consentVersion: 2,
         targetLanguage: 'auto',
         maxInputBytes: 24_576,
         maxOutputTokens: 2_048,
@@ -2513,7 +2513,7 @@ describe('automatic draft language follow', () => {
       sessionId: session.id,
       draftHandle: draft.proposal.draftHandle!,
       locale: 'en' as const,
-      consentVersion: 1,
+      consentVersion: 2,
       awaitCalibration: true,
     }
     const [first, second] = await Promise.all([
@@ -2551,7 +2551,7 @@ describe('automatic draft language follow', () => {
       languageFollow: false,
       calibration: {
         enabled: true,
-        consentVersion: 1,
+        consentVersion: 2,
         targetLanguage: 'auto',
         maxInputBytes: 24_576,
         maxOutputTokens: 2_048,
@@ -2582,7 +2582,7 @@ describe('automatic draft language follow', () => {
       draftHandle: draft.proposal.draftHandle!,
       locale: 'en',
       effort: 'low',
-      consentVersion: 1,
+      consentVersion: 2,
     })).rejects.toMatchObject({ code: 'CALIBRATION_EFFORT_UNSUPPORTED' })
   })
 
@@ -2591,7 +2591,7 @@ describe('automatic draft language follow', () => {
     roots.push(root)
     const enabled = {
       enabled: true,
-      consentVersion: 1,
+      consentVersion: 2,
       targetLanguage: 'auto',
       maxInputBytes: 24_576,
       maxOutputTokens: 2_048,
@@ -2646,7 +2646,7 @@ describe('automatic draft language follow', () => {
       sessionId: session.id,
       draftHandle: 'missing',
       locale: 'en',
-      consentVersion: 1,
+      consentVersion: 2,
     })).rejects.toMatchObject({ code: 'CALIBRATION_CONSENT_REQUIRED' })
     const apply = (extra: Record<string, unknown>) => service.applyBootstrap({
       sessionId: session.id,
@@ -2701,7 +2701,7 @@ describe('automatic draft language follow', () => {
       languageFollow: false,
       calibration: {
         enabled: true,
-        consentVersion: 1,
+        consentVersion: 2,
         targetLanguage: 'auto',
         maxInputBytes: 24_576,
         maxOutputTokens: 2_048,
@@ -2739,7 +2739,7 @@ describe('automatic draft language follow', () => {
       sessionId: sessionA.id,
       draftHandle: draftA.proposal.draftHandle!,
       locale: 'en',
-      consentVersion: 1,
+      consentVersion: 2,
       awaitCalibration: true,
     })
     const applied = await service.applyBootstrap({

@@ -121,6 +121,17 @@ export interface MaintenanceAttempt {
 
 export type DraftAttempt = EditAttempt | BootstrapAttempt | MaintenanceAttempt
 
+export interface BootstrapCalibrationSummary {
+  readonly batchCount: number
+  readonly completedBatches: number
+  readonly failedBatches: number
+  readonly partial: boolean
+  readonly truncated: boolean
+  readonly inputTruncated: boolean
+  readonly excludedCount: number
+  readonly calls?: number
+}
+
 export interface CharterDraftState {
   readonly sessionId: SessionId
   /** Session lifecycle fingerprint; a different lifecycle resets the draft. */
@@ -156,6 +167,7 @@ export interface CharterDraftState {
   /** L1 source handle; calibration must consume the source draft, not its translation. */
   readonly bootstrapSourceDraftHandle?: string | undefined
   readonly bootstrapCalibrationUsage?: import('../host/types.js').CharterCalibrationResult['usage'] | undefined
+  readonly bootstrapCalibrationSummary?: BootstrapCalibrationSummary | undefined
   readonly bootstrapCalibrationFailureCount: number
   readonly bootstrapObjectiveRef?: string | undefined
   /** A stream frame made the reviewed draft stale while its RPC outcome was unknown. */
@@ -290,6 +302,7 @@ function initialState(sessionId: SessionId): CharterDraftState {
     bootstrapCalibrationRunId: undefined,
     bootstrapSourceDraftHandle: undefined,
     bootstrapCalibrationUsage: undefined,
+    bootstrapCalibrationSummary: undefined,
     bootstrapCalibrationFailureCount: 0,
     bootstrapObjectiveRef: undefined,
     bootstrapNeedsStale: false,
@@ -1261,6 +1274,7 @@ export class CharterDraft {
         bootstrapCalibrationStatus: undefined,
         bootstrapCalibrationRunId: undefined,
         bootstrapCalibrationUsage: undefined,
+        bootstrapCalibrationSummary: undefined,
         bootstrapCalibrationError: undefined,
         bootstrapCalibrationFailureCount: 0,
       } : {}),
@@ -1419,10 +1433,21 @@ export class CharterDraft {
         },
       }))
     const objective = result.candidates.find(candidate => candidate.kind === 'objective')
+    const incomplete = result.partial === true || result.truncated || result.inputTruncated || (result.failedBatches ?? 0) > 0 || (result.excludedRefs?.length ?? 0) > 0
     this.update({
       bootstrapCalibrationBusy: false,
       bootstrapCalibrationRunId: result.runId,
       ...(result.usage === undefined ? {} : { bootstrapCalibrationUsage: result.usage }),
+      ...(incomplete ? { bootstrapCalibrationSummary: {
+        batchCount: result.batchCount ?? 1,
+        completedBatches: result.completedBatches ?? 1,
+        failedBatches: result.failedBatches ?? 0,
+        partial: result.partial === true,
+        truncated: result.truncated,
+        inputTruncated: result.inputTruncated,
+        excludedCount: result.excludedRefs?.length ?? 0,
+        ...(result.usage?.calls === undefined ? {} : { calls: result.usage.calls }),
+      } } : { bootstrapCalibrationSummary: undefined }),
       bootstrapObjectiveRef: objective?.ref,
       bootstrapObjective: objective?.text ?? '',
       bootstrapItems: items,
@@ -1456,6 +1481,7 @@ export class CharterDraft {
       bootstrapCalibrationRunId: undefined,
       bootstrapSourceDraftHandle: undefined,
       bootstrapCalibrationBusy: false,
+      bootstrapCalibrationSummary: undefined,
       bootstrapCalibrationError: undefined,
     })
   }

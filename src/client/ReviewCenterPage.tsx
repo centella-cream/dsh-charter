@@ -26,6 +26,7 @@ export function ReviewCenterPage({ scope }: { readonly scope: PaneScope }): Reac
   bootstrapCalibrationStatus,
   bootstrapCalibrationBusy,
   bootstrapCalibrationError,
+  bootstrapCalibrationSummary,
   bootstrapObjectiveRef,
   calibrateBootstrap,
   useOriginalBootstrap,
@@ -369,6 +370,17 @@ export function ReviewCenterPage({ scope }: { readonly scope: PaneScope }): Reac
                       <div className="charter-notice charter-notice--warning" role="alert">
                         {t('bootstrap.calibrationFailed')}
                         <ErrorDetails detail={bootstrapCalibrationError} t={t}/>
+                      </div>
+                    )}
+                    {bootstrapCalibrationSummary !== undefined && (
+                      <div className="charter-notice charter-notice--warning" role="status">
+                        {bootstrapCalibrationSummary.partial
+                          ? t('bootstrap.calibrationPartial', {
+                              completed: bootstrapCalibrationSummary.completedBatches,
+                              total: bootstrapCalibrationSummary.batchCount,
+                              failed: bootstrapCalibrationSummary.failedBatches,
+                            })
+                          : t('bootstrap.calibrationIncomplete', { excluded: bootstrapCalibrationSummary.excludedCount })}
                       </div>
                     )}
                     {bootstrapCalibrationStatus?.status === 'consent-required' && (

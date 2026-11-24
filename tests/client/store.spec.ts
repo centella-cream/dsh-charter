@@ -1017,11 +1017,11 @@ describe('structured bootstrap fallback', () => {
       SessionId('calibration-fr'),
     )
     ;(source as unknown as { remote: unknown }).remote = {
-      calibrationStatus: async () => { calls += 1; return { ok: true, value: { status: 'available', consent: { required: 1, acknowledged: 1 } } } },
+      calibrationStatus: async () => { calls += 1; return { ok: true, value: { status: 'available', consent: { required: 2, acknowledged: 2 } } } },
       calibrateBootstrap: async () => { calls += 1; return { ok: true, value: {} } },
     }
     expect(await source.calibrationStatus()).toBeUndefined()
-    expect(await source.calibrateBootstrap({ draftHandle: 'draft', consentVersion: 1 })).toBeUndefined()
+    expect(await source.calibrateBootstrap({ draftHandle: 'draft', consentVersion: 2 })).toBeUndefined()
     expect(calls).toBe(0)
     await source.dispose()
   })

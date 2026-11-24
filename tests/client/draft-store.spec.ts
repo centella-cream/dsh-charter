@@ -460,7 +460,7 @@ describe('per-Session draft ownership', () => {
       }),
       calibrationStatus: async () => ({
         status: 'available',
-        consent: { required: 1, acknowledged: 1 },
+        consent: { required: 2, acknowledged: 2 },
       }),
       calibrateBootstrap: async () => ({
         runId: 'run-1',
@@ -489,6 +489,62 @@ describe('per-Session draft ownership', () => {
     await draft.applyBootstrap(view(0))
     expect(applies[0]).toMatchObject({ calibrationRunId: 'run-1' })
     expect(applies[0]?.ops[0]).toMatchObject({ type: 'item.add', item: { clientRef: 'c-0' } })
+  })
+
+  it('surfaces partial calibration coverage without hiding original candidates', async () => {
+    const fake = source({
+      edit: async () => ({ ok: false, code: 'UNAVAILABLE', message: 'unused' }),
+      bootstrap: async () => ({
+        available: true,
+        proposal: {
+          draftHandle: 'draft-partial',
+          objective: 'L1 objective',
+          invariants: ['L1 invariant'],
+          deliverables: [],
+          source: { summarySeq: 9, at: 11 },
+          extractorVersion: 2,
+          draftLang: 'en',
+          language: { requested: 'en', status: 'source' },
+          draftItems: [
+            { ref: 'd-obj-0', kind: 'objective', text: 'L1 objective', lang: 'en', oversized: false },
+            { ref: 'd-inv-0', kind: 'invariant', text: 'L1 invariant', lang: 'en', oversized: false },
+          ],
+        },
+      }),
+      calibrationStatus: async () => ({ status: 'available', consent: { required: 2, acknowledged: 2 } }),
+      calibrateBootstrap: async () => ({
+        runId: 'run-partial',
+        pending: false,
+        cached: false,
+        joined: false,
+        promptVersion: 1,
+        resolved: { provider: 'p', model: 'm' },
+        candidates: [{ ref: 'c-0', kind: 'invariant', text: 'Calibrated invariant', uncertain: false }],
+        truncated: true,
+        inputTruncated: false,
+        partial: true,
+        batchCount: 3,
+        completedBatches: 2,
+        failedBatches: 1,
+        excludedRefs: [{ ref: 'd-inv-1', reason: 'batch-failed' }],
+      }),
+    })
+    const draft = new CharterDraft(sessionId, () => fake)
+    draft.bindLifecycle('life-calibration-partial')
+    draft.ensureBootstrap(view(0), true)
+    await new Promise(resolve => setTimeout(resolve, 0))
+    await new Promise(resolve => setTimeout(resolve, 0))
+    await draft.refreshCalibrationStatus()
+    await draft.calibrateBootstrap()
+    expect(draft.getSnapshot().bootstrapCalibrationSummary).toMatchObject({
+      batchCount: 3,
+      completedBatches: 2,
+      failedBatches: 1,
+      partial: true,
+      truncated: true,
+      excludedCount: 1,
+    })
+    expect(draft.getSnapshot().bootstrapItems[0]).toMatchObject({ id: 'c-0' })
   })
 
   it('still runs language follow when calibration is available', async () => {
@@ -528,7 +584,7 @@ describe('per-Session draft ownership', () => {
           },
         }
       },
-      calibrationStatus: async () => ({ status: 'available', consent: { required: 1, acknowledged: 1 } }),
+      calibrationStatus: async () => ({ status: 'available', consent: { required: 2, acknowledged: 2 } }),
       calibrateBootstrap: async request => {
         calibrationHandle = request.draftHandle
         return {
