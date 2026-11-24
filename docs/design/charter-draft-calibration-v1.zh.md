@@ -195,8 +195,12 @@ C 阶段启动前以 0.3.3 线上数据（C0 指标，§10）校准本方案默�
 | `unconfigured` | llm 在但模型解析链失败 | 置灰 + 首要原因"未配置模型" |
 | `disabled` / `consent-required` | 未启用 / consentVersion 不匹配 | 置灰 + 引导设置 |
 
+- **授权**：校准调用仅 Session owner；非 owner Remote actor 返回 `FORBIDDEN`（Remote 层
+  `requireOwnerCalibration`）。即使 profile 已启用 calibration，guest/非 owner 也不能触发；
+  该守卫是 v8 内核重做时必须保留的合同，不能因批处理重构而丢失。
 - M0-P3 探针覆盖**服务未注册**（旧宿主）与 **adapter 未配置**两种缺失形态，13 版本逐一记录
-  （0.3.3 的 `unavailable` 降级路径已上线，此处为校准入口的回归确认）。
+  （0.3.3 的 `unavailable` 降级路径已上线，此处为校准入口的回归确认）；v8 还需在真实 Host
+  capability 矩阵中追加**批并发/abort**行为（附录 A P9），不能只验单次调用。
 
 ### 5.2 配置面（Config 新增 `calibration` 节；profile 级，绝不进 record）
 
@@ -220,8 +224,9 @@ C 阶段启动前以 0.3.3 线上数据（C0 指标，§10）校准本方案默�
 
 配置快照语义：调用发起时读取快照，进行中不受配置变更影响。`maxCandidates`/`maxTotalOutputTokens`
 是全局硬顶；`batchCandidates`/`maxOutputTokens`/`maxBatchInputBytes` 是单批硬顶。两者同时满足，
-规划器不得用“把 batch 放大到全局上限”绕过单批限制。与 0.3.3 `languageFollow*` 键的互斥/优先关系
-见 §3.1：校准可用时不再触发独立翻译调用。
+规划器不得用“把 batch 放大到全局上限”绕过单批限制。与 0.3.3 `languageFollow*` 键的配置关系
+见 §3.1：**翻译与校准各自独立**；两者同开时翻译仍作为自动回退，校准不会抑制翻译调用（双调用
+为已知成本，不是“统一路径”）。
 
 
 ### 5.3 模型解析链（评审 P0-6）
@@ -625,8 +630,9 @@ interface CharterCalibrationResult {
 }
 ```
 
-两段式流程与 0.3.3 `awaitTranslation` 完全同构：第一段 `awaitCalibration:false` 立即返回
-`pending:true`，客户端先渲染 L1 草案并显示校准 busy 态；第二段 `awaitCalibration:true` 后台
+调用授权：仅 Session owner 可触发；Remote 层 `requireOwnerCalibration` 对非 owner 返回
+`FORBIDDEN`（与 profile 是否启用无关）。`awaitCalibration` 两段式与 0.3.3 `awaitTranslation`
+同构：第一段 `awaitCalibration:false` 立即返回 `pending:true`，客户端先渲染 L1 草案并显示校准 busy 态；第二段 `awaitCalibration:true` 后台
 等待**所有 batch** 完成或 runTimeout，到达后经 §6.5 选择集守卫（pristine/无 staged ops/同
 draftHandle）才替换视图；替换失败静默保留 L1 草案。旧 host 无此方法 → 入口隐藏（§7.4）。
 
@@ -875,7 +881,7 @@ round-trip、peer 图校验、trusted-attachment 防伪造测试、**v8 分批/�
 | --- | --- | --- | --- |
 | P1 | `ctx.get('llm')` 可选解析 + hand-built one-shot（system/user、maxTokens、signal、BlockAssembler、reasoning 分离）；**v8 按批复用** | 能收流、能取消、能并发多批；**不加入 static inject** 时插件正常加载 | **已由 0.3.3 生产验证**（翻译路径上线 + 39 条真实摘要人工验收）；v8 并发批待实测 |
 | P2 | 当前 adapter 的 `reasoningEffort` 枚举 | 非空则记录档位；为空则验证配置隐藏路径 | 部分验证（DeepSeek `'off'` 已上线）；**枚举发现待执行** |
-| P3 | 13 版本 capability 矩阵：llm **服务未注册** / adapter 未配置 / 正常 三形态 | 冻结 capability gate 最低版本与四态映射 | 缩减为回归确认（0.3.3 降级已上线）；C2 执行 |
+| P3 | 13 版本 capability 矩阵：llm **服务未注册** / adapter 未配置 / 正常 三形态；v8 追加批并发/abort | 冻结 capability gate 最低版本与四态映射；批并发不越权、abort 能清理 | 缩减为回归确认（0.3.3 降级已上线）；C2 执行，必须覆盖 P9 |
 | P4 | 宿主界面语言获取路径（client PropsLocale 值域；Host 侧是否可得） | locale 参数白名单与来源 | **已由 0.3.3 生产验证**（`ctx.locale.getLocale().active` 上线） |
 | P5 | hand-built 调用（**全部 batch**）不进 session transcript / 会话事件流；宿主用量面可见 | 隐私与计费披露准确；多批调用逐条可见 | **待执行**（v7 单次已验证路径，v8 多批需复核） |
 | P6 | 旧宿主对新增 `calibration` 配置节的宽容性（未知键不崩） | 升级/降级安全 | 缩减为回归确认（`languageFollow*` 键已验证同模式）；C2 执行 |
