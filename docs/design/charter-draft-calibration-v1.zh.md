@@ -1,15 +1,23 @@
-# `dsh-charter` 0.4.0 契约草案校准方案（语言跟随 · 精简聚合 · 语义完整切分）
+# `dsh-charter` 0.3.4 契约草案校准方案（语言跟随 · 精简聚合 · 语义完整切分）
 
-> **状态：** `Proposed` —— 0.4.0 后续提案，未实现、非权威。0.3.3 已交付自动 zh/en 语言归一；
-> 本文保留语义级聚合、diff 审阅与 A/B 的后续范围，进入版本范围前仍需 D1 路线修订。
-> **版本范围：** `0.4.0` 候选（模型校准层 L2+L3），在 `0.3.3` 发布并观察真实表现后启动
-> （用户决策 2026-11-23）。硬依赖 [charter-draft-extraction-v1.zh.md](charter-draft-extraction-v1.zh.md)
-> 附录 A 冻结的五项接口承诺（ref 语法、draftHandle、apply 命名空间分派、objective `clientRef`、
-> `extractorVersion`）。
-> **基准：** 2026-11-23，`main` @ `53410cb`；`0.3.2` 已发布（SHA-256 `9dcb82ae…`）。
-> **修订：** v3（2026-11-23）——并入第二轮独立评审 P0-A/P0-C 与 P1×5：Host trusted-attachment
-> 通道、objective 校准 apply 路径、`calibrationStatus` 方法、degraded split 结构、缓存键补
-> `maxOutputTokens`、A/B 拆分为两个独立协议。映射见附录 C。
+> **状态：** `Active` —— 0.3.4 开发范围与设计权威（D1 决策 2026-11-24，路线图 §14.2.2/§14.2.3/§16
+> 已修订）。未实现、未发布；人工验收通过前不推送开发分支、不合并 `main`、不 tag/release/publish、
+> 不声称 0.3.4 可用或已发布。
+> **版本范围：** `0.3.4`（草案校准补丁线，模型校准层 L2+L3）。**定位约束：只提升草案聚合/可读性/
+> 语言/审阅效率，不声称提升模型长程任务完成率，不承诺草案完整性/通用性**（历史补全与执行能力
+> 属 [0.4.0 完整契约升级](charter-execution-v1.zh.md)）。依赖**已发布**的 `0.3.3`
+> [charter-draft-extraction-v1.zh.md](charter-draft-extraction-v1.zh.md) 冻结接口（ref 语法、
+> draftHandle、apply 命名空间分派、objective `clientRef`、`extractorVersion`）与其已上线的
+> 翻译基础设施（§4 复用映射）。
+> **基准：** 2026-11-24，`main` @ `44a542d3`；`0.3.3` 已发布（SHA-256 `707043d3…`）。
+> **修订：** v5（2026-11-24）——**版本定位调整（用户决策）**：本方案从 0.4.0 降级为 `0.3.4`
+> 草案校准补丁线；0.4.0 重新定义为完整契约功能升级（另立
+> [charter-execution-v1.zh.md](charter-execution-v1.zh.md)）。新增定位约束与四项发布保证
+> （§0/§2.2/§9/§11）；downgrade round-trip 扩展为 0.3.2 与 0.3.3 双版本。
+> v4（2026-11-24）——D1 决策落盘、状态转 Active；新增 §3.1 校准与 0.3.3 语言归一的
+> 统一路径（单模型调用、降级链、配置互斥语义）；§4 改为已交付基座复用映射；§7.1 增加
+> `awaitCalibration` 两段式（沿用 0.3.3 已验证模式）；版本计数更新为 13；M0 探针按 0.3.3
+> 线上验证裁剪为 3 项待执行。v3（2026-11-23）并入第二轮评审 P0-A/P0-C 与 P1×5。映射见附录 C。
 > **权威边界：** 版本范围由[版本路线](version-roadmap.zh.md)决定；proposal/来源语义由
 > [charter-workspace-v2.zh.md](charter-workspace-v2.zh.md) §4/§7 决定；审阅 UI 视觉由
 > [charter-gui-v1.zh.md](charter-gui-v1.zh.md) §4.9 冻结稿决定。与权威文档冲突时先修订权威文档。
@@ -20,7 +28,7 @@
 ## 0. 摘要
 
 0.3.3 已交付碎片消除、重复折叠、结构化 ref 与**自动 zh/en 语言归一**；仍不做语义级合并。
-0.4.0 在其上增加高级模型校准层：
+0.3.4 在其上增加高级模型校准层：
 
 - **L2 校准服务**：宿主 `ctx.llm` hand-built one-shot 单轮调用；用户可配置模型与思考强度
   （`reasoningEffort`）；专用版本化 prompt；严格 I/O token 预算（动态候选数）；失败整批降级回
@@ -30,11 +38,15 @@
 
 **产品底线（全部继承，不可协商）**：校准产物永远是 pending proposal，用户 accept 才生效；
 默认关闭（opt-in + consentVersion 强校验）；校准永不替换结构化草案，完整原始草案始终可展开
-（溢出可见）；**零 record schema 变更**——0.3.x 可直接读取 0.4.0 写出的记录，无 future-schema
-围栏（§6）。
+（溢出可见）；**零 record schema 变更**——0.3.2/0.3.3 可直接读取 0.3.4 写出的记录，无
+future-schema 围栏（§6）。
 
-`relation proposal` 不属本专题（D1 决策是否 0.4.x 跟进）；`record schema v3` 经源码核实
-**不需要**（§6.1）；`charter.diagnostics` 维持路线图条件句，本方案不立项。
+**定位边界（v5，用户决策 2026-11-24）**：0.3.4 只提升草案聚合/可读性/语言/审阅效率，
+**不声称提升模型长程任务完成率，不承诺草案完整性或通用性**。校准只能基于 compaction summary，
+不能新增摘要外约束；"契约不完整"的解法是 0.4.0 的历史补全能力，不在本方案。
+`relation proposal` 与 `record schema v3` 归入
+[0.4.0 完整契约升级](charter-execution-v1.zh.md)；`charter.diagnostics` 维持路线图条件句，
+本方案不立项。
 
 ## 1. 现状与代码事实（0.3.2 发布树，v3 修订补强）
 
@@ -52,7 +64,7 @@
 
 ## 2. 范围与非目标
 
-### 2.1 范围（0.4.0）
+### 2.1 范围（0.3.4）
 
 1. L2 校准服务：可选注入、配置面（含 consent）、模型解析链、调用合同、动态预算、校验管线、
    缓存/限流/单飞、失败矩阵（§5）；
@@ -69,7 +81,10 @@
 - 不自动生效、不翻译已 accepted 条目（校准只作用于**草案**）；
 - 插件不管理 API key；不新增遥测/上传；诊断仅本地内存；
 - 不承诺 zh/en 之外的目标语言（其余语言原文透传 + 标注）；
-- `relation proposal`、`charter.diagnostics`、Focus/`appliesTo` 实验不在本方案。
+- 不做 0.4.0 完整契约升级的任何内容：readiness/ready queue、停滞检测、执行记忆
+  （decision/environment/progress proposal）、relation proposal、历史补全草案、LLM assessor、
+  跨会话模板（见 [charter-execution-v1.zh.md](charter-execution-v1.zh.md)）；
+- `charter.diagnostics`、Focus/`appliesTo` 实验不在本方案。
 
 ## 3. 方案总览
 
@@ -99,13 +114,36 @@ charter/applyBootstrap(+calibrationRunId, c-*/d-* refs 不混用)
 pending proposal（source=compaction-summary + evidence.excerpt=原文）→ 用户 accept 生效
 ```
 
-## 4. 对 0.3.3 的硬依赖
+### 3.1 与 0.3.3 语言归一的统一路径（v4 新增）
 
-- `d-*` ref、结构化候选、draftHandle 语义、apply 命名空间分派、`objective.initialize` 的
-  `clientRef` 字段、`extractorVersion`——全部按 extraction 方案**附录 A 冻结合同**执行；
-- 0.4.0 新增 `c-*` ref 命名空间与 `calibrationRunId`，**复用**同一分派机制，不另行发明；
-- 0.3.3 先发布并观察真实表现（用户决策）：C 阶段启动前以 0.3.3 线上草案质量数据校准
-  本方案的默认参数（maxCandidates、N 估算常数、折叠策略是否已足够减少校准需求）。
+0.3.3 已上线自动语言归一（`languageFollow`，后台两段式 `awaitTranslation`）。0.3.4 校准
+与其合并为**单一模型路径**，避免同一草案双重调用、双重计费：
+
+- **优先序**：校准可用（`available` + enabled + consent 通过）时，客户端草案区**不再发起
+  0.3.3 的翻译二段请求**，改走 `calibrateBootstrap`（同样的两段式：先展示 L1 源语言草案，
+  后台等待校准结果）；校准 prompt 一次完成"语言归一 + 语义聚合 + 可读性改写"，输入始终是
+  L1 源语言草案（不消费 0.3.3 翻译结果，保证 provenance 与 diff 语义单一）。
+- **降级链（互斥，每草案至多一次模型调用）**：校准失败/未启用 → 回退 0.3.3 语言归一
+  （`languageFollow` 开启时）→ 再失败/未启用 → L1 源语言草案。
+- **配置语义**：`languageFollow=false` 只关翻译不关校准；`calibration.enabled=false` 只关校准
+  不影响翻译；两者都开时只执行校准（已含语言归一）。
+- **缓存隔离**：0.3.3 `translatedItems` 与校准缓存（§5.7）互不混用；校准缓存键含
+  `promptVersion` 与完整 limits 快照。
+
+## 4. 0.3.3 已交付基座与复用映射（v4 修订：0.3.3 已于 2026-11-24 发布）
+
+| 0.3.3 已交付（生产验证） | 位置 | 0.3.4 复用方式 |
+| --- | --- | --- |
+| `ctx.get('llm')` 可选注入 + 结构化 `DraftLlmRuntime` 类型（无 peer） | `host/draft-translation.ts`、`service.ts translationModel` | 校准服务同一模式；不加入 `static inject` |
+| 模型解析链：专用路由覆盖（`languageFollowProvider/Model`）→ 会话 `agent.model.current()` → 拒绝 | `service.ts translationModel` | §5.3 同构实现（`calibration.provider/model` 独立键，解析函数复用） |
+| hand-built one-shot：流式组装、只取 text block、`finish=stop` 强制、tool-call 拒绝、DeepSeek `reasoningEffort:'off'` | `draft-translation.ts translateBatch` | 校准调用合同（§5.4）直接沿用；effort 策略见 §5.4 注 |
+| 分批 + 并发上限 + 每批超时 + 对半拆分重试 + partial 合并 | `translationBatches`/`mapLimit`/`translateResilient` | 校准批处理复用同一套纯函数（批参数独立配置） |
+| 严格 JSON 响应校验（ref 完整性/唯一性、`inspectUserText`、计数） | `parseTranslation` | §5.6 校验管线在其上扩展 schema/预算/mergedFrom 校验 |
+| 两段式非阻塞（`awaitTranslation` + `pending` 状态 + 客户端后台二段请求 + pristine 守卫替换） | wire、`draft-store.ts localizeBootstrapProposal` | `calibrateBootstrap` 的 `awaitCalibration` 同构（§7.1）；替换守卫扩展为选择集互斥（§6.5） |
+| 缓存（sourceKey+target+provider+model，LRU 32）与 `localizedDrafts` handle 缓存 | `service.ts` | 校准缓存按 §5.7 扩展键维度；handle 机制原样复用 |
+| `d-*` ref、draftHandle、apply 命名空间分派、objective `clientRef`、`contentModified` 基准 | extraction 方案附录 A（冻结） | `c-*` 命名空间接入同一分派；基准表扩展（§6.4） |
+
+C 阶段启动前以 0.3.3 线上数据（C0 指标，§10）校准本方案默认参数。
 
 ## 5. L2 校准服务
 
@@ -113,7 +151,7 @@ pending proposal（source=compaction-summary + evidence.excerpt=原文）→ 用
 
 - **不修改 `static inject`**。校准服务调用时 `ctx.get('llm')` 惰性解析（Cordis 可选服务），
   解析失败 = `unavailable-host`，插件加载与其余功能零影响；
-- 不新增 `@deepseek-ai/dsh-llm` peer 依赖：0.3.3/0.4.0 通过本地结构化类型与 `ctx.get` 访问宿主
+- 不新增 `@deepseek-ai/dsh-llm` peer 依赖：0.3.3/0.3.4 通过本地结构化类型与 `ctx.get` 访问宿主
   LLM 服务，避免把旧 DSH 版本拖入新的 peer 图；若未来需要直接导入运行时模块，再独立评估 peer。
 - capability 四态由**独立新方法** `charter/calibrationStatus` 暴露（§7.2）——capabilities
   DTO 是 strict，不加字段（评审 P1-2）；`calibrateBootstrap` 的错误码只做调用时兜底：
@@ -125,7 +163,8 @@ pending proposal（source=compaction-summary + evidence.excerpt=原文）→ 用
 | `unconfigured` | llm 在但模型解析链失败 | 置灰 + 首要原因"未配置模型" |
 | `disabled` / `consent-required` | 未启用 / consentVersion 不匹配 | 置灰 + 引导设置 |
 
-- M0-P3 探针覆盖**服务未注册**（旧宿主）与 **adapter 未配置**两种缺失形态，11 版本逐一记录。
+- M0-P3 探针覆盖**服务未注册**（旧宿主）与 **adapter 未配置**两种缺失形态，13 版本逐一记录
+  （0.3.3 的 `unavailable` 降级路径已上线，此处为校准入口的回归确认）。
 
 ### 5.2 配置面（Config 新增 `calibration` 节；profile 级，绝不进 record）
 
@@ -143,7 +182,8 @@ pending proposal（source=compaction-summary + evidence.excerpt=原文）→ 用
 | `calibration.timeoutMs` | int / 30000 | AbortSignal |
 | `calibration.cooldownMinutes` | int / 10 | auto 触发冷却（手动不受限，受单飞约束） |
 
-配置快照语义：调用发起时读取快照，进行中不受配置变更影响。
+配置快照语义：调用发起时读取快照，进行中不受配置变更影响。与 0.3.3 `languageFollow*` 键的
+互斥/优先关系见 §3.1：校准可用时不再触发独立翻译调用。
 
 ### 5.3 模型解析链（评审 P0-6）
 
@@ -172,6 +212,8 @@ GenerateOptions {
 ```
 
 - 流式响应经 `BlockAssembler` 组装；`reasoning` block **全部丢弃**，只取可见 text block；
+- effort 缺省策略：配置为空时**不携带** `reasoningEffort`（adapter 默认）；DeepSeek 路由的
+  `'off'` 传法已由 0.3.3 翻译调用生产验证，校准是否默认低档由 C0 数据决定（D8 一并冻结）；
 - `finish=length`（触顶）、空 text、reasoning-only、content_filter、意外 tool-call 块均判
   `CALIBRATION_MALFORMED`（携带子类），不部分采纳；
 - `usage`（input/output/reasoningTokens、耗时）写入本地诊断（§8），不进 record、不上报。
@@ -382,10 +424,12 @@ readonly mergedFrom?: readonly { readonly ref: string; readonly excerpt: string 
   readonly locale: 'zh' | 'en'         // 界面语言白名单；targetLanguage=auto 的目标语言
   readonly effort?: string             // 覆盖配置（可选）；adapter 枚举校验
   readonly consentVersion: number      // §5.10
+  readonly awaitCalibration?: boolean  // 缺省 true；false = 两段式第一段，立即返回 pending
 }) => Promise<RemoteResult<CharterCalibrationResult>>
 
 interface CharterCalibrationResult {
   readonly runId: string
+  readonly pending: boolean           // true = 校准在后台进行，candidates 为空（两段式第一段）
   readonly cached: boolean
   readonly joined: boolean
   readonly promptVersion: number
@@ -404,6 +448,11 @@ interface CharterCalibrationResult {
                      readonly reasoningTokens?: number; readonly durationMs: number }
 }
 ```
+
+两段式流程与 0.3.3 `awaitTranslation` 完全同构：第一段 `awaitCalibration:false` 立即返回
+`pending:true`，客户端先渲染 L1 草案并显示校准 busy 态；第二段 `awaitCalibration:true` 后台
+等待结果，到达后经 §6.5 选择集守卫（pristine/无 staged ops/同 draftHandle）才替换视图；替换
+失败静默保留 L1 草案。旧 host 无此方法 → 入口隐藏（§7.4）。
 
 ### 7.2 `charter/calibrationStatus`（新增；评审 P1-2 的读取路径）
 
@@ -437,9 +486,9 @@ Pane 进入草案区时调用（与 `bootstrapDraft` 并行）；方法缺失（
 
 | 组合 | 行为 |
 | --- | --- |
-| 0.3.x client + 0.4.0 host | 只调旧方法；所有既有 DTO 零变化 |
-| 0.4.0 client + 0.3.3 host | `calibrationStatus`/`calibrateBootstrap` 缺失 → 稳定错误 → 入口隐藏；`bootstrapDraft`/apply 照常 |
-| 0.4.0 client + 0.3.2 host | 连 `bootstrapDraft` 也缺失 → 双层回退到 legacy 草案视图 |
+| 0.3.x client + 0.3.4 host | 只调旧方法；所有既有 DTO 零变化 |
+| 0.3.4 client + 0.3.3 host | `calibrationStatus`/`calibrateBootstrap` 缺失 → 稳定错误 → 入口隐藏；`bootstrapDraft`/apply 照常 |
+| 0.3.4 client + 0.3.2 host | 连 `bootstrapDraft` 也缺失 → 双层回退到 legacy 草案视图 |
 
 ## 8. UI 与诊断（遵循 gui-v1 §4.9 冻结视觉语言）
 
@@ -461,22 +510,27 @@ Pane 进入草案区时调用（与 `bootstrapDraft` 并行）；方法缺失（
 
 ## 9. 兼容与降级
 
-- **capability 矩阵**：11 个声明 DSH 版本 × {llm 服务存在性、adapter 配置、effort 枚举、
+- **capability 矩阵**：13 个声明 DSH 版本 × {llm 服务存在性、adapter 配置、effort 枚举、
   `agent.model.current()` 行为}，结果写入 compatibility 文档；任何缺失形态都必须落到 §5.1
-  四态之一，插件加载与 bootstrap 主流程零影响（**含服务未注册场景实测**）；
-- **downgrade 硬承诺**：零 record schema 变更 ⇒ 0.3.x 读取/编辑/导出/accept 0.4.0 写出的
-  记录（含 evidence.excerpt 的 pending 条目）无围栏、无数据损失；专项 round-trip 测试（L2-8）；
-- **无新增 peer**：`ctx.get('llm')` 可选服务访问；兼容矩阵验证 11 版本加载不受影响；
+  四态之一，插件加载与 bootstrap 主流程零影响（0.3.3 翻译路径的降级已在生产验证，校准入口
+  做**服务未注册场景**回归即可）；
+- **downgrade 硬承诺**：零 record schema 变更 ⇒ **0.3.2 与 0.3.3 双版本**均可读取/编辑/导出/
+  accept 0.3.4 写出的记录（含 evidence.excerpt 的 pending 条目），无围栏、无数据损失；专项
+  round-trip 测试（L2-8）；
+- **既有行为零变化**：`charter/bootstrap`、legacy apply、`bootstrapDraft`（不带校准参数时）
+  与 0.3.3 行为完全一致；legacy golden fixture 与既有 apply 测试零回归重跑；旧客户端无感
+  （§7.4 skew 矩阵）；
+- **无新增 peer**：`ctx.get('llm')` 可选服务访问；兼容矩阵验证 13 版本加载不受影响；
 - 升级：`calibration` 配置节在旧宿主的宽容性由 M0-P6 验证（未知键不崩）；
 - wire skew 四象限（§7.4）自动化。
 
-## 10. 实施阶段（15–20 工程日，评审 P2-7）
+## 10. 实施阶段（余量 7–11 工程日；C1 已随 0.3.3 发布完成）
 
 | 阶段 | 内容 | 退出条件 |
 | --- | --- | --- |
-| M0 探针（1d） | 附录 A 八项 + D1 路线修订 | 探针结论落盘；roadmap 0.4.0 条目更新；本文转 Active |
-| C0 观察（—） | 0.3.3 发布后的真实草案质量数据回收（折叠率、oversized 率、编辑率） | 用实测数据确认/修正 §5.5 默认参数与 N 估算常数 |
-| C2 校准服务（3–4d） | §5 + §6 Host 侧（trusted-attachment、objective 路径）+ §7 wire + peer/capability | L2 故障注入矩阵绿；真实 host 手动校准一次成功（L3 首证） |
+| M0 探针（0.5d） | 附录 A 剩余 3 项（P2 effort 枚举发现、P5 transcript 隔离、P8 披露呈现）+ 2 项缩减回归（P3 服务缺失、P6 新配置键宽容）；D1 已完成（2026-11-24），本文已转 Active | 探针结论落盘 |
+| C0 观察（滚动） | 回收 0.3.3 线上真实数据：翻译 partial/failed 率与错误码分布、批数分布、后台等待时长、折叠率、oversized 率、草案编辑率 | 用实测数据确认/修正 §5.5 默认参数、N 估算常数与 effort 缺省策略（D8） |
+| C2 校准服务（3–4d） | §5 + §6 Host 侧（trusted-attachment、objective 路径）+ §7 wire + capability | L2 故障注入矩阵绿；真实 host 手动校准一次成功（L3 首证） |
 | C3 审阅体验（2–3d） | §8 + 选择集状态机 + locales | DOM/浏览器证据；diff/用原文/split/truncated/降级全覆盖 |
 | C4 A/B 与验收发布（3–4d） | §11 两协议 + 兼容/capability 矩阵 + exact artifact + 文档批次 | 附录 B 全勾；发布按 docs/releasing.md |
 
@@ -507,8 +561,8 @@ objective 互斥）；`contentModified` 基准表（§6.4）驱动测试。
    `mergedFrom` ref 伪造/超限（>3）、记录已有 objective 时模型仍返回 objective 候选（拒绝）；
 7. apply 原子性：`c-*` 批次单次 update；`c-*` 与 `d-*` 混用拒绝；runId 过期整批拒绝；
    objective 校准 initialize 逐字校验 + 已有 objective 时 `INVALID_TRANSITION`；
-8. **downgrade 专项**：0.4.0 写出的记录（含 evidence.excerpt 的 pending 条目）由 0.3.2 源码
-   读取/编辑/导出/accept，无围栏、无数据损失；
+8. **downgrade 专项**：0.3.4 写出的记录（含 evidence.excerpt 的 pending 条目）分别由 **0.3.2
+   与 0.3.3** 源码读取/编辑/导出/accept，无围栏、无数据损失（双向 round-trip）；
 9. wire skew 四象限（§7.4）自动化。
 
 ### L3 真实 host + 真实模型（人工门禁）
@@ -525,8 +579,9 @@ diff 展开、用原文、聚合/uncertain/split 徽章、truncated 状态行、
 
 ### 跨版本（评审 P2-5）
 
-11 版本 `ctx.get('llm')` 可用性 + `BlockAssembler`/`GenerateOptions` 最早声明版本兼容性 +
-peer 安装图校验（strict peers、frozen lock）+ L2-8/L2-9。
+13 版本 `ctx.get('llm')` 可用性 + `BlockAssembler`/`GenerateOptions` 最早声明版本兼容性 +
+strict peers/frozen lock 安装图校验 + L2-8/L2-9。不新增 dsh-llm peer（§5.1），依赖图校验
+维持 0.3.3 的形状。
 
 ### A/B：两个独立协议（v3 拆分，评审 P1-6）
 
@@ -549,10 +604,17 @@ peer 安装图校验（strict peers、frozen lock）+ L2-8/L2-9。
 - 无遥测：全部人工/本地脚本记录；
 - 输出仅用于调整 maxCandidates/N 估算/折叠策略默认值与 UI 文案。
 
+### A/B 协议 1 与协议 2 的共同边界（v5）
+
+两个协议只评估**草案文本质量与审阅效率**（可读性/语义保真/语言正确性、accept-without-edit、
+编辑距离、审阅耗时），**不用于也不得引用为**"提升模型长程任务完成率/执行表现"的证据——
+执行类指标（ready queue drain、evidence coverage、提前收工率、返工率）属于
+[0.4.0 完整契约升级](charter-execution-v1.zh.md) 的 A/B 范畴。
+
 ### 发布门禁映射
 
 沿用 0.3.x 全套（candidate 单次打包、exact-artifact、矩阵 + untracked probe、fresh profile、
-Promotion、SHA256SUMS/C+1）；0.4.0 特有 P0 = capability 矩阵（含服务缺失）、downgrade
+Promotion、SHA256SUMS/C+1）；0.3.4 特有 P0 = capability 矩阵（含服务缺失）、downgrade
 round-trip、peer 图校验、trusted-attachment 防伪造测试、A/B 协议 1 预注册执行记录。
 
 ## 12. 风险
@@ -562,7 +624,7 @@ round-trip、peer 图校验、trusted-attachment 防伪造测试、A/B 协议 1 
 | 校准改写扭曲语义 | 契约失真 | 保真规则 + diff + 用原文 + uncertain 默认不选 + 永不自动生效 + A/B 反例集 |
 | 摘要含注入文本 | 校准器被操纵 | 输入视为数据、schema 校验、无自动 apply、注入语料进 L2/A-B 测试 |
 | 成本/延迟超预期 | 用户负担 | 默认关、冷却、缓存（完整键）、动态 N、maxTokens 硬顶、usage 诊断、手动触发 |
-| `ctx.llm`/adapter 跨版本漂移 | 旧宿主崩溃或误报可用 | 可选注入 + peer 范围 + capability 矩阵含服务缺失 + 四态降级 |
+| `ctx.llm`/adapter 跨版本漂移 | 旧宿主崩溃或误报可用 | 可选注入 + 结构化类型（无 peer）+ capability 矩阵含服务缺失 + 四态降级（0.3.3 翻译路径已生产验证同一模式） |
 | token 估算失准 | truncated/split 频发 | finish=length 兜底 + split 合同 + C0 用 0.3.3 线上数据校准常数 |
 | prompt 版本漂移 | 结果不可复现 | promptVersion 入缓存键/诊断/golden fixture，改动强制升版本 |
 | consent/披露不到位 | 信任与合规 | consentVersion 随披露文本版本化，Host 强校验，Pane 不写配置 |
@@ -572,7 +634,7 @@ round-trip、peer 图校验、trusted-attachment 防伪造测试、A/B 协议 1 
 
 | 编号 | 决策 | 建议 |
 | --- | --- | --- |
-| D1 | 路线修订：0.4.0 = 草案校准主线；relation proposal 归属 | 校准为主线；relation proposal 移出 0.4.0（0.4.x 跟进）；0.3.3 先行已定 |
+| D1 | 路线修订：版本归属 | **已决策（2026-11-24，v5 修订）**：校准定位为 **0.3.4 草案质量补丁线**（additive Remote、opt-in、零 record schema、零 prompt/tool 变更）；0.4.0 重新定义为**完整契约功能升级**（readiness/停滞检测/执行记忆 + schema v3/relation proposal/历史补全/可选 assessor，另立 charter-execution-v1.zh.md）；roadmap §1/§2/§14.2.2/§14.2.3/§16 已修订 |
 | D2 | `trigger` 默认值 | `manual`；`auto` 仅 A/B 协议 1 达标后开放 |
 | D3 | provenance Option A（trusted-attachment，零 schema） | 采纳（§6.2 已按 edit() 既有侧通道先例落合同） |
 | D4 | 模型解析链（显式配置 → agent 当前选择 → 拒绝） | 采纳；不做隐式 provider 回退 |
@@ -584,23 +646,24 @@ round-trip、peer 图校验、trusted-attachment 防伪造测试、A/B 协议 1 
 
 ## 附录 A：M0 运行时探针清单
 
-| # | 探针 | 判定 |
-| --- | --- | --- |
-| P1 | `ctx.get('llm')` 可选解析 + hand-built one-shot（system/user、maxTokens、signal、BlockAssembler、reasoning 分离） | 能收流、能取消；**不加入 static inject** 时插件正常加载 |
-| P2 | 当前 adapter 的 `reasoningEffort` 枚举 | 非空则记录档位；为空则验证配置隐藏路径 |
-| P3 | 11 版本 capability 矩阵：llm **服务未注册** / adapter 未配置 / 正常 三形态 | 冻结 capability gate 最低版本与四态映射 |
-| P4 | 宿主界面语言获取路径（client PropsLocale 值域；Host 侧是否可得） | locale 参数白名单与来源 |
-| P5 | hand-built 调用不进 session transcript / 会话事件流；宿主用量面可见 | 隐私与计费披露准确 |
-| P6 | 旧宿主对新增 `calibration` 配置节的宽容性（未知键不崩） | 升级/降级安全 |
-| P7 | `ctx.agents` → agent `model.current()` 形状；无 Session/未选择模型行为 | 冻结 §5.3 解析链 |
-| P8 | 宿主设置面板对 schema description 长文本（披露全文）的呈现能力 | 决定 consent 披露落点与措辞长度 |
+| # | 探针 | 判定 | v4 状态 |
+| --- | --- | --- | --- |
+| P1 | `ctx.get('llm')` 可选解析 + hand-built one-shot（system/user、maxTokens、signal、BlockAssembler、reasoning 分离） | 能收流、能取消；**不加入 static inject** 时插件正常加载 | **已由 0.3.3 生产验证**（翻译路径上线 + 39 条真实摘要人工验收） |
+| P2 | 当前 adapter 的 `reasoningEffort` 枚举 | 非空则记录档位；为空则验证配置隐藏路径 | 部分验证（DeepSeek `'off'` 已上线）；**枚举发现待执行** |
+| P3 | 13 版本 capability 矩阵：llm **服务未注册** / adapter 未配置 / 正常 三形态 | 冻结 capability gate 最低版本与四态映射 | 缩减为回归确认（0.3.3 降级已上线）；C2 执行 |
+| P4 | 宿主界面语言获取路径（client PropsLocale 值域；Host 侧是否可得） | locale 参数白名单与来源 | **已由 0.3.3 生产验证**（`ctx.locale.getLocale().active` 上线） |
+| P5 | hand-built 调用不进 session transcript / 会话事件流；宿主用量面可见 | 隐私与计费披露准确 | **待执行**（可先在 0.3.3 翻译路径上复核） |
+| P6 | 旧宿主对新增 `calibration` 配置节的宽容性（未知键不崩） | 升级/降级安全 | 缩减为回归确认（`languageFollow*` 键已验证同模式）；C2 执行 |
+| P7 | `ctx.agents` → agent `model.current()` 形状；无 Session/未选择模型行为 | 冻结 §5.3 解析链 | **已由 0.3.3 生产验证**（translationModel + 专用路由覆盖上线） |
+| P8 | 宿主设置面板对 schema description 长文本（披露全文）的呈现能力 | 决定 consent 披露落点与措辞长度 | **待执行** |
 
 ## 附录 B：发布前验收清单
 
-- [ ] D1 路线修订完成（0.4.0 条目），本文状态转 Active。
-- [ ] M0 八项探针结论落盘；C0 已用 0.3.3 线上数据校准默认参数。
+- [x] D1 路线修订完成（0.3.4 校准补丁线 + 0.4.0 完整契约升级重定义），本文状态 Active（2026-11-24）。
+- [ ] M0 剩余探针（P2 枚举发现、P5 transcript 隔离、P8 披露呈现）与缩减回归（P3/P6）结论落盘；
+      C0 已用 0.3.3 线上数据校准默认参数。
 - [ ] L1/L2 矩阵全绿（含扩展故障、注入语料、evidence 伪造拒绝、downgrade round-trip、skew 四象限）。
-- [ ] 11 版本在无 `dsh-llm` peer 声明下正常加载并使用可选 `ctx.get('llm')`。
+- [ ] 13 版本在无 `dsh-llm` peer 声明下正常加载并使用可选 `ctx.get('llm')`。
 - [ ] capability 矩阵写入 compatibility 文档；服务缺失形态实测。
 - [ ] L3 真实模型人工门禁（zh/en × effort 档位）完成并记录 tokens/耗时/transcript 洁净。
 - [ ] L4 浏览器/AT/冻结稿对照按 gui-v1 §8 执行。
@@ -615,3 +678,5 @@ round-trip、peer 图校验、trusted-attachment 防伪造测试、A/B 协议 1 
 | 2026-11-23 | 创建提案 v1（Proposed）。 |
 | 2026-11-23 | 评审修订 v2：拆分 0.3.3；P0-1→§6（Host 附着 evidence）、P0-2→§6.4、P0-3→§6.5、P0-4→依赖 0.3.3、P0-5→§5.1、P0-6→§5.3；P1 缓存键/动态预算/披露/consent/effort/join/truncated；P2 估算 15–20 日、A/B 重写、扩展测试清单、peer 声明。 |
 | 2026-11-23 | **评审修订 v3**：P0-A → §6.1/§6.2（撤回"withEvidence 直接可用"假设；改为 edit() 既有宿主侧参数先例上的 `hostAttachments.evidenceByClientRef` trusted-attachment 通道，core `ApplyOpsInput`/`itemFromInput` 显式扩展，wire 双 schema 保持 strict 无 evidence，附防伪造测试）；P0-C → §6.6（objective 校准 apply = `objective.initialize + clientRef:'c-obj-*' + runId`，逐字相等，仅当记录无 objective；objective 无 evidence 槽位如实记为已知边界）；P1-2 → §7.2 新增 `charter/calibrationStatus` 方法（capabilities strict DTO 零变化）；P1-4 → §5.6-4 degraded split 派生 ref/替换语义/选择集继承 + §7.1 degraded 结构；P1-5 → §5.7 缓存键补 `maxOutputTokens`；P1-6 → §11 A/B 拆分为离线盲评与行为自观察两个独立协议（评审者/语料留存/统计/用途分离）；新增 §4 对 0.3.3 附录 A 冻结合同的依赖声明、§10 C0 观察阶段、D9 混用禁令。 |
+| 2026-11-24 | **v4（D1 落盘 + 0.3.3 发布对齐）**：状态 Proposed → `Active`（路线图 §1/§2/§14.2.2/§16 已修订：0.4.0 = 校准主线，relation proposal 移 0.4.x，schema v3 移出范围）；基准更新为 `main` @ `44a542d3`、0.3.3 已发布（`707043d3…`）。新增 §3.1 校准与 0.3.3 语言归一统一路径（校准可用时抑制翻译二段请求、三级降级链互斥、每草案至多一次模型调用、配置互斥语义、缓存隔离）；§4 改为已交付基座复用映射表（ctx.get/解析链/one-shot/分批/校验/两段式/缓存/handle 八项）；§7.1 增加 `awaitCalibration` 两段式与 `pending` 字段（沿用 0.3.3 已验证模式）+ 客户端守卫说明；§5.4 补 effort 缺省策略（DeepSeek `'off'` 生产先例，档位由 C0/D8 冻结）；M0 探针按生产验证裁剪（P1/P4/P7 已验证，P3/P6 缩减回归，余 P2/P5/P8）；C0 指标具体化（partial/failed 率、批数、等待时长、折叠/oversized/编辑率）；版本计数 11 → 13；§12 风险行同步无 peer 决策；附录 B D1 勾选。 |
+| 2026-11-24 | **v5（版本定位调整，用户决策）**：本方案从 0.4.0 降级为 **0.3.4 草案校准补丁线**——校准本质是 0.3.x 草案质量增强（additive Remote、opt-in、零 record schema、零 prompt/tool 变更），不应占据 minor 版本；`0.4.0` 重新定义为**完整契约功能升级**（readiness/ready queue、停滞检测、执行记忆 + record schema v3、relation proposal、历史补全草案、可选 LLM assessor），设计权威另立 [charter-execution-v1.zh.md](charter-execution-v1.zh.md)。本文新增定位边界（§0：只提升草案质量与审阅效率，不声称提升模型长程任务完成率、不承诺完整性/通用性）、§2.2 排除 0.4.0 全部能力、§9 既有行为零变化保证、downgrade round-trip 扩展为 0.3.2+0.3.3 双版本、§11 A/B 共同边界（文本质量指标不得挪用为执行表现证据）；D1/附录 B 同步。 |

@@ -4,7 +4,7 @@
 
 > **状态：** Active — 版本与范围权威。
 > **版本范围：** 0.1 历史、已发布的 0.2 线、已发布的 0.3.0/0.3.1/0.3.2 线，以及已发布的 0.3.3。
-> **基准：** 2026-11-23；`0.2.2`、`0.3.0` 已发布；`0.3.1` 为已发布的 GUI 收敛补丁；`0.3.2` 已于 2026-11-16 发布；`0.3.3` 为已实现的结构化草案/语言跟随候选；`0.4.0` 为下一功能线。
+> **基准：** 2026-11-24；`0.2.2` 与 `0.3.0`–`0.3.3` 已发布（`0.3.3` 于 2026-11-24）；`0.3.4` 为已决策的草案校准补丁线（§14.2.2，权威：[charter-draft-calibration-v1.zh.md](charter-draft-calibration-v1.zh.md)）；`0.4.0` 为已决策的完整契约功能升级线（§14.2.3，权威：[charter-execution-v1.zh.md](charter-execution-v1.zh.md)）。
 > **权威：** 中文版本为 scope 的 normative。
 > **替代/被替代：** 无 / 无
 
@@ -25,7 +25,11 @@
   → 0.2.2：依赖关系图形视图 + §6.5 冲突确认（纯客户端补丁线，已发布）
   → 0.3.0：全栏目 GUI 全面重构（纯客户端，已发布）
   → 0.3.1：依赖图/无障碍收敛、standing envelope 预警、本地流量取证（纯客户端，已发布）
-  → 0.4.0：既有交付物 relation proposal + record schema v3（范围待决策）
+  → 0.3.2：无障碍/证据收敛（根字号缩放、六状态与媒体证据；已发布）
+  → 0.3.3：结构化草案抽取 + 自动语言跟随（additive Remote；已发布）
+  → 0.3.4：契约草案校准（语义聚合/可读改写/语言统一/diff 审阅；opt-in、零 record schema；已决策）
+  → 0.4.0：完整契约功能升级（readiness/ready queue、停滞检测、执行记忆 + record schema v3、
+    relation proposal、历史补全草案、可选 assessor；范围已决策，详细设计 E0 先行）
 ```
 
 **`0.1.0-rc.5`** 已发布到 npm，是最新发布版本；其规范 GitHub tag/release 待恢复。**`0.1.0-rc.6`** 在验收前
@@ -50,9 +54,20 @@ rc.5 修复了与产品承诺冲突的审阅正确性问题：此前历史草案
 - `0.2.0` 是更早的公开版本。
 - `0.2.1` 是 `0.2.0` 之后的兼容补丁：可编辑消息提案、更清晰的诊断/排版、owner-only 有界恢复缓存。不改变
   `recordSchemaVersion` 2 或模型工具面；`dsh_charter_archives_v1` 是有界派生物缓存，不是第二正本。
-- `0.3.1` 已发布：保持零 record/Remote/prompt 变化；`0.4.0` 才允许 relation proposal 与 schema v3。
+- `0.3.1` 已发布：保持零 record/Remote/prompt 变化。relation proposal 归入 `0.4.0` 完整契约升级；
+  record schema v3 对 0.3.4 校准**不需要**（走 v2 既有 evidence 字段），对 0.4.0 执行记忆**需要**。
 - `0.3.2` 已于 2026-11-16 发布；不改 record/Remote/prompt，人工 AT/Desktop 证据作为公开已知缺口。
-- `0.3.3` 为已本地实现的结构化草案与自动语言跟随候选：语义保全切分、重复折叠、稳定 ref、可选宿主模型 zh/en 归一；未发布，发布前需人工验收。
+- `0.3.3` 已于 2026-11-24 发布到 npm（`latest`/`next`）和 GitHub Release `v0.3.3`：结构化草案抽取、
+  重复折叠、稳定 ref 与自动 zh/en 语言归一（`languageFollow` 可关）；tag、资产和 npm 字节不可变。
+- `0.3.4` 为当前开发线（契约草案校准补丁，已决策 2026-11-24）：语义聚合、可读性改写、语言统一、
+  原文 diff 审阅；opt-in、零 record schema/prompt/工具面变更；范围与验收由
+  [charter-draft-calibration-v1.zh.md](charter-draft-calibration-v1.zh.md)（`Active`）持有。
+  定位约束：只提升草案质量与审阅效率，不声称提升模型长程任务完成率。
+- `0.4.0` 为下一功能线（完整契约功能升级，范围已决策 2026-11-24）：readiness/ready queue、
+  停滞检测、执行记忆（decision/environment/evidence/progress proposal，record schema v3 +
+  downgrade fence）、relation proposal、历史补全草案、条件式 LLM assessor；权威：
+  [charter-execution-v1.zh.md](charter-execution-v1.zh.md)（`Proposed`，详细设计 E0 先行）。
+  人工验收前两条线均不推送、不合并、不 tag/publish、不声称可用。
 - `0.1.0-rc.6` 仍是更早的公开版本。历史 rc tag/release 不可变。
 
 ## 3. 为什么是 rc.5
@@ -461,10 +476,45 @@ ranges/`dshReleases`。对里程碑的影响：不新增人工门禁类别，但
 - 本地 `traffic-check`：`charter_propose` 拒绝分类、surface hash、`traffic-diff` 基线；不做运行时埋点/上报。
 - 零 record schema、零 Remote wire、零 prompt 字节变化。退出条件：source gates、浏览器审计、人工验收、文档/截图一致。
 
-### 14.2.2 `0.4.0` 候选范围（待决策）
+### 14.2.2 `0.3.4` 范围：契约草案校准补丁线（已决策，2026-11-24）
 
-- 既有交付物 `requires` 的独立 relation proposal；record schema v3 + downgrade fence；
-  `charter.diagnostics` 仅当 checker 证明 transcript 不足时立项。
+- **主线**：在 0.3.3 结构化草案之上的模型校准——语义级聚合、可读性改写、目标语言归一（吸收
+  0.3.3 语言归一为单一模型路径，见校准方案 §3.1）、原文 ↔ 校准稿 diff 审阅与"用原文"。opt-in
+  （`calibration.enabled` 默认关）+ `consentVersion` 强校验；任何失败整批降级回确定性草案。
+- **wire**：新增 `charter/calibrateBootstrap`、`charter/calibrationStatus`；`applyBootstrap`
+  additive 扩展（`calibrationRunId`、`c-*` ref 命名空间）。**零 record schema 变更**：逐条
+  provenance 走 Host trusted-attachment 附着 `evidence.excerpt`（校准方案 §6），0.3.2/0.3.3
+  可直接读取 0.3.4 写出的记录，无 downgrade fence（round-trip 双版本测试）。
+- **定位约束**：只提升草案聚合/可读性/语言/审阅效率，**不声称提升模型长程任务完成率**，
+  不承诺草案完整性/通用性；A/B 只承诺文本质量与审阅效率。
+- **实现基座**：0.3.3 已交付并经真实使用验证的翻译基础设施——`ctx.get('llm')` 可选注入、
+  分批 + 每批超时 + 拆分重试、模型解析链（会话模型 + 专用路由覆盖）、缓存、后台替换与
+  pristine 守卫。M0 探针按此裁剪（校准方案附录 A）。
+- 退出条件：校准方案 §11 测试验收 + A/B 协议 1 预注册执行 + 人工验收；人工验收前不推送
+  开发分支、不合并 `main`、不 tag/release/publish、不声称可用。
+
+### 14.2.3 `0.4.0` 范围：完整契约功能升级（范围已决策，详细设计 E0 先行）
+
+权威：[charter-execution-v1.zh.md](charter-execution-v1.zh.md)（`Proposed`）。从"草案质量"
+升级为"契约支撑执行"：
+
+- **执行契约 / readiness**：prompt 投影派生 `ready/waiting/blocked/done/conflict` 状态与
+  ready queue；用户可写收工标准（声明性进 prompt + 确定性收工清单诊断，插件不强制执行策略）；
+- **停滞检测**：确定性信号（连续 N revision 无变化、ready queue 长期非空、evidence 全 stale）
+  产出诊断/notice/proposal 提示；LLM judge 不进 v1；
+- **执行记忆**：`decision`/`environment` 新 item kind + evidence 绑定 + progress proposal
+  （模型提案、用户接受）——**需要 record schema v3** + v2→v3 惰性迁移 + 0.3.x future-schema
+  只读围栏（解除 0.2.0 的"不新增 item kind"非目标，属有意识版本级决策）；
+- **relation proposal**：从 0.4.x 收回 0.4.0（与依赖/readiness 同类能力）；
+- **历史补全草案**：有界读取会话历史，产出带 source span + `inferred` 标记的候选，用户审阅；
+  与 0.3.4 校准严格分离（校准只能基于 compaction summary）；
+- **可选 LLM assessor**：只读、输出 proposal/diagnostic、永不写入；条件立项、后置；
+- **A/B**：执行类指标（ready queue drain、evidence coverage、提前收工率、返工率），与 0.3.4
+  文本质量 A/B 严格分离；模型可见变更默认灰度/可关。
+- 跨会话复用（模板导出/导入 + 来源绑定）明确推迟 0.4.x+，不是记忆存储。
+- **完整 0.4.0（用户决策 2026-11-24）**：E1–E4（readiness/停滞检测、执行记忆 schema v3、
+  relation proposal、历史补全）全部为发布门禁，不设 E1-only 拆版回退；任一阶段未达标即
+  推迟整个 0.4.0。E5（assessor）为条件立项，不属发布门禁。
 
 范围：Workspace、Review Center、Diagnostics & Maintenance 所有栏目统一迁移到同一设计系统与交互合同；
 设计 token 化、真实路由/滚动/焦点、Change Set v2 最小合同与完整 rail/sheet、Pane/store 拆分、DOM/浏览器
@@ -542,6 +592,9 @@ DSH ABI/wire。本分支另做仅声明层的兼容维护：rc.2 的 engines/pee
 | `0.1.1` | stable 后兼容 bug/security/DSH/a11y patch | 新持久状态、新 API、新工作流 |
 | `0.2.0` | 四个产品支柱、record v2、查询面、三中心 UI、架构重构 | 通用记忆、执行策略、任意 validator、无必要的新 domain |
 | `0.2.2` | 客户端依赖关系图形视图、§6.5 conflict 确认、预览 optional 字段 | 新 record schema/domain、新 Remote 方法、模型可见能力变更、图形独有能力 |
+| `0.3.0` | 全栏目 GUI 全面重构：设计系统、IA/路由、Change Set 合同、Pane/store 拆分、a11y/截图证据（已发布） | 新 record schema/domain、新 Remote/模型能力、兼容声明变更、人工验收前推送/合并/tag/publish/宣称可用 |
 | `0.3.1` | GUI 收敛补丁：依赖图审计、standing envelope 预警、本地 traffic checker；零 record/Remote/prompt 变化（已发布） | 新 record schema/domain、新 Remote/模型能力、DSH ABI/wire 变更 |
-| `0.3.3` | 结构化草案抽取：`charter/bootstrapDraft` additive Remote、objective `clientRef`、折叠/oversized/ref；自动 zh/en 语言归一（`languageFollow` 可关，失败回退源语言） | record schema/domain、prompt 投影、模型工具面变更、破坏 legacy bootstrap/apply、无开关的无界模型调用 |
-| `0.4.0` | 既有交付物 relation proposal + record schema v3 + downgrade fence（待决策） | 未经 roadmap/设计修订直接实现、无 downgrade fence、无人工验收 |
+| `0.3.2` | 无障碍/证据收敛：根字号缩放、六状态与媒体证据、文档对账（已发布） | 新 record schema/domain、新 Remote/模型能力、prompt 变更 |
+| `0.3.3` | 结构化草案抽取：`charter/bootstrapDraft` additive Remote、objective `clientRef`、折叠/oversized/ref；自动 zh/en 语言归一（`languageFollow` 可关，失败回退源语言）（已发布） | record schema/domain、prompt 投影、模型工具面变更、破坏 legacy bootstrap/apply、无开关的无界模型调用 |
+| `0.3.4` | 契约草案校准补丁线：`calibrateBootstrap`/`calibrationStatus` additive Remote、`applyBootstrap` additive 扩展、宿主 one-shot 校准（opt-in + consentVersion + A/B 预注册）、`evidence.excerpt` provenance（零 record schema 变更）、与语言归一统一路径 | record schema/domain、prompt 投影、模型工具面变更、自动生效校准结果、既有 bootstrap/apply 行为变化、"提升模型执行表现/完整性"宣称、未经人工验收发布 |
+| `0.4.0` | 完整契约功能升级：readiness/ready queue 与停滞检测（prompt 投影变更）、执行记忆（decision/environment/evidence/progress proposal，record schema v3 + 迁移 + downgrade fence）、relation proposal、历史补全草案、条件式 assessor；执行类 A/B | 未经 E0 详细设计与评审直接实现、无迁移 fixture/downgrade 围栏的 schema v3、模型直接写契约、强制执行策略、未经 A/B 预注册默认开启模型可见变更、E1–E4 未全部达标即发布（完整 0.4.0，不设 E1-only 拆版）、未经人工验收发布 |

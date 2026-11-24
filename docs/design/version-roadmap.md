@@ -6,7 +6,7 @@ English | [中文](version-roadmap.zh.md)
 >
 > **Status:** Active — version and scope authority.
 > **Version scope:** 0.1 history, the published 0.2 line, the published 0.3.0/0.3.1/0.3.2 line, and the implemented 0.3.3 candidate.
-> **Baseline:** 2026-11-23; `0.2.2` and `0.3.0` are published; `0.3.1` is the published GUI convergence patch; `0.3.2` was published on 2026-11-16; `0.3.3` is the locally implemented structured-draft/language candidate; `0.4.0` is the next feature line.
+> **Baseline:** 2026-11-24; `0.2.2` and `0.3.0`–`0.3.3` are published (`0.3.3` on 2026-11-24); `0.3.4` is the decided draft-calibration patch line (authority: [charter-draft-calibration-v1.zh.md](charter-draft-calibration-v1.zh.md)); `0.4.0` is the decided full contract-capability upgrade (authority: [charter-execution-v1.zh.md](charter-execution-v1.zh.md)).
 > **Authority:** Chinese [version-roadmap.zh.md](version-roadmap.zh.md) is normative for scope.
 > **Supersedes / Superseded by:** none / none
 
@@ -27,7 +27,11 @@ The release path is:
   → 0.2.2 dependency graph + §6.5 confirmation (client-only patch, published)
   → 0.3.0 all-section GUI refactor (client-only, published)
   → 0.3.1 dependency-graph/a11y convergence, envelope warning, local traffic forensics (client-only, published)
-  → 0.4.0 existing-deliverable relation proposal + record schema v3 (scope decision pending)
+  → 0.3.2 accessibility/evidence convergence (root-text scaling, six-state evidence; published)
+  → 0.3.3 structured draft extraction + automatic language following (additive Remote; published)
+  → 0.3.4 contract-draft calibration (semantic aggregation/rewriting, unified language path, diff review, opt-in; decided)
+  → 0.4.0 full contract-capability upgrade (readiness/ready queue, stall detection, execution memory + record schema v3,
+    relation proposal, history-completion drafts, optional assessor; scope decided, detailed design E0 first)
 ```
 
 **`0.1.0-rc.6`** is published and formally accepted; its GitHub Release uses recovery tag `v0.1.0-rc.6-republished`. **`0.1.0-rc.5`** is the previous accepted release and its canonical GitHub tag/release is pending restoration. `0.1.1-rc.1` remains a post-stable patch spelling, not another rc.6.
@@ -46,7 +50,20 @@ rc.5 fixed the correctness defect inside the promised 0.1 workflow: previously e
 - `0.2.1` is published on npm (`latest`/`next`) and as GitHub Release `v0.2.1`; its tag, assets, and npm bytes are immutable.
 - `0.2.0` is an earlier public release.
 - `0.2.1` is a compatible post-`0.2.0` patch: editable message proposals, clearer diagnostics/typography, and an owner-only bounded recovery cache. It does not change `recordSchemaVersion` 2 or the model tool surface; the `dsh_charter_archives_v1` domain is a bounded derivative cache, not a second authority.
-- `0.3.0` was published on 2026-11-13. `0.3.1` was published on 2026-11-13 as the GUI convergence patch; `0.4.0` is the next candidate line.
+- `0.3.0` was published on 2026-11-13. `0.3.1` was published on 2026-11-13 as the GUI convergence patch.
+- `0.3.2` was published on 2026-11-16 (accessibility/evidence convergence). `0.3.3` was published on 2026-11-24
+  (structured draft extraction + automatic zh/en language following with `languageFollow` opt-out); tags, assets,
+  and npm bytes are immutable.
+- `0.3.4` is the current development line (contract-draft calibration patch, decided 2026-11-24): semantic
+  aggregation, readable rewriting, unified language normalization, original-vs-calibrated diff review; opt-in,
+  zero record-schema/prompt/tool change. Positioning constraint: it improves draft quality and review efficiency
+  only and never claims improved long-horizon task completion. Authority:
+  [charter-draft-calibration-v1.zh.md](charter-draft-calibration-v1.zh.md) (`Active`).
+- `0.4.0` is the next feature line (full contract-capability upgrade, scope decided 2026-11-24): readiness/ready
+  queue, stall detection, execution memory (decision/environment/evidence/progress proposal, record schema v3 +
+  downgrade fence), relation proposal, history-completion drafts, conditional LLM assessor. Authority:
+  [charter-execution-v1.zh.md](charter-execution-v1.zh.md) (`Proposed`, detailed design E0 first). Neither line
+  is pushed, merged, tagged, or published before human acceptance.
 - `0.1.0-rc.6` remains an earlier public release. Historical rc tags and releases are immutable.
 
 ## 3. Why rc.5
@@ -307,11 +324,24 @@ Alpha milestones may change the schema, but every change must ship fixture migra
 | `0.3.1` | Published dependency/a11y/standing-envelope convergence; no record/Remote/prompt change | New schema/domain, Remote/model capability, DSH ABI/wire change |
 | `0.3.3` | Structured draft extraction: additive bootstrapDraft Remote, objective clientRef, folding/oversized/refs; automatic zh/en language follow with `languageFollow` opt-out and source fallback | Record schema/domain, prompt/tool changes, breaking legacy bootstrap/apply, unbounded always-on model call |
 | `0.3.0` | All-section GUI refactor: design system, IA/routing, Change Set contract, Pane/store split, a11y/screenshot evidence | New record schema/domain, new Remote/model capability, compatibility declaration changes, pushing/merging/tagging/publishing or availability claims before human acceptance |
+| `0.3.4` | Draft-calibration patch line: `calibrateBootstrap`/`calibrationStatus` additive Remotes, additive `applyBootstrap` extension, host one-shot calibration (opt-in + consentVersion + pre-registered A/B), `evidence.excerpt` provenance with zero record-schema change, unified single-model path with language following | Record schema/domain, prompt/tool-surface changes, auto-applied calibration, changed bootstrap/apply behavior, "improves model execution/completeness" claims, publishing before human acceptance |
+| `0.4.0` | Full contract-capability upgrade: readiness/ready queue and stall detection (prompt projection change), execution memory (decision/environment/evidence/progress proposal, record schema v3 + migration + downgrade fence), relation proposal, history-completion drafts, conditional assessor; execution-metric A/B | Implementation before E0 detailed design review, schema v3 without migration fixtures/downgrade fence, direct model writes, enforced execution policy, model-visible changes on by default without pre-registered A/B, releasing before all of E1–E4 pass (complete 0.4.0, no E1-only split), publishing before human acceptance |
 
-## 16. `0.3.x` GUI line and `0.3.3` draft candidate
+## 16. `0.3.x` GUI line, `0.3.3` extraction, `0.3.4` calibration, and `0.4.0` contract upgrade
 
 The `0.3.0`–`0.3.2` line published the all-section GUI design, dependency graph, and accessibility/evidence
-convergence. `0.3.3` adds the structured draft extraction and optional automatic language follow. The GUI remains
-client-only except for the additive draft methods documented in the extraction design.
+convergence. `0.3.3` (published 2026-11-24) added structured draft extraction and optional automatic language
+following. The GUI remains client-only except for the additive draft methods documented in the extraction design.
 
-Authority: [charter-gui-v1.zh.md](charter-gui-v1.zh.md) (`Active`) and [the extraction design](charter-draft-extraction-v1.zh.md) (`Implemented — pending release acceptance`). The 0.3.3 candidate is not published until the normal release gates and human acceptance pass.
+`0.3.4` (decided 2026-11-24) adds opt-in model calibration of review drafts on top of the shipped 0.3.3
+infrastructure: semantic aggregation, readable rewriting in the UI language (unified single-model path), and
+original-vs-calibrated diff review, with zero record-schema change and full degradation to the deterministic
+draft. `0.4.0` (scope decided 2026-11-24) is the full contract-capability upgrade — readiness, stall detection,
+execution memory with record schema v3, relation proposal, and history completion — with detailed design (E0)
+required before implementation. 0.4.0 ships complete: E1–E4 are all release gates with no E1-only split; the
+conditional assessor (E5) is not a release gate.
+
+Authority: [charter-gui-v1.zh.md](charter-gui-v1.zh.md) (`Active`), [the extraction design](charter-draft-extraction-v1.zh.md)
+(`Active`, released with 0.3.3), [the calibration design](charter-draft-calibration-v1.zh.md) (`Active`,
+0.3.4 development scope), and [the execution upgrade design](charter-execution-v1.zh.md) (`Proposed`,
+0.4.0 scope). Neither 0.3.4 nor 0.4.0 is published until the normal release gates and human acceptance pass.

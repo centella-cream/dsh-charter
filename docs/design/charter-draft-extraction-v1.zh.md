@@ -1,7 +1,8 @@
 # `dsh-charter` 0.3.3 契约草案抽取与语言归一方案
 
-> **状态：** `Implemented — pending release acceptance` —— 0.3.3 源码实现完成，尚未发布。
-> **版本范围：** `0.3.3`（本地候选），先于 0.4.0。确定性抽取 + **自动宿主模型语言归一**：
+> **状态：** `Active` —— 已随 `0.3.3` 于 2026-11-24 发布；本文是契约草案抽取与语言归一行为的
+> 当前权威。0.3.4 校准层见 [charter-draft-calibration-v1.zh.md](charter-draft-calibration-v1.zh.md)。
+> **版本范围：** `0.3.3`（已发布）。确定性抽取 + **自动宿主模型语言归一**：
 > 无 record schema 变更、无 prompt 投影变更、无模型工具面变更；wire 面新增
 > `charter/bootstrapDraft` + 一个 additive objective op 字段。
 > **修订：** v3（2026-11-23）——并入评审 P0-A/0-B/P1-1/P1-3，并将“按界面语言生成 zh/en 草案”
@@ -11,7 +12,7 @@
 > [charter-workspace-v2.zh.md](charter-workspace-v2.zh.md) 决定；审阅 UI 视觉由
 > [charter-gui-v1.zh.md](charter-gui-v1.zh.md) §4.9 冻结稿决定。
 > **替代/被替代：** 无 / 无。[charter-draft-calibration-v1.zh.md](charter-draft-calibration-v1.zh.md)
-> （0.4.0 校准层）**硬依赖**本文的结构化候选、ref 命名空间与 apply 合同。
+> （0.3.4 校准层）**硬依赖**本文的结构化候选、ref 命名空间与 apply 合同。
 > **专题范围：** 压缩摘要 → 契约草案的确定性抽取质量、结构化 wire 合同与 apply 模型。
 
 ## 0. 摘要与版本拆分
@@ -21,11 +22,11 @@
 | 版本 | 内容 | 模型调用 | wire |
 | --- | --- | --- | --- |
 | **0.3.3（本文，先发布）** | 语义保全切分、近重复折叠、语言标注、kind 打分、结构化候选（稳定 ref）、自动 zh/en 语言归一、完整 apply 合同 | 有（宿主 `ctx.llm` 单轮翻译，自动） | 新增 `charter/bootstrapDraft`；`objective.initialize` 增加可选 `clientRef`（additive） |
-| **0.4.0（校准方案，后发布）** | 语义级聚合、专用校准 prompt、diff 审阅、质量 A/B | 有（`ctx.llm` one-shot，opt-in 高级校准） | 新增 `charter/calibrateBootstrap`、`charter/calibrationStatus`；`applyBootstrap` additive 扩展 |
+| **0.3.4（校准方案，后发布）** | 语义级聚合、专用校准 prompt、diff 审阅、质量 A/B | 有（`ctx.llm` one-shot，opt-in 高级校准） | 新增 `charter/calibrateBootstrap`、`charter/calibrationStatus`；`applyBootstrap` additive 扩展 |
 
 **语言目标**：客户端以当前 DSH locale 的 `zh`/`en` 作为目标语言；结构化抽取后若草案语言不一致，
 Host 通过会话当前模型做一次严格 JSON 批量翻译；模型不可用或失败时保留原文并显示降级提示。
-0.3.3 仍不做语义级合并；那属于 0.4.0。
+0.3.3 仍不做语义级合并；那属于 0.3.4。
 
 ## 1. 现状证据（0.3.2 发布树）
 
@@ -53,7 +54,7 @@ Host 通过会话当前模型做一次严格 JSON 批量翻译；模型不可用
   `oversized`，由用户编辑或拆分——碎片从"静默产生"变为"显式例外"。
 - G2 **冗余可见**：近重复折叠为组，代表条目 + 折叠计数，组成员可展开、可单独勾选。
 - G3 **语言感知**：每条候选与整体草案标注 `zh/en/mixed`；与界面语言不一致时客户端提示
-  （翻译留给 0.4.0）。
+  （翻译留给 0.3.4）。
 - G4 **稳定身份**：每条候选获得确定性 `ref`；apply 合同覆盖 invariant/deliverable/objective
   全部三类（§4.4）。
 - G5 **kind 提示**：归类从二分正则升级为打分 + 置信度，低置信显式标注。
@@ -62,7 +63,7 @@ Host 通过会话当前模型做一次严格 JSON 批量翻译；模型不可用
 
 ### 2.2 非目标
 
-- 不做 0.4.0 的语义级聚合/高级校准；语言翻译是 0.3.3 的受控单轮调用；
+- 不做 0.3.4 的语义级聚合/高级校准；语言翻译是 0.3.3 的受控单轮调用；
 - 不改 record schema、prompt 投影、`charter_read`/`charter_propose`；
 - 不改 `charter/bootstrap` 响应形状与其抽取行为（冻结）；
 - 不改变"plan 永不丢弃候选、超预算转 pending"的既有溢出可见语义。
@@ -88,7 +89,7 @@ Host 通过会话当前模型做一次严格 JSON 批量翻译；模型不可用
 - 前缀包含（规范化后 A 是 B 前缀且 len(A) ≥ 12 字符）折叠进更长者；
 - 产出折叠组：代表条目 + 成员列表（成员各自有 ref，可单独勾选）；折叠不是丢弃，组内成员
   一步可达；
-- 语义级近重复（同义改写）明确不做，留给 0.4.0。
+- 语义级近重复（同义改写）明确不做，留给 0.3.4。
 
 ### 3.3 语言检测与标注
 
@@ -136,7 +137,7 @@ v2 采用**双抽取器、单摘要源、共享 handle、ref 命名空间路由*
 | 实现 | 现 `bootstrapFromSummary` **原样冻结**，重命名为 `extractLegacy`，配 golden fixture（合成摘要 → 输出 JSON 快照，逐字节锁定） | §3 全部改进，`extractorVersion: 2` |
 | 服务方法 | `charter/bootstrap`（响应 DTO 不变） | `charter/bootstrapDraft` |
 | 服务 ref 命名空间 | `bootstrap-(inv\|del)-<i>`（现状不变） | `d-*`（§4.3） |
-| 演进 | 0.3.x 内冻结不改；弃用时机另议（D-A5） | 0.4.0 校准层的输入 |
+| 演进 | 0.3.x 内冻结不改；弃用时机另议（D-A5） | 0.3.4 校准层的输入 |
 
 - 两个抽取器读取**同一最新 compaction summary 事件**（同 `summarySeq`/内容）；
 - **legacy `draftHandle` 保持 0.3.2 的 draft-bound 算法不变**，保证旧 client 响应字节等价；
@@ -186,11 +187,11 @@ interface CharterBootstrapDraftResult {
 
 - `ref` 是**同一次摘要 + 同一 extractorVersion 内**的稳定身份（由摘要内容与抽取器版本决定），
   跨 compaction、跨 extractorVersion 不保证；apply 校验始终以 Host 当前重抽取为准；
-- DTO 不含 locale mismatch 字段（§3.3）；不含 capability 字段（校准能力状态在 0.4.0 用独立
+- DTO 不含 locale mismatch 字段（§3.3）；不含 capability 字段（校准能力状态在 0.3.4 用独立
   方法 `charter/calibrationStatus` 暴露，避免向本 strict DTO 追加字段造成 0.3.3 client ×
-  0.4.0 host 的解析破坏）。
+  0.3.4 host 的解析破坏）。
 
-### 4.4 apply 模型（修复评审 P0-B；0.4.0 的 objective 校准复用本节合同）
+### 4.4 apply 模型（修复评审 P0-B；0.3.4 的 objective 校准复用本节合同）
 
 `charter/applyBootstrap` 请求/响应形状在 0.3.3 **不变**（`draftHandle` + ops）。校验规则按
 clientRef 命名空间分派：
@@ -215,12 +216,12 @@ clientRef 命名空间分派：
 **objective 的 `clientRef` 缺省行为**：不带 `clientRef` 的 `objective.initialize` 继续按现行
 legacy 规则校验（= legacy 抽取 objective 逐字相等），保证旧客户端路径不变。
 
-### 4.5 与 0.4.0 的衔接
+### 4.5 与 0.3.4 的衔接
 
-0.4.0 在此合同上追加：`c-*` ref 命名空间（校准候选）、`calibrationRunId` 请求字段、
+0.3.4 在此合同上追加：`c-*` ref 命名空间（校准候选）、`calibrationRunId` 请求字段、
 objective 校准候选经同一 `objective.initialize + clientRef` 路径（基准文本换为缓存中的校准
 objective，逐字相等规则不变）。详见校准方案 §6/§7；本文的命名空间分派与 handle 语义是其
-地基，0.4.0 不得另行发明。
+地基，0.3.4 不得另行发明。
 
 ### 4.6 自动语言归一（0.3.3）
 
@@ -255,7 +256,7 @@ objective，逐字相等规则不变）。详见校准方案 §6/§7；本文的
 - 候选行沿用行解剖（§4.9 规则 6）：`oversized` 行显示 warn chip「超预算」+ 完整文本 +
   「编辑拆分」quietlink，勾选框禁用并显示首要原因；截断行显示「已截断（原始 N B）」元信息；
 - 折叠组：代表行 + `+N 条重复` outline chip；0.3.3 展示计数并保留成员 ref/text，成员展开交互留给
-  0.4.0 校准/审阅增强（不丢失原文，见原始草案 disclosure）；
+  0.3.4 校准/审阅增强（不丢失原文，见原始草案 disclosure）；
 - kind 低置信：`建议归类` outline chip；
 - objective 候选区：单条展示 + 勾选；说明文案明确"应用后将直接成为当前目标（无待审中间态）"
   （与现状 bootstrap objective 行为一致）；
@@ -327,15 +328,15 @@ probe、fresh profile、Promotion、SHA256SUMS/C+1）。0.3.3 特有 P0：**lega
 | D-A4 | 语言阈值 | 实现为 Latin ≥70% / CJK ≥70% / 其余 mixed；进 fixture，真实语料校准留待发布验收。 |
 | D-A5 | legacy `charter/bootstrap` 弃用时机 | 0.3.x 全程保留；0.5.0 线评估移除（需先确认无旧 client 存量） |
 
-## 附录 A：与 0.4.0 的接口承诺（冻结项）
+## 附录 A：与 0.3.4 的接口承诺（冻结项）
 
-0.4.0 依赖且本文冻结后不再变更的合同点：
+0.3.4 依赖且本文冻结后不再变更的合同点：
 
 1. `d-*` ref 语法与确定性规则（§4.3）；
 2. legacy/structured 各自 draftHandle 与命名空间分派（§4.2）；
 3. apply 命名空间分派 + 禁止混用 + Host 重抽取校验 + `contentModified` 基准规则（§4.4）；
 4. `objective.initialize` 可选 `clientRef` 字段与逐字相等规则（§4.4）；
-5. `extractorVersion` 字段（缓存键与 0.4.0 校准输入的一部分）。
+5. `extractorVersion` 字段（缓存键与 0.3.4 校准输入的一部分）。
 
 ## 附录 B：变更记录
 
@@ -344,3 +345,4 @@ probe、fresh profile、Promotion、SHA256SUMS/C+1）。0.3.3 特有 P0：**lega
 | 2026-11-23 | 创建提案 v1（Proposed）：从校准方案拆出确定性层。 |
 | 2026-11-23 | **评审修订 v2**：P0-B → §4.4 完整 apply 模型；P1-1 → §4.2 双抽取器模型；P1-3 → 删除 `localeMismatch`；新增 §4.5。 |
 | 2026-11-23 | **实现修订 v3（用户决策）**：0.3.3 加入自动 zh/en 语言归一（§4.6，`ctx.get('llm')` 单轮翻译，模型缺失降级）；状态转 Implemented；新增语言/翻译测试门禁。 |
+| 2026-11-24 | 状态转 `Active`（0.3.3 已发布）。**版本定位调整（用户决策）**：校准层引用全部由 0.4.0 改为 `0.3.4`；0.4.0 重定义为完整契约功能升级，另立 [charter-execution-v1.zh.md](charter-execution-v1.zh.md)。附录 A 冻结合同不变，由 0.3.4 继承。 |
