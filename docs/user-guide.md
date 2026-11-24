@@ -250,8 +250,14 @@ Defaults live in `cordis.patch.yml`. Override the same keys in the profile's `co
     languageFollowModel: your-fast-model
     calibration:
       enabled: false
-      consentVersion: 1
-      maxCandidates: 12
+      consentVersion: 2          # set to 2 after reading the v2 disclosure
+      maxCandidates: 32
+      batchCandidates: 8
+      maxOutputTokens: 4096      # per batch
+      maxTotalOutputTokens: 16384
+      maxConcurrency: 3
+      timeoutMs: 45000           # per batch
+      runTimeoutMs: 120000
 ```
 
 | Field | Default | Meaning |
@@ -272,10 +278,20 @@ Defaults live in `cordis.patch.yml`. Override the same keys in the profile's `co
 | `languageFollowProvider` | unset | optional dedicated translation provider; requires `languageFollowModel` |
 | `languageFollowModel` | unset | optional dedicated translation model; omit both to use the current session model |
 | `calibration.enabled` | false | opt-in draft calibration; no calibration model call occurs unless enabled |
-| `calibration.consentVersion` | 0 | accepted disclosure version; set to `1` after reading the calibration disclosure |
+| `calibration.consentVersion` | 0 | accepted disclosure version; set to `2` after reading the v2 calibration disclosure |
 | `calibration.provider` / `.model` | unset | optional dedicated calibration route; omit both to use the session model |
-| `calibration.maxCandidates` | 12 | maximum calibrated candidates |
-| `calibration.maxOutputTokens` | 2048 | calibration output-token cap |
+| `calibration.reasoningEffort` | unset | optional reasoning effort for the calibration route |
+| `calibration.targetLanguage` | auto | output language: `auto`, `zh`, or `en` |
+| `calibration.maxInputBytes` | 24576 | maximum calibration input bytes |
+| `calibration.maxCandidates` | 32 | global calibrated-candidate cap |
+| `calibration.batchCandidates` | 8 | maximum candidates per batch |
+| `calibration.maxBatchInputBytes` | 8192 | per-batch input byte cap |
+| `calibration.maxOutputTokens` | 4096 | per-batch output-token cap |
+| `calibration.maxTotalOutputTokens` | 16384 | total output-token cap for one calibration run |
+| `calibration.maxConcurrency` | 3 | maximum concurrently running batches |
+| `calibration.retrySplitDepth` | 2 | maximum split-retry depth for a failed batch |
+| `calibration.timeoutMs` | 45000 | per-batch timeout |
+| `calibration.runTimeoutMs` | 120000 | overall calibration run timeout |
 
 The only model-visible capacity is `maxPromptBytes`; active item counts are not capped separately. Storage is
 bounded by `maxItems`, `maxPendingItems`, and `maxRecordBytes`. Values that would make a Session ready but

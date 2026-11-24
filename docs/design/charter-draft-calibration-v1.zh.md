@@ -9,11 +9,12 @@
 > 翻译基础设施（§4 复用映射）。
 > **基准：** 2026-11-24，`main` @ `44a542d3`；`0.3.3` 已发布（SHA-256 `707043d3…`）；v7 单次
 > 调用实现已用真实 Web 10 轮 case 实测（见 §5.11），默认参数失败，v8 是修订方案而非既有合同。
-> **修订：** v9（2026-11-24）——真实 session `85809bdb…` 验证暴露 v8 的契约质量问题：objective 与 4 个 deliverable 被
+> **修订：** v10（2026-11-25）——发布审查修复：Remote 业务错误信封/客户端分类、objective 与 conflicts 收敛及渲染、contractness 硬约束豁免、degraded 跨批 parts 映射、user-guide 配置与未实现缓存/按批重试承诺的文档对齐（§5.13）。
+> v9（2026-11-24）——真实 session `85809bdb…` 验证暴露 v8 的契约质量问题：objective 与 4 个 deliverable 被
 > global-cap 排除，heading 碎片/进度状态/历史背景/optional 建议仍作为契约。新增 §5.12 **契约性门禁、objective
 > 预留、deliverable 配额、prompt v2 和输出过滤**；v8 内核不变。
 > v8（2026-11-24）——把单次全量校准改为**自适应分批 + 受限并发 + 单批拆分重试 + Host
-> 跨批归并**；新增批次预算/覆盖账本/partial 结果/批级缓存与失败隔离；明确不复用 128K 单次大输出，
+> 跨批归并**；新增批次预算/覆盖账本/partial 结果与失败隔离；明确不复用 128K 单次大输出，
 > 复用 0.3.3 翻译路径已验证的 `translationBatches`/`mapLimit`/`resilient split`/partial 合并模式；
 > 披露文案因多批调用升版本；记录并用测试证据说明 v7 默认参数失败；§5.4–§5.10、§7.1、§8、§10–§13、
 > 附录 B/C 同步。
@@ -45,7 +46,7 @@
 - **L2 预算（v8）**：单批 `maxOutputTokens` 4096、batch 8 条、concurrency 3、全局候选上限 32；
   `maxTotalOutputTokens` 是全局硬顶；所有预算/并发/失败都进 diagnostics 与 A/B 证据；
 - **L3 校准审阅**：原文 ↔ 校准稿逐条 diff（基于 `mergedFrom` ref 映射）、一键"用原文"、
-  聚合徽章、partial/truncated/degraded status line、校准诊断与批级进度。
+  聚合徽章、partial/truncated/degraded status line、校准诊断与计划批数（不伪造逐批进度）。
 
 **产品底线（全部继承，不可协商）**：校准产物永远是 pending proposal，用户 accept 才生效；
 默认关闭（opt-in + consentVersion 强校验）；校准永不替换结构化草案，完整原始草案始终可展开
@@ -68,7 +69,7 @@ case，0.3.3 baseline 产出 22 条 invariant + 6 条 deliverable（完整但脏
 
 **性能边界（v8）**：不为校准拉大模型上下文窗口，也不使用 128K 单次输出。校准输入是 compact
 summary 的 L1 draft，不是 600–700K 的完整 session；真正的成本是输出生成和多次调用的并发/限流。
-v8 以“批级预算 + 并发 + 部分成功 + 批级缓存”控制墙钟与成本，禁止把“单次大输出”当作质量方案。
+v8/v9 以“批级预算 + 并发 + 部分成功 + run 缓存”控制墙钟与成本，禁止把“单次大输出”当作质量方案。
 
 ## 1. 现状与代码事实（0.3.2 发布树，v3 修订补强）
 
@@ -162,7 +163,7 @@ pending proposal（source=compaction-summary + evidence.excerpt=原文）→ 用
   都在 diagnostics 可见；A/B 协议 1 同时记录 token/耗时，不把“调用次数少”当作质量目标。
 - **配置语义**：`languageFollow=false` 只关翻译不关校准；`calibration.enabled=false` 只关校准
   不影响翻译；两者都开时两条路径都会执行，翻译作为自动回退，校准结果可覆盖视图。
-- **缓存隔离**：0.3.3 `translatedItems` 与校准 batch/run 缓存（§5.7）互不混用；校准缓存键含
+- **缓存隔离**：0.3.3 `translatedItems` 与校准 run 缓存（§5.7）互不混用；校准缓存键含
   `promptVersion`、完整 limits 快照与 batch 内容 digest。
 
 ## 4. 0.3.3 已交付基座与复用映射（v4 修订：0.3.3 已于 2026-11-24 发布）
@@ -363,8 +364,8 @@ calibration 输入约 1 KiB 级），不是 600–700K 的完整 session；输�
 - prompt 显式声明本批 ref 集合、本批输出上限与 `mergedFrom` 只可引用本批 ref；
 - 超预算优先保留 invariant；模型输出超过本批 N → `CALIBRATION_SCHEMA`，该批按拆批重试；
 - 目标语言、保真规则、不得新增约束等沿用 v7 §5.5 的 prompt 合同；
-- 轮次前缀、过程叙述、未决事项等“非契约文本”由模型在 batch 内折叠/丢弃；Host 不把它们
-  当硬规则另行处理，但 coverage ledger 会保留来源 ref。
+- 轮次前缀、过程叙述、未决事项等“非契约文本”由 v9 Host 契约性门禁在 planner 前过滤，
+  并在模型输出侧再次过滤；模型负责同主题折叠；coverage ledger 保留来源 ref。
 
 ### 5.6 单批校验 + 跨批归并（v8）
 
@@ -395,8 +396,9 @@ JSON/schema/text 不可恢复错误 → 该批标记 failed，**不采纳该批�
    高优先级候选并记录 overflow，不伪造 ref）；
 3. 近重复/语义冲突不自动裁决：保留高优先级候选，另标记 `uncertain=true` 并写入
    `conflicts: [{refs, reason}]`，由用户审阅；Host 不得用模型二次调用强行裁决；
-4. objective：至多 1 条；多批出现时按目标语言相似度/优先级保留 1 条，其余进入 conflicts；
-5. 全局候选上限：按 invariant > deliverable > objective 与来源优先级裁剪；被裁候选进入
+4. objective：至多 1 条；Host 只接受来自**含 objective 输入批**的输出，记录已有 objective 时
+   全部拒绝；其它 objective 候选进入 `conflicts`（reason `objective`），不进入 `candidates`；
+5. 全局候选上限：objective 先占位，deliverable 预留配额，再按 invariant 填充；被裁候选进入
    `excludedRefs`（reason `global-cap`）；
 6. 输出覆盖账本：
    - `includedRefs`：出现在最终候选（含 mergedFrom）的 L1 ref；
@@ -407,20 +409,18 @@ JSON/schema/text 不可恢复错误 → 该批标记 failed，**不采纳该批�
 `truncated` 与 `inputTruncated` 是独立标志；`partial` 表示至少一批失败但有其它成功批。
 UI 在草案区合并为一条状态行（尊重单条 notice 合同），并允许展开覆盖账本。
 
-### 5.7 缓存（v8：批级 + 运行级）
+### 5.7 缓存（v9：运行级）
 
-- **batchKey** = `sha256(sessionId, summarySeq, summaryDigest, extractorVersion, promptVersion,
-  provider, model, effort, targetLanguage, batchRefsDigest, batchInputDigest, limitsSnapshot
-  {maxBatchInputBytes, maxItemBytes, batchCandidates, maxOutputTokens}, acceptedCharterDigest)`；
-  batch 缓存只缓存**成功完整**的 batch；失败/部分 batch 不缓存；
-- **runKey** = 在 batchKey 维度基础上加 `planDigest`（排序/分批/全局预算/`maxCandidates`/
-  `maxTotalOutputTokens`/`maxConcurrency`）；命中 runKey 直接返回最终结果；
-- TTL 默认 30min；batch 缓存与 run 缓存均 LRU 有界（建议 batch 64 条、run 32 条）；
-- 同 batchKey 并发调用 **single-flight join**；同 runKey 直接 join；不同参数独立执行；
-- `acceptedCharterDigest` 变化、limits 变化、promptVersion 变化任一维度不匹配即 miss；
-- 只缓存本地结果，不落盘、不进 record、不进导出/archive；usage 区分 cached/miss/joined；
-- 部分失败结果可缓存其成功 batch 供重试复用，但 run 级结果标记 `partial`，不把 partial 当
-  “已完整缓存”。
+- **runKey** = `sha256(sessionId, summarySeq, summaryDigest, extractorVersion, promptVersion,
+  provider, model, effort, targetLanguage, planDigest, acceptedCharterDigest, limitsSnapshot)`；
+  命中 runKey 直接返回最终结果；`cached`/`joined` 反映命中来源；
+- TTL 默认 30min；run 缓存 LRU 有界（32 条）；只缓存完整结果，`partial`/`truncated` 结果按要求
+  标记，不伪装成完整缓存；
+- 同 runKey 并发调用 join；不同参数独立执行；`acceptedCharterDigest`、limits、promptVersion
+  任一变化即 miss；
+- 只缓存本地结果，不落盘、不进 record、不进导出/archive；
+- **batch 级缓存、失败批按批重试和批级缓存的复用入口尚未实现**；失败后重新发起整次校准，
+  成功批不能按 batchKey 复用。它们是后续门禁，不在 0.3.4 本地候选的实现承诺内。
 
 ### 5.8 并发、单飞与取消（v8）
 
@@ -428,7 +428,7 @@ UI 在草案区合并为一条状态行（尊重单条 notice 合同），并允
   每个 batch 独立 `AbortController`、独立 `timeoutMs`；
 - 一次校准另设 `runTimeoutMs`：到点 abort 所有未完成 batch，保留已完成 batch，返回
   `partial=true` + `failedBatches`，不把已完成结果丢掉；
-- 同一 batchKey 的并发请求 join；同 Session 同参数整次运行 join（响应 `joined:true`）；
+- 同 Session 同 runKey 整次运行 join（响应 `joined:true`）；v9 没有 batchKey 级 join；
   同 Session 不同参数按独立 key 并发，仍不引入 `CALIBRATION_PARAMS_CONFLICT`；
 - provider 限流/`AUTH`/`NO_ADAPTER`：该 batch 重试一次（指数退避由 adapter 负责时只等待），
   仍失败则标 failed；若所有 batch 都因 provider 失败 → `CALIBRATION_PROVIDER`；
@@ -450,9 +450,9 @@ UI 在草案区合并为一条状态行（尊重单条 notice 合同），并允
 | 单批 JSON/schema/text 不合格 | 该批 failed，不部分采纳；不重试语义错误 | partial 状态行 + 诊断原因 |
 | 单批 provider AUTH/RATE_LIMIT/NO_ADAPTER | 该批 failed（可重试一次）；其它批继续 | partial；诊断带 provider 错误 |
 | 所有 batch 失败 | 整次错误：`CALIBRATION_PROVIDER` / `CALIBRATION_MALFORMED`（带子类） | 单条 notice，保留 L1 草案 |
-| 单批 worker 数 > 0 的成功结果 | 返回成功候选 + `partial=true` + `failedBatches` | 可选择接受成功候选，或重试失败批 |
+| 单批 worker 数 > 0 的成功结果 | 返回成功候选 + `partial=true` + `failedBatches` | 可接受成功候选；当前需重新发起整次校准，按批重试为后续门禁 |
 | draftHandle 失配 | `INVALID_ARGUMENT`（沿用 bootstrap 语义） | 刷新草案后重试 |
-| runId 过期 | `CALIBRATION_RUN_EXPIRED` | §6.3；参数冲突码未实现 |
+| apply 的 runId 过期 | `CALIBRATION_RUN_EXPIRED` | §6.3；重新校准后 apply |
 
 **Remote 错误映射硬要求**：`CALIBRATION_MALFORMED`/`_SCHEMA`/`_TEXT`/`_TIMEOUT`/
 `_PROVIDER` 等已知 `CharterError` 必须经 Remote 业务错误映射到达客户端；不得统一显示为
@@ -515,7 +515,7 @@ security、200ms、tests；没有 max-tokens 整体失败，也没有候选截�
   - 命中的 ref 进入 `excludedRefs` 的 `non-contract`，原始 L1 仍可见，不静默丢弃。
 - **动作重分类**：`T-n`/`D-n`/`F-n` 加 imperative 动词的条目从 invariant 改为 deliverable；
   deliverable 中的硬约束（forbidden/not allowed 等）可回收为 invariant。
-- **planner 配额**：objective 先占位，永不被 global-cap 排除；deliverable 预留至少 25% 候选位；
+- **planner 配额**：objective 先占位，永不被 global-cap 排除；deliverable 预留约 30% 候选位（至少 25%）；
   invariant 填剩余，再补 deliverable。只有契约项被 cap/预算裁掉时 `inputTruncated=true`；
   `non-contract` 过滤不算契约不完整，UI 的 incomplete 状态也不因它出现。
 - **prompt v2**：system prompt 明确只输出 durable objective/invariant/deliverable；显式丢弃
@@ -528,6 +528,27 @@ security、200ms、tests；没有 max-tokens 整体失败，也没有候选截�
   `inputTruncated=false`；18 条 L1 噪声以 `non-contract` 排除。T-1/T-2/T-3 已是 deliverable，
   heading/进度/optional 不再作为契约。剩余 T-3 配置事实仍是原子 invariant，属于后续 reduce
   优化项，不影响本 case 的发布质量门禁。
+
+### 5.13 v10 发布审查修复（2026-11-25）
+
+v9 审查暴露的发布门禁问题已在 v10 修复：
+
+- **错误映射**：Remote `calibrateBootstrap` 捕获 `CharterError` 并返回
+  `CharterCalibrationFailure { ok:false, code, message }` 领域失败值；客户端 source 将失败转为
+  `CharterCalibrationCallError`，`bootstrapCalibrationError` 显示业务码和消息；不再统一显示
+  `gateway/internal` 或把 `{ok:false}` 吞成 `undefined`。
+- **objective/conflicts**：Host 只接受含 objective 输入批的 objective 候选；已有 objective 或
+  第二个 objective 进入 `conflicts`；客户端渲染 `bootstrapCalibrationConflicts` 状态行。
+- **契约性豁免**：`Tests must ...` / `Coverage must ...` / `User decision authority remains ...`
+  等含硬约束或 imperative 的行不再被 status/history 误杀；新增回归测试。
+- **degraded 映射**：跨批全局重编号后按 `degraded.parts` 匹配派生候选；客户端徽章不再依赖
+  `ref.startsWith` 的旧 `c-R.s<k>` 假设。
+- **文档对齐**：user-guide 改为 consent v2 / v9 默认参数；§5.7/§5.8/§8/§9 删除未实现的
+  batchKey 缓存、失败批按批重试和进度承诺，明确列为后续门禁。
+- **v10 实测**：同一真实 summary，consent v1 返回领域失败 `CALIBRATION_CONSENT_REQUIRED`（非
+  `gateway/internal`）；consent v2 得到 1 objective / 10 deliverable / 8 invariant，3/3 批、
+  `truncated=false`、17 条 `non-contract`、5 次调用、6,499 output tokens、28.1s；T-1/T-2/T-3
+  均为 deliverable。最终 artifact `a1b071…`（167 文件）；`npm run check` 562 测试。
 
 ## 6. Provenance 与 apply 合同（评审 P0-A/P0-2/P0-3/P0-C）
 
@@ -599,7 +620,7 @@ readonly mergedFrom?: readonly { readonly ref: string; readonly excerpt: string 
   同一组 `d-*` suppressed；全部派生段取消 ⇒ suppressed 释放；
 - **"用原文"** = 取消该校准候选（及其派生段），选中其全部 mergedFrom refs；
 - **`truncated: true` / `partial: true`**：草案区状态行"部分原始候选未纳入（覆盖受限/批失败）"，
-  并展示覆盖账本；未纳入候选在原始视图正常可勾选；`partial` 时成功批候选仍可审阅，失败批可重试；
+  并展示覆盖账本；未纳入候选在原始视图正常可勾选；`partial` 时成功批候选仍可审阅，失败后重新发起整次校准；
   apply 不区分来源（同一请求、同一命名空间规则、一次原子 update）；不存在自动转 pending、
   不存在重复 apply（选择集互斥保证）；
 - `uncertain: true`：徽章 + 默认**不勾选**。
@@ -727,8 +748,8 @@ Pane 进入草案区时调用（与 `bootstrapDraft` 并行）；方法缺失（
 - 原始草案 disclosure 永远可展开（含被合并/未纳入/失败批候选）；`truncated`/`partial`/
   `degraded`/`failedBatches` 状态行按 §5.6/§5.9 合并展示；状态行可展开覆盖账本，显示每条
   未纳入原因是 global-cap / input-budget / batch-failed / duplicate；
-- 部分成功：成功候选仍可审阅/apply；失败批提供“重试失败批”入口（重新规划时只重新请求失败批，
-  成功 batch 走 §5.7 缓存）；
+- 部分成功：成功候选仍可审阅/apply；**没有按批重试入口**，失败后重新发起整次校准
+  （batch 级缓存/按批重试为后续门禁，见 §5.7）；
 - objective 校准候选：apply 前强制展示"原文 → 校准稿"对照 + 明示"应用后直接成为当前目标
   （无待审中间态）"（§6.6）；
 - Diagnostics 校准区：capability 状态、解析出的 provider/model/effort（含 adapter 可用档位
@@ -759,8 +780,8 @@ Pane 进入草案区时调用（与 `bootstrapDraft` 并行）；方法缺失（
 | --- | --- | --- |
 | M0 探针（0.5d） | 附录 A 剩余 3 项（P2 effort 枚举发现、P5 多批 transcript 隔离、P8 披露呈现）+ 2 项缩减回归（P3 服务缺失、P6 新配置键宽容）+ P9 批并发/abort 探针；D1 路线已决策，但本文因 v8 重做转回 Proposed | 探针结论落盘 |
 | C0 观察（滚动） | 回收 0.3.3 线上真实数据：翻译 partial/failed 率与错误码分布、批数分布、后台等待时长、折叠率、oversized 率、草案编辑率；v7 真实 10 轮 case 证据（§5.11）作为首批 | 用实测数据确认/修正 §5.5 默认参数、batch/concurrency 常数与 effort 缺省策略（D8/D11） |
-| C2 校准内核重做（4–5d） | §5 + §6 Host 侧：planner/覆盖账本、batch runner、mapLimit、拆批重试、跨批 reduce、batch/run cache、partial 结果；trusted-attachment、objective 路径；§7 wire + capability | L2 分批故障矩阵绿；真实 host 10 轮 case 默认参数成功且覆盖账本完整（L3 首证） |
-| C3 审阅体验（3–4d） | §8 + 选择集状态机 + locales + batch/partial 状态行 + 失败批重试 | DOM/浏览器证据；diff/用原文/split/partial/覆盖账本/降级全覆盖 |
+| C2 校准内核重做（4–5d） | §5 + §6 Host 侧：planner/覆盖账本、batch runner、mapLimit、拆批重试、跨批 reduce、run cache、partial 结果；trusted-attachment、objective 路径；§7 wire + capability | L2 分批故障矩阵绿；真实 host 10 轮 case 默认参数成功且覆盖账本完整（L3 首证） |
+| C3 审阅体验（3–4d） | §8 + 选择集状态机 + locales + batch/partial 状态行 | DOM/浏览器证据；diff/用原文/split/partial/覆盖账本/降级全覆盖 |
 | C4 A/B 与验收发布（3–4d） | §11 两协议 + 兼容/capability 矩阵 + exact artifact + 文档批次 | 附录 B 全勾；发布按 docs/releasing.md |
 
 阶段独立验收、独立提交；A/B 与 GUI 门禁不压在同一 release 决策（§11 定位）。
@@ -774,7 +795,7 @@ prompt builder golden bytes（版本化、按 batch）；planner 纯函数 fixtu
 concurrency、`inputTruncated`/`truncated`/`partial` 组合；动态估算函数（CJK/Latin/混合、边界）：
 `B_by_output`、`batchCount`、`waves`、`maxTotalOutputTokens` 硬顶；校验管线每批五步各分支
 （含 degraded split 派生 ref 与继承、跨批 mergedFrom 只引用本批、冲突/objective 归并）；
-缓存 batchKey/runKey 全维度（含 maxOutputTokens/batch refs digest/TTL/LRU）；选择集状态机
+缓存 runKey 全维度（含 maxOutputTokens/planDigest/TTL/LRU）；选择集状态机
 纯函数（互斥/派生段共享/用原文/partial/truncated/uncertain 默认不选/objective 互斥）；
 `contentModified` 基准表（§6.4）驱动测试。
 
@@ -811,8 +832,8 @@ concurrency、`inputTruncated`/`truncated`/`partial` 组合；动态估算函数
 5. **全部批失败**：返回明确的 `CALIBRATION_MALFORMED`/`CALIBRATION_PROVIDER`，不是内部错误；
 6. **并发上限**：mock llm 记录瞬时并发，任何时刻 ≤ maxConcurrency；结果顺序稳定可复现；
 7. **runTimeout**：部分批完成时返回 partial + 已完成候选，未完成批可重试；
-8. **缓存/单飞**：同 batchKey 只调用一次；失败批不缓存；重试失败批复用成功 batch 缓存；
-   `cached`/`joined`/`calls` 诊断正确；
+8. **缓存/单飞**：同 runKey 只调用一次；失败/partial 不伪装成完整缓存；
+   `cached`/`joined`/`calls` 诊断正确；batch 级缓存/按批重试不在 v9 范围；
 9. **默认真实 case（L3 前置）**：同一 10 轮 case，默认 2048 不再整体失败；默认 v8 参数产出
    ≥ 关键约束覆盖阈值，记录 batchCount/并发/总 output tokens/墙钟。
 
@@ -886,8 +907,8 @@ round-trip、peer 图校验、trusted-attachment 防伪造测试、**v8 分批/�
 | --- | --- | --- |
 | 校准改写扭曲语义 | 契约失真 | 保真规则 + diff + 用原文 + uncertain 默认不选 + 永不自动生效 + A/B 反例集 |
 | 摘要含注入文本 | 校准器被操纵 | 输入视为数据、schema 校验、无自动 apply、注入语料进 L2/A-B 测试 |
-| 成本/延迟超预期 | 用户负担 | 默认关、批级+全局 output 硬顶、并发上限、batch/run 缓存、usage/批数诊断、手动触发；A/B 记录 tokens/墙钟；不采用 128K 单次大输出 |
-| 并发触发 provider 限流 | 部分批失败/延迟抖动 | `maxConcurrency` 默认 3、批级重试、partial 结果、runTimeout 保留已完成批；不把全部失败显示成内部错误 |
+| 成本/延迟超预期 | 用户负担 | 默认关、批级+全局 output 硬顶、并发上限、run 缓存、usage/批数诊断、手动触发；A/B 记录 tokens/墙钟；不采用 128K 单次大输出 |
+| 并发触发 provider 限流 | 部分批失败/延迟抖动 | `maxConcurrency` 默认 3、单批拆批重试、partial 结果、runTimeout 保留已完成批；不把全部失败显示成内部错误 |
 | 跨批重复/冲突 | 候选重复或语义分叉 | 本地 canonical 折叠 + `conflicts` 可见 + 不自动裁决；A/B 反例集纳入跨批冲突 |
 | 批级部分失败被误认为完整 | 用户信任受损 | `partial`/`failedBatches`/覆盖账本强制展示；覆盖账本每个 ref 有去向；不得静默把 partial 当 complete |
 | `ctx.llm`/adapter 跨版本漂移 | 旧宿主崩溃或误报可用 | 可选注入 + 结构化类型（无 peer）+ capability 矩阵含服务缺失 + 四态降级（0.3.3 翻译路径已生产验证同一模式） |
@@ -912,7 +933,7 @@ round-trip、peer 图校验、trusted-attachment 防伪造测试、**v8 分批/�
 | D9 | `c-*` 与 `d-*` 混合批次 | 禁止混用（§7.3）；如实际需求出现再评估 |
 | D10 | v8 校准策略 | **采用**“本地归一化 + 自适应分批 + 受限并发 + 拆批重试 + 跨批本地归并”；不做全量单次调用，不拉 128K 输出窗口 |
 | D11 | 默认批参数 | `batchCandidates=8`、`maxOutputTokens=4096/批`、`maxCandidates=32`、`maxConcurrency=3`、`maxTotalOutputTokens=16384`、`retrySplitDepth=2`；由 C0/A-B 真实数据冻结 |
-| D12 | 批级失败策略 | **partial 优先**：失败批隔离/可重试；仅全部批失败才抛整次错误；不使用 `gateway/internal` 表示业务失败 |
+| D12 | 批级失败策略 | **partial 优先**：失败批隔离；当前失败后整次重试，按批重试是后续门禁；仅全部批失败才抛整次错误；不使用 `gateway/internal` 表示业务失败 |
 | D13 | 多批披露版本 | `CALIBRATION_DISCLOSURE_VERSION=2`，明确多批调用与每批数据范围；已有 consent 重新确认 |
 | D14 | 批级流式进度 | v8 不新增 progress Remote；先返回计划批数，最终一次性结果；逐批流式留待有证据的后续版本 |
 
@@ -938,7 +959,7 @@ round-trip、peer 图校验、trusted-attachment 防伪造测试、**v8 分批/�
       与缩减回归（P3/P6）结论落盘；C0 已用 0.3.3 线上数据 + v7 真实 10 轮 case 校准默认参数。
 - [ ] L1/L2 矩阵全绿（含扩展故障、注入语料、evidence 伪造拒绝、旧记录 fixture 解析、downgrade 反向人工复核、skew 四象限）。
 - [ ] **v8 分批矩阵**全绿：planner/覆盖账本、单批拆批重试、partial、全部失败、并发上限、
-      runTimeout、batch/run 缓存与 calls 诊断；错误码不出现 `gateway/internal`。
+      runTimeout、run 缓存与 calls 诊断；错误码不出现 `gateway/internal`。
 - [ ] 同一真实 10 轮 Web case 在**默认参数**下成功（无 max-tokens 整次失败），关键约束覆盖账本完整，
       记录 batchCount/并发/tokens/墙钟；v7 失败案例作为回归 fixture。
 - [ ] 13 版本在无 `dsh-llm` peer 声明下正常加载并使用可选 `ctx.get('llm')`。
@@ -961,6 +982,7 @@ round-trip、peer 图校验、trusted-attachment 防伪造测试、**v8 分批/�
 | 2026-11-24 | **v6（实现审查收敛）**：0.3.3 翻译保留为独立回退（校准使用 L1 源 handle，双调用为已知成本）；校准隐藏非 zh/en；runId 绑定 draftHandle；mergedFrom 接入逐条 diff；effort 在 adapter 暴露 efforts 时校验；consent 披露改由 Schema description + Pane dialog + profile 配置承载；L2-8 记录为“旧 0.3.2/0.3.3 record fixture → 0.3.4 strict schema”方向，反向留人工；按 ref suppressed 选择集仍为 MVP 整体替换。 |
 | 2026-11-24 | **v7（死配置/证据收口）**：从 0.3.4 Config 删除未实现的 `calibration.trigger`/`calibration.cooldownMinutes`，状态对象与诊断 UI 同步移除；修正 docs/README 索引的“单一模型路径”旧表述；§5.7 缓存改为实际 32+32 全局上限；§5.8 明确取消中继未实现；附录 C 补齐 v6/v7；`CALIBRATION_PARAMS_CONFLICT` 已从错误码移除。 |
 | 2026-11-24 | **v8（自适应分批并发校准，用户决策/真实实测驱动）**：真实 Web 10 轮 case 证明 v7 默认 2048 max-tokens 整次失败（Remote `gateway/internal`），调高到 8192 也仅 12/32 候选并 `inputTruncated`；因此改为本地覆盖账本 + 自适应 batch + `mapLimit` 并发 + 单批对半拆批重试 + 跨批本地归并 + partial/失败批隔离；新增 batch/run 缓存、`maxTotalOutputTokens`/`maxConcurrency`/`runTimeoutMs` 等配置；明确不使用 128K 单次输出；披露版本升 2；状态转回 `Proposed`；§5.4–§5.11、§7.1、§8、§10–§13、附录 A/B/C 同步。 |
+| 2026-11-25 | **v10（发布审查修复）**：Remote 业务错误信封与客户端分类、objective/conflicts 收敛与渲染、contractness 硬约束豁免、degraded 跨批 parts 映射、user-guide 配置表与 §5.7/§5.8/§8/§9 文档承诺对齐；`npm run check` 与矩阵/候选复验后重跑。 |
 
 ## 附录 D：v8 planner / runner / reduce 伪代码
 

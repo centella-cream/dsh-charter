@@ -11,7 +11,7 @@
 - 新增 `charter/calibrationStatus`/`charter/calibrateBootstrap` Remote 方法；`applyBootstrap` additive
   `calibrationRunId`；`c-*` 候选与 `mergedFrom`/Host-only evidence excerpt。
 - 零 record schema/prompt/工具面变化；0.3.2/0.3.3 记录仍可读取。
-- 校准默认关闭，发布前仍需人工/A-B 验收。v8 自适应分批内核已通过真实 10 轮默认参数工程测试；v9 契约性门禁会排除 heading/状态/历史/可选建议，并保留 objective 与关键交付物；正式 A/B/人工与 L4 门禁仍未完成。
+- 校准默认关闭，发布前仍需人工/A-B 验收。v8 自适应分批内核已通过真实 10 轮默认参数工程测试；v9 契约性门禁会排除 heading/状态/历史/可选建议并保留 objective 与关键交付物；v10 增加业务错误分类透出、objective/deliverable 来源溯源、conflicts 可见、strict-wire 批次诊断与 degraded 段重映射；正式 A/B/人工与 L4 门禁仍未完成。
 
 ## 0.3.3 — 2026-11-24（已发布）
 

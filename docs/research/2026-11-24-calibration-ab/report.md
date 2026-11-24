@@ -99,13 +99,35 @@ T-1/T-2/T-3 are deliverables; heading/status/optional candidates are gone. Exact
 remain atomic invariants and two 151-no-execution constraints remain duplicated; a bounded reduce pass
 is the next optional optimization. This is engineering validation, not formal A/B.
 
+## v10 review remediation (2026-11-25)
+
+The v8/v9 implementation review found two publish blockers: business errors were still surfaced as
+`gateway/internal` (or swallowed by the client), and objective/conflicts were not visible or provenance-safe.
+v10 changes:
+
+- Remote `calibrateBootstrap` returns a domain `CharterCalibrationFailure { ok:false, code, message }` for
+  `CharterError`; client source converts it to `CharterCalibrationCallError`; Pane shows the business code
+  and message. Verified against the isolated Host: consent v1 returned a domain failure, not
+  `gateway/internal`.
+- objective/deliverable kinds follow source provenance; extra/unsourced objectives enter `conflicts`;
+  v8 batch diagnostics and conflicts are on the strict wire and the Pane renders the conflicts line.
+- contractness exempts mandatory/imperative `Tests`/`Coverage`/decision-authority lines; degraded split
+  parts are remapped by `degraded.parts` after global renumbering.
+- user-guide consent/defaults and §5.7/§5.8/§8/§9 cache/retry/progress claims are aligned with the
+  implemented run-level behavior.
+
+Same real-summary validation after v10: 3/3 batches, no truncation, 1 objective, 10 deliverables,
+8 invariants, 17 non-contract refs, 5 calls, 6,499 output tokens, 28.1 s. Final artifact
+`a1b07153711e827bfa358b557f610ecf6c91e329ffa712306db2a3d4643c7806` (167 files); 46 files / 562 tests;
+13-version matrix source `58de5ed`. This remains engineering evidence, not formal A/B acceptance.
+
 ## Implementation evidence
 
 - Engineering run artifact: `dist/dsh-charter-0.3.4.tgz` SHA-256
   `841eed5a0254e2af5b779c52d084b787288f5694ade2b5c522dab52d51dff5e2`.
 - Final source candidate after the partial-UI/disclosure changes: SHA-256
-  `5adafa597cd3f51fa3435ccaf4898e9934af09de5df99c9a1956a3ea93da4826` (166 files).
-- `npm run check`: 46 files / 554 tests PASS; token coverage PASS over 13 declared DSH versions.
+  `a1b07153711e827bfa358b557f610ecf6c91e329ffa712306db2a3d4643c7806` (167 files).
+- `npm run check`: 46 files / 562 tests PASS; token coverage PASS over 13 declared DSH versions.
 - 13-version source matrix PASS (`.tmp/compat-13-034-v8.json`, source `2737b75`).
 - Exact-artifact package smoke, packed recovery smoke, fresh DSH 0.2.2-rc.5 Web profile smoke, and
   Gateway acceptance on DSH 0.2.1-rc.3/rc.4 PASS on the final bytes.

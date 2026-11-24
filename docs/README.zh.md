@@ -60,6 +60,7 @@
 | [history/2026-10-27-release-0.1.0-rc.5-plan.md](history/2026-10-27-release-0.1.0-rc.5-plan.md) | Historical | 0.1.0-rc.5 | 已完成并冻结的 rc.5 稳定化方案。 |
 | [research/charter-research.md](research/charter-research.md) | Historical | 调研快照 | v1 调研事实；不作为当前决策。 |
 | [research/2026-11-24-calibration-ab/report.md](research/2026-11-24-calibration-ab/report.md) | Active | 0.3.3 / 0.3.4 校准 | 真实 10 轮 Web A/B：0.3.3 baseline、v7 默认/调优、v8 自适应分批；v8 工程门禁证据。 |
+| [research/2026-11-24-calibration-ab/v10-review-remediation.md](research/2026-11-24-calibration-ab/v10-review-remediation.md) | Implemented — pending release acceptance | 0.3.4 | v10 发布审查修复：Remote 业务错误信封、objective/conflicts 溯源、wire 诊断、contractness 豁免、degraded parts 重映射与文档对齐。 |
 | [verification.md](verification.md) | Active | 当前树 | 证据记录、计数与矩阵结果。 |
 | [releasing.md](releasing.md) | Active | 当前版本线 | 发布流程。 |
 | [user-guide.md](user-guide.md) | Active | 当前版本线 | 安装与使用指南。 |

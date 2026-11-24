@@ -89,6 +89,9 @@ After model output:
 
 ## Result (2026-11-24)
 
+Review remediation: see [v10-review-remediation.md](v10-review-remediation.md).
+
+
 Implemented in `src/host/calibration-contractness.ts`, `draft-calibration.ts`, `service` result reasons and
 client incomplete-state handling.
 

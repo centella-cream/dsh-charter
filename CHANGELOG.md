@@ -12,7 +12,7 @@ DSH plugin ABI is still moving.
 - Additive `charter/calibrationStatus` and `charter/calibrateBootstrap` Remote methods; additive
   `applyBootstrap.calibrationRunId`; `c-*` candidates with `mergedFrom` and Host-only evidence excerpts.
 - No record schema, standing prompt, or model tool changes; `0.3.2`/`0.3.3` records remain readable.
-- Calibration is disabled by default and still requires manual/A-B acceptance before release. The v8 adaptive-batched core passes a real 10-turn default-parameter engineering run; the v9 contractness gate now prevents heading/status/history/optional material from entering the contract and keeps the objective plus key deliverables. Formal A/B/manual and L4 gates remain pending.
+- Calibration is disabled by default and still requires manual/A-B acceptance before release. The v8 adaptive-batched core passes a real 10-turn default-parameter engineering run; the v9 contractness gate prevents heading/status/history/optional material from entering the contract, and v10 adds classified Remote errors, source-provenance objective/deliverable kinds, visible conflicts, strict-wire batch diagnostics and degraded-part remapping. Formal A/B/manual and L4 gates remain pending.
 
 ## 0.3.3 — 2026-11-24 (released)
 
