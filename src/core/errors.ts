@@ -33,7 +33,6 @@ export type CharterErrorCode =
   | 'CALIBRATION_MALFORMED'
   | 'CALIBRATION_SCHEMA'
   | 'CALIBRATION_TEXT'
-  | 'CALIBRATION_PARAMS_CONFLICT'
   | 'CALIBRATION_RUN_EXPIRED'
 
 export class CharterError extends Error {

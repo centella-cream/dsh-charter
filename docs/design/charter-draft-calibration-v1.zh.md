@@ -285,7 +285,7 @@ N = clamp(1, min(maxCandidates, floor((maxOutputTokens × 0.9 − 200) / avg(est
 
 - 同 Session 同参数并发调用 **join** 进行中的运行，共享结果（响应 `joined: true`）——无
   `CALIBRATION_IN_FLIGHT` 错误码；
-- 同 Session 不同参数（effort/locale 不同）→ `CALIBRATION_PARAMS_CONFLICT`（等待或取消后重试）；
+- 同 Session 不同参数（effort/locale 不同）→ 当前按独立缓存键执行（无参数冲突错误码；该码未实现并从 0.3.4 错误码移除）；
 - 取消：任一 joiner 取消不影响其他 joiner；全部取消 → AbortSignal 触发，记
   `CALIBRATION_CANCELLED`（不计入失败诊断）。
 
@@ -301,7 +301,7 @@ N = clamp(1, min(maxCandidates, floor((maxOutputTokens × 0.9 − 200) / avg(est
 | 超时 / 取消 | `CALIBRATION_TIMEOUT` / `CALIBRATION_CANCELLED` | notice / 静默 |
 | 输出不合格 | `CALIBRATION_MALFORMED` / `_SCHEMA` / `_TEXT`（带子类） | notice + 诊断记原因 |
 | draftHandle 失配 | `INVALID_ARGUMENT`（沿用 bootstrap 语义） | 刷新草案后重试 |
-| 参数冲突 / runId 过期 | `CALIBRATION_PARAMS_CONFLICT` / `CALIBRATION_RUN_EXPIRED` | §5.8 / §6.3 |
+| runId 过期 | `CALIBRATION_RUN_EXPIRED` | §6.3；参数冲突码未实现，已从 0.3.4 错误码移除 |
 
 降级永远回到 0.3.3 结构化草案；校准不可用不影响 bootstrap 审阅主流程。
 
@@ -518,9 +518,10 @@ Pane 进入草案区时调用（与 `bootstrapDraft` 并行）；方法缺失（
   `agent.model.current()` 行为}，结果写入 compatibility 文档；任何缺失形态都必须落到 §5.1
   四态之一，插件加载与 bootstrap 主流程零影响（0.3.3 翻译路径的降级已在生产验证，校准入口
   做**服务未注册场景**回归即可）；
-- **downgrade 硬承诺**：零 record schema 变更 ⇒ **0.3.2 与 0.3.3 双版本**均可读取/编辑/导出/
-  accept 0.3.4 写出的记录（含 evidence.excerpt 的 pending 条目），无围栏、无数据损失；专项
-  round-trip 测试（L2-8）；
+- **downgrade 证据（v6 按实现修订）**：零 record schema/字段变更 ⇒ 0.3.4 记录不新增任何
+  record 字段；已用**实际 0.3.2/0.3.3 构建产出的 record fixture**证明 0.3.4 strict schema 可无损
+  读取旧记录。反方向（用 0.3.2/0.3.3 代码读取 0.3.4 记录）未在当前测试环境直接执行，依赖零 schema/
+  字段变更论证；这是 L2-8 的记录方向偏差，发布前由真实旧版本 profile 人工复核。
 - **既有行为零变化**：`charter/bootstrap`、legacy apply、`bootstrapDraft`（不带校准参数时）
   与 0.3.3 行为完全一致；legacy golden fixture 与既有 apply 测试零回归重跑；旧客户端无感
   （§7.4 skew 矩阵）；
@@ -565,8 +566,9 @@ objective 互斥）；`contentModified` 基准表（§6.4）驱动测试。
    `mergedFrom` ref 伪造/超限（>3）、记录已有 objective 时模型仍返回 objective 候选（拒绝）；
 7. apply 原子性：`c-*` 批次单次 update；`c-*` 与 `d-*` 混用拒绝；runId 过期整批拒绝；
    objective 校准 initialize 逐字校验 + 已有 objective 时 `INVALID_TRANSITION`；
-8. **downgrade 专项**：0.3.4 写出的记录（含 evidence.excerpt 的 pending 条目）分别由 **0.3.2
-   与 0.3.3** 源码读取/编辑/导出/accept，无围栏、无数据损失（双向 round-trip）；
+8. **downgrade 专项（v6 记录偏差）**：已用实际 0.3.2/0.3.3 构建产出的 record fixture 验证
+   0.3.4 strict schema 无损解析；反向（0.3.2/0.3.3 源码读取 0.3.4 记录，含 evidence.excerpt）
+   由发布前真实旧版本 profile 人工复核，当前自动化未执行，因此 L2-8 只宣称“旧记录→新代码”方向；
 9. wire skew 四象限（§7.4）自动化。
 
 ### L3 真实 host + 真实模型（人工门禁）
@@ -666,7 +668,7 @@ round-trip、peer 图校验、trusted-attachment 防伪造测试、A/B 协议 1 
 - [x] D1 路线修订完成（0.3.4 校准补丁线 + 0.4.0 完整契约升级重定义），本文状态 Active（2026-11-24）。
 - [ ] M0 剩余探针（P2 枚举发现、P5 transcript 隔离、P8 披露呈现）与缩减回归（P3/P6）结论落盘；
       C0 已用 0.3.3 线上数据校准默认参数。
-- [ ] L1/L2 矩阵全绿（含扩展故障、注入语料、evidence 伪造拒绝、downgrade round-trip、skew 四象限）。
+- [ ] L1/L2 矩阵全绿（含扩展故障、注入语料、evidence 伪造拒绝、旧记录 fixture 解析、downgrade 反向人工复核、skew 四象限）。
 - [ ] 13 版本在无 `dsh-llm` peer 声明下正常加载并使用可选 `ctx.get('llm')`。
 - [ ] capability 矩阵写入 compatibility 文档；服务缺失形态实测。
 - [ ] L3 真实模型人工门禁（zh/en × effort 档位）完成并记录 tokens/耗时/transcript 洁净。
