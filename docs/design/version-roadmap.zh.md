@@ -61,7 +61,7 @@ rc.5 修复了与产品承诺冲突的审阅正确性问题：此前历史草案
   重复折叠、稳定 ref 与自动 zh/en 语言归一（`languageFollow` 可关）；tag、资产和 npm 字节不可变。
 - `0.3.4` 为当前开发线（契约草案校准补丁，已决策 2026-11-24）：语义聚合、可读性改写、保留 0.3.3 语言归一独立回退、
   原文 diff 审阅；opt-in、零 record schema/prompt/工具面变更；范围与验收由
-  [charter-draft-calibration-v1.zh.md](charter-draft-calibration-v1.zh.md)（`Proposed`；v8 自适应分批尚未实现）持有。
+  [charter-draft-calibration-v1.zh.md](charter-draft-calibration-v1.zh.md)（`Implemented — pending release acceptance`）持有。
   定位约束：只提升草案质量与审阅效率，不声称提升模型长程任务完成率。
 - `0.4.0` 为下一功能线（完整契约功能升级，范围已决策 2026-11-24）：readiness/ready queue、
   停滞检测、执行记忆（decision/environment/evidence/progress proposal，record schema v3 +

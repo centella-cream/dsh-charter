@@ -1,6 +1,6 @@
 # `dsh-charter` 0.3.4 契约草案校准方案（语言跟随 · 精简聚合 · 语义完整切分）
 
-> **状态：** `Proposed` —— v8 自适应分批并发校准方案。**v8 校准内核（planner/runner/reduce）已实现并通过真实 10 轮 Web case 的默认参数工程实测**（§5.11）；批级 UI/partial notice、披露 v2 重新 consent 流程、A/B 与人工验收仍未完成，因此整体仍不 release-ready。v7 单次实现的默认 max-tokens 失败与候选截断证据保留为反例。
+> **状态：** `Implemented — pending release acceptance` —— v8 自适应分批并发校准方案。v8 校准内核（planner/runner/reduce）、partial/失败状态行与披露 v2 已实现，并通过真实 10 轮 Web case 的默认参数工程实测（§5.11）；A/B 盲评、L4 UI/AT、真实旧 profile 与人工验收仍未完成，因此不 tag/release/publish、不声称 0.3.4 已发布。v7 单次实现的默认 max-tokens 失败与候选截断证据保留为反例。
 > **版本范围：** `0.3.4`（草案校准补丁线，模型校准层 L2+L3）。**定位约束：只提升草案聚合/可读性/
 > 语言/审阅效率与契约保持，不声称提升模型长程任务完成率，不承诺草案完整性/通用性**（历史补全与执行
 > 能力属 [0.4.0 完整契约升级](charter-execution-v1.zh.md)）。依赖**已发布**的 `0.3.3`
@@ -686,8 +686,8 @@ Pane 进入草案区时调用（与 `bootstrapDraft` 并行）；方法缺失（
 - 草案区头部：语言 chip + 不一致提示（客户端比对 draftLang）+ 「智能校准」按钮
   （`calibrationStatus` 四态决定 显示/置灰/隐藏，置灰必须显示首要原因）；consent 缺失时
   dialog 只读展示披露全文 + profile 配置说明；
-- 校准中：按钮 busy + 单条 notice，显示“校准中（预计 N 批，最多 M 并发）”；不做逐批伪造
-  进度；全局 runTimeout 到点显示 partial；
+- 校准中：按钮 busy + 单条 notice；v8 不在 pending 响应中返回批计划，因此不显示伪造的批数/进度；
+  全局 runTimeout 到点显示 partial；
 - 校准视图：每条 = 校准文本 + `已校准` 徽章 + `合并 N 条`/`不确定`/`已拆分（k 段）` outline
   chip；行内 quietlink「原文」展开 原文 ↔ 校准稿 对照（发丝分隔，无花哨高亮）与「用原文」；
   degraded split 的派生段成组展示（组头标注原候选）；

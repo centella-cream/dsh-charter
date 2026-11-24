@@ -58,7 +58,7 @@ rc.5 fixed the correctness defect inside the promised 0.1 workflow: previously e
   aggregation, readable rewriting, preserved 0.3.3 language-following fallback, original-vs-calibrated diff review; opt-in,
   zero record-schema/prompt/tool change. Positioning constraint: it improves draft quality and review efficiency
   only and never claims improved long-horizon task completion. Authority:
-  [charter-draft-calibration-v1.zh.md](charter-draft-calibration-v1.zh.md) (`Proposed`; v8 adaptive batching not yet implemented).
+  [charter-draft-calibration-v1.zh.md](charter-draft-calibration-v1.zh.md) (`Implemented — pending release acceptance`).
 - `0.4.0` is the next feature line (full contract-capability upgrade, scope decided 2026-11-24): readiness/ready
   queue, stall detection, execution memory (decision/environment/evidence/progress proposal, record schema v3 +
   downgrade fence), relation proposal, history-completion drafts, conditional LLM assessor. Authority:
@@ -342,6 +342,6 @@ required before implementation. 0.4.0 ships complete: E1–E4 are all release ga
 conditional assessor (E5) is not a release gate.
 
 Authority: [charter-gui-v1.zh.md](charter-gui-v1.zh.md) (`Active`), [the extraction design](charter-draft-extraction-v1.zh.md)
-(`Active`, released with 0.3.3), [the calibration design](charter-draft-calibration-v1.zh.md) (`Proposed`,
+(`Active`, released with 0.3.3), [the calibration design](charter-draft-calibration-v1.zh.md) (`Implemented — pending release acceptance`,
 0.3.4 development scope), and [the execution upgrade design](charter-execution-v1.zh.md) (`Proposed`,
 0.4.0 scope). Neither 0.3.4 nor 0.4.0 is published until the normal release gates and human acceptance pass.
