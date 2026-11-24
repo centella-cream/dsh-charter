@@ -1238,11 +1238,17 @@ export class CharterService extends Service {
       accepted: input.accepted,
       draftItems,
     } satisfies CalibrationRequestInput)
-    const result = await runDraftCalibration(input.llm, {
-      provider: input.selection.provider,
-      model: input.selection.model,
-      ...(input.effort === undefined ? {} : { effort: input.effort }),
-    }, prepared, this.config.calibration.timeoutMs)
+    let result
+    try {
+      result = await runDraftCalibration(input.llm, {
+        provider: input.selection.provider,
+        model: input.selection.model,
+        ...(input.effort === undefined ? {} : { effort: input.effort }),
+      }, prepared, this.config.calibration.timeoutMs)
+    } catch (error) {
+      if (error instanceof CharterError) throw error
+      throw charterError('CALIBRATION_PROVIDER', (error instanceof Error ? error.message : String(error)).slice(0, 512))
+    }
     return { ...result, runId: input.runId, pending: false, cached: false, joined: false }
   }
 

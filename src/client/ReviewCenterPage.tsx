@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import type { PaneScope } from './pane-scope.js'
 import { ActionButton, ErrorDetails, StatusTag } from './pane-ui.js'
 import { bootstrapProblemText, formatBytes, normalizedBytes, shortText, textIssueMessage } from './pane-format.js'
@@ -26,6 +26,7 @@ export function ReviewCenterPage({ scope }: { readonly scope: PaneScope }): Reac
   bootstrapCalibrationStatus,
   bootstrapCalibrationBusy,
   bootstrapCalibrationError,
+  bootstrapObjectiveRef,
   calibrateBootstrap,
   useOriginalBootstrap,
   bootstrapPromptBytes,
@@ -69,6 +70,7 @@ export function ReviewCenterPage({ scope }: { readonly scope: PaneScope }): Reac
   unknownReplay,
   view,
   } = scope
+  const [calibrationDisclosureOpen, setCalibrationDisclosureOpen] = useState(false)
   return (
     <>
 
@@ -369,6 +371,19 @@ export function ReviewCenterPage({ scope }: { readonly scope: PaneScope }): Reac
                         <ErrorDetails detail={bootstrapCalibrationError} t={t}/>
                       </div>
                     )}
+                    {bootstrapCalibrationStatus?.status === 'consent-required' && (
+                      <div className="charter-notice charter-notice--warning" role="status">
+                        <span>{t('bootstrap.calibrationConsent')}</span>
+                        <ActionButton onClick={() => setCalibrationDisclosureOpen(true)}>{t('bootstrap.calibrationDisclosure')}</ActionButton>
+                      </div>
+                    )}
+                    {calibrationDisclosureOpen && (
+                      <div className="charter-notice charter-notice--warning" role="dialog" aria-modal="false" aria-label={t('bootstrap.calibrationDisclosure')}>
+                        <p>{t('bootstrap.calibrationDisclosureText')}</p>
+                        <p className="charter-hint">{t('bootstrap.calibrationDisclosureSettings')}</p>
+                        <ActionButton onClick={() => setCalibrationDisclosureOpen(false)}>{t('changeset.close')}</ActionButton>
+                      </div>
+                    )}
                     <span className="charter-source">
                       {bootstrap.source.shadowedTokens === undefined
                 ? t('bootstrap.sourcePlain')
@@ -421,6 +436,11 @@ export function ReviewCenterPage({ scope }: { readonly scope: PaneScope }): Reac
                         {t('bootstrap.clearShown')}
                       </ActionButton>
                     </div>
+                    {bootstrapObjectiveRef?.startsWith('c-') === true && (
+                      <div className="charter-notice charter-notice--warning" role="status">
+                        {t('bootstrap.calibrationObjectiveWarning')}
+                      </div>
+                    )}
                     {view.objective === null && (<label className="charter-bootstrap__field">
                         <span>{t('bootstrap.objective')}</span>
                         <textarea id={`${bootstrapId}-objective`} value={bootstrapObjective} rows={2} disabled={bootstrapSaving || unknownBlocked} aria-label={t('bootstrap.objective')} aria-invalid={bootstrapObjectiveOver || inspectUserText(bootstrapObjective).issue !== undefined} aria-describedby={`${bootstrapId}-objective-budget`} onChange={event => draft.setBootstrapObjective(event.target.value)}/>

@@ -153,6 +153,8 @@ export interface CharterDraftState {
   readonly bootstrapCalibrationBusy: boolean
   readonly bootstrapCalibrationError?: string | undefined
   readonly bootstrapCalibrationRunId?: string | undefined
+  readonly bootstrapCalibrationUsage?: import('../host/types.js').CharterCalibrationResult['usage'] | undefined
+  readonly bootstrapCalibrationFailureCount: number
   readonly bootstrapObjectiveRef?: string | undefined
   /** A stream frame made the reviewed draft stale while its RPC outcome was unknown. */
   readonly bootstrapNeedsStale: boolean
@@ -284,6 +286,8 @@ function initialState(sessionId: SessionId): CharterDraftState {
     bootstrapCalibrationBusy: false,
     bootstrapCalibrationError: undefined,
     bootstrapCalibrationRunId: undefined,
+    bootstrapCalibrationUsage: undefined,
+    bootstrapCalibrationFailureCount: 0,
     bootstrapObjectiveRef: undefined,
     bootstrapNeedsStale: false,
     bootstrapBaseRevision: null,
@@ -1356,17 +1360,27 @@ export class CharterDraft {
     if (this.state.bootstrapCalibrationBusy) return
     this.update({ bootstrapCalibrationBusy: true, bootstrapCalibrationError: undefined })
     try {
-      const result = await source.calibrateBootstrap({
+      // Two-phase: return quickly with a run id, then join the same Host job.
+      const pending = await source.calibrateBootstrap({
         draftHandle,
         consentVersion: status.consent.required,
-        awaitCalibration: true,
+        awaitCalibration: false,
       })
+      if (pending === undefined) throw new Error('calibration request failed')
+      const result = pending.pending
+        ? await source.calibrateBootstrap({
+            draftHandle,
+            consentVersion: status.consent.required,
+            awaitCalibration: true,
+          })
+        : pending
       if (result === undefined) throw new Error('calibration request failed')
       this.applyCalibrationResult(result)
     } catch (error) {
       this.update({
         bootstrapCalibrationBusy: false,
         bootstrapCalibrationError: error instanceof Error ? error.message : String(error),
+        bootstrapCalibrationFailureCount: this.state.bootstrapCalibrationFailureCount + 1,
       })
     }
   }
@@ -1398,6 +1412,7 @@ export class CharterDraft {
     this.update({
       bootstrapCalibrationBusy: false,
       bootstrapCalibrationRunId: result.runId,
+      ...(result.usage === undefined ? {} : { bootstrapCalibrationUsage: result.usage }),
       bootstrapObjectiveRef: objective?.ref,
       bootstrapObjective: objective?.text ?? '',
       bootstrapItems: items,

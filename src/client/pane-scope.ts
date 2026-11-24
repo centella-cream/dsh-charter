@@ -77,6 +77,9 @@ export interface PaneScope {
   readonly bootstrapCalibrationStatus?: import("../host/types.js").CharterCalibrationStatusResult | undefined
   readonly bootstrapCalibrationBusy: boolean
   readonly bootstrapCalibrationError?: string | undefined
+  readonly bootstrapCalibrationUsage?: import("../host/types.js").CharterCalibrationResult["usage"] | undefined
+  readonly bootstrapCalibrationFailureCount: number
+  readonly bootstrapObjectiveRef?: string | undefined
   readonly calibrateBootstrap: () => void
   readonly useOriginalBootstrap: () => void
   readonly bootstrapObjectiveOver: boolean

@@ -17,6 +17,9 @@ export function DiagnosticsPage({ scope }: { readonly scope: PaneScope }): React
   archiveSource,
   area,
   bootstrapReplay,
+  bootstrapCalibrationStatus,
+  bootstrapCalibrationUsage,
+  bootstrapCalibrationFailureCount,
   canExport,
   capabilities,
   chooseArchive,
@@ -117,6 +120,30 @@ export function DiagnosticsPage({ scope }: { readonly scope: PaneScope }): React
                           : envelopeState === 'near' ? t('diagnostics.envelopeNear') : t('diagnostics.envelopeOk')}
                       </p>
                     </>
+                  )}
+                </section>
+                <section className="charter-card charter-section charter-calibration" aria-labelledby="charter-calibration-title">
+                  <div className="charter-cardhead">
+                    <div className="charter-cardtitle">
+                      <h3 id="charter-calibration-title">{t('diagnostics.calibrationTitle')}</h3>
+                    </div>
+                    {bootstrapCalibrationStatus !== undefined && <StatusTag tone={bootstrapCalibrationStatus.status === 'available' ? 'info' : 'warning'}>{bootstrapCalibrationStatus.status}</StatusTag>}
+                  </div>
+                  {bootstrapCalibrationStatus === undefined ? (
+                    <p className="charter-hint">{t('diagnostics.calibrationUnavailable')}</p>
+                  ) : (
+                    <dl className="charter-envelope__facts">
+                      <div><dt>{t('diagnostics.calibrationStatus')}</dt><dd>{bootstrapCalibrationStatus.status}</dd></div>
+                      <div><dt>{t('diagnostics.calibrationConsent')}</dt><dd>{bootstrapCalibrationStatus.consent.acknowledged} / {bootstrapCalibrationStatus.consent.required}</dd></div>
+                      <div><dt>{t('diagnostics.calibrationTrigger')}</dt><dd>{bootstrapCalibrationStatus.trigger}</dd></div>
+                      {bootstrapCalibrationStatus.resolved !== undefined && <div><dt>{t('diagnostics.calibrationModel')}</dt><dd>{bootstrapCalibrationStatus.resolved.provider}/{bootstrapCalibrationStatus.resolved.model}</dd></div>}
+                      <div><dt>{t('diagnostics.calibrationFailures')}</dt><dd>{bootstrapCalibrationFailureCount}</dd></div>
+                      {bootstrapCalibrationUsage !== undefined && <>
+                        <div><dt>{t('diagnostics.calibrationInputBytes')}</dt><dd>{formatBytes(t, bootstrapCalibrationUsage.inputBytes)}</dd></div>
+                        <div><dt>{t('diagnostics.calibrationTokens')}</dt><dd>{bootstrapCalibrationUsage.outputTokens ?? '—'} / {bootstrapCalibrationUsage.reasoningTokens ?? '—'}</dd></div>
+                        <div><dt>{t('diagnostics.calibrationDuration')}</dt><dd>{bootstrapCalibrationUsage.durationMs} ms</dd></div>
+                      </>}
+                    </dl>
                   )}
                 </section>
                 {source.runValidators !== undefined && (<section className="charter-card charter-section charter-validator" aria-labelledby="charter-validator-title">
