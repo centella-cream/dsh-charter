@@ -248,6 +248,10 @@ Defaults live in `cordis.patch.yml`. Override the same keys in the profile's `co
     # Optional dedicated translation route; omit to use the session model.
     languageFollowProvider: your-provider
     languageFollowModel: your-fast-model
+    calibration:
+      enabled: false
+      consentVersion: 1
+      maxCandidates: 12
 ```
 
 | Field | Default | Meaning |
@@ -267,6 +271,11 @@ Defaults live in `cordis.patch.yml`. Override the same keys in the profile's `co
 | `languageFollowTimeoutMs` | 60000 | upper bound for one background translation call; failed batches split and keep source text |
 | `languageFollowProvider` | unset | optional dedicated translation provider; requires `languageFollowModel` |
 | `languageFollowModel` | unset | optional dedicated translation model; omit both to use the current session model |
+| `calibration.enabled` | false | opt-in draft calibration; no calibration model call occurs unless enabled |
+| `calibration.consentVersion` | 0 | accepted disclosure version; set to `1` after reading the calibration disclosure |
+| `calibration.provider` / `.model` | unset | optional dedicated calibration route; omit both to use the session model |
+| `calibration.maxCandidates` | 12 | maximum calibrated candidates |
+| `calibration.maxOutputTokens` | 2048 | calibration output-token cap |
 
 The only model-visible capacity is `maxPromptBytes`; active item counts are not capped separately. Storage is
 bounded by `maxItems`, `maxPendingItems`, and `maxRecordBytes`. Values that would make a Session ready but

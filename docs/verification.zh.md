@@ -303,3 +303,8 @@ rm -rf .tmp
 - 人工验收（2026-11-23）：用户在自适应翻译修改后确认 39 条 en→zh Desktop 草案可用；zh→en 由用户明确放弃人工验收，改由自动化 target-zh 翻译测试覆盖。README Pane/依赖图截图已从实时 `v0.3.3` Desktop 视图重拍。
 - legacy golden fixture 为 10 条合成摘要（对方案“≥10 条真实摘要”目标记为接受偏差；当前无可安全提交的真实摘要语料）。
 - 候选 artifact `dist/dsh-charter-0.3.3.tgz` SHA-256 `707043d343e6a0b14d4549e6bb92b29f28fa197d99bb48160b796b4e50c8552f`；exact-artifact package smoke 与 packed recovery smoke PASS。13 版本矩阵 PASS（`.tmp/compat-13-adaptive-final.json`，source `26353d2`；含 DSH 最新 `0.2.2-rc.5`）；Web/Desktop profile 安装同一 `707043d…` artifact，143 个包文件逐字节相同；Web profile 由 DSH `0.2.2-rc.5` CLI 启动并显示 Pane `v0.3.3`；Desktop app 为 `0.2.2-rc.5`，profile 由 Electron 独占，原生窗口仍为人工门禁。当前候选未发布。真实 en→zh 已由用户确认；zh→en 按用户决定仅做自动化覆盖。一个 39 条 / 7589 B 的真实摘要此前在 10s 后台超时下返回 `translation finished with aborted`；分批 + 每批超时/拆分重试 + partial 合并 + 60s 后台窗口 + 可选专用翻译路由 + DeepSeek `reasoningEffort: off` 是修复，需重跑该人工用例。
+## 1.5 0.3.4 草案校准（2026-11-24，开发候选）
+
+- 源码门禁：`npm run check` = 45 文件 / 530 测试 PASS；13 个声明 DSH 版本 token 覆盖 PASS；`verify:ui-metrics --gate=final` PASS。
+- 已实现：opt-in 校准配置/consent 门禁、Host `ctx.llm` 单轮严格 JSON 调用、语义聚合/可读改写校验、`c-*` 候选与 `mergedFrom`、Host-only evidence excerpt、`applyBootstrap.calibrationRunId`、两个新 Remote 方法及基础审阅 UI（校准、uncertain/merge/split、原文、用原文）。
+- 尚未完成：A/B 协议 1/2、真实模型人工校准验收、完整 L4 UI/AT 证据、完整失败/capability 矩阵与 0.4.0 能力。校准默认关闭。

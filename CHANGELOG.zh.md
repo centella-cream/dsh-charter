@@ -4,6 +4,15 @@
 
 记录 `dsh-charter` 的重要变更。DSH 插件 ABI 仍在演进，项目保持 pre-1.0 版本线。
 
+## 0.3.4 — 2026-11-24（开发候选）
+
+- opt-in 草案校准：capability 状态、consent 门禁、严格单轮 Host `ctx.llm` 调用、语义聚合/可读改写、
+  有界候选校验与内存 run 缓存。
+- 新增 `charter/calibrationStatus`/`charter/calibrateBootstrap` Remote 方法；`applyBootstrap` additive
+  `calibrationRunId`；`c-*` 候选与 `mergedFrom`/Host-only evidence excerpt。
+- 零 record schema/prompt/工具面变化；0.3.2/0.3.3 记录仍可读取。
+- 校准默认关闭，发布前仍需人工/A-B 验收。
+
 ## 0.3.3 — 2026-11-24（已发布）
 
 结构化契约草案抽取与自动中英文语言跟随；不改变 record schema、prompt 投影或模型工具面。

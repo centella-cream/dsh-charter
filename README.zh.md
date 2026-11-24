@@ -43,7 +43,8 @@
 
 ## 状态
 
-- **当前发布：**`0.3.3` — 结构化契约草案抽取、自动中英文语言归一、相似重复折叠、稳定候选 ref、非阻塞后台翻译，以及针对自定义模型延迟的自适应分批。已发布到 npm `latest`/`next` 和 GitHub Release `v0.3.3`。
+- **当前已发布：**`0.3.3` — 结构化契约草案抽取、自动中英文语言归一、相似重复折叠、稳定候选 ref、非阻塞后台翻译，以及针对自定义模型延迟的自适应分批。已发布到 npm `latest`/`next` 和 GitHub Release `v0.3.3`。
+- **开发候选：**`0.3.4` — opt-in、consent 校验的草案校准：语义聚合、可读改写、原文/校准稿审阅与 `c-*` apply provenance。尚未发布。
 - **上一版本：**`0.3.2` — 无障碍/证据收敛；`0.3.1`、`0.3.0` 是更早基线。
   **主要 DSH 基线：**`0.2.2-rc.5`；十三个声明版本通过源码矩阵验证。
 - 从 `0.2.0` 起版本号使用普通递增（`0.2.0`、`0.2.1`、`0.2.2`、`0.3.0`、`0.3.1`、`0.3.2`、`0.3.3`），不再使用 `rc` 后缀。
@@ -186,7 +187,7 @@ compaction summary 返回只读草案，不写 storage。
 
 ## 安装
 
-当前发布版本是 `0.3.3`：
+当前已发布版本是 `0.3.3`：
 
 ```bash
 dsh plugin --profile web add dsh-charter@0.3.3
@@ -197,6 +198,13 @@ dsh plugin --profile web add dsh-charter@0.3.3
 ```bash
 npm pack dsh-charter@0.3.3
 dsh plugin --profile web add ./dsh-charter-0.3.3.tgz
+```
+
+`0.3.4` 是当前开发候选，从工作区构建：
+
+```bash
+npm pack
+dsh plugin --profile web add ./dsh-charter-0.3.4.tgz
 ```
 
 Desktop 请使用 **Desktop → Plugins → Install/Update**；若 Desktop 构建支持本地插件导入，也可导入同一
@@ -278,6 +286,11 @@ active-count 失败。
 | `contextOrder` | 130 | runtime-context 顺序 |
 | `languageFollow` | true | 按当前 `zh`/`en` DSH 界面语言通过模型归一草案；设为 `false` 关闭自动调用 |
 | `languageFollowTimeoutMs` | 60000 | 单批后台翻译等待上限；失败批会拆分并保留源文 |
+| `calibration.enabled` | false | opt-in 草案校准；需确认 `consentVersion` |
+| `calibration.consentVersion` | 0 | profile 中已确认的披露版本；当前披露为 1 |
+| `calibration.provider` / `.model` | 空 | 可选专用校准路由；为空使用会话模型 |
+| `calibration.maxCandidates` | 12 | 校准输出候选上限 |
+| `calibration.maxOutputTokens` | 2048 | 校准输出 token 上限 |
 | `languageFollowProvider` | 未设置 | 可选专用翻译 provider；需同时设置 model |
 | `languageFollowModel` | 未设置 | 可选专用翻译模型；两者都不设时使用当前会话模型 |
 

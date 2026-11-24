@@ -5,6 +5,15 @@ English | [中文](CHANGELOG.zh.md)
 All notable changes to `dsh-charter` are recorded here. The project follows a pre-1.0 version line while the
 DSH plugin ABI is still moving.
 
+## 0.3.4 — 2026-11-24 (development candidate)
+
+- Opt-in draft calibration: capability status, consent gate, strict one-shot Host `ctx.llm` call,
+  semantic aggregation/readable rewriting, bounded candidate validation and in-memory run cache.
+- Additive `charter/calibrationStatus` and `charter/calibrateBootstrap` Remote methods; additive
+  `applyBootstrap.calibrationRunId`; `c-*` candidates with `mergedFrom` and Host-only evidence excerpts.
+- No record schema, standing prompt, or model tool changes; `0.3.2`/`0.3.3` records remain readable.
+- Calibration is disabled by default and still requires manual/A-B acceptance before release.
+
 ## 0.3.3 — 2026-11-24 (released)
 
 Structured draft extraction and automatic zh/en language following. No record-schema, prompt-projection, or model-tool change.

@@ -229,6 +229,10 @@ Change Set 引入或加重依赖冲突时，Review/Apply 会列出受影响交�
     # 可选：专用翻译路由；省略则使用当前会话模型
     languageFollowProvider: your-provider
     languageFollowModel: your-fast-model
+    calibration:
+      enabled: false
+      consentVersion: 1
+      maxCandidates: 12
 ```
 
 | 字段 | 默认 | 说明 |
@@ -248,6 +252,11 @@ Change Set 引入或加重依赖冲突时，Review/Apply 会列出受影响交�
 | `languageFollowTimeoutMs` | 60000 | 单批后台翻译等待上限；失败批会拆分并保留源文 |
 | `languageFollowProvider` | 未设置 | 可选专用翻译 provider；需同时设置 model |
 | `languageFollowModel` | 未设置 | 可选专用翻译模型；两者都不设时使用当前会话模型 |
+| `calibration.enabled` | false | opt-in 草案校准；关闭时不发生校准模型调用 |
+| `calibration.consentVersion` | 0 | 已确认的披露版本；阅读披露后设为 `1` |
+| `calibration.provider` / `.model` | 未设置 | 可选专用校准路由；两者都不设时使用会话模型 |
+| `calibration.maxCandidates` | 12 | 校准候选上限 |
+| `calibration.maxOutputTokens` | 2048 | 校准输出 token 上限 |
 
 模型可见容量只有 `maxPromptBytes`；active 条目数不再单独设上限。存储由 `maxItems`、`maxPendingItems` 和
 `maxRecordBytes` 约束。会让 Session 处于 ready 但永久不可编辑的配置值会被抬到文档化最小值，并由 Host 记录 warning。

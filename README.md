@@ -45,9 +45,10 @@ deliverables, evidence, and dependency relationships survive compaction and rema
 
 ## Status
 
-- **Current release:** `0.3.3` — structured draft extraction with automatic zh/en language normalization,
+- **Current published release:** `0.3.3` — structured draft extraction with automatic zh/en language normalization,
   duplicate folding, stable candidate refs, deferred non-blocking translation, and adaptive batch handling for
   custom model latency. Published to npm `latest`/`next` and GitHub Release `v0.3.3`.
+- **Development candidate:** `0.3.4` — opt-in, consent-gated draft calibration with semantic aggregation, readable rewriting, original-vs-calibrated review and `c-*` apply provenance. Not published.
 - **Previous release:** `0.3.2` — accessibility/evidence convergence; `0.3.1` and `0.3.0` are earlier baselines.
   **Primary DSH baseline:** `0.2.2-rc.5`; thirteen declared DSH versions are source-matrix verified.
 - Versioning from `0.2.0` onward uses plain increments (`0.2.0`, `0.2.1`, `0.2.2`, `0.3.0`, `0.3.1`, `0.3.2`, `0.3.3`), never an `rc`
@@ -213,7 +214,7 @@ storage.
 
 ## Install
 
-The current release is `0.3.3`:
+The current published release is `0.3.3`:
 
 ```bash
 dsh plugin --profile web add dsh-charter@0.3.3
@@ -224,6 +225,13 @@ For air-gapped machines or exact-artifact verification:
 ```bash
 npm pack dsh-charter@0.3.3
 dsh plugin --profile web add ./dsh-charter-0.3.3.tgz
+```
+
+`0.3.4` is the current development candidate. Build it from the working tree:
+
+```bash
+npm pack
+dsh plugin --profile web add ./dsh-charter-0.3.4.tgz
 ```
 
 For Desktop, use **Desktop → Plugins → Install/Update**, or import the same local tarball if your Desktop build
@@ -309,6 +317,11 @@ Defaults live in `cordis.patch.yml`. Override them in the profile patch:
 | `contextOrder` | 130 | runtime-context order |
 | `languageFollow` | true | normalize a review draft to the active `zh`/`en` DSH language through the session model; set `false` to disable the automatic call |
 | `languageFollowTimeoutMs` | 60000 | upper bound for one background translation call; per-batch failures split and keep source text |
+| `calibration.enabled` | false | opt-in draft calibration; requires `consentVersion` acknowledgement |
+| `calibration.consentVersion` | 0 | disclosure version accepted in the profile; current disclosure is 1 |
+| `calibration.provider` / `.model` | empty | optional dedicated calibration route; empty uses the session model |
+| `calibration.maxCandidates` | 12 | calibration output candidate cap |
+| `calibration.maxOutputTokens` | 2048 | calibration output-token cap |
 | `languageFollowProvider` | unset | optional provider route for language normalization; requires `languageFollowModel` |
 | `languageFollowModel` | unset | optional model for language normalization; omit both to use the current session model |
 
