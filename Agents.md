@@ -16,7 +16,7 @@ silently truncated; the browser bundle stays a single self-contained factory; th
 ## Version line — read these before assuming a version or scope
 
 - `docs/design/version-roadmap.md` (Chinese `version-roadmap.zh.md` is normative when details differ) owns the
-  version line and scope boundaries. Current development line: `0.3.0` on `feat/0.3.0-gui` (local, unreleased). The 0.1
+  version line and scope boundaries. Current development line: `0.3.4` on `feat/0.3.4-calibration` (local candidate, unreleased). The 0.1
   release history remains immutable.
 - **Versioning from `0.2.0` onward:** never use an `rc` suffix. Use plain increments such as `0.2.0`, `0.2.1`,
   `0.2.2`; no `0.2.0-rc.1`, no `0.2.1-rc.1`. Internal design-stage labels may use alpha/beta only if they are
