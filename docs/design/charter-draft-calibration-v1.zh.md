@@ -548,7 +548,21 @@ v9 审查暴露的发布门禁问题已在 v10 修复：
 - **v10 实测**：同一真实 summary，consent v1 返回领域失败 `CALIBRATION_CONSENT_REQUIRED`（非
   `gateway/internal`）；consent v2 得到 1 objective / 10 deliverable / 8 invariant，3/3 批、
   `truncated=false`、17 条 `non-contract`、5 次调用、6,499 output tokens、28.1s；T-1/T-2/T-3
-  均为 deliverable。最终 artifact `d1dd390…`（167 文件）；`npm run check` 563 测试。
+  均为 deliverable。最终 artifact `293b47a8…`（167 文件）；`npm run check` 565 测试。
+
+### 5.14 v11 目标完整性与交付物覆盖（2026-11-25）
+
+新一轮真实 summary（seq `44692`）暴露：模型可能把 objective 截短成单一“out of scope”子句；planner
+配额曾把真实 gate/commit deliverable 裁进 `global-cap`。v11 修复：
+
+- **objective 完整性**：objective candidate 必须保留源 objective 的数字/版本/专有名词锚点，且长度
+  不得明显短于源文本；不满足时 Host 直接回退源 objective 文本并保留来源 provenance。
+- **planner 覆盖**：先选全部契约 deliverable，再用 invariant 填充（保留少量 invariant 地板），
+  修正旧的 slice 末端索引错误；`must` 型交付要求不再被误判为 invariant，`Just changed ...` 这类
+  状态说明被过滤。
+- **实测**：同一 summary，objective 恢复完整；4/4 批，4 次调用，8,482 output tokens，14.0s；
+  1 objective / 15 deliverable / 12 invariant；32 个计划候选中仅 2 个低优先级 invariant 被 cap，
+  关键 gate/commit deliverable 保留；`truncated=true` 如实表示该 2 条未纳入。
 
 ## 6. Provenance 与 apply 合同（评审 P0-A/P0-2/P0-3/P0-C）
 

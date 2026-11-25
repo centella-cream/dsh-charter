@@ -36,10 +36,10 @@
 
 ## Verification
 
-- `npm run check`: 46 files / **563 tests** PASS.
+- `npm run check`: 46 files / **565 tests** PASS.
 - 13-version source matrix: 13/13 PASS, source `78fcc19`
   (`.tmp/compat-13-034-v10-p3.json`).
-- exact artifact: `dist/dsh-charter-0.3.4.tgz` SHA-256 `d1dd390e4f52f0c9ff468f5cd9f455ed1509689cbfffa507ec7507b9eb7df846`, 167 files.
+- exact artifact: `dist/dsh-charter-0.3.4.tgz` SHA-256 `293b47a83b6fc492acb59d00645814c29124924323d4404d933cfcf885ee82da`, 167 files.
 - isolated real-summary host check (same `85809bdb…` summary, no user record mutation):
   - consent v1 → Remote **domain failure** `CALIBRATION_CONSENT_REQUIRED` (not `gateway/internal`);
   - consent v2 → 3/3 batches, no truncation, 1 objective, 10 deliverables, 8 invariants,
@@ -63,3 +63,38 @@ DSH 0.2.2-rc.5 `@deepseek-ai/dsh-plugin-detail` does **not** select localized RE
 - Exact T-3 configuration facts remain atomic invariants; duplicate 151-no-execution constraints can
   remain across phrasing. Bounded semantic reduce remains a future quality optimization.
 - Batch-level cache, per-batch retry and per-batch progress are documented future gates, not shipped.
+
+## Post-review optimization (v11, 2026-11-25)
+
+The new export's latest summary (`seq 44692`) exposed two further quality gaps:
+
+1. calibration shortened the objective to only “Harbor 0.22.0 upstream defects are out of scope”,
+   dropping the primary “fix remaining 0.3.4 blockers before 151 rerun” clause;
+2. planner quota left a real gate/commit deliverable (`d-del-12`) in `global-cap`.
+
+Changes:
+
+- objective candidates are checked against the source objective; if they lose stable anchors
+  (numbers/versions/proper nouns) or are materially shorter, the Host falls back to the source
+  objective text with source provenance. Regression test covers the shortened-objective case;
+- planner now selects all contract deliverables before filling invariants (with a small invariant
+  floor), fixing the previous slice end-index bug; `d-del-8`-style “must” requirements stay
+  deliverable unless they are prohibitions; status-like “just changed” notes are filtered.
+
+Final real-summary run (same latest summary, isolated Host):
+
+| Metric | v10 | v11 |
+| --- | ---: | ---: |
+| objective | truncated to out-of-scope clause | **exact source objective** |
+| candidates | 26 | 28 |
+| deliverables | 10 | 15 (all contract deliverables selected; key `d-del-12` retained) |
+| batches | 4/4 | 4/4 |
+| calls / output tokens / time | 5 / 11,504 / 30.4 s | 4 / 8,482 / 14.0 s |
+| `truncated` | true; 6 global-cap | true; **2 invariants** global-cap; no key deliverable capped |
+
+`truncated=true` remains honest because the 32-candidate cap excludes two lower-priority invariants;
+the key deliverables and objective are retained.
+
+Evidence: `npm run check` 46 files / 565 tests; matrix 13/13 source `7ef102d`
+(`.tmp/compat-13-034-opt.json`); artifact `293b47a8…` (167 files), package/recovery/profile/Gateway/UI
+smokes PASS.
