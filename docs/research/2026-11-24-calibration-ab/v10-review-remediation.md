@@ -39,7 +39,7 @@
 - `npm run check`: 46 files / **566 tests** PASS.
 - 13-version source matrix: 13/13 PASS, source `78fcc19`
   (`.tmp/compat-13-034-v10-p3.json`).
-- exact artifact: `dist/dsh-charter-0.3.4.tgz` SHA-256 `44ca621de9bf5ef1dfe59c60be45d045ee3e137e15ffc03605d602371aaaf148`, 167 files.
+- exact artifact: `dist/dsh-charter-0.3.4.tgz` SHA-256 `e86909fb8ba6fdfe1213a68868d0dc1e631619752ffa6957a81e07c598c8857b`, 167 files.
 - isolated real-summary host check (same `85809bdb…` summary, no user record mutation):
   - consent v1 → Remote **domain failure** `CALIBRATION_CONSENT_REQUIRED` (not `gateway/internal`);
   - consent v2 → 3/3 batches, no truncation, 1 objective, 10 deliverables, 8 invariants,
@@ -96,5 +96,5 @@ Final real-summary run (same latest summary, isolated Host):
 the key deliverables and objective are retained.
 
 Evidence: `npm run check` 46 files / 566 tests; matrix 13/13 source `82d45bc`
-(`.tmp/compat-13-034-final.json`); artifact `44ca621d…` (167 files), package/recovery/profile/Gateway/UI
+(`.tmp/compat-13-034-final.json`); artifact `e86909f…` (167 files), package/recovery/profile/Gateway/UI
 smokes PASS.
