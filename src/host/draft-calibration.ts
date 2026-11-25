@@ -173,7 +173,7 @@ export interface CalibrationBatchConfig {
 
 export interface CalibrationExcludedRef {
   readonly ref: string
-  readonly reason: 'duplicate' | 'global-cap' | 'input-budget' | 'batch-failed' | 'non-contract'
+  readonly reason: 'duplicate' | 'global-cap' | 'input-budget' | 'batch-failed' | 'non-contract' | 'model-omitted'
 }
 
 export interface CalibrationBatchPlan {
@@ -693,6 +693,41 @@ function mergeCalibrationResults(
       })
     }
   }
+  // A model can omit a selected contract deliverable without a schema error.
+  // Keep the coverage ledger honest and restore source deliverables/objective
+  // before the global cap: a selected gate/commit item must not vanish.
+  const selectedItems = plan.batches.flatMap(batch => batch.selected)
+  const sourceItems = new Map(filterContractDraftItems(plan.source.draftItems).items.map(item => [item.ref, item]))
+  const covered = new Set(unique.flatMap(item => item.mergedFrom.map(entry => entry.ref)))
+  const missing = selectedItems.filter(item => !covered.has(item.ref))
+  const fallback: typeof unique = []
+  for (const item of missing) {
+    const source = sourceItems.get(item.ref)
+    if (source === undefined || (source.kind !== 'objective' && source.kind !== 'deliverable')) continue
+    if (unique.length + fallback.length >= plan.source.config.maxCandidates) continue
+    const canonical = canonicalCandidateText(source.text)
+    const existingIndex = unique.findIndex(entry => canonicalCandidateText(entry.text) === canonical)
+    if (existingIndex !== -1) {
+      const existing = unique[existingIndex]!
+      unique[existingIndex] = {
+        ...existing,
+        mergedFrom: [...existing.mergedFrom, { ref: source.ref, excerpt: source.text }].slice(0, MAX_MERGED_FROM),
+      }
+      covered.add(source.ref)
+      continue
+    }
+    fallback.push({
+      kind: source.kind,
+      text: source.text,
+      uncertain: true,
+      mergedFrom: [{ ref: source.ref, excerpt: source.text }],
+      batchIndex: -1,
+      oldRef: `fallback-${source.ref}`,
+    })
+    covered.add(source.ref)
+  }
+  unique.push(...fallback)
+
   const droppedCandidates = unique.splice(plan.source.config.maxCandidates)
   const capped = droppedCandidates.length
   const refMap = new Map<string, string>()
@@ -716,6 +751,10 @@ function mergeCalibrationResults(
       degraded.push({ ref, parts, reason: 'split' })
     }
   }
+  const modelOmitted = selectedItems
+    .map(item => item.ref)
+    .filter(ref => !candidates.some(candidate => candidate.mergedFrom?.some(entry => entry.ref === ref)))
+  for (const ref of modelOmitted) excludedRefs.push({ ref, reason: 'model-omitted' })
   const failedRefs = results.flatMap(result => result.failedRefs).map(ref => ({ ref, reason: 'batch-failed' as const }))
   excludedRefs.push(...failedRefs)
   for (const candidate of droppedCandidates) {
@@ -733,7 +772,7 @@ function mergeCalibrationResults(
     partial: completedBatches > 0 && (failedBatches > 0 || failedRefs.length > 0),
     excludedRefs,
     ...(conflicts.length === 0 ? {} : { conflicts }),
-    truncated: plan.inputTruncated || failedRefs.length > 0 || capped > 0,
+    truncated: plan.inputTruncated || failedRefs.length > 0 || capped > 0 || modelOmitted.length > 0,
     inputTruncated: plan.inputTruncated,
     ...(degraded.length === 0 ? {} : { degraded }),
     usage: {

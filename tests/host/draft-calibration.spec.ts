@@ -222,6 +222,28 @@ describe('adaptive calibration planning and batching (v8)', () => {
     expect(result.candidates[0]?.kind).toBe('deliverable')
   })
 
+  it('restores omitted deliverables/objective and records model omissions', async () => {
+    const omitSource = {
+      ...source,
+      draftItems: [
+        { ref: 'd-obj-0', kind: 'objective' as const, text: 'Ship the complete contract before rerunning 151.' },
+        { ref: 'd-del-0', kind: 'deliverable' as const, text: 'Run the final gate and commit.' },
+        { ref: 'd-inv-0', kind: 'invariant' as const, text: 'Never skip the Docker gate.' },
+      ],
+    }
+    const model = {
+      async *stream() {
+        yield { type: 'block-end', index: 0, block: { type: 'text', text: '[]' } }
+        yield { type: 'finish', reason: { kind: 'stop' } }
+      },
+    }
+    const result = await runCalibrationPlan(model as never, { provider: 'p', model: 'm' }, planCalibrationBatches(omitSource, batching), options)
+    expect(result.candidates.find(candidate => candidate.kind === 'objective')?.text).toBe('Ship the complete contract before rerunning 151.')
+    expect(result.candidates.find(candidate => candidate.kind === 'deliverable')?.text).toBe('Run the final gate and commit.')
+    expect(result.excludedRefs).toContainEqual({ ref: 'd-inv-0', reason: 'model-omitted' })
+    expect(result.truncated).toBe(true)
+  })
+
   it('restores the full source objective when a model shortens it', async () => {
     const sourceObjective = 'Fix the remaining 0.3.4 blockers before the 151 rerun; Harbor is out of scope.'
     const objectiveSource = {

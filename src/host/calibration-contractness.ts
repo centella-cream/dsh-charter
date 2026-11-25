@@ -17,7 +17,7 @@ const PENDING = /^(?:need(?:s)?(?: to)? confirm|to confirm|pending|tbd|open ques
 const CONFIG_FRAGMENT = /^(?:[A-Z][A-Z0-9_]{2,}\s*=|(?:[A-Z][A-Z0-9_]{2,}\s*,\s*)+[A-Z][A-Z0-9_]{2,}\s*=)/u
 const ACTION_LABEL = /^(?:T|D|F)[-_]?\d+[:：]\s*/iu
 const IMPERATIVE = /\b(?:add|apply|clarify|commit|confirm|create|decide|define|drop|ensure|fix|implement|keep|merge|pin|remove|restore|run|set|update|write)\b/iu
-const HARD_INVARIANT = /\b(?:must(?: not)?|never|forbidden|not allowed|do not|don't|shall|always|no\b.*\buntil)\b/iu
+const HARD_INVARIANT = /\b(?:must(?: not)?|never|forbidden|not allowed|do not|don't|shall|no\b.*\buntil)\b/iu
 const HARD_DECISION = /\b(?:remains?|owner|approval|responsibility)\b/iu
 const DELIVERABLE_AS_INVARIANT = /\b(?:forbidden|not allowed|must never|do not|don't|no\b.*\buntil)\b/iu
 const ACTION_START = /^(?:add|apply|clarify|commit|confirm|create|decide|define|drop|ensure|fix|implement|keep|merge|pin|remove|restore|run|set|update|write)\b/iu

@@ -638,7 +638,7 @@ export const charterCalibrationResultSchema = z.object({
   partial: z.boolean().optional(),
   excludedRefs: z.array(z.object({
     ref: z.string(),
-    reason: z.enum(['duplicate', 'global-cap', 'input-budget', 'batch-failed', 'non-contract']),
+    reason: z.enum(['duplicate', 'global-cap', 'input-budget', 'batch-failed', 'non-contract', 'model-omitted']),
   }).strict()).optional(),
   conflicts: z.array(z.object({
     refs: z.array(z.string()),
