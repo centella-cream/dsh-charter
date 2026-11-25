@@ -2419,6 +2419,67 @@ describe('automatic draft language follow', () => {
     expect(appliedItem?.evidence?.[0]?.excerpt?.length).toBeGreaterThan(0)
   })
 
+  it('does not append calibration calls or results to the Session transcript', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-charter-calibration-transcript-'))
+    roots.push(root)
+    const ctx = await mount(root, {
+      languageFollow: false,
+      calibration: {
+        enabled: true,
+        consentVersion: 2,
+        targetLanguage: 'auto',
+        maxInputBytes: 24_576,
+        maxOutputTokens: 2_048,
+        maxCandidates: 12,
+        batchCandidates: 4,
+        timeoutMs: 30_000,
+      },
+    })
+    const service = ctx.charter as CharterService
+    const session = ctx.sessions.create(SessionId('calibration-transcript'), { meta: { cwd: root, createdAt: 1_700_000_003_300 } })
+    await waitForReady(service, session)
+    await ctx.agents.register({
+      id: session.id,
+      session,
+      model: { current: () => ({ provider: 'fake', model: 'fake-model' }) },
+    } as unknown as Agent)
+    const append = session as unknown as { append(type: string, data: unknown): unknown }
+    append.append('compaction/summary', {
+      summary: [{
+        type: 'text',
+        text: `## Critical Context\n${Array.from({ length: 9 }, (_, index) => `- Must keep constraint ${index}.`).join('\n')}\n`,
+      }],
+    })
+    const draft = await service.bootstrapDraft(session.id, 'en')
+    expect(draft.available).toBe(true)
+    if (!draft.available) return
+    const transcript: string[] = []
+    const originalAppend = append.append.bind(append)
+    append.append = ((type: string, data: unknown) => {
+      transcript.push(type)
+      return originalAppend(type, data)
+    }) as typeof append.append
+    ctx.provide('llm', {
+      async *stream(options: { messages?: readonly { content?: readonly { text?: string }[] }[] }) {
+        const prompt = options.messages?.[0]?.content?.[0]?.text ?? ''
+        const refs = [...prompt.matchAll(/^- (d-[a-z]+-\d+) \[/gmu)].map(match => match[1]!)
+        const output = JSON.stringify(refs.map(ref => ({ kind: 'invariant', text: `Calibrated ${ref}.`, mergedFrom: [ref] })))
+        yield { type: 'block-end', index: 0, block: { type: 'text', text: output } }
+        yield { type: 'finish', reason: { kind: 'stop' } }
+      },
+    } as never)
+    const run = await service.calibrateBootstrap({
+      sessionId: session.id,
+      draftHandle: draft.proposal.draftHandle!,
+      locale: 'en',
+      consentVersion: 2,
+      awaitCalibration: true,
+    })
+    expect(run.pending).toBe(false)
+    expect(run.candidates.length).toBeGreaterThan(0)
+    expect(transcript).toEqual([])
+  })
+
   it('requires an exact objective c-* apply and accepts the calibrated objective when exact', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-charter-calibration-objective-'))
     roots.push(root)
