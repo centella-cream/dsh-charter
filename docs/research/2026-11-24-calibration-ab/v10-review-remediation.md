@@ -39,7 +39,7 @@
 - `npm run check`: 46 files / **563 tests** PASS.
 - 13-version source matrix: 13/13 PASS, source `78fcc19`
   (`.tmp/compat-13-034-v10-p3.json`).
-- exact artifact: `dist/dsh-charter-0.3.4.tgz` SHA-256 `8971f8a613fecd934bbb167b389d8cf414380c88282d7661eb8249bba55c64a7`, 167 files.
+- exact artifact: `dist/dsh-charter-0.3.4.tgz` SHA-256 `d1dd390e4f52f0c9ff468f5cd9f455ed1509689cbfffa507ec7507b9eb7df846`, 167 files.
 - isolated real-summary host check (same `85809bdb…` summary, no user record mutation):
   - consent v1 → Remote **domain failure** `CALIBRATION_CONSENT_REQUIRED` (not `gateway/internal`);
   - consent v2 → 3/3 batches, no truncation, 1 objective, 10 deliverables, 8 invariants,
@@ -47,6 +47,10 @@
   - T-1/T-2/T-3 are deliverables; objective retained; no heading/status/optional candidates.
 - exact-artifact package smoke, recovery smoke, fresh-profile Web smoke, Gateway acceptance on
   0.2.1-rc.3/rc.4 and `verify:ui-metrics --gate=final` PASS after the final pack.
+
+## Plugin detail localization verification
+
+DSH 0.2.2-rc.5 `@deepseek-ai/dsh-plugin-detail` does **not** select localized README files by suffix: its fallback list is only `README.md`, `readme.md`, `Readme.md`, `README.markdown`, `README`. Chinese detail is selected by `meta.detail` in `locale/zh.json` (English chain falls back to `locale/en.json` or README). The previous `README.zh.md` filename is therefore unchanged; `locale/zh.json` now points to it with `meta.detail: "README.zh.md"` and `locale/en.json` points to `README.md`. The package smoke now requires both `meta.detail` values to name packaged Markdown files.
 
 ## Residual / recorded P3
 

@@ -1,6 +1,7 @@
 {
   "meta": {
     "title": "Session charter",
-    "description": "Version 0.3.4 (development candidate). A durable, user-owned session charter that survives context compaction: Review Center drafts, optional consent-gated model calibration (0.3.4), automatic zh/en language following, and a dependency graph. Calibration sends compaction draft text and current charter items to the configured model only after opt-in."
+    "description": "Version 0.3.4 (development candidate). A durable, user-owned session charter that survives context compaction: Review Center drafts, optional consent-gated model calibration (0.3.4), automatic zh/en language following, and a dependency graph. Calibration sends compaction draft text and current charter items to the configured model only after opt-in.",
+    "detail": "README.md"
   }
 }

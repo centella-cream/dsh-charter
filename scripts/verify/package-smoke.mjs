@@ -351,6 +351,12 @@ function verifyArtifactContents({ artifact, consumer, emptyNpmrc, run }) {
     if (!meta.description.includes(manifest.version)) {
       throw new Error(`${path} description does not mention the current version ${manifest.version}`)
     }
+    if (typeof meta.detail !== 'string' || !/\.(?:md|markdown)$/u.test(meta.detail)) {
+      throw new Error(`${path} is missing a Markdown meta.detail`)
+    }
+    if (!files.has(meta.detail)) {
+      throw new Error(`${path} meta.detail points at missing ${meta.detail}`)
+    }
   }
   for (const [subpath, target] of Object.entries(packedManifest.exports)) {
     const targets = typeof target === 'string' ? [target] : Object.values(target)

@@ -118,7 +118,7 @@ v10 changes:
 
 P3 review follow-up: conflict refs now use L1 merged-from refs (or empty for unprovenanced objectives), with a regression test; quota wording aligned to 30%; data-in-package accepted as recorded. Same real-summary validation after v10: 3/3 batches, no truncation, 1 objective, 10 deliverables,
 8 invariants, 17 non-contract refs, 5 calls, 6,499 output tokens, 28.1 s. Final artifact
-`8971f8a613fecd934bbb167b389d8cf414380c88282d7661eb8249bba55c64a7` (167 files); 46 files / 563 tests;
+`d1dd390e4f52f0c9ff468f5cd9f455ed1509689cbfffa507ec7507b9eb7df846` (167 files); 46 files / 563 tests;
 13-version matrix source `78fcc19`. This remains engineering evidence, not formal A/B acceptance.
 
 ## Implementation evidence
@@ -126,7 +126,7 @@ P3 review follow-up: conflict refs now use L1 merged-from refs (or empty for unp
 - Engineering run artifact: `dist/dsh-charter-0.3.4.tgz` SHA-256
   `841eed5a0254e2af5b779c52d084b787288f5694ade2b5c522dab52d51dff5e2`.
 - Final source candidate after the partial-UI/disclosure changes: SHA-256
-  `8971f8a613fecd934bbb167b389d8cf414380c88282d7661eb8249bba55c64a7` (167 files).
+  `d1dd390e4f52f0c9ff468f5cd9f455ed1509689cbfffa507ec7507b9eb7df846` (167 files).
 - `npm run check`: 46 files / 563 tests PASS; token coverage PASS over 13 declared DSH versions.
 - 13-version source matrix PASS (`.tmp/compat-13-034-v8.json`, source `2737b75`).
 - Exact-artifact package smoke, packed recovery smoke, fresh DSH 0.2.2-rc.5 Web profile smoke, and
