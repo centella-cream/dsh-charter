@@ -624,9 +624,11 @@ function mergeCalibrationResults(
           ? { ...rawCandidate, kind: 'deliverable' as const }
           : rawCandidate
       if (candidate.kind === 'objective') {
-        const refsForConflict = refs.length === 0 ? [candidate.ref] : refs
         if (plan.source.hasObjective || !batchHasObjective || acceptedObjective) {
-          conflicts.push({ refs: refsForConflict, reason: 'objective' })
+          // Conflict provenance must be L1 refs. A model-created objective with
+          // no mergedFrom has no valid final ref yet; record an empty ref set
+          // rather than a batch-local c-<i> that does not exist after merge.
+          conflicts.push({ refs, reason: 'objective' })
           continue
         }
         acceptedObjective = true
@@ -643,7 +645,13 @@ function mergeCalibrationResults(
           uncertain: current.uncertain || candidate.uncertain,
           mergedFrom: mergedFrom.slice(0, MAX_MERGED_FROM),
         }
-        if (current.kind !== candidate.kind) conflicts.push({ refs: [current.oldRef, candidate.ref], reason: 'near-duplicate' })
+        if (current.kind !== candidate.kind) {
+          conflicts.push({
+            refs: [...current.mergedFrom.map(item => item.ref), ...(candidate.mergedFrom ?? []).map(item => item.ref)]
+              .filter((ref, index, all) => all.indexOf(ref) === index),
+            reason: 'near-duplicate',
+          })
+        }
         continue
       }
       byKey.set(key, unique.length)

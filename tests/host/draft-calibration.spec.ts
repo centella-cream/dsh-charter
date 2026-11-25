@@ -270,6 +270,33 @@ describe('adaptive calibration planning and batching (v8)', () => {
     expect(result.conflicts?.some(conflict => conflict.reason === 'objective')).toBe(true)
   })
 
+  it('keeps conflict provenance on L1 refs rather than batch-local c refs', async () => {
+    const conflictSource = {
+      ...source,
+      draftItems: Array.from({ length: 9 }, (_, index) => ({ ref: `d-inv-${index}`, kind: 'invariant' as const, text: `Requirement ${index} must remain stable.` })),
+    }
+    let call = 0
+    const model = {
+      async *stream(options: never) {
+        call += 1
+        const refs = promptRefs(options)
+        const output = JSON.stringify([{
+          kind: call === 1 ? 'invariant' : 'deliverable',
+          text: 'Same constraint.',
+          mergedFrom: [refs[0] ?? 'd-inv-0'],
+        }])
+        yield { type: 'block-end', index: 0, block: { type: 'text', text: output } }
+        yield { type: 'finish', reason: { kind: 'stop' } }
+      },
+    }
+    const result = await runCalibrationPlan(model as never, { provider: 'p', model: 'm' }, planCalibrationBatches(conflictSource, batching), options)
+    const conflicts = result.conflicts ?? []
+    expect(conflicts.some(conflict => conflict.reason === 'near-duplicate')).toBe(true)
+    for (const conflict of conflicts) {
+      for (const ref of conflict.refs) expect(ref).toMatch(/^d-/u)
+    }
+  })
+
   it('plans bounded batches and keeps every selected ref', () => {
     const plan = planCalibrationBatches(source, batching)
     expect(plan.batches).toHaveLength(4)

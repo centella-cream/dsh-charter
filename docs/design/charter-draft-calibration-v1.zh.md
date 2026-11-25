@@ -515,7 +515,7 @@ security、200ms、tests；没有 max-tokens 整体失败，也没有候选截�
   - 命中的 ref 进入 `excludedRefs` 的 `non-contract`，原始 L1 仍可见，不静默丢弃。
 - **动作重分类**：`T-n`/`D-n`/`F-n` 加 imperative 动词的条目从 invariant 改为 deliverable；
   deliverable 中的硬约束（forbidden/not allowed 等）可回收为 invariant。
-- **planner 配额**：objective 先占位，永不被 global-cap 排除；deliverable 预留约 30% 候选位（至少 25%）；
+- **planner 配额**：objective 先占位，永不被 global-cap 排除；deliverable 预留 30% 候选位（向上取整）；
   invariant 填剩余，再补 deliverable。只有契约项被 cap/预算裁掉时 `inputTruncated=true`；
   `non-contract` 过滤不算契约不完整，UI 的 incomplete 状态也不因它出现。
 - **prompt v2**：system prompt 明确只输出 durable objective/invariant/deliverable；显式丢弃
