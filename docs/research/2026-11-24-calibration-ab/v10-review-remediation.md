@@ -36,10 +36,10 @@
 
 ## Verification
 
-- `npm run check`: 46 files / **565 tests** PASS.
+- `npm run check`: 46 files / **566 tests** PASS.
 - 13-version source matrix: 13/13 PASS, source `78fcc19`
   (`.tmp/compat-13-034-v10-p3.json`).
-- exact artifact: `dist/dsh-charter-0.3.4.tgz` SHA-256 `293b47a83b6fc492acb59d00645814c29124924323d4404d933cfcf885ee82da`, 167 files.
+- exact artifact: `dist/dsh-charter-0.3.4.tgz` SHA-256 `44ca621de9bf5ef1dfe59c60be45d045ee3e137e15ffc03605d602371aaaf148`, 167 files.
 - isolated real-summary host check (same `85809bdb…` summary, no user record mutation):
   - consent v1 → Remote **domain failure** `CALIBRATION_CONSENT_REQUIRED` (not `gateway/internal`);
   - consent v2 → 3/3 batches, no truncation, 1 objective, 10 deliverables, 8 invariants,
@@ -86,15 +86,15 @@ Final real-summary run (same latest summary, isolated Host):
 | Metric | v10 | v11 |
 | --- | ---: | ---: |
 | objective | truncated to out-of-scope clause | **exact source objective** |
-| candidates | 26 | 28 |
-| deliverables | 10 | 15 (all contract deliverables selected; key `d-del-12` retained) |
+| candidates | 26 | 31 |
+| deliverables | 10 | 18 (planner selected all; source fallback restores model-omitted `d-del-12`) |
 | batches | 4/4 | 4/4 |
-| calls / output tokens / time | 5 / 11,504 / 30.4 s | 4 / 8,482 / 14.0 s |
-| `truncated` | true; 6 global-cap | true; **2 invariants** global-cap; no key deliverable capped |
+| calls / output tokens / time | 5 / 11,504 / 30.4 s | 5 / 7,555 / 38.2 s |
+| `truncated` | true; 6 global-cap | true; 1 invariant global-cap + 1 invariant model-omitted; no deliverable lost |
 
-`truncated=true` remains honest because the 32-candidate cap excludes two lower-priority invariants;
+`truncated=true` remains honest because one lower-priority invariant is capped and one is model-omitted; a model-omitted deliverable is restored from source;
 the key deliverables and objective are retained.
 
-Evidence: `npm run check` 46 files / 565 tests; matrix 13/13 source `7ef102d`
-(`.tmp/compat-13-034-opt.json`); artifact `293b47a8…` (167 files), package/recovery/profile/Gateway/UI
+Evidence: `npm run check` 46 files / 566 tests; matrix 13/13 source `82d45bc`
+(`.tmp/compat-13-034-final.json`); artifact `44ca621d…` (167 files), package/recovery/profile/Gateway/UI
 smokes PASS.

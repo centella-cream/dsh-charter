@@ -548,7 +548,7 @@ v9 审查暴露的发布门禁问题已在 v10 修复：
 - **v10 实测**：同一真实 summary，consent v1 返回领域失败 `CALIBRATION_CONSENT_REQUIRED`（非
   `gateway/internal`）；consent v2 得到 1 objective / 10 deliverable / 8 invariant，3/3 批、
   `truncated=false`、17 条 `non-contract`、5 次调用、6,499 output tokens、28.1s；T-1/T-2/T-3
-  均为 deliverable。最终 artifact `293b47a8…`（167 文件）；`npm run check` 565 测试。
+  均为 deliverable。最终 artifact `44ca621d…`（167 文件）；`npm run check` 566 测试。
 
 ### 5.14 v11 目标完整性与交付物覆盖（2026-11-25）
 
@@ -560,9 +560,9 @@ v9 审查暴露的发布门禁问题已在 v10 修复：
 - **planner 覆盖**：先选全部契约 deliverable，再用 invariant 填充（保留少量 invariant 地板），
   修正旧的 slice 末端索引错误；`must` 型交付要求不再被误判为 invariant，`Just changed ...` 这类
   状态说明被过滤。
-- **实测**：同一 summary，objective 恢复完整；4/4 批，4 次调用，8,482 output tokens，14.0s；
-  1 objective / 15 deliverable / 12 invariant；32 个计划候选中仅 2 个低优先级 invariant 被 cap，
-  关键 gate/commit deliverable 保留；`truncated=true` 如实表示该 2 条未纳入。
+- **实测（最终覆盖修复后）**：同一 summary，objective 恢复完整；4/4 批，5 次调用，7,555 output tokens，38.2s；
+  1 objective / 18 deliverable / 12 invariant；模型遗漏的 `d-del-12` gate/commit 由源 deliverable 恢复；
+  1 条 invariant global-cap、1 条 model-omitted；`truncated=true` 如实反映这两条未纳入。
 
 ## 6. Provenance 与 apply 合同（评审 P0-A/P0-2/P0-3/P0-C）
 

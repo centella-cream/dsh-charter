@@ -118,25 +118,25 @@ v10 changes:
 
 P3 review follow-up: conflict refs now use L1 merged-from refs (or empty for unprovenanced objectives), with a regression test; quota wording aligned to 30%; data-in-package accepted as recorded. Same real-summary validation after v10: 3/3 batches, no truncation, 1 objective, 10 deliverables,
 8 invariants, 17 non-contract refs, 5 calls, 6,499 output tokens, 28.1 s. Final artifact
-`293b47a83b6fc492acb59d00645814c29124924323d4404d933cfcf885ee82da` (167 files); 46 files / 565 tests;
-13-version matrix source `7ef102d`. This remains engineering evidence, not formal A/B acceptance.
+`44ca621de9bf5ef1dfe59c60be45d045ee3e137e15ffc03605d602371aaaf148` (167 files); 46 files / 566 tests;
+13-version matrix source `82d45bc`. This remains engineering evidence, not formal A/B acceptance.
 
 ## v11 objective/quota optimization (2026-11-25)
 
 The newer export (`seq 44692`) showed a shortened objective and a capped gate deliverable. v11 falls back
 to the source objective when a model objective loses stable anchors or is materially shorter, and selects
 all contract deliverables before invariants. The same summary now keeps the exact source objective,
-retains every contract deliverable including the final gate/commit item, and leaves only two
-lower-priority invariants over the 32-candidate cap. 4/4 batches, 4 calls, 8,482 output tokens, 14.0 s;
-`npm run check` 46 files / 565 tests; matrix source `7ef102d`; artifact `293b47a8…` (167 files).
+restores the model-omitted final gate/commit item from source, and leaves one invariant over the cap plus
+one model-omitted invariant visible. 4/4 batches, 5 calls, 7,555 output tokens, 38.2 s;
+`npm run check` 46 files / 566 tests; matrix source `82d45bc`; artifact `44ca621d…` (167 files).
 
 ## Implementation evidence
 
 - Engineering run artifact: `dist/dsh-charter-0.3.4.tgz` SHA-256
   `841eed5a0254e2af5b779c52d084b787288f5694ade2b5c522dab52d51dff5e2`.
 - Final source candidate after the partial-UI/disclosure changes: SHA-256
-  `293b47a83b6fc492acb59d00645814c29124924323d4404d933cfcf885ee82da` (167 files).
-- `npm run check`: 46 files / 565 tests PASS; token coverage PASS over 13 declared DSH versions.
+  `44ca621de9bf5ef1dfe59c60be45d045ee3e137e15ffc03605d602371aaaf148` (167 files).
+- `npm run check`: 46 files / 566 tests PASS; token coverage PASS over 13 declared DSH versions.
 - 13-version source matrix PASS (`.tmp/compat-13-034-v8.json`, source `2737b75`).
 - Exact-artifact package smoke, packed recovery smoke, fresh DSH 0.2.2-rc.5 Web profile smoke, and
   Gateway acceptance on DSH 0.2.1-rc.3/rc.4 PASS on the final bytes.
