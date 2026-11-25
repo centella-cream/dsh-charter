@@ -858,6 +858,10 @@ concurrency、`inputTruncated`/`truncated`/`partial` 组合；动态估算函数
 验证**全部 batch** 调用不进 session transcript、宿主用量面可见调用（M0-P5 线上复核）。
 v7 单次实现已实测默认失败，v8 必须复跑并通过；不通过不得进入 A/B。
 
+> **2026-11-25 验收记录：** 英文 source → 中文草案的 Manual 功能验收已通过；中文 → 英文不再要求
+> 人工验收。多批 transcript 隔离已由 Host 测试覆盖（calibration 期间 Session append 必须为空）。
+> 完整 L4 矩阵（暗/亮、全宽度、键盘/AX）仍是独立人工门禁。
+
 ### L4 UI / 浏览器 / AT
 
 diff 展开、用原文、聚合/uncertain/split 徽章、truncated 状态行、consent dialog、objective
@@ -869,6 +873,11 @@ diff 展开、用原文、聚合/uncertain/split 徽章、truncated 状态行、
 13 版本 `ctx.get('llm')` 可用性 + `BlockAssembler`/`GenerateOptions` 最早声明版本兼容性 +
 strict peers/frozen lock 安装图校验 + L2-8/L2-9。不新增 dsh-llm peer（§5.1），依赖图校验
 维持 0.3.3 的形状。
+
+> **2026-11-25 发布负责人决定：** A/B 协议 1 **waived**——该功能是用户手动 opt-in 的草案改写，
+> 不适合构造“盲评两臂”的验收；不再把离线盲评作为 0.3.4 发布门禁，也不据此宣称效果收益。
+> 协议 2 同样不作为 0.3.4 门禁。L3 人工语言门禁：**英文 source → 中文草案已由用户手动验收通过**；
+> **中文 source → 英文草案不要求人工验收**（概率低），保留自动测试覆盖。
 
 ### A/B：两个独立协议（v3 拆分，评审 P1-6）
 
@@ -978,9 +987,9 @@ round-trip、peer 图校验、trusted-attachment 防伪造测试、**v8 分批/�
       记录 batchCount/并发/tokens/墙钟；v7 失败案例作为回归 fixture。
 - [ ] 13 版本在无 `dsh-llm` peer 声明下正常加载并使用可选 `ctx.get('llm')`。
 - [ ] capability 矩阵写入 compatibility 文档；服务缺失形态实测。
-- [ ] L3 真实模型人工门禁（zh/en × effort 档位）完成并记录 tokens/耗时/transcript 洁净。
-- [ ] L4 浏览器/AT/冻结稿对照按 gui-v1 §8 执行。
-- [ ] A/B 协议 1 按预注册执行并如实记录（含不达标时的默认关闭处置）；协议 2 记录归档。
+- [x] L3 人工语言门禁按发布负责人决定：en→zh 手动验收通过；zh→en 人工验收 waived；tokens/耗时/transcript 洁净有自动/隔离证据。
+- [ ] L4 完整浏览器/AT/冻结稿矩阵仍待人工；en→zh 草案功能手动验收已通过。
+- [x] A/B 协议 1/2 按发布负责人 2026-11-25 决定 waived；不据此宣称效果收益，默认仍关闭。
 - [ ] 隐私披露文案（中英）评审；`consentVersion` 强校验路径测试；默认关闭验证。
 - [ ] `npm run check`、exact artifact、fresh profile、Promotion 全套按 docs/releasing.md。
 
