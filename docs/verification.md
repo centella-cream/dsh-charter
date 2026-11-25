@@ -3,22 +3,23 @@
 English | [中文](verification.zh.md)
 
 > **Status:** Active — current operating record.
-> **Version scope:** `0.3.4` draft-calibration development candidate; latest published release `0.3.3` (2026-11-24); previous published `0.3.2`.
+> **Version scope:** `0.3.4` draft-calibration release, published 2026-11-25; previous published `0.3.3` (2026-11-24); previous `0.3.2`.
 > **Baseline:** 2026-11-23
 
-Verification date: 2026-11-25. Current source version: `0.3.4`; latest published release is `0.3.3` (previous `0.3.2`). This is the current evidence record; historical per-commit narratives live in Git
+Verification date: 2026-11-25. Current source/published version: `0.3.4`; previous published release is `0.3.3` (previous `0.3.2`). This is the current evidence record; historical per-commit narratives live in Git
 history and the Changelog. Temporary directories, profiles, tarballs, and fetched HTML live under `.tmp/` and are
 excluded from the published package.
 
+- **Released:** `0.3.4` on 2026-11-25; npm `latest`/`next` and GitHub Release `v0.3.4`; tag `v0.3.4`; exact npm/GitHub tarball SHA-256 `954efd67217e7979a1c64553647a9fb7bb105f17d3442ffbdf58fcd3236acc41`, 7,594,915 B; Release candidate run `45582847333`; Promotion run `45584815676`; source/release commits `a5ca621` / `ecb8cc3`.
 Environment: macOS, Node `v22.23.1`, npm `12.0.2`, pnpm `12.3.4`. Local DSH development baseline:
 `0.2.2-rc.5` (the current npm `latest`/`next`).
 
-## 1. Current status (2026-11-24)
+## 1. Current status (2026-11-25)
 
-- Latest published release: `0.3.3` (npm `latest`/`next`, GitHub Release `v0.3.3`; exact artifact digest is recorded in the C+1 checksum commit and release evidence).
-- Previous published release: `0.3.2` (SHA-256 `9dcb82ae34eaaeb6d266bb98f3e1f92f3a0798042ce3dc282abe9173ff79e056`).
+- Latest published release: `0.3.4` (npm `latest`/`next`, GitHub Release `v0.3.4`; exact artifact SHA-256 `954efd67…`, 7,594,915 B).
+- Previous published release: `0.3.3` (SHA-256 `707043d3…`); earlier `0.3.2` (SHA-256 `9dcb82ae34eaaeb6d266bb98f3e1f92f3a0798042ce3dc282abe9173ff79e056`).
 - Previous releases: `0.3.1`, `0.3.0`, `0.2.2`; published tags and bytes are immutable.
-- Current source line: `0.3.4` draft-calibration development candidate, not published. `0.3.3` is the latest published release; `0.3.4` adds opt-in calibration, additive Remote/apply fields, and keeps record schema 2 and the standing prompt/tool surface unchanged.
+- Current source line: `0.3.4` draft-calibration release, published 2026-11-25. It adds opt-in calibration, additive Remote/apply fields, and keeps record schema 2 and the standing prompt/tool surface unchanged.
 - Source gates on the current tree: `npm run check` (46 files / 567 tests), token coverage 41 static + 1 dynamic over 13 declared DSH versions, and `verify:ui-metrics --gate=final`.
 - Compatibility: thirteen declared DSH versions are local-matrix verified (`.tmp/compat-13-034-final.json`, source `82d45bc`); latest DSH `0.2.2-rc.5` is the primary baseline. This is local evidence, not a CI claim. Fresh 0.2.2-rc.5 Web-profile install and 0.2.1-rc.3/rc.4 Gateway checks pass on the exact candidate.
 - Post-release fresh exact CLI install in an isolated `DSH_HOME` resolved `dsh-charter@0.3.2` from npm and
@@ -352,8 +353,8 @@ rm -rf .tmp
 - Automatic language following: The first `bootstrapDraft` request returns the source draft with `language.status=pending`; the client renders it immediately and sends a second `awaitTranslation:true` request, which resolves the current session model in bounded batches with local streamed-text assembly, requires a complete strict-JSON `{items:[{ref,text}]}` response, and falls back to source text with an explicit `language.status` when the model is absent or invalid. Translation is batched by count/source bytes (12 items / 6000 B, at most four concurrent calls) so a 39-item draft does not hit a single response cap. Each batch has its own timeout and one split retry; failures keep source text and produce `language.status=partial`; an optional `languageFollowProvider`/`languageFollowModel` pair overrides the session model. Unit tests cover success, malformed output, max-tokens, missing refs, multi-batch merging, and partial merge; composition tests cover fake-model translation, translated apply, custom translation route, partial status, and `languageFollow: false`; client tests cover non-zh/en structured bootstrap, missing/failing-method fallback, and business-error propagation. A legacy golden fixture locks the 0.3.2 extraction output.
 - Manual acceptance (2026-11-23): user confirmed the 39-item en→zh Desktop draft after the adaptive translation changes; zh→en was explicitly waived by the user and is covered by the automated target-zh translation test. README Pane/graph screenshots were recaptured from the live `v0.3.3` Desktop view.
 - Legacy golden fixture contains 10 synthetic summaries (accepted deviation from the design's ≥10 real-summary target; real summaries were not available to commit).
-- Candidate artifact `dist/dsh-charter-0.3.3.tgz` SHA-256 `707043d343e6a0b14d4549e6bb92b29f28fa197d99bb48160b796b4e50c8552f`; exact-artifact package smoke and packed recovery smoke PASS. Thirteen-version matrix PASS (`.tmp/compat-13-adaptive-final.json`, source `26353d2`; includes current DSH `0.2.2-rc.5`); Web and Desktop profiles install the same `707043d…` artifact and their 143 package files are byte-identical. The Web profile boots through the DSH `0.2.2-rc.5` CLI and reports `v0.3.3`; Desktop app is `0.2.2-rc.5`, but its profile is Electron-owned (CLI boot refused by design), so the native window remains a manual gate. The candidate is not published. The live en→zh case is user-confirmed; zh→en is automated-only by user decision. A live 39-item/7589-byte summary produced `translation finished with aborted` under the previous 10s background timeout; batching, per-batch timeouts with split retry, partial merge, a 60s background window, an optional dedicated translation route, and DeepSeek `reasoningEffort: off` are the fix and require re-running that manual case.
-## 1.5 0.3.4 draft calibration (2026-11-24, development candidate)
+- Candidate artifact `dist/dsh-charter-0.3.3.tgz` SHA-256 `707043d343e6a0b14d4549e6bb92b29f28fa197d99bb48160b796b4e50c8552f`; exact-artifact package smoke and packed recovery smoke PASS. Thirteen-version matrix PASS (`.tmp/compat-13-adaptive-final.json`, source `26353d2`; includes current DSH `0.2.2-rc.5`); Web and Desktop profiles install the same `707043d…` artifact and their 143 package files are byte-identical. The Web profile boots through the DSH `0.2.2-rc.5` CLI and reports `v0.3.3`; Desktop app is `0.2.2-rc.5`, but its profile is Electron-owned (CLI boot refused by design), so the native window remains a manual gate. This candidate was later published as `0.3.3`. The live en→zh case is user-confirmed; zh→en is automated-only by user decision. A live 39-item/7589-byte summary produced `translation finished with aborted` under the previous 10s background timeout; batching, per-batch timeouts with split retry, partial merge, a 60s background window, an optional dedicated translation route, and DeepSeek `reasoningEffort: off` are the fix and require re-running that manual case.
+## 1.5 0.3.4 draft calibration (published 2026-11-25)
 
 - Source gates: `npm run check` = 46 files / 567 tests PASS; token coverage PASS over 13 declared DSH versions; `verify:ui-metrics --gate=final` PASS.
 - Implemented: opt-in calibration config/consent gate, Host `ctx.llm` one-shot strict JSON call, semantic aggregation/readable rewrite validation, `c-*` candidate refs with `mergedFrom`, trusted Host-only evidence excerpts, additive `applyBootstrap.calibrationRunId`, two new Remote methods and basic review UI (calibrate, uncertainty/merge/split badges, original excerpt, use-original, consent disclosure, objective warning, diagnostics usage).

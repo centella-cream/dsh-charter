@@ -5,8 +5,8 @@ English | [中文](version-roadmap.zh.md)
 > This English file is a non-normative summary. The Chinese roadmap is normative when details differ.
 >
 > **Status:** Active — version and scope authority.
-> **Version scope:** 0.1 history, the published 0.2 line, the published 0.3.0/0.3.1/0.3.2 line, and the implemented 0.3.3 candidate.
-> **Baseline:** 2026-11-24; `0.2.2` and `0.3.0`–`0.3.3` are published (`0.3.3` on 2026-11-24); `0.3.4` is the decided draft-calibration patch line (authority: [charter-draft-calibration-v1.zh.md](charter-draft-calibration-v1.zh.md)); `0.4.0` is the decided full contract-capability upgrade (authority: [charter-execution-v1.zh.md](charter-execution-v1.zh.md)).
+> **Version scope:** 0.1 history, the published 0.2 line, the published 0.3.0/0.3.1/0.3.2/0.3.3 line, and the published 0.3.4.
+> **Baseline:** 2026-11-24; `0.2.2` and `0.3.0`–`0.3.3` are published (`0.3.3` on 2026-11-24); `0.3.4` published 2026-11-25 is the draft-calibration patch line (authority: [charter-draft-calibration-v1.zh.md](charter-draft-calibration-v1.zh.md)); `0.4.0` is the decided full contract-capability upgrade (authority: [charter-execution-v1.zh.md](charter-execution-v1.zh.md)).
 > **Authority:** Chinese [version-roadmap.zh.md](version-roadmap.zh.md) is normative for scope.
 > **Supersedes / Superseded by:** none / none
 
@@ -54,11 +54,11 @@ rc.5 fixed the correctness defect inside the promised 0.1 workflow: previously e
 - `0.3.2` was published on 2026-11-16 (accessibility/evidence convergence). `0.3.3` was published on 2026-11-24
   (structured draft extraction + automatic zh/en language following with `languageFollow` opt-out); tags, assets,
   and npm bytes are immutable.
-- `0.3.4` is the current development line (contract-draft calibration patch, decided 2026-11-24): semantic
+- `0.3.4` is the current published line (contract-draft calibration patch, decided 2026-11-24): semantic
   aggregation, readable rewriting, preserved 0.3.3 language-following fallback, original-vs-calibrated diff review; opt-in,
   zero record-schema/prompt/tool change. Positioning constraint: it improves draft quality and review efficiency
   only and never claims improved long-horizon task completion. Authority:
-  [charter-draft-calibration-v1.zh.md](charter-draft-calibration-v1.zh.md) (`Implemented — pending release acceptance`).
+  [charter-draft-calibration-v1.zh.md](charter-draft-calibration-v1.zh.md) (`Historical`, published 0.3.4).
 - `0.4.0` is the next feature line (full contract-capability upgrade, scope decided 2026-11-24): readiness/ready
   queue, stall detection, execution memory (decision/environment/evidence/progress proposal, record schema v3 +
   downgrade fence), relation proposal, history-completion drafts, conditional LLM assessor. Authority:
@@ -342,6 +342,6 @@ required before implementation. 0.4.0 ships complete: E1–E4 are all release ga
 conditional assessor (E5) is not a release gate.
 
 Authority: [charter-gui-v1.zh.md](charter-gui-v1.zh.md) (`Active`), [the extraction design](charter-draft-extraction-v1.zh.md)
-(`Active`, released with 0.3.3), [the calibration design](charter-draft-calibration-v1.zh.md) (`Implemented — pending release acceptance`,
+(`Active`, released with 0.3.3), [the calibration design](charter-draft-calibration-v1.zh.md) (`Historical`, published 0.3.4,
 0.3.4 development scope), and [the execution upgrade design](charter-execution-v1.zh.md) (`Proposed`,
 0.4.0 scope). Neither 0.3.4 nor 0.4.0 is published until the normal release gates and human acceptance pass.

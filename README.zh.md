@@ -4,7 +4,7 @@
 [![GitHub](https://img.shields.io/badge/GitHub-centella--cream%2Fdsh--charter-181717?logo=github)](https://github.com/centella-cream/dsh-charter)
 [![DSH](https://img.shields.io/badge/DSH-13%20verified%20versions-4b6bfb)](docs/design/compatibility.zh.md)
 [![Node](https://img.shields.io/badge/node-%5E22.19%20%7C%7C%20%3E%3D24-339933)](package.json)
-[![Status: 0.3.4 development candidate](https://img.shields.io/badge/status-0.3.4%20dev-brightgreen)](#状态)
+[![Status: 0.3.4 published](https://img.shields.io/badge/status-0.3.4%20published-brightgreen)](#状态)
 
 [English](README.md) | 中文
 
@@ -20,11 +20,11 @@ Pane 把工作区、审阅中心和诊断放在同一文档列中。截图只裁
 
 ## 状态
 
-- **当前已发布：**`0.3.3` — 结构化草案抽取、自动中英文语言跟随、重复折叠、稳定草案 ref、非阻塞后台翻译和自适应分批翻译。
-- **开发候选：**`0.3.4` — opt-in、consent 门禁的草案校准：语义聚合、可读改写、原文/校准稿审阅、`c-*` apply provenance、真实模型校准状态与诊断。**发布候选：**v8/v9/v10/v11 已通过真实 10 轮默认参数工程测试和最新真实 summary 审阅；Web profile 校准流程已人工验收；A/B、zh→en、完整 L4 与 Desktop 正式证据对 0.3.4 waived；candidate/promotion workflow 待执行。
-- **上一版本：**`0.3.2` — 无障碍/证据收敛；`0.3.1`、`0.3.0` 是更早基线。
+- **当前已发布：**`0.3.4` — opt-in 草案校准；此前 `0.3.3` 为结构化草案抽取与语言跟随。
+- **已发布版本：**`0.3.4` — opt-in、consent 门禁的草案校准：语义聚合、可读改写、原文/校准稿审阅、`c-*` apply provenance、真实模型校准状态与诊断。**2026-11-25 已发布：**npm `latest`/`next` 与 GitHub Release `v0.3.4`；npm tarball SHA-256 `954efd67…`（7,594,915 B）。v8/v9/v10/v11 已通过真实 10 轮默认参数工程测试和最新真实 summary 审阅；Web profile 校准流程已人工验收；A/B、zh→en、完整 L4 与 Desktop 正式证据对 0.3.4 waived。
+- **上一版本：**`0.3.3` — 结构化草案抽取与自动语言跟随；`0.3.2`、`0.3.1`、`0.3.0` 是更早基线。
 - **主要 DSH 基线：**`0.2.2-rc.5`；十三个声明版本通过源码矩阵验证。
-- 从 `0.3.4` 起，**Plugins** 页面显示本地化标题和带版本号的功能说明，并明确校准的数据发送限制。
+- `0.3.4` 已发布；从该版本起 **Plugins** 页面显示本地化标题和带版本号的功能说明，并明确校准的数据发送限制。
 
 ## 核心能力
 
@@ -38,16 +38,16 @@ Pane 把工作区、审阅中心和诊断放在同一文档列中。截图只裁
 
 ## 安装
 
-最新已发布版本是 `0.3.3`：
+最新已发布版本是 `0.3.4`：
 
 ```bash
-dsh plugin --profile web add dsh-charter@0.3.3
+dsh plugin --profile web add dsh-charter@0.3.4
 # 离线/精确 artifact：
-npm pack dsh-charter@0.3.3
-dsh plugin --profile web add ./dsh-charter-0.3.3.tgz
+npm pack dsh-charter@0.3.4
+dsh plugin --profile web add ./dsh-charter-0.3.4.tgz
 ```
 
-`0.3.4` 是当前开发候选：
+`0.3.4` 是当前已发布版本：
 
 ```bash
 npm pack
@@ -58,7 +58,7 @@ Desktop 使用 **Plugins → Install/Update**（支持本地 tarball 的构建�
 
 ### 更新与回滚
 
-使用精确版本或本地 tarball 更新。client bundle 可通过 profile 热替换；如果安装结果已成功但新的 Host service/Remote 方法仍未生效，重新加载 Host 或 Desktop 一次即可。完整退出/重启只是兜底，不是客户端改动的默认要求。回滚时安装上一个精确版本（当前已发布为 `0.3.3`）；`0.3.2`/`0.3.3`/`0.3.4` 写入的 record 无需迁移仍可读取。
+使用精确版本或本地 tarball 更新。client bundle 可通过 profile 热替换；如果安装结果已成功但新的 Host service/Remote 方法仍未生效，重新加载 Host 或 Desktop 一次即可。完整退出/重启只是兜底，不是客户端改动的默认要求。回滚时安装上一个精确版本（当前已发布为 `0.3.4`，上一个为 `0.3.3`）；`0.3.2`/`0.3.3`/`0.3.4` 写入的 record 无需迁移仍可读取。
 
 ### 要求
 

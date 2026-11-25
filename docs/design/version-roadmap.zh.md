@@ -3,8 +3,8 @@
 [English](version-roadmap.md) | 中文
 
 > **状态：** Active — 版本与范围权威。
-> **版本范围：** 0.1 历史、已发布的 0.2 线、已发布的 0.3.0/0.3.1/0.3.2 线，以及已发布的 0.3.3。
-> **基准：** 2026-11-24；`0.2.2` 与 `0.3.0`–`0.3.3` 已发布（`0.3.3` 于 2026-11-24）；`0.3.4` 为已决策的草案校准补丁线（§14.2.2，权威：[charter-draft-calibration-v1.zh.md](charter-draft-calibration-v1.zh.md)）；`0.4.0` 为已决策的完整契约功能升级线（§14.2.3，权威：[charter-execution-v1.zh.md](charter-execution-v1.zh.md)）。
+> **版本范围：** 0.1 历史、已发布的 0.2 线、已发布的 0.3.0/0.3.1/0.3.2/0.3.3 线，以及 2026-11-25 已发布的 0.3.4。
+> **基准：** 2026-11-24；`0.2.2` 与 `0.3.0`–`0.3.3` 已发布（`0.3.3` 于 2026-11-24）；`0.3.4` 于 2026-11-25 发布，是草案校准补丁线（§14.2.2，权威：[charter-draft-calibration-v1.zh.md](charter-draft-calibration-v1.zh.md)）；`0.4.0` 为已决策的完整契约功能升级线（§14.2.3，权威：[charter-execution-v1.zh.md](charter-execution-v1.zh.md)）。
 > **权威：** 中文版本为 scope 的 normative。
 > **替代/被替代：** 无 / 无
 
@@ -61,7 +61,7 @@ rc.5 修复了与产品承诺冲突的审阅正确性问题：此前历史草案
   重复折叠、稳定 ref 与自动 zh/en 语言归一（`languageFollow` 可关）；tag、资产和 npm 字节不可变。
 - `0.3.4` 为当前开发线（契约草案校准补丁，已决策 2026-11-24）：语义聚合、可读性改写、保留 0.3.3 语言归一独立回退、
   原文 diff 审阅；opt-in、零 record schema/prompt/工具面变更；范围与验收由
-  [charter-draft-calibration-v1.zh.md](charter-draft-calibration-v1.zh.md)（`Implemented — pending release acceptance`）持有。
+  [charter-draft-calibration-v1.zh.md](charter-draft-calibration-v1.zh.md)（`Historical`，0.3.4 已发布）持有。
   定位约束：只提升草案质量与审阅效率，不声称提升模型长程任务完成率。
 - `0.4.0` 为下一功能线（完整契约功能升级，范围已决策 2026-11-24）：readiness/ready queue、
   停滞检测、执行记忆（decision/environment/evidence/progress proposal，record schema v3 +

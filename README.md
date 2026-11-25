@@ -4,7 +4,7 @@
 [![GitHub](https://img.shields.io/badge/GitHub-centella--cream%2Fdsh--charter-181717?logo=github)](https://github.com/centella-cream/dsh-charter)
 [![DSH](https://img.shields.io/badge/DSH-13%20verified%20versions-4b6bfb)](docs/design/compatibility.md)
 [![Node](https://img.shields.io/badge/node-%5E22.19%20%7C%7C%20%3E%3D24-339933)](package.json)
-[![Status: 0.3.4 development candidate](https://img.shields.io/badge/status-0.3.4%20dev-brightgreen)](#status)
+[![Status: 0.3.4 published](https://img.shields.io/badge/status-0.3.4%20published-brightgreen)](#status)
 
 English | [中文](README.zh.md)
 
@@ -20,11 +20,11 @@ The Pane keeps the workspace, Review Center, and Diagnostics in one document col
 
 ## Status
 
-- **Current published release:** `0.3.3` — structured draft extraction, automatic zh/en language following, duplicate folding, stable draft refs, deferred non-blocking translation, and adaptive batch translation.
-- **Development candidate:** `0.3.4` — opt-in, consent-gated draft calibration: semantic aggregation, readable rewriting, original-vs-calibrated review, `c-*` apply provenance, and real-model calibration status/diagnostics. **Release candidate:** v8/v9/v10/v11 pass the real default 10-turn engineering run and latest real-summary review; Web profile calibration flow manually accepted; A/B, zh→en, full L4 and Desktop formal evidence waived for 0.3.4; candidate/promotion workflow pending.
-- **Previous release:** `0.3.2` — accessibility/evidence convergence; `0.3.1` and `0.3.0` are earlier baselines.
+- **Current published release:** `0.3.4` — opt-in draft calibration; previous `0.3.3` is structured draft extraction and language following.
+- **Published release:** `0.3.4` — opt-in, consent-gated draft calibration: semantic aggregation, readable rewriting, original-vs-calibrated review, `c-*` apply provenance, and real-model calibration status/diagnostics. **Published 2026-11-25:** npm `latest`/`next` and GitHub Release `v0.3.4`; exact npm tarball SHA-256 `954efd67…` (7,594,915 B). v8/v9/v10/v11 pass the real default 10-turn engineering run and latest real-summary review; Web profile calibration flow manually accepted; A/B, zh→en, full L4 and Desktop formal evidence waived for 0.3.4.
+- **Previous release:** `0.3.3` — structured draft extraction and automatic language following; `0.3.2`, `0.3.1`, `0.3.0` are earlier baselines.
 - **Primary DSH baseline:** `0.2.2-rc.5`; 13 declared DSH versions are source-matrix verified.
-- From `0.3.4`, the **Plugins** page shows a localized title and versioned description, including the calibration data-use limitation.
+- `0.3.4` is published; from this line the **Plugins** page shows a localized title and versioned description, including the calibration data-use limitation.
 
 ## Core capabilities
 
@@ -38,16 +38,16 @@ The Pane keeps the workspace, Review Center, and Diagnostics in one document col
 
 ## Install
 
-The latest published release is `0.3.3`:
+The latest published release is `0.3.4`:
 
 ```bash
-dsh plugin --profile web add dsh-charter@0.3.3
+dsh plugin --profile web add dsh-charter@0.3.4
 # offline / exact artifact:
-npm pack dsh-charter@0.3.3
-dsh plugin --profile web add ./dsh-charter-0.3.3.tgz
+npm pack dsh-charter@0.3.4
+dsh plugin --profile web add ./dsh-charter-0.3.4.tgz
 ```
 
-`0.3.4` is the current development candidate:
+`0.3.4` is the current published release:
 
 ```bash
 npm pack
@@ -58,7 +58,7 @@ Desktop uses **Plugins → Install/Update** (local tarball if your build support
 
 ### Update and rollback
 
-Update with the exact version or local tarball. The client bundle can hot-swap through the profile; if the new Host service or Remote methods are not live after the install result, reload the Host or Desktop once. A full quit is a fallback, not a requirement for a client-only change. To roll back, install the previous exact version (`0.3.3` is the current published release); records written by `0.3.2`/`0.3.3`/`0.3.4` remain readable without migration.
+Update with the exact version or local tarball. The client bundle can hot-swap through the profile; if the new Host service or Remote methods are not live after the install result, reload the Host or Desktop once. A full quit is a fallback, not a requirement for a client-only change. To roll back, install the previous exact version (`0.3.4` is current published; `0.3.3` is previous); records written by `0.3.2`/`0.3.3`/`0.3.4` remain readable without migration.
 
 ### Requirements
 

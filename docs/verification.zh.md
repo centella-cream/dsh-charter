@@ -3,20 +3,20 @@
 [English](verification.md) | 中文
 
 > **状态：** Active — 当前操作记录。
-> **版本范围：** `0.3.4` 草案校准开发候选；最新已发布 `0.3.3`（2026-11-24）；上一个已发布 `0.3.2`。
+> **版本范围：** `0.3.4` 草案校准版本，2026-11-25 已发布；前一个发布 `0.3.3`（2026-11-24）；更早 `0.3.2`。
 > **基准：** 2026-11-23
 
-验证日期：2026-11-25。当前源码版本：`0.3.4`；最新已发布版本为 `0.3.3`（上一个 `0.3.2`）。本文件是当前证据记录；历史逐提交的叙事保留在 Git 历史和 Changelog。临时目录、profile、
+验证日期：2026-11-25。当前源码/已发布版本：`0.3.4`；前一个已发布版本为 `0.3.3`（更早 `0.3.2`）。本文件是当前证据记录；历史逐提交的叙事保留在 Git 历史和 Changelog。临时目录、profile、
 tarball 和抓取内容位于 `.tmp/`，不进入发布包。
 
 环境：macOS，Node `v22.23.1`，npm `12.0.2`，pnpm `12.3.4`。本地 DSH 开发基线：`0.2.2-rc.5`（当前 npm `latest`/`next`）。
 
-## 1. 当前状态（2026-11-24）
+## 1. 当前状态（2026-11-25）
 
-- 最新已发布版本：`0.3.3`（npm `latest`/`next`，GitHub Release `v0.3.3`；精确 artifact digest 记录在 C+1 checksum commit 与 release evidence 中）。
-- 上一个已发布版本：`0.3.2`（SHA-256 `9dcb82ae34eaaeb6d266bb98f3e1f92f3a0798042ce3dc282abe9173ff79e056`）。
+- 最新已发布版本：`0.3.4`（npm `latest`/`next`，GitHub Release `v0.3.4`；精确 SHA-256 `954efd67…`，7,594,915 B）。
+- 上一个已发布版本：`0.3.3`（SHA-256 `707043d3…`）；更早 `0.3.2`（SHA-256 `9dcb82ae34eaaeb6d266bb98f3e1f92f3a0798042ce3dc282abe9173ff79e056`）。
 - 更早发布：`0.3.1`、`0.3.0`、`0.2.2`；已发布 tag 与字节不可变。
-- 当前源码线：`0.3.4` 草案校准开发候选，未发布；`0.3.3` 为最新已发布版本。`0.3.4` 新增 opt-in 校准、additive Remote/apply 字段；record schema 仍为 2，standing prompt/工具面未变。
+- 当前源码线：`0.3.4` 草案校准版本，2026-11-25 已发布。`0.3.4` 新增 opt-in 校准、additive Remote/apply 字段；record schema 仍为 2，standing prompt/工具面未变。
 - 当前源码门禁：`npm run check`（46 文件 / 567 测试）、token 覆盖 41 static + 1 dynamic、
   13 个声明 DSH 版本，以及 `verify:ui-metrics --gate=final`。
 - 兼容矩阵：13 个声明版本通过本地矩阵（`.tmp/compat-13-034-final.json`（source `82d45bc`））；最新 DSH `0.2.2-rc.5` 为主基线。这是本地证据，不是 CI 结论。
@@ -303,7 +303,7 @@ rm -rf .tmp
 - 人工验收（2026-11-23）：用户在自适应翻译修改后确认 39 条 en→zh Desktop 草案可用；zh→en 由用户明确放弃人工验收，改由自动化 target-zh 翻译测试覆盖。README Pane/依赖图截图已从实时 `v0.3.3` Desktop 视图重拍。
 - legacy golden fixture 为 10 条合成摘要（对方案“≥10 条真实摘要”目标记为接受偏差；当前无可安全提交的真实摘要语料）。
 - 候选 artifact `dist/dsh-charter-0.3.3.tgz` SHA-256 `707043d343e6a0b14d4549e6bb92b29f28fa197d99bb48160b796b4e50c8552f`；exact-artifact package smoke 与 packed recovery smoke PASS。13 版本矩阵 PASS（`.tmp/compat-13-034-final4.json`（source `2a8d6c0`），source `26353d2`；含 DSH 最新 `0.2.2-rc.5`）；Web/Desktop profile 安装同一 `707043d…` artifact，143 个包文件逐字节相同；Web profile 由 DSH `0.2.2-rc.5` CLI 启动并显示 Pane `v0.3.3`；Desktop app 为 `0.2.2-rc.5`，profile 由 Electron 独占，原生窗口仍为人工门禁。当前候选未发布。真实 en→zh 已由用户确认；zh→en 按用户决定仅做自动化覆盖。一个 39 条 / 7589 B 的真实摘要此前在 10s 后台超时下返回 `translation finished with aborted`；分批 + 每批超时/拆分重试 + partial 合并 + 60s 后台窗口 + 可选专用翻译路由 + DeepSeek `reasoningEffort: off` 是修复，需重跑该人工用例。
-## 1.5 0.3.4 草案校准（2026-11-24，开发候选）
+## 1.5 0.3.4 草案校准（2026-11-25 已发布）
 
 - 源码门禁：`npm run check` = 46 文件 / 567 测试 PASS；13 个声明 DSH 版本 token 覆盖 PASS；`verify:ui-metrics --gate=final` PASS。
 - 已实现：opt-in 校准配置/consent 门禁、Host `ctx.llm` 单轮严格 JSON 调用、语义聚合/可读改写校验、`c-*` 候选与 `mergedFrom`、Host-only evidence excerpt、`applyBootstrap.calibrationRunId`、两个新 Remote 方法及基础审阅 UI（校准、uncertain/merge/split、原文、用原文、consent 披露、objective 提醒、诊断 usage）。

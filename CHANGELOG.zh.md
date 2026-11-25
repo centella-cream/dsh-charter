@@ -4,14 +4,14 @@
 
 记录 `dsh-charter` 的重要变更。DSH 插件 ABI 仍在演进，项目保持 pre-1.0 版本线。
 
-## 0.3.4 — 2026-11-24（开发候选）
+## 0.3.4 — 2026-11-25（已发布）
 
 - opt-in 草案校准：capability 状态、consent 门禁、严格单轮 Host `ctx.llm` 调用、语义聚合/可读改写、
   有界候选校验与内存 run 缓存。
 - 新增 `charter/calibrationStatus`/`charter/calibrateBootstrap` Remote 方法；`applyBootstrap` additive
   `calibrationRunId`；`c-*` 候选与 `mergedFrom`/Host-only evidence excerpt。
 - 零 record schema/prompt/工具面变化；0.3.2/0.3.3 记录仍可读取。
-- 校准默认关闭，发布前仍需人工/A-B 验收。v8 自适应分批内核已通过真实 10 轮默认参数工程测试；v9 契约性门禁会排除 heading/状态/历史/可选建议并保留 objective 与关键交付物；v10 增加业务错误分类透出、objective/deliverable 来源溯源、conflicts 可见、strict-wire 批次诊断与 degraded 段重映射；v11 对截短的 objective 回退源文本，并在候选上限下保护契约 deliverable；正式 A/B/人工与 L4 门禁仍未完成。
+- 校准默认关闭，发布前仍需人工/A-B 验收。v8 自适应分批内核已通过真实 10 轮默认参数工程测试；v9 契约性门禁会排除 heading/状态/历史/可选建议并保留 objective 与关键交付物；v10 增加业务错误分类透出、objective/deliverable 来源溯源、conflicts 可见、strict-wire 批次诊断与 degraded 段重映射；v11 对截短的 objective 回退源文本，并在候选上限下保护契约 deliverable；A/B、zh→en、完整 L4 与 Desktop 正式门禁已由发布负责人对 0.3.4 waived；npm/GitHub 发布已通过。
 
 ## 0.3.3 — 2026-11-24（已发布）
 

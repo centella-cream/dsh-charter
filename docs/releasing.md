@@ -12,8 +12,8 @@ tagging.
 
 ## Current state (2026-11-25)
 
-- **Released:** `0.3.3` — structured draft extraction + non-blocking zh/en language following; npm `latest`/`next` and GitHub Release `v0.3.3` published 2026-11-24.
-- **Development candidate:** `0.3.4` — opt-in draft calibration vertical slice implemented; v11 objective/coverage closeout complete locally; Web profile calibration flow manually accepted by the release owner; A/B, zh→en, full L4 matrix and Desktop formal evidence waived for 0.3.4. Candidate/promotion workflow pending; do not tag or publish until that workflow and C+1 are green.
+- **Released:** `0.3.4` — opt-in draft calibration; npm `latest`/`next` and GitHub Release `v0.3.4` published 2026-11-25. Exact npm tarball SHA-256 `954efd67…`; tag `v0.3.4`; Release candidate run `45582847333`; Promotion run `45584815676`.
+- **Previous release:** `0.3.3` — structured draft extraction + non-blocking zh/en language following; published 2026-11-24.
 - **Published:** `0.3.2` — npm `latest`/`next`, GitHub Release `v0.3.2`; exact artifact
   `dsh-charter-0.3.2.tgz`, SHA-256 `9dcb82ae34eaaeb6d266bb98f3e1f92f3a0798042ce3dc282abe9173ff79e056`.
 - **Previous release:** `0.3.1` — GitHub Release `v0.3.1`.

@@ -5,14 +5,14 @@ English | [中文](CHANGELOG.zh.md)
 All notable changes to `dsh-charter` are recorded here. The project follows a pre-1.0 version line while the
 DSH plugin ABI is still moving.
 
-## 0.3.4 — 2026-11-24 (development candidate)
+## 0.3.4 — 2026-11-25 (published)
 
 - Opt-in draft calibration: capability status, consent gate, strict one-shot Host `ctx.llm` call,
   semantic aggregation/readable rewriting, bounded candidate validation and in-memory run cache.
 - Additive `charter/calibrationStatus` and `charter/calibrateBootstrap` Remote methods; additive
   `applyBootstrap.calibrationRunId`; `c-*` candidates with `mergedFrom` and Host-only evidence excerpts.
 - No record schema, standing prompt, or model tool changes; `0.3.2`/`0.3.3` records remain readable.
-- Calibration is disabled by default and still requires manual/A-B acceptance before release. The v8 adaptive-batched core passes a real 10-turn default-parameter engineering run; the v9 contractness gate prevents heading/status/history/optional material from entering the contract, and v10 adds classified Remote errors, source-provenance objective/deliverable kinds, visible conflicts, strict-wire batch diagnostics and degraded-part remapping; v11 restores shortened objectives from source and protects contract deliverables under the candidate cap. Formal A/B/manual and L4 gates remain pending.
+- Calibration is disabled by default. The v8 adaptive-batched core passes a real 10-turn default-parameter engineering run; the v9 contractness gate prevents heading/status/history/optional material from entering the contract, and v10 adds classified Remote errors, source-provenance objective/deliverable kinds, visible conflicts, strict-wire batch diagnostics and degraded-part remapping; v11 restores shortened objectives from source and protects contract deliverables under the candidate cap. A/B, zh→en, full L4 and Desktop formal gates are waived by the release owner for 0.3.4; npm/GitHub release passed.
 
 ## 0.3.3 — 2026-11-24 (released)
 
@@ -30,7 +30,7 @@ Structured draft extraction and automatic zh/en language following. No record-sc
 ### Verification
 
 - Source gates and new structured/translation tests are expected on the final tree; run the full `npm run check` before release.
-- This candidate is not published; `0.3.2` remains the latest published release.
+- This release is published.
 
 ## 0.3.2 — 2026-11-16
 

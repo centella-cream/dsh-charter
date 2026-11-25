@@ -1,7 +1,7 @@
 # v10 review remediation
 
-> **Status:** Implemented — pending release acceptance
-> **Version scope:** 0.3.4 development candidate
+> **Status:** Historical
+> **Version scope:** 0.3.4 (published 2026-11-25)
 > **Baseline:** v9 source `60c28a5` / v10 implementation `78fcc19`
 > **Authority:** the user's 0.3.4 v8/v9 implementation review (P1/P2/P3 items)
 > **Supersedes / Superseded by:** supersedes the v9 review findings in this directory; no later supersession.
