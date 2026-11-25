@@ -1,9 +1,9 @@
 # v10 review remediation
 
-> **Status:** Implemented — pending release acceptance  
-> **Version scope:** 0.3.4 development candidate  
-> **Baseline:** v9 source `60c28a5` / v10 implementation `58de5ed`  
-> **Authority:** the user's 0.3.4 v8/v9 implementation review (P1/P2/P3 items)  
+> **Status:** Implemented — pending release acceptance
+> **Version scope:** 0.3.4 development candidate
+> **Baseline:** v9 source `60c28a5` / v10 implementation `78fcc19`
+> **Authority:** the user's 0.3.4 v8/v9 implementation review (P1/P2/P3 items)
 > **Supersedes / Superseded by:** supersedes the v9 review findings in this directory; no later supersession.
 
 ## P1 fixes
@@ -36,10 +36,10 @@
 
 ## Verification
 
-- `npm run check`: 46 files / **562 tests** PASS.
-- 13-version source matrix: 13/13 PASS, source `58de5ed`
-  (`.tmp/compat-13-034-v10.json`).
-- exact artifact: `dist/dsh-charter-0.3.4.tgz` SHA-256 `a1b07153711e827bfa358b557f610ecf6c91e329ffa712306db2a3d4643c7806`, 167 files.
+- `npm run check`: 46 files / **563 tests** PASS.
+- 13-version source matrix: 13/13 PASS, source `78fcc19`
+  (`.tmp/compat-13-034-v10-p3.json`).
+- exact artifact: `dist/dsh-charter-0.3.4.tgz` SHA-256 `8971f8a613fecd934bbb167b389d8cf414380c88282d7661eb8249bba55c64a7`, 167 files.
 - isolated real-summary host check (same `85809bdb…` summary, no user record mutation):
   - consent v1 → Remote **domain failure** `CALIBRATION_CONSENT_REQUIRED` (not `gateway/internal`);
   - consent v2 → 3/3 batches, no truncation, 1 objective, 10 deliverables, 8 invariants,
@@ -48,9 +48,14 @@
 - exact-artifact package smoke, recovery smoke, fresh-profile Web smoke, Gateway acceptance on
   0.2.1-rc.3/rc.4 and `verify:ui-metrics --gate=final` PASS after the final pack.
 
-## Residual
+## Residual / recorded P3
 
+- **Conflict provenance:** fixed after review. `conflicts.refs` now contains L1 merged-from refs (or an
+  empty set for a model-invented objective without provenance), never batch-local `c-<i>` refs. Regression
+  test asserts every conflict ref starts with `d-`; the Pane still renders the conflict count.
+- **Quota wording:** §5.12 now says 30% (ceil), matching the implementation.
+- **A/B data in package:** the synthetic research data and test session ids remain in npm files; accepted
+  and recorded, not a release blocker.
 - Exact T-3 configuration facts remain atomic invariants; duplicate 151-no-execution constraints can
   remain across phrasing. Bounded semantic reduce remains a future quality optimization.
 - Batch-level cache, per-batch retry and per-batch progress are documented future gates, not shipped.
-- `docs/research/.../data/*.json` remains in the package; synthetic test data only.

@@ -548,7 +548,7 @@ v9 审查暴露的发布门禁问题已在 v10 修复：
 - **v10 实测**：同一真实 summary，consent v1 返回领域失败 `CALIBRATION_CONSENT_REQUIRED`（非
   `gateway/internal`）；consent v2 得到 1 objective / 10 deliverable / 8 invariant，3/3 批、
   `truncated=false`、17 条 `non-contract`、5 次调用、6,499 output tokens、28.1s；T-1/T-2/T-3
-  均为 deliverable。最终 artifact `a1b071…`（167 文件）；`npm run check` 562 测试。
+  均为 deliverable。最终 artifact `8971f8…`（167 文件）；`npm run check` 563 测试。
 
 ## 6. Provenance 与 apply 合同（评审 P0-A/P0-2/P0-3/P0-C）
 
