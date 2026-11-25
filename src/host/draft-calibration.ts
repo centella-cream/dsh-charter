@@ -231,10 +231,18 @@ export function planCalibrationBatches(
   if (objective !== undefined) selected.push(objective)
   const deliverables = ordered.filter(item => item.kind === 'deliverable')
   const invariants = ordered.filter(item => item.kind === 'invariant')
-  const deliverableReserve = Math.min(deliverables.length, Math.max(1, Math.ceil((capacity - selected.length) * 0.3)))
-  selected.push(...deliverables.slice(0, deliverableReserve))
+  // Reserve a small invariant floor, then select every contract deliverable
+  // before filling the rest with invariants. Losing an actionable gate/commit
+  // item to an invariant is worse than trimming a redundant constraint.
+  const invariantFloor = invariants.length === 0
+    ? 0
+    : Math.min(invariants.length, Math.max(2, Math.ceil(capacity * 0.25)))
+  const deliverableCapacity = Math.max(0, capacity - selected.length - invariantFloor)
+  const deliverableTarget = Math.min(deliverables.length, deliverableCapacity)
+  selected.push(...deliverables.slice(0, deliverableTarget))
   selected.push(...invariants.slice(0, capacity - selected.length))
-  selected.push(...deliverables.slice(deliverableReserve, capacity - selected.length))
+  const remaining = Math.max(0, capacity - selected.length)
+  if (remaining > 0) selected.push(...deliverables.slice(deliverableTarget, deliverableTarget + remaining))
 
   const selectedRefs = new Set(selected.map(item => item.ref))
   let inputTruncated = false
@@ -589,6 +597,15 @@ export async function runCalibrationPlan(
   }
 }
 
+function objectiveTextPreserved(candidate: string, source: string): boolean {
+  if (candidate.trim() === source.trim()) return true
+  if (candidate.length < Math.max(12, Math.floor(source.length * 0.6))) return false
+  // Numbers, versions and proper nouns are the stable anchors of an objective.
+  const anchors = source.match(/(?:\b\d+(?:\.\d+)*\b|\b[A-Z][A-Za-z0-9_-]{2,}\b)/gu) ?? []
+  const normalized = candidate.toLowerCase()
+  return anchors.every(anchor => normalized.includes(anchor.toLowerCase()))
+}
+
 function mergeCalibrationResults(
   plan: CalibrationBatchPlan,
   results: readonly BatchRunResult[],
@@ -623,6 +640,7 @@ function mergeCalibrationResults(
         : sourceDeliverable && rawCandidate.kind === 'invariant'
           ? { ...rawCandidate, kind: 'deliverable' as const }
           : rawCandidate
+      let normalizedCandidate = candidate
       if (candidate.kind === 'objective') {
         if (plan.source.hasObjective || !batchHasObjective || acceptedObjective) {
           // Conflict provenance must be L1 refs. A model-created objective with
@@ -631,23 +649,33 @@ function mergeCalibrationResults(
           conflicts.push({ refs, reason: 'objective' })
           continue
         }
+        const sourceObjective = plan.source.draftItems.find(item => item.kind === 'objective')
+        if (sourceObjective !== undefined && !objectiveTextPreserved(candidate.text, sourceObjective.text)) {
+          // A shortened objective can invert the task (e.g. keep only an
+          // out-of-scope clause). The source objective is the authority.
+          const merged = candidate.mergedFrom ?? []
+          const withSource = merged.some(item => item.ref === sourceObjective.ref)
+            ? merged
+            : [...merged, { ref: sourceObjective.ref, excerpt: sourceObjective.text }].slice(0, MAX_MERGED_FROM)
+          normalizedCandidate = { ...candidate, text: sourceObjective.text, mergedFrom: withSource }
+        }
         acceptedObjective = true
       }
-      const key = canonicalCandidateText(candidate.text)
+      const key = canonicalCandidateText(normalizedCandidate.text)
       const existing = byKey.get(key)
       if (existing !== undefined) {
         const current = unique[existing]!
-        const mergedFrom = [...current.mergedFrom, ...(candidate.mergedFrom ?? [])]
+        const mergedFrom = [...current.mergedFrom, ...(normalizedCandidate.mergedFrom ?? [])]
           .filter((item, index, all) => all.findIndex(other => other.ref === item.ref) === index)
         if (mergedFrom.length > MAX_MERGED_FROM) conflicts.push({ refs: mergedFrom.map(item => item.ref), reason: 'near-duplicate' })
         unique[existing] = {
           ...current,
-          uncertain: current.uncertain || candidate.uncertain,
+          uncertain: current.uncertain || normalizedCandidate.uncertain,
           mergedFrom: mergedFrom.slice(0, MAX_MERGED_FROM),
         }
-        if (current.kind !== candidate.kind) {
+        if (current.kind !== normalizedCandidate.kind) {
           conflicts.push({
-            refs: [...current.mergedFrom.map(item => item.ref), ...(candidate.mergedFrom ?? []).map(item => item.ref)]
+            refs: [...current.mergedFrom.map(item => item.ref), ...(normalizedCandidate.mergedFrom ?? []).map(item => item.ref)]
               .filter((ref, index, all) => all.indexOf(ref) === index),
             reason: 'near-duplicate',
           })
@@ -656,12 +684,12 @@ function mergeCalibrationResults(
       }
       byKey.set(key, unique.length)
       unique.push({
-        kind: candidate.kind,
-        text: candidate.text,
-        uncertain: candidate.uncertain,
-        mergedFrom: candidate.mergedFrom ?? [],
+        kind: normalizedCandidate.kind,
+        text: normalizedCandidate.text,
+        uncertain: normalizedCandidate.uncertain,
+        mergedFrom: normalizedCandidate.mergedFrom ?? [],
         batchIndex,
-        oldRef: candidate.ref,
+        oldRef: normalizedCandidate.ref,
       })
     }
   }

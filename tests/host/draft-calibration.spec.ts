@@ -222,6 +222,27 @@ describe('adaptive calibration planning and batching (v8)', () => {
     expect(result.candidates[0]?.kind).toBe('deliverable')
   })
 
+  it('restores the full source objective when a model shortens it', async () => {
+    const sourceObjective = 'Fix the remaining 0.3.4 blockers before the 151 rerun; Harbor is out of scope.'
+    const objectiveSource = {
+      ...source,
+      draftItems: [
+        { ref: 'd-obj-0', kind: 'objective' as const, text: sourceObjective },
+        { ref: 'd-inv-0', kind: 'invariant' as const, text: 'Keep the API stable.' },
+      ],
+    }
+    const model = {
+      async *stream(options: never) {
+        const refs = promptRefs(options)
+        const output = JSON.stringify([{ kind: 'objective', text: 'Harbor is out of scope.', mergedFrom: [refs[0] ?? 'd-obj-0'] }])
+        yield { type: 'block-end', index: 0, block: { type: 'text', text: output } }
+        yield { type: 'finish', reason: { kind: 'stop' } }
+      },
+    }
+    const result = await runCalibrationPlan(model as never, { provider: 'p', model: 'm' }, planCalibrationBatches(objectiveSource, batching), options)
+    expect(result.candidates[0]).toMatchObject({ kind: 'objective', text: sourceObjective })
+  })
+
   it('promotes an objective-provenance invariant to the objective kind', async () => {
     const objectiveSource = {
       ...source,
@@ -368,6 +389,17 @@ describe('contractness gate and quotas (v9)', () => {
     expect(filtered.excludedRefs.every(item => item.reason === 'non-contract')).toBe(true)
   })
 
+  it('keeps deliverable requirements with "must" as deliverables', () => {
+    const filtered = filterContractDraftItems([
+      { ref: 'd-del-0', kind: 'deliverable', text: 'Failures must record the reason and cooldown.' },
+      { ref: 'd-del-1', kind: 'deliverable', text: '151 execution is still forbidden until approval.' },
+      { ref: 'd-del-2', kind: 'deliverable', text: 'Just changed the snapshot loader; causing a route identity failure.' },
+    ])
+    expect(filtered.items.map(item => item.ref)).toEqual(['d-del-0', 'd-del-1'])
+    expect(filtered.items.find(item => item.ref === 'd-del-0')?.kind).toBe('deliverable')
+    expect(filtered.items.find(item => item.ref === 'd-del-1')?.kind).toBe('invariant')
+  })
+
   it('keeps mandatory Test/Coverage/decision-authority lines', () => {
     const filtered = filterContractDraftItems([
       { ref: 'd-inv-0', kind: 'invariant', text: 'Tests must pass before release.' },
@@ -391,7 +423,7 @@ describe('contractness gate and quotas (v9)', () => {
     }, { batchCandidates: 8, maxBatchInputBytes: 8_192, maxTotalOutputTokens: 16_384, maxConcurrency: 2, retrySplitDepth: 1, runTimeoutMs: 5_000 })
     const selected = plan.batches.flatMap(batch => batch.selected)
     expect(selected.some(item => item.ref === 'd-obj-0')).toBe(true)
-    expect(selected.filter(item => item.kind === 'deliverable')).toHaveLength(4)
+    expect(selected.filter(item => item.kind === 'deliverable')).toHaveLength(8)
     expect(plan.inputTruncated).toBe(true)
   })
 
